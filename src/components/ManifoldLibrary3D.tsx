@@ -502,7 +502,7 @@ export default function ManifoldLibrary3D({
         >
           <div className="manifold-stage-overlay-top">
             <div>
-              <span className="mono-tag">VISTA HILERA 3D // PROYECTOS APILADOS</span>
+              <span className="mono-tag">MIS PROYECTOS // VINILOS</span>
               <h3>Arrastrá con click para correr la hilera · Tocá una lámina para abrir</h3>
             </div>
             <span className="mono-tag">{projects.length} PROYECTOS</span>
