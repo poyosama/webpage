@@ -29,7 +29,7 @@ function Terrain() {
         <meshStandardMaterial color="#1b2340" flatShading roughness={0.9} />
       </mesh>
       <mesh geometry={geo} position={[0, 0.005, 0]}>
-        <meshBasicMaterial color="#7cf7ff" wireframe transparent opacity={0.12} />
+        <meshBasicMaterial color="#ff8ccf" wireframe transparent opacity={0.12} />
       </mesh>
     </group>
   );
@@ -77,13 +77,13 @@ export default function CerroMap({ onSelect, selected }: { onSelect: (a: Artist)
   return (
     <div className="map">
       <Canvas camera={{ position: [6, 5, 7], fov: 40 }} dpr={[1, 2]}>
-        <color attach="background" args={["#05070f"]} />
-        <fog attach="fog" args={["#05070f", 9, 20]} />
+        
+        <fog attach="fog" args={["#0a0010", 9, 20]} />
         <ambientLight intensity={0.4} />
         <directionalLight position={[5, 8, 3]} intensity={1.2} color="#bcd" />
         <Terrain />
         {collabs.map(([a, b], i) => (
-          <Line key={i} points={[positions.get(a)!, positions.get(b)!]} color="#7cf7ff" transparent opacity={0.45} lineWidth={1.2} />
+          <Line key={i} points={[positions.get(a)!, positions.get(b)!]} color="#ff8ccf" transparent opacity={0.45} lineWidth={1.2} />
         ))}
         {artists.map((a) => (
           <Node key={a.id} a={a} pos={positions.get(a.id)!} onSelect={onSelect} active={selected?.id === a.id} />
