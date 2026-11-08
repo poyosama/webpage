@@ -1,18 +1,48 @@
 import type { Metadata } from "next";
-import { Michroma, Geist } from "next/font/google";
+import { Inter, Instrument_Serif, JetBrains_Mono, UnifrakturMaguntia } from "next/font/google";
 import "./globals.css";
 
-const display = Michroma({ variable: "--font-display", weight: "400", subsets: ["latin"] });
-const body = Geist({ variable: "--font-body", subsets: ["latin"] });
+const sans = Inter({
+  variable: "--font-sans",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
+const serif = Instrument_Serif({
+  variable: "--font-serif",
+  subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
+});
+
+const mono = JetBrains_Mono({
+  variable: "--font-mono",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+});
+
+const gothic = UnifrakturMaguntia({
+  variable: "--font-gothic",
+  subsets: ["latin"],
+  weight: "400",
+});
 
 export const metadata: Metadata = {
-  title: "El Cerro de la Gloria",
-  description: "La escena de Mendoza, en un solo lugar.",
+  title: "El Cerro de la Gloria — Mendoza Underground Archive & Studio",
+  description:
+    "Plataforma minimalista y archivo vivo para la escena de rap underground de Mendoza: explorar, reproductor 3D customizable para snippets, biblioteca isométrica y subida por props.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <html lang="es" className={`${display.variable} ${body.variable}`}>
+    <html
+      lang="es"
+      className={`${sans.variable} ${serif.variable} ${mono.variable} ${gothic.variable}`}
+    >
       <body>{children}</body>
     </html>
   );
