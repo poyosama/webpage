@@ -1,7 +1,6 @@
 "use client";
 
 import { Canvas, useFrame } from "@react-three/fiber";
-import { RoundedBox } from "@react-three/drei";
 import { useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { type Project, type Track } from "@/lib/mock";
@@ -107,10 +106,7 @@ function DiscPlate({
 
   return (
     <group ref={groupRef}>
-      <RoundedBox
-        args={[1.95, 2.35, 0.035]}
-        radius={0.03}
-        smoothness={4}
+      <mesh
         onPointerOver={(e) => {
           e.stopPropagation();
           setHoveredIdx(index);
@@ -129,8 +125,9 @@ function DiscPlate({
           }
         }}
       >
+        <boxGeometry args={[1.95, 2.35, 0.035]} />
         <meshBasicMaterial map={tex} />
-      </RoundedBox>
+      </mesh>
     </group>
   );
 }

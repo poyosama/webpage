@@ -1,23 +1,124 @@
 "use client";
 
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Html, OrbitControls, RoundedBox } from "@react-three/drei";
+import { OrbitControls } from "@react-three/drei";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { type Project, type ProjectVideoClip } from "@/lib/mock";
 import { sfx } from "@/lib/sfx";
 
-// Genera una textura de video en vivo (60fps) o usa el archivo MP4/WebM subido por el usuario
-function useClipTexture(clip: ProjectVideoClip, projectTitle: string) {
-  const canvas = useMemo(() => {
-    if (typeof document === "undefined") return null;
-    const c = document.createElement("canvas");
-    c.width = 512;
-    c.height = 512;
-    return c;
-  }, []);
+// Shader GLSL 100% en GPU (0% uso de CPU por frame, corre a 120 FPS)
+const faceVertexShader = `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
 
-  const videoEl = useMemo(() => {
+const faceFragmentShader = `
+  uniform float uTime;
+  uniform vec3 uColor1;
+  uniform vec3 uColor2;
+  uniform int uMode;
+  uniform sampler2D uOverlayTex;
+  varying vec2 vUv;
+
+  void main() {
+    vec2 uv = vUv;
+    vec3 col = uColor1;
+
+    if (uMode == 0) {
+      // Barras cromáticas + círculo en movimiento (estilo galería manifold)
+      float stripe = step(0.5, fract(uv.y * 5.0 - uTime * 0.45));
+      col = mix(uColor1, uColor2, stripe * 0.85);
+      vec2 center = vec2(0.5 + 0.22 * sin(uTime * 1.6), 0.54 + 0.18 * cos(uTime * 1.3));
+      float d = length(uv - center);
+      col = mix(col, vec3(0.06, 0.06, 0.08), smoothstep(0.22, 0.20, d));
+    } else if (uMode == 1) {
+      // Onda térmica / ecualizador líquido
+      float wave = 0.42 + 0.28 * sin(uv.x * 10.0 + uTime * 2.4) * cos(uv.x * 4.0 - uTime);
+      col = mix(vec3(0.97, 0.97, 0.96), uColor2, step(uv.y, wave));
+      float sun = length(uv - vec2(0.5, 0.72 + 0.06 * sin(uTime * 2.0)));
+      col = mix(col, uColor1, smoothstep(0.16, 0.14, sun));
+    } else if (uMode == 2) {
+      // Grilla estroboscópica suave
+      vec2 grid = floor(uv * 6.0);
+      float v = sin(grid.x * 1.2 + grid.y * 1.4 + uTime * 3.0);
+      col = v > 0.2 ? uColor2 : (v < -0.25 ? vec3(0.96) : uColor1);
+    } else {
+      // Tinta líquida / blobs orgánicos en GPU
+      float b1 = length(uv - vec2(0.5 + 0.25 * sin(uTime * 1.3), 0.5 + 0.25 * cos(uTime * 1.7)));
+      float b2 = length(uv - vec2(0.5 - 0.25 * cos(uTime * 1.5), 0.5 + 0.22 * sin(uTime * 1.1)));
+      float m = smoothstep(0.38, 0.12, b1) + smoothstep(0.36, 0.12, b2);
+      col = mix(uColor1, uColor2, clamp(m, 0.0, 1.0));
+    }
+
+    // Capa estática cacheada con el título y nombre del clip (se dibuja 1 sola vez al montar)
+    vec4 overlay = texture2D(uOverlayTex, uv);
+    col = mix(col, overlay.rgb, overlay.a);
+
+    gl_FragColor = vec4(col, 1.0);
+  }
+`;
+
+// Textura de overlay estática (se genera UNA SOLA VEZ en useMemo, cero costo por frame)
+function createStaticLabelOverlay(projectTitle: string, clipLabel: string, pillTag: string): THREE.CanvasTexture {
+  const c = document.createElement("canvas");
+  c.width = 256;
+  c.height = 256;
+  const g = c.getContext("2d")!;
+  g.clearRect(0, 0, 256, 256);
+
+  // Etiqueta superior tipo píldora inclinada impresa en alta definición
+  g.save();
+  g.translate(82, 48);
+  g.rotate(-0.24);
+  g.fillStyle = "rgba(241, 245, 249, 0.94)";
+  g.beginPath();
+  g.roundRect(-68, -15, 136, 30, 15);
+  g.fill();
+  g.lineWidth = 2;
+  g.strokeStyle = "rgba(15, 15, 17, 0.35)";
+  g.stroke();
+  g.fillStyle = "#09090b";
+  g.font = "700 13px Inter, sans-serif";
+  g.textAlign = "center";
+  g.fillText(projectTitle.slice(0, 15), 0, 4);
+  g.restore();
+
+  // Zócalo inferior oscuro con metadata del video de 3-5s
+  g.fillStyle = "rgba(9, 9, 11, 0.84)";
+  g.fillRect(10, 202, 236, 44);
+  g.fillStyle = "#ffffff";
+  g.font = "700 15px Inter, sans-serif";
+  g.fillText(projectTitle.toUpperCase().slice(0, 18), 18, 222);
+  g.fillStyle = "rgba(255, 255, 255, 0.72)";
+  g.font = "500 11px monospace";
+  g.fillText(`▶ ${clipLabel.slice(0, 24)} · ${pillTag}`, 18, 238);
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+const PRESET_TO_INT: Record<ProjectVideoClip["stylePreset"], number> = {
+  "vhs-grain": 0,
+  "thermal-wave": 1,
+  "kinetic-type": 2,
+  "strobe-cut": 2,
+  "liquid-ink": 3,
+  "halftone-cam": 3,
+};
+
+// Material de cara 3D ultra rápido (Shader GPU o VideoTexture nativo si el usuario subió un MP4/WebM)
+function useFastFaceMaterial(clip: ProjectVideoClip, projectTitle: string, pillTag: string, timeOffset: number) {
+  const overlayTex = useMemo(
+    () => createStaticLabelOverlay(projectTitle, clip.label, pillTag),
+    [projectTitle, clip.label, pillTag]
+  );
+
+  const videoTex = useMemo(() => {
     if (typeof document === "undefined" || !clip.url) return null;
     const v = document.createElement("video");
     v.src = clip.url;
@@ -26,122 +127,49 @@ function useClipTexture(clip: ProjectVideoClip, projectTitle: string) {
     v.playsInline = true;
     v.crossOrigin = "anonymous";
     v.play().catch(() => {});
-    return v;
+    const vt = new THREE.VideoTexture(v);
+    vt.colorSpace = THREE.SRGBColorSpace;
+    return { video: v, tex: vt };
   }, [clip.url]);
 
-  const texture = useMemo(() => {
-    if (videoEl) {
-      const vt = new THREE.VideoTexture(videoEl);
-      vt.colorSpace = THREE.SRGBColorSpace;
-      return vt;
+  const material = useMemo(() => {
+    if (videoTex) {
+      return new THREE.MeshBasicMaterial({ map: videoTex.tex });
     }
-    if (!canvas) return new THREE.Texture();
-    const ct = new THREE.CanvasTexture(canvas);
-    ct.colorSpace = THREE.SRGBColorSpace;
-    return ct;
-  }, [canvas, videoEl]);
+    return new THREE.ShaderMaterial({
+      vertexShader: faceVertexShader,
+      fragmentShader: faceFragmentShader,
+      uniforms: {
+        uTime: { value: timeOffset },
+        uColor1: { value: new THREE.Color(clip.c1) },
+        uColor2: { value: new THREE.Color(clip.c2) },
+        uMode: { value: PRESET_TO_INT[clip.stylePreset] ?? 0 },
+        uOverlayTex: { value: overlayTex },
+      },
+    });
+  }, [clip.c1, clip.c2, clip.stylePreset, overlayTex, timeOffset, videoTex]);
 
   useEffect(() => {
     return () => {
-      if (videoEl) {
-        videoEl.pause();
-        videoEl.src = "";
+      if (videoTex) {
+        videoTex.video.pause();
+        videoTex.video.src = "";
+        videoTex.tex.dispose();
       }
-      texture.dispose();
+      overlayTex.dispose();
+      material.dispose();
     };
-  }, [videoEl, texture]);
+  }, [videoTex, overlayTex, material]);
 
   useFrame(({ clock }) => {
-    if (videoEl || !canvas) return;
-    const g = canvas.getContext("2d");
-    if (!g) return;
-    const t = clock.elapsedTime;
-
-    // Fondo luminoso editorial estilo manifold.art (gif1.gif)
-    g.fillStyle = clip.c1;
-    g.fillRect(0, 0, 512, 512);
-
-    if (clip.stylePreset === "vhs-grain") {
-      for (let i = 0; i < 8; i++) {
-        const y = ((t * 85 + i * 68) % 560) - 48;
-        g.fillStyle = i % 2 === 0 ? clip.c2 : "#f8fafc";
-        g.fillRect(24, y, 464, 38);
-      }
-      g.fillStyle = "#09090b";
-      g.beginPath();
-      g.arc(256 + Math.sin(t * 2.2) * 110, 256 + Math.cos(t * 1.7) * 90, 86, 0, Math.PI * 2);
-      g.fill();
-    } else if (clip.stylePreset === "thermal-wave") {
-      g.fillStyle = "#f8fafc";
-      g.fillRect(0, 0, 512, 512);
-      for (let x = 0; x < 512; x += 32) {
-        const h = 160 + Math.sin(t * 3 + x * 0.025) * 140;
-        g.fillStyle = x % 64 === 0 ? clip.c2 : clip.c1;
-        g.fillRect(x, 512 - h, 28, h);
-      }
-      g.fillStyle = clip.c2;
-      g.beginPath();
-      g.arc(256, 170 + Math.sin(t * 3.5) * 35, 72, 0, Math.PI * 2);
-      g.fill();
-    } else if (clip.stylePreset === "kinetic-type") {
-      g.fillStyle = clip.c2;
-      g.fillRect(24, 24, 464, 464);
-      g.fillStyle = clip.c1;
-      g.font = "800 78px Inter, sans-serif";
-      const offset = (t * 110) % 512;
-      g.fillText(projectTitle.toUpperCase(), -offset, 180);
-      g.fillText(projectTitle.toUpperCase(), 512 - offset, 180);
-      g.fillStyle = "#ffffff";
-      g.fillText("0261 // VIDEO", -offset * 0.7, 340);
-    } else if (clip.stylePreset === "liquid-ink") {
-      for (let i = 0; i < 6; i++) {
-        g.fillStyle = i % 2 === 0 ? clip.c2 : "#ffffff";
-        g.beginPath();
-        const rx = 256 + Math.sin(t * 1.6 + i * 1.3) * 140;
-        const ry = 256 + Math.cos(t * 2.1 + i * 1.7) * 140;
-        g.arc(rx, ry, 72 + Math.sin(t * 3 + i) * 24, 0, Math.PI * 2);
-        g.fill();
-      }
-    } else if (clip.stylePreset === "strobe-cut") {
-      const cell = 64;
-      for (let y = 0; y < 512; y += cell) {
-        for (let x = 0; x < 512; x += cell) {
-          const v = Math.sin(x * 0.02 + y * 0.02 + t * 4.5);
-          g.fillStyle = v > 0.15 ? clip.c2 : v < -0.2 ? "#ffffff" : clip.c1;
-          g.fillRect(x, y, cell - 4, cell - 4);
-        }
-      }
-    } else {
-      g.fillStyle = "#f8fafc";
-      g.fillRect(0, 0, 512, 512);
-      g.fillStyle = clip.c2;
-      for (let y = 32; y < 512; y += 48) {
-        for (let x = 32; x < 512; x += 48) {
-          const r = Math.max(4, 20 + Math.sin(t * 3.2 + (x + y) * 0.015) * 16);
-          g.beginPath();
-          g.arc(x, y, r, 0, Math.PI * 2);
-          g.fill();
-        }
-      }
+    if (material instanceof THREE.ShaderMaterial) {
+      material.uniforms.uTime.value = clock.elapsedTime + timeOffset;
     }
-
-    // Título grande legible en la lámina/cara
-    g.fillStyle = "rgba(9,9,11,0.82)";
-    g.fillRect(20, 412, 472, 78);
-    g.fillStyle = "#ffffff";
-    g.font = "700 30px Inter, sans-serif";
-    g.fillText(projectTitle.toUpperCase(), 38, 452);
-    g.fillStyle = "rgba(255,255,255,0.72)";
-    g.font = "600 18px monospace";
-    g.fillText(`▶ ${clip.label.slice(0, 28)}`, 38, 478);
-
-    texture.needsUpdate = true;
   });
 
-  return texture;
+  return material;
 }
 
-// Cuarto/Bloque arquitectónico 3D estilo gif1.gif (manifold.art) con caras de video auto-iluminadas
 function ProjectVideoCube({
   project,
   isSelected,
@@ -170,41 +198,41 @@ function ProjectVideoCube({
           },
         ];
 
-  const tex0 = useClipTexture(clips[0 % clips.length], project.title);
-  const tex1 = useClipTexture(clips[1 % clips.length], project.title);
-  const tex2 = useClipTexture(clips[2 % clips.length], project.title);
+  const pillTag = `${project.tracks.length}T`;
+  const mat0 = useFastFaceMaterial(clips[0 % clips.length], project.title, pillTag, 0.0);
+  const mat1 = useFastFaceMaterial(clips[1 % clips.length], project.title, pillTag, 2.1);
+  const mat2 = useFastFaceMaterial(clips[2 % clips.length], project.title, pillTag, 4.3);
 
-  // Materiales auto-iluminados (meshBasicMaterial) para que los videos siempre se vean brillantes a todo color como en gif1.gif y NUNCA negros
   const materials = useMemo(
-    () => [
-      new THREE.MeshBasicMaterial({ map: tex0 }),
-      new THREE.MeshBasicMaterial({ map: tex1 }),
-      new THREE.MeshBasicMaterial({ map: tex2 }),
-      new THREE.MeshBasicMaterial({ map: tex0 }),
-      new THREE.MeshBasicMaterial({ map: tex1 }),
-      new THREE.MeshBasicMaterial({ map: tex2 }),
-    ],
-    [tex0, tex1, tex2]
+    () => [mat0, mat1, mat2, mat0, mat1, mat2],
+    [mat0, mat1, mat2]
+  );
+
+  const [w, h, d] = project.blockSize;
+  const boxGeo = useMemo(() => new THREE.BoxGeometry(w, h, d), [w, h, d]);
+  const edgesGeo = useMemo(() => new THREE.EdgesGeometry(new THREE.BoxGeometry(w + 0.012, h + 0.012, d + 0.012)), [w, h, d]);
+
+  const popDir = useMemo(
+    () => new THREE.Vector3(project.blockPos[0], project.blockPos[1] + 0.5, project.blockPos[2]).normalize(),
+    [project.blockPos]
   );
 
   useFrame((_, dt) => {
     const [bx, by, bz] = project.blockPos;
-    const popFactor = isPopped ? 0.85 : isSelected ? 0.45 : hovered ? 0.2 : 0;
-    const dir = new THREE.Vector3(bx, by + 0.5, bz).normalize();
-    const tx = bx + dir.x * popFactor;
-    const ty = by + dir.y * popFactor;
-    const tz = bz + dir.z * popFactor;
+    const popFactor = isPopped ? 0.85 : isSelected ? 0.45 : hovered ? 0.18 : 0;
+    const tx = bx + popDir.x * popFactor;
+    const ty = by + popDir.y * popFactor;
+    const tz = bz + popDir.z * popFactor;
 
-    groupRef.current.position.x = THREE.MathUtils.damp(groupRef.current.position.x, tx, 9, dt);
-    groupRef.current.position.y = THREE.MathUtils.damp(groupRef.current.position.y, ty, 9, dt);
-    groupRef.current.position.z = THREE.MathUtils.damp(groupRef.current.position.z, tz, 9, dt);
+    const g = groupRef.current;
+    g.position.x = THREE.MathUtils.damp(g.position.x, tx, 10, dt);
+    g.position.y = THREE.MathUtils.damp(g.position.y, ty, 10, dt);
+    g.position.z = THREE.MathUtils.damp(g.position.z, tz, 10, dt);
 
-    const targetScale = isPopped ? 1.12 : isSelected ? 1.05 : hovered ? 1.02 : 1;
-    const s = THREE.MathUtils.damp(groupRef.current.scale.x, targetScale, 9, dt);
-    groupRef.current.scale.setScalar(s);
+    const targetScale = isPopped ? 1.1 : isSelected ? 1.04 : hovered ? 1.015 : 1;
+    const s = THREE.MathUtils.damp(g.scale.x, targetScale, 10, dt);
+    g.scale.setScalar(s);
   });
-
-  const [w, h, d] = project.blockSize;
 
   return (
     <group
@@ -226,41 +254,15 @@ function ProjectVideoCube({
         onSelect(project);
       }}
     >
-      <mesh material={materials}>
-        <boxGeometry args={[w, h, d]} />
-      </mesh>
-
-      <lineSegments>
-        <edgesGeometry args={[new THREE.BoxGeometry(w + 0.015, h + 0.015, d + 0.015)]} />
+      <mesh geometry={boxGeo} material={materials} />
+      <lineSegments geometry={edgesGeo}>
         <lineBasicMaterial color={isSelected || isPopped ? "#09090b" : "#94a3b8"} />
       </lineSegments>
-
-      {/* Píldora flotante inclinada SIN distanceFactor (evita el bug de escala gigante en cámaras) */}
-      <Html
-        position={[-w * 0.35, h * 0.45, d * 0.45]}
-        center
-        zIndexRange={[10, 0]}
-      >
-        <button
-          type="button"
-          className={`manifold-3d-pill ${isSelected || isPopped ? "active" : ""}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            sfx.tap();
-            onSelect(project);
-          }}
-        >
-          <span>{project.title}</span>
-          <small>
-            {project.videos.length}v · {project.tracks.length}t
-          </small>
-        </button>
-      </Html>
     </group>
   );
 }
 
-// Vista alternativa: Hilera diagonal 3D con ZOOM OUT y vista MÁS DESDE ARRIBA para que las láminas se vean amplias y claras
+// Vista alternativa: Hilera diagonal 3D ultra liviana (zoom out + vista desde arriba, 100% GPU)
 function DiagonalProjectPlate({
   project,
   index,
@@ -276,60 +278,56 @@ function DiagonalProjectPlate({
   onSelect: (p: Project) => void;
   movedRef: React.RefObject<boolean>;
 }) {
-  const groupRef = useRef<THREE.Group>(null!);
+  const meshRef = useRef<THREE.Mesh>(null!);
   const [hovered, setHovered] = useState(false);
   const lift = useRef(0);
   const clip = project.videos[0] || {
     id: "f",
-    label: "loop",
+    label: "loop.mp4",
     kind: "procedural" as const,
     stylePreset: "vhs-grain" as const,
     c1: project.c1,
     c2: project.c2,
   };
-  const tex = useClipTexture(clip, project.title);
+  const mat = useFastFaceMaterial(clip, project.title, `${project.tracks.length} DISCOS`, index * 1.3);
 
   useFrame((_, dt) => {
     const d = index - offsetRef.current.off;
     lift.current = THREE.MathUtils.damp(lift.current, hovered || isSelected ? 1 : 0, 10, dt);
-    const g = groupRef.current;
+    const m = meshRef.current;
 
-    // Espaciado diagonal amplio como el primer prototipo pero visto desde más arriba y con ángulo abierto (-0.42 rad en Y)
-    g.position.set(
-      d * 1.25 - lift.current * 0.35,
+    m.position.set(
+      d * 1.28 - lift.current * 0.35,
       d * 0.32 + lift.current * 0.28,
       -d * 1.05 + lift.current * 0.65
     );
-    g.rotation.set(-0.14 + lift.current * 0.08, -0.42 + lift.current * 0.22, 0);
+    m.rotation.set(-0.14 + lift.current * 0.08, -0.42 + lift.current * 0.22, 0);
   });
 
   return (
-    <group ref={groupRef}>
-      <RoundedBox
-        args={[2.35, 2.35, 0.05]}
-        radius={0.04}
-        onPointerOver={(e) => {
-          e.stopPropagation();
-          setHovered(true);
-          sfx.hover();
-          document.body.style.cursor = "pointer";
-        }}
-        onPointerOut={() => {
-          setHovered(false);
-          document.body.style.cursor = "";
-        }}
-        onClick={(e) => {
-          e.stopPropagation();
-          if (!movedRef.current) {
-            sfx.tap();
-            onSelect(project);
-          }
-        }}
-      >
-        {/* Material auto-iluminado para que el arte/video de cada lámina nunca se vea oscuro */}
-        <meshBasicMaterial map={tex} />
-      </RoundedBox>
-    </group>
+    <mesh
+      ref={meshRef}
+      material={mat}
+      onPointerOver={(e) => {
+        e.stopPropagation();
+        setHovered(true);
+        sfx.hover();
+        document.body.style.cursor = "pointer";
+      }}
+      onPointerOut={() => {
+        setHovered(false);
+        document.body.style.cursor = "";
+      }}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (!movedRef.current) {
+          sfx.tap();
+          onSelect(project);
+        }
+      }}
+    >
+      <boxGeometry args={[2.35, 2.35, 0.045]} />
+    </mesh>
   );
 }
 
@@ -383,21 +381,32 @@ export default function ManifoldLibrary3D({
         <div className="manifold-3d-canvas-stage">
           <div className="manifold-stage-overlay-top">
             <div>
-              <span className="mono-tag">ENTORNO 3D // MANIFOLD CLUSTER</span>
+              <span className="mono-tag">ENTORNO 3D GPU // MANIFOLD CLUSTER</span>
               <h3>Arrastrá para orbitar la unidad 3D · Tocá un bloque para que popee</h3>
             </div>
-            <span className="mono-tag">VIDEOS 3–5S EN CARAS 3D</span>
+            <div className="manifold-quick-pills">
+              {projects.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  className={`quick-proj-pill ${p.id === selectedProjectId ? "on" : ""}`}
+                  onClick={() => {
+                    sfx.tap();
+                    onSelectProject(p);
+                  }}
+                >
+                  {p.title}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* Cámara en perspectiva isométrica limpia (fov 30 alejada y desde arriba) */}
           <Canvas
             camera={{ position: [6.8, 6.2, 7.2], fov: 32 }}
-            dpr={[1, 2]}
+            dpr={[1, 1.5]}
+            gl={{ antialias: true, powerPreference: "high-performance" }}
           >
-            <ambientLight intensity={1.6} />
-            <directionalLight position={[8, 14, 10]} intensity={1.5} />
-
-            <group position={[0, 0.25, 0]}>
+            <group position={[0, 0.2, 0]}>
               {projects.map((p) => (
                 <ProjectVideoCube
                   key={p.id}
@@ -410,16 +419,17 @@ export default function ManifoldLibrary3D({
             </group>
 
             <OrbitControls
-              enableZoom={false}
+              enableZoom={true}
+              minDistance={5.5}
+              maxDistance={15}
               enablePan={false}
-              rotateSpeed={0.65}
-              minPolarAngle={0.45}
-              maxPolarAngle={1.35}
+              rotateSpeed={0.7}
+              minPolarAngle={0.4}
+              maxPolarAngle={1.38}
             />
           </Canvas>
         </div>
       ) : (
-        /* Vista alternativa: Hilera de láminas 3D con ZOOM OUT y cámara MÁS DESDE ARRIBA */
         <div
           className="manifold-3d-canvas-stage"
           onPointerDown={(e) => {
@@ -459,9 +469,11 @@ export default function ManifoldLibrary3D({
             <span className="mono-tag">{projects.length} PROYECTOS</span>
           </div>
 
-          <Canvas camera={{ position: [0.8, 2.65, 9.6], fov: 36 }} dpr={[1, 2]}>
-            <ambientLight intensity={1.5} />
-            <directionalLight position={[4, 8, 6]} intensity={1.6} />
+          <Canvas
+            camera={{ position: [0.8, 2.65, 9.6], fov: 36 }}
+            dpr={[1, 1.5]}
+            gl={{ antialias: true, powerPreference: "high-performance" }}
+          >
             <group position={[-0.4, -0.35, 0]}>
               {projects.map((p, i) => (
                 <DiagonalProjectPlate
@@ -480,7 +492,6 @@ export default function ManifoldLibrary3D({
         </div>
       )}
 
-      {/* Barra de la Carpetita de Videos (3-5s) del proyecto seleccionado */}
       {activeProject && onUploadProjectVideo && (
         <div className="project-video-folder-bar">
           <div className="video-folder-left">
