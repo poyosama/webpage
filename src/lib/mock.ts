@@ -1,4 +1,14 @@
-// Datos curados de la escena de Mendoza + tipos para todo el MVP
+// Datos curados para "El tablero" — con soporte de carpetas de videos/GIFs de 3-5s por proyecto
+export type ProjectVideoClip = {
+  id: string;
+  label: string;
+  kind: "procedural" | "uploaded";
+  stylePreset: "vhs-grain" | "thermal-wave" | "kinetic-type" | "strobe-cut" | "liquid-ink" | "halftone-cam";
+  url?: string; // URL de video/gif subido por el usuario (mp4/webm/gif)
+  c1: string;
+  c2: string;
+};
+
 export type Track = {
   id: string;
   title: string;
@@ -15,7 +25,8 @@ export type Track = {
   c2: string;
   accent: string;
   glyph: string;
-  audioFreq: number; // frecuencia base para el sintetizador de demo real
+  audioFreq: number;
+  customAudioUrl?: string;
 };
 
 export type Project = {
@@ -34,8 +45,10 @@ export type Project = {
   tagGlyph: string;
   description: string;
   plays: string;
-  isoCol: number;
-  isoRow: number;
+  // Posición 3D en el bloque arquitectónico tipo manifold.art (gif1.gif)
+  blockPos: [number, number, number];
+  blockSize: [number, number, number];
+  videos: ProjectVideoClip[];
   tracks: Track[];
 };
 
@@ -43,6 +56,7 @@ export type ArtistProfile = {
   id: string;
   handle: string;
   name: string;
+  email?: string;
   role: string;
   zone: string;
   crew: string;
@@ -56,13 +70,14 @@ export type ArtistProfile = {
   stickers: string[];
 };
 
-export const ME_PROFILE: ArtistProfile = {
+export const INITIAL_ME_PROFILE: ArtistProfile = {
   id: "juani",
   handle: "@juani",
   name: "Juani",
+  email: "juani@eltablero.mza",
   role: "Artista · Productor · Curador",
   zone: "Godoy Cruz, MZA",
-  crew: "EL CERRO / 0261",
+  crew: "EL TABLERO / 0261",
   bio: "fuego lento en la precordillera. beats crudos, stems abiertos, cero caretaje.",
   color: "#111111",
   tracksCount: 42,
@@ -74,7 +89,7 @@ export const ME_PROFILE: ArtistProfile = {
 };
 
 export const SCENE_ARTISTS: ArtistProfile[] = [
-  ME_PROFILE,
+  INITIAL_ME_PROFILE,
   {
     id: "nahue",
     handle: "@nahue.b",
@@ -168,14 +183,19 @@ export const INITIAL_PROJECTS: Project[] = [
     year: "2026",
     dateLabel: "27.05 · HOY",
     zone: "Godoy Cruz",
-    c1: "#111111",
+    c1: "#18181b",
     c2: "#e11d48",
     accent: "#e11d48",
     tagGlyph: "01 // EP",
     description: "Grabado entre marzo y noviembre en Godoy Cruz. 5 cortes sin filtro.",
     plays: "6.4K",
-    isoCol: 0,
-    isoRow: 0,
+    blockPos: [-1.15, 0.85, 0.55],
+    blockSize: [1.55, 1.45, 1.55],
+    videos: [
+      { id: "v-fl-1", label: "estudio_godoycruz_01.mp4 (4s)", kind: "procedural", stylePreset: "vhs-grain", c1: "#18181b", c2: "#e11d48" },
+      { id: "v-fl-2", label: "sp404_resample_loop.gif (3s)", kind: "procedural", stylePreset: "kinetic-type", c1: "#f43f5e", c2: "#111111" },
+      { id: "v-fl-3", label: "camara_termica_cerro.mp4 (5s)", kind: "procedural", stylePreset: "thermal-wave", c1: "#881337", c2: "#fde047" },
+    ],
     tracks: [
       { id: "fl-1", title: "Intro (Cerro)", artist: "Juani", prod: "Nahue B", bpm: 84, key: "F#m", duration: "1:38", durationSec: 98, version: 3, note: "mix 3 · sub más seco", c1: "#111111", c2: "#e11d48", accent: "#e11d48", glyph: "I", audioFreq: 110 },
       { id: "fl-2", title: "Fuego Lento", artist: "Juani", feat: "LUZ MALA", prod: "Juani", bpm: 140, key: "Am", duration: "2:54", durationSec: 174, version: 5, note: "master final v5", c1: "#1f2937", c2: "#fb7185", accent: "#e11d48", glyph: "II", audioFreq: 130.8 },
@@ -200,8 +220,12 @@ export const INITIAL_PROJECTS: Project[] = [
     tagGlyph: "02 // SGL",
     description: "Doble lado A grabado en vivo desde el zanjón de los Ciruelos.",
     plays: "4.1K",
-    isoCol: 1,
-    isoRow: 0,
+    blockPos: [0.65, 1.05, -0.45],
+    blockSize: [1.65, 1.55, 1.5],
+    videos: [
+      { id: "v-ac-1", label: "zanjon_nightvision.mp4 (4s)", kind: "procedural", stylePreset: "liquid-ink", c1: "#0c4a6e", c2: "#38bdf8" },
+      { id: "v-ac-2", label: "luzmala_vhs_cut.gif (3s)", kind: "procedural", stylePreset: "halftone-cam", c1: "#0284c7", c2: "#e0f2fe" },
+    ],
     tracks: [
       { id: "ac-1", title: "Acequias (Side A)", artist: "LUZ MALA", prod: "Nahue B", bpm: 134, key: "Gm", duration: "2:33", durationSec: 153, version: 4, note: "master cinta", c1: "#0c4a6e", c2: "#38bdf8", accent: "#0284c7", glyph: "A", audioFreq: 123.5 },
       { id: "ac-2", title: "Hielo Seco (Side B)", artist: "LUZ MALA", feat: "Juani", prod: "kali.wav", bpm: 136, key: "Bm", duration: "2:48", durationSec: 168, version: 2, note: "808 distorsionado", c1: "#075985", c2: "#7dd3fc", accent: "#0284c7", glyph: "B", audioFreq: 138.6 },
@@ -224,8 +248,12 @@ export const INITIAL_PROJECTS: Project[] = [
     tagGlyph: "03 // TAPE",
     description: "6 recortes de vinilo mendocino pasados por SP-404 MKII.",
     plays: "8.9K",
-    isoCol: 2,
-    isoRow: 0,
+    blockPos: [-1.35, -0.55, -0.5],
+    blockSize: [1.5, 1.35, 1.6],
+    videos: [
+      { id: "v-tp-1", label: "vinilo_cuyano_spin.mp4 (5s)", kind: "procedural", stylePreset: "strobe-cut", c1: "#1c1917", c2: "#facc15" },
+      { id: "v-tp-2", label: "mpc_pads_closeup.gif (3s)", kind: "procedural", stylePreset: "kinetic-type", c1: "#ca8a04", c2: "#fef08a" },
+    ],
     tracks: [
       { id: "tp-1", title: "Vendimia Loop", artist: "Tomi 261", bpm: 88, key: "Fm", duration: "1:45", durationSec: 105, version: 2, c1: "#1c1917", c2: "#facc15", accent: "#ca8a04", glyph: "01", audioFreq: 116.5 },
       { id: "tp-2", title: "San Martín 1998", artist: "Tomi 261", bpm: 92, key: "C#m", duration: "2:04", durationSec: 124, version: 3, c1: "#292524", c2: "#fde047", accent: "#ca8a04", glyph: "02", audioFreq: 138.6 },
@@ -251,8 +279,12 @@ export const INITIAL_PROJECTS: Project[] = [
     tagGlyph: "04 // LP",
     description: "Un pueblo disfrazado de ciudad. Sintetizadores modulares y raperos invitados.",
     plays: "11.2K",
-    isoCol: 0,
-    isoRow: 1,
+    blockPos: [0.35, -0.35, 0.85],
+    blockSize: [1.65, 1.45, 1.55],
+    videos: [
+      { id: "v-pd-1", label: "modular_patch_4ta.mp4 (4s)", kind: "procedural", stylePreset: "thermal-wave", c1: "#1e1b4b", c2: "#a3e635" },
+      { id: "v-pd-2", label: "microcentro_timelapse.gif (4s)", kind: "procedural", stylePreset: "vhs-grain", c1: "#312e81", c2: "#bef264" },
+    ],
     tracks: [
       { id: "pd-1", title: "Pueblo Disfrazado", artist: "Nahue B", feat: "Juani", bpm: 132, key: "F#m", duration: "3:04", durationSec: 184, version: 6, c1: "#1e1b4b", c2: "#a3e635", accent: "#65a30d", glyph: "A1", audioFreq: 123.5 },
       { id: "pd-2", title: "4ta Sección", artist: "Nahue B", feat: "SUR$", bpm: 148, key: "Cm", duration: "2:40", durationSec: 160, version: 3, c1: "#312e81", c2: "#bef264", accent: "#65a30d", glyph: "A2", audioFreq: 146.8 },
@@ -262,7 +294,7 @@ export const INITIAL_PROJECTS: Project[] = [
   },
   {
     id: "demos-nov",
-    title: "DEMOS NOV (SIN TÍTULO)",
+    title: "DEMOS NOV (S/T)",
     artist: "Juani",
     artistId: "juani",
     type: "WIP",
@@ -270,14 +302,18 @@ export const INITIAL_PROJECTS: Project[] = [
     year: "2026",
     dateLabel: "WIP · PRIVADO",
     zone: "Godoy Cruz",
-    c1: "#18181b",
-    c2: "#a855f7",
+    c1: "#2e1065",
+    c2: "#c084fc",
     accent: "#7e22ce",
     tagGlyph: "05 // WIP",
     description: "Maquetas crudas para testear en el auto antes de mandar a mezcla.",
     plays: "1.9K",
-    isoCol: 1,
-    isoRow: 1,
+    blockPos: [1.55, -0.75, -0.35],
+    blockSize: [1.45, 1.35, 1.45],
+    videos: [
+      { id: "v-dn-1", label: "auto_test_808.mp4 (3s)", kind: "procedural", stylePreset: "strobe-cut", c1: "#2e1065", c2: "#c084fc" },
+      { id: "v-dn-2", label: "notas_voz_celu.gif (4s)", kind: "procedural", stylePreset: "halftone-cam", c1: "#581c87", c2: "#f3e8ff" },
+    ],
     tracks: [
       { id: "dn-1", title: "idea_808_sucio_v2", artist: "Juani", bpm: 150, key: "C#m", duration: "1:18", durationSec: 78, version: 2, note: "subir hi-hat", c1: "#18181b", c2: "#a855f7", accent: "#7e22ce", glyph: "W1", audioFreq: 138.6 },
       { id: "dn-2", title: "con_kali_mix2", artist: "Juani", feat: "kali.wav", bpm: 88, key: "Gm", duration: "2:30", durationSec: 150, version: 2, note: "falta segundo verso", c1: "#2e1065", c2: "#c084fc", accent: "#7e22ce", glyph: "W2", audioFreq: 116.5 },
@@ -300,8 +336,12 @@ export const INITIAL_PROJECTS: Project[] = [
     tagGlyph: "06 // LIVE",
     description: "Tomas directas de consola en el subsuelo de Luján. Cero edición.",
     plays: "5.3K",
-    isoCol: 2,
-    isoRow: 1,
+    blockPos: [-0.25, -1.55, 0.15],
+    blockSize: [1.75, 1.35, 1.65],
+    videos: [
+      { id: "v-ss-1", label: "consola_lujan_6am.mp4 (5s)", kind: "procedural", stylePreset: "liquid-ink", c1: "#042f2e", c2: "#2dd4bf" },
+      { id: "v-ss-2", label: "reverb_tank_osc.gif (3s)", kind: "procedural", stylePreset: "thermal-wave", c1: "#0f766e", c2: "#99f6e4" },
+    ],
     tracks: [
       { id: "ss-1", title: "Sala Fría", artist: "kali.wav", bpm: 118, key: "Fm", duration: "3:05", durationSec: 185, version: 3, c1: "#042f2e", c2: "#2dd4bf", accent: "#0d9488", glyph: "S1", audioFreq: 130.8 },
       { id: "ss-2", title: "Tape Hiss 02", artist: "kali.wav", feat: "Nahue B", bpm: 122, key: "Am", duration: "2:44", durationSec: 164, version: 2, c1: "#134e4a", c2: "#5eead4", accent: "#0d9488", glyph: "S2", audioFreq: 146.8 },

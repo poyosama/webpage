@@ -1,11 +1,12 @@
 "use client";
 
-// Ear candy estilo iOS haptic + sintetizador de loop musical real para que el reproductor tenga pulso y audio reactivo
+// Micro-haptics táctiles estilo Taptic Engine de iPhone:
+// pulsos de baja frecuencia de 4–9ms + roce de aire filtrado, casi imperceptibles, cero "puck" de consola.
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
+let noiseBuf: AudioBuffer | null = null;
 let muted = false;
 
-// Estado del loop musical generativo (para cuando reproducís un track sin archivo externo o con archivo subido)
 let beatTimer: number | null = null;
 let currentAudioEl: HTMLAudioElement | null = null;
 let beatEnergy = 0;
@@ -15,38 +16,65 @@ let highHatEnergy = 0;
 function ac(): AudioContext | null {
   if (typeof window === "undefined") return null;
   if (!ctx) {
-    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const AudioCtx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     ctx = new AudioCtx();
     master = ctx.createGain();
-    master.gain.value = 0.22;
+    master.gain.value = 0.14;
     master.connect(ctx.destination);
+
+    // Buffer corto de ruido rosa suave para textura táctil de papel/vidrio
+    const len = Math.floor(ctx.sampleRate * 0.04);
+    noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = noiseBuf.getChannelData(0);
+    let last = 0;
+    for (let i = 0; i < len; i++) {
+      const white = Math.random() * 2 - 1;
+      data[i] = (last + 0.08 * white) / 1.08;
+      last = data[i];
+    }
   }
   if (ctx.state === "suspended") ctx.resume();
   return ctx;
 }
 
-function tone(
-  freq: number,
-  dur: number,
-  type: OscillatorType = "sine",
-  vol = 0.35,
-  slideTo?: number,
-  delay = 0
-) {
+// Pulso sub-táctil (como el motor lineal de un iPhone, sin tono musical)
+function hapticPulse(freq = 68, dur = 0.009, gain = 0.09) {
   const c = ac();
   if (!c || !master || muted) return;
-  const t = c.currentTime + delay;
+  const t = c.currentTime;
   const o = c.createOscillator();
   const g = c.createGain();
-  o.type = type;
+  o.type = "sine";
   o.frequency.setValueAtTime(freq, t);
-  if (slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(20, slideTo), t + dur);
+  o.frequency.exponentialRampToValueAtTime(28, t + dur);
   g.gain.setValueAtTime(0.0001, t);
-  g.gain.linearRampToValueAtTime(vol, t + 0.004);
+  g.gain.linearRampToValueAtTime(gain, t + 0.0015);
   g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
   o.connect(g).connect(master);
   o.start(t);
-  o.stop(t + dur + 0.015);
+  o.stop(t + dur + 0.003);
+}
+
+// Roce micro-texturado de 6ms
+function softBrush(cutoff = 900, dur = 0.008, gain = 0.04) {
+  const c = ac();
+  if (!c || !master || !noiseBuf || muted) return;
+  const t = c.currentTime;
+  const src = c.createBufferSource();
+  src.buffer = noiseBuf;
+  const filter = c.createBiquadFilter();
+  filter.type = "bandpass";
+  filter.frequency.setValueAtTime(cutoff, t);
+  filter.Q.setValueAtTime(1.8, t);
+  const g = c.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(gain, t + 0.001);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(filter).connect(g).connect(master);
+  src.start(t);
+  src.stop(t + dur + 0.002);
 }
 
 let lastHover = 0;
@@ -54,64 +82,56 @@ let lastHover = 0;
 export const sfx = {
   hover() {
     const n = performance.now();
-    if (n - lastHover < 45) return;
+    if (n - lastHover < 60) return;
     lastHover = n;
-    tone(1950, 0.022, "sine", 0.06, 2200);
+    softBrush(720, 0.006, 0.025);
   },
   tap() {
-    tone(420, 0.035, "triangle", 0.2, 180);
-    tone(1480, 0.018, "sine", 0.08);
+    hapticPulse(74, 0.008, 0.08);
   },
   tick() {
-    tone(1320, 0.018, "sine", 0.09, 980);
+    softBrush(640, 0.005, 0.032);
   },
   nav() {
-    tone(520, 0.06, "sine", 0.16, 780);
-    tone(1040, 0.08, "sine", 0.08, undefined, 0.03);
+    hapticPulse(62, 0.011, 0.075);
   },
   open() {
-    tone(440, 0.12, "sine", 0.18, 880);
-    tone(1320, 0.14, "triangle", 0.08, undefined, 0.04);
+    hapticPulse(58, 0.014, 0.085);
   },
   close() {
-    tone(680, 0.1, "sine", 0.16, 340);
+    hapticPulse(52, 0.012, 0.07);
   },
   drop() {
-    // sonido tipo macOS installer drop
-    tone(320, 0.09, "sine", 0.25, 640);
-    tone(640, 0.12, "triangle", 0.2, 960, 0.06);
-    tone(1280, 0.18, "sine", 0.14, 1560, 0.12);
+    hapticPulse(64, 0.016, 0.11);
   },
   play() {
-    tone(587.33, 0.08, "triangle", 0.2);
-    tone(880, 0.12, "sine", 0.18, undefined, 0.05);
+    hapticPulse(72, 0.01, 0.09);
   },
   pause() {
-    tone(784, 0.07, "sine", 0.16);
-    tone(523.25, 0.1, "sine", 0.15, undefined, 0.05);
+    hapticPulse(54, 0.01, 0.075);
   },
   setMuted(m: boolean) {
     muted = m;
     if (currentAudioEl) currentAudioEl.muted = m;
-    if (!m) tone(880, 0.08, "sine", 0.18);
+    if (!m) hapticPulse(70, 0.009, 0.08);
   },
   isMuted() {
     return muted;
   },
-  // Motor de beat sintético suave o reproducción de archivo real subido por el usuario
   startGroove(bpm: number, rootFreq: number, customObjectUrl?: string) {
     this.stopGroove();
     if (customObjectUrl && typeof window !== "undefined") {
       currentAudioEl = new Audio(customObjectUrl);
       currentAudioEl.loop = true;
       currentAudioEl.muted = muted;
-      currentAudioEl.volume = 0.75;
+      currentAudioEl.volume = 0.8;
       currentAudioEl.play().catch(() => {});
     }
     const stepMs = (60 / Math.max(68, Math.min(165, bpm)) / 2) * 1000;
     let step = 0;
-    const scale = [1, 1.189, 1.335, 1.498, 1.782]; // menor pentatónica
+    const scale = [1, 1.189, 1.335, 1.498, 1.782];
     const tickStep = () => {
+      const c = ac();
       const isKick = step % 8 === 0 || step % 8 === 3 || step % 16 === 10;
       const isSnare = step % 8 === 4;
       const isHat = step % 2 === 0 || step % 4 === 3;
@@ -119,25 +139,42 @@ export const sfx = {
       if (isKick) {
         beatEnergy = 1.0;
         subBassEnergy = 1.0;
-        if (!customObjectUrl) {
-          tone(rootFreq * 0.9, 0.18, "sine", 0.28, 36);
+        if (!customObjectUrl && c && master && !muted) {
+          const t = c.currentTime;
+          const o = c.createOscillator();
+          const g = c.createGain();
+          o.type = "sine";
+          o.frequency.setValueAtTime(rootFreq * 0.85, t);
+          o.frequency.exponentialRampToValueAtTime(34, t + 0.19);
+          g.gain.setValueAtTime(0.0001, t);
+          g.gain.linearRampToValueAtTime(0.24, t + 0.005);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+          o.connect(g).connect(master);
+          o.start(t);
+          o.stop(t + 0.21);
         }
       }
       if (isSnare) {
         beatEnergy = Math.max(beatEnergy, 0.75);
-        if (!customObjectUrl) {
-          tone(240, 0.09, "triangle", 0.14, 110);
-        }
+        if (!customObjectUrl) softBrush(1100, 0.045, 0.08);
       }
       if (isHat) {
         highHatEnergy = 0.85;
-        if (!customObjectUrl) {
-          tone(3800 + (step % 3) * 600, 0.02, "square", 0.022);
-        }
+        if (!customObjectUrl) softBrush(4200, 0.015, 0.03);
       }
-      if (!customObjectUrl && (step % 4 === 0 || step % 16 === 14)) {
+      if (!customObjectUrl && c && master && !muted && (step % 4 === 0 || step % 16 === 14)) {
         const ratio = scale[(step / 2) % scale.length | 0];
-        tone(rootFreq * 2 * ratio, 0.24, "triangle", 0.075);
+        const t = c.currentTime;
+        const o = c.createOscillator();
+        const g = c.createGain();
+        o.type = "triangle";
+        o.frequency.setValueAtTime(rootFreq * 2 * ratio, t);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.linearRampToValueAtTime(0.055, t + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.24);
+        o.connect(g).connect(master);
+        o.start(t);
+        o.stop(t + 0.26);
       }
       step = (step + 1) % 16;
     };

@@ -1,16 +1,21 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { type Project, type Track, ME_PROFILE } from "@/lib/mock";
+import { type Project, type Track, type ArtistProfile } from "@/lib/mock";
 import { sfx } from "@/lib/sfx";
 import DiscSpinner3D from "./DiscSpinner3D";
 
+const ManifoldLibrary3D = dynamic(() => import("./ManifoldLibrary3D"), { ssr: false });
+
 export default function MacInstallerUpload({
+  meProfile,
   projects,
   onAddTrackToProject,
   onPlayTrack,
 }: {
+  meProfile: ArtistProfile;
   projects: Project[];
   onAddTrackToProject: (
     projectId: string,
@@ -20,7 +25,6 @@ export default function MacInstallerUpload({
   ) => void;
   onPlayTrack: (track: Track, project: Project) => void;
 }) {
-  // Paso 1: Crear el prop (título, bpm, key, color, archivo de audio opcional)
   const [title, setTitle] = useState("mendoza_snippet_v1.wav");
   const [bpm, setBpm] = useState(138);
   const [musicalKey, setMusicalKey] = useState("F#m");
@@ -28,16 +32,17 @@ export default function MacInstallerUpload({
   const [audioObjectUrl, setAudioObjectUrl] = useState<string | undefined>(undefined);
   const [fileName, setFileName] = useState<string>("demo_stem_808.wav");
 
-  // Flujo DMG: "prop-ready" -> "zoomed-library" -> "wheel-place" -> "installed"
+  // Flujo DMG: "prop-ready" -> "zoomed-library" (Manifold 3D con pop-out) -> "wheel-place" -> "installed"
   const [step, setStep] = useState<"prop-ready" | "zoomed-library" | "wheel-place" | "installed">(
     "prop-ready"
   );
   const [hoverTarget, setHoverTarget] = useState<string | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string>(projects[0]?.id || "fuego-lento");
+  const [poppedProjectId, setPoppedProjectId] = useState<string | null>(projects[0]?.id || "fuego-lento");
   const [wheelSlot, setWheelSlot] = useState<number>(0);
 
   const profileSocketRef = useRef<HTMLDivElement>(null);
-  const projectRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const poppedDropZoneRef = useRef<HTMLDivElement>(null);
 
   const targetProject =
     projects.find((p) => p.id === selectedProjectId) || projects[0];
@@ -53,7 +58,6 @@ export default function MacInstallerUpload({
     setAudioObjectUrl(url);
   };
 
-  // Chequea si el drag soltó encima del socket de perfil (Paso 1 -> Paso 2)
   const handlePropDragEnd = (_: unknown, info: { point: { x: number; y: number } }) => {
     if (step === "prop-ready" && profileSocketRef.current) {
       const rect = profileSocketRef.current.getBoundingClientRect();
@@ -69,23 +73,17 @@ export default function MacInstallerUpload({
       }
     }
 
-    if (step === "zoomed-library") {
-      for (const p of projects) {
-        const el = projectRefs.current[p.id];
-        if (!el) continue;
-        const rect = el.getBoundingClientRect();
-        if (
-          info.point.x >= rect.left - 25 &&
-          info.point.x <= rect.right + 25 &&
-          info.point.y >= rect.top - 25 &&
-          info.point.y <= rect.bottom + 25
-        ) {
-          sfx.drop();
-          setSelectedProjectId(p.id);
-          setWheelSlot(p.tracks.length);
-          setStep("wheel-place");
-          return;
-        }
+    if (step === "zoomed-library" && poppedDropZoneRef.current && targetProject) {
+      const rect = poppedDropZoneRef.current.getBoundingClientRect();
+      const inside =
+        info.point.x >= rect.left - 35 &&
+        info.point.x <= rect.right + 35 &&
+        info.point.y >= rect.top - 35 &&
+        info.point.y <= rect.bottom + 35;
+      if (inside) {
+        sfx.drop();
+        setWheelSlot(targetProject.tracks.length);
+        setStep("wheel-place");
       }
     }
   };
@@ -95,8 +93,8 @@ export default function MacInstallerUpload({
     const newTrack: Track = {
       id: `custom-${Date.now()}`,
       title: title.trim() || "Untitled Cut",
-      artist: ME_PROFILE.name,
-      prod: ME_PROFILE.name,
+      artist: meProfile.name,
+      prod: meProfile.name,
       bpm: Number(bpm) || 130,
       key: musicalKey || "Am",
       duration: "2:14",
@@ -108,6 +106,7 @@ export default function MacInstallerUpload({
       accent: color,
       glyph: String(wheelSlot + 1).padStart(2, "0"),
       audioFreq: 130.8,
+      customAudioUrl: audioObjectUrl,
     };
     sfx.drop();
     onAddTrackToProject(targetProject.id, newTrack, wheelSlot, audioObjectUrl);
@@ -118,8 +117,8 @@ export default function MacInstallerUpload({
     <section className="dmg-section">
       <div className="section-header-row">
         <div>
-          <span className="mono-tag">MACOS DMG WORKFLOW // SUBIR CORTES</span>
-          <h1 className="editorial-h1">Instalar nuevo corte en tu Biblioteca</h1>
+          <span className="mono-tag">MACOS DMG WORKFLOW // EL TABLERO</span>
+          <h1 className="editorial-h1">Instalar nuevo corte en tu Biblioteca 3D</h1>
         </div>
         <div className="dmg-steps-indicator">
           <button
@@ -141,7 +140,7 @@ export default function MacInstallerUpload({
               setStep("zoomed-library");
             }}
           >
-            2. Zoom Biblioteca
+            2. Biblioteca 3D (Pop-out)
           </button>
           <span>→</span>
           <button
@@ -157,7 +156,6 @@ export default function MacInstallerUpload({
         </div>
       </div>
 
-      {/* Ventana estilo instalador .DMG de macOS */}
       <div className="dmg-window">
         <div className="dmg-titlebar">
           <div className="traffic-lights">
@@ -166,12 +164,11 @@ export default function MacInstallerUpload({
             <i className="tl-green" />
           </div>
           <span className="dmg-window-title">
-            {title || "nuevo_tema"}.dmg — Instalador de Prop 0261
+            {title || "nuevo_tema"}.dmg — Instalador de Prop · El tablero
           </span>
-          <span className="mono-tag">ARRASTRÁ EL PROP O USÁ CLICK DIRECTO</span>
+          <span className="mono-tag">ARRASTRÁ EL PROP O TOCÁ CADA PASO</span>
         </div>
 
-        {/* Configuración rápida del Prop */}
         <div className="dmg-inspector">
           <label className="dmg-file-btn" onMouseEnter={() => sfx.hover()}>
             <span>📎 Elegir WAV / MP3 ({fileName})</span>
@@ -223,8 +220,8 @@ export default function MacInstallerUpload({
           </div>
         </div>
 
-        {/* PASO 1: Arrastrar el Prop al Perfil (como instalar una app en Applications) */}
         <AnimatePresence mode="wait">
+          {/* PASO 1: Prop -> Perfil */}
           {step === "prop-ready" && (
             <motion.div
               key="step1"
@@ -232,16 +229,15 @@ export default function MacInstallerUpload({
               initial={{ opacity: 0, scale: 0.97 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 1.06 }}
-              transition={{ duration: 0.32 }}
+              transition={{ duration: 0.28 }}
             >
               <div className="dmg-arena">
-                {/* El Prop físico arrastrable */}
                 <div className="dmg-slot">
                   <motion.div
                     drag
                     dragSnapToOrigin
                     whileDrag={{ scale: 1.12, rotate: -4, zIndex: 40 }}
-                    whileHover={{ scale: 1.04 }}
+                    whileHover={{ scale: 1.03 }}
                     onDragStart={() => sfx.tap()}
                     onDragEnd={handlePropDragEnd}
                     className="track-prop-card"
@@ -261,13 +257,11 @@ export default function MacInstallerUpload({
                   <small className="dmg-hint">1. Arrastrá este Prop hacia tu Perfil →</small>
                 </div>
 
-                {/* Flecha punteada estilo macOS DMG */}
                 <div className="dmg-arrow">
                   <div className="dmg-chevron">»</div>
                   <span>DROP TO INSTALL</span>
                 </div>
 
-                {/* Socket de tu Perfil */}
                 <div
                   ref={profileSocketRef}
                   className={`dmg-profile-socket ${hoverTarget === "profile" ? "hovered" : ""}`}
@@ -282,97 +276,107 @@ export default function MacInstallerUpload({
                   }}
                 >
                   <div className="socket-avatar">
-                    <span>🍇</span>
+                    <span>{meProfile.stickers[0] || "🍇"}</span>
                   </div>
-                  <b>{ME_PROFILE.handle}</b>
-                  <small>Soltá acá o tocá para hacer Zoom a tu Biblioteca</small>
+                  <b>{meProfile.handle}</b>
+                  <small>Soltá acá para hacer Zoom a tu Biblioteca 3D</small>
                 </div>
               </div>
             </motion.div>
           )}
 
-          {/* PASO 2: Hizo zoom al perfil y te abre los módulos de proyectos de tu biblioteca */}
-          {step === "zoomed-library" && (
+          {/* PASO 2: Abre la Biblioteca 3D tal cual aparece; tocás un proyecto, popea de la unidad y le arrastrás el Prop */}
+          {step === "zoomed-library" && targetProject && (
             <motion.div
               key="step2"
               className="dmg-stage"
-              initial={{ opacity: 0, scale: 0.88 }}
+              initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 1.05 }}
+              exit={{ opacity: 0, scale: 1.04 }}
               transition={{ type: "spring", stiffness: 260, damping: 26 }}
             >
               <div className="dmg-zoom-header">
                 <div>
-                  <span className="mono-tag">ZOOM EN {ME_PROFILE.handle.toUpperCase()} // BIBLIOTECA ABIERTA</span>
-                  <h3>Ahora arrastrá el Prop sobre el módulo del proyecto donde querés meterlo</h3>
+                  <span className="mono-tag">
+                    ZOOM EN {meProfile.handle.toUpperCase()} // BIBLIOTECA 3D MANIFOLD
+                  </span>
+                  <h3>
+                    Tocá un cubo en la Biblioteca 3D para que popee de la unidad y arrastrá el Prop al proyecto popeado
+                  </h3>
                 </div>
                 <button
                   type="button"
                   className="apple-btn ghost"
                   onClick={() => setStep("prop-ready")}
                 >
-                  ← Volver atrás
+                  ← Volver al Paso 1
                 </button>
               </div>
 
-              <div className="dmg-library-drop-layout">
-                <div className="dmg-floating-prop-column">
-                  <motion.div
-                    drag
-                    dragSnapToOrigin
-                    whileDrag={{ scale: 1.1, rotate: 4, zIndex: 50 }}
-                    onDragStart={() => sfx.tap()}
-                    onDragEnd={handlePropDragEnd}
-                    className="track-prop-card compact"
-                    style={{ "--prop-accent": color } as React.CSSProperties}
+              <div className="dmg-manifold-install-split">
+                {/* Columna izquierda: El Prop listo + el dock del Proyecto que popeó */}
+                <div className="dmg-pop-sidebar">
+                  <div className="dmg-floating-prop-column">
+                    <motion.div
+                      drag
+                      dragSnapToOrigin
+                      whileDrag={{ scale: 1.1, rotate: 4, zIndex: 50 }}
+                      onDragStart={() => sfx.tap()}
+                      onDragEnd={handlePropDragEnd}
+                      className="track-prop-card compact"
+                      style={{ "--prop-accent": color } as React.CSSProperties}
+                    >
+                      <div className="prop-disc-visual">
+                        <div className="prop-disc-ring" style={{ background: color }} />
+                        <div className="prop-disc-hole" />
+                      </div>
+                      <div className="prop-card-meta">
+                        <b>{title}</b>
+                        <span>{bpm} BPM · {musicalKey}</span>
+                      </div>
+                    </motion.div>
+                    <small className="dmg-hint">↓ Arrastrá el Prop al proyecto popeado acá abajo</small>
+                  </div>
+
+                  {/* Tarjeta del proyecto que acaba de popear del bloque 3D */}
+                  <div
+                    ref={poppedDropZoneRef}
+                    className="popped-project-dropzone"
+                    onClick={() => {
+                      sfx.drop();
+                      setWheelSlot(targetProject.tracks.length);
+                      setStep("wheel-place");
+                    }}
                   >
-                    <div className="prop-disc-visual">
-                      <div className="prop-disc-ring" style={{ background: color }} />
-                      <div className="prop-disc-hole" />
-                    </div>
-                    <div className="prop-card-meta">
-                      <b>{title}</b>
-                      <span>{bpm} BPM · {musicalKey}</span>
-                    </div>
-                  </motion.div>
-                  <small className="dmg-hint">Arrastralo a un proyecto a la derecha →</small>
+                    <span className="mono-tag">BLOQUE POPEADO EN 3D</span>
+                    <h4>{targetProject.title}</h4>
+                    <p>
+                      {targetProject.artist} · {targetProject.tracks.length} discos actuales ·{" "}
+                      {targetProject.videos.length} videos
+                    </p>
+                    <span className="popped-cta">
+                      Soltá el Prop acá o tocá para abrir la ruedita de temas →
+                    </span>
+                  </div>
                 </div>
 
-                <div className="dmg-projects-grid">
-                  {projects.map((p) => (
-                    <div
-                      key={p.id}
-                      ref={(el) => {
-                        projectRefs.current[p.id] = el;
-                      }}
-                      className="dmg-project-module"
-                      onMouseEnter={() => sfx.hover()}
-                      onClick={() => {
-                        sfx.drop();
-                        setSelectedProjectId(p.id);
-                        setWheelSlot(p.tracks.length);
-                        setStep("wheel-place");
-                      }}
-                    >
-                      <div
-                        className="dmg-proj-swatch"
-                        style={{ background: `linear-gradient(135deg, ${p.c1}, ${p.c2})` }}
-                      >
-                        <span>{p.tracks.length} DISCOS</span>
-                      </div>
-                      <div>
-                        <span className="mono-tag">{p.type} · {p.artist}</span>
-                        <h4>{p.title}</h4>
-                        <small>Soltar Prop acá para abrir ruedita →</small>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                {/* Derecha: La Biblioteca 3D tal cual aparece, con el bloque seleccionado popeando hacia afuera */}
+                <ManifoldLibrary3D
+                  projects={projects}
+                  selectedProjectId={selectedProjectId}
+                  poppedProjectId={poppedProjectId}
+                  viewMode="manifold"
+                  compact
+                  onSelectProject={(proj) => {
+                    setSelectedProjectId(proj.id);
+                    setPoppedProjectId(proj.id);
+                  }}
+                />
               </div>
             </motion.div>
           )}
 
-          {/* PASO 3: Ruedita de temas del proyecto para elegir en qué posición queda */}
+          {/* PASO 3: Ruedita 3D de temas del proyecto */}
           {(step === "wheel-place" || step === "installed") && targetProject && (
             <motion.div
               key="step3"
@@ -388,8 +392,8 @@ export default function MacInstallerUpload({
                   </span>
                   <h3>
                     {step === "installed"
-                      ? `¡Listo! "${title}" ya es un disco más en la ruedita de ${targetProject.title}`
-                      : "Elegí en qué lugar de la ruedita de temas querés acomodar el corte"}
+                      ? `¡Instalado! "${title}" ya es un disco más en la ruedita de ${targetProject.title}`
+                      : "Acomodá el nuevo corte en la ruedita 3D de temas"}
                   </h3>
                 </div>
                 <div className="row-actions">
@@ -398,7 +402,7 @@ export default function MacInstallerUpload({
                     className="apple-btn ghost"
                     onClick={() => setStep("zoomed-library")}
                   >
-                    Cambiar proyecto
+                    ← Volver a la Biblioteca 3D
                   </button>
                   {step !== "installed" && (
                     <button
@@ -406,13 +410,12 @@ export default function MacInstallerUpload({
                       className="apple-btn primary"
                       onClick={commitInstall}
                     >
-                      ✓ Confirmar e instalar en posición #{wheelSlot + 1}
+                      ✓ Confirmar en posición #{wheelSlot + 1}
                     </button>
                   )}
                 </div>
               </div>
 
-              {/* Selector táctil de posición en la ruedita */}
               {step !== "installed" && (
                 <div className="wheel-slot-selector">
                   {Array.from({ length: targetProject.tracks.length + 1 }, (_, idx) => (
@@ -437,7 +440,6 @@ export default function MacInstallerUpload({
                 </div>
               )}
 
-              {/* Ruedita 3D en vivo mostrando todos los discos del proyecto */}
               <DiscSpinner3D
                 project={targetProject}
                 onPlayTrack={onPlayTrack}

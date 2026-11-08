@@ -28,9 +28,9 @@ const gothic = UnifrakturMaguntia({
 });
 
 export const metadata: Metadata = {
-  title: "El Cerro de la Gloria — Mendoza Underground Archive & Studio",
+  title: "El tablero — Mendoza Underground Archive & Studio",
   description:
-    "Plataforma minimalista y archivo vivo para la escena de rap underground de Mendoza: explorar, reproductor 3D customizable para snippets, biblioteca isométrica y subida por props.",
+    "El tablero: archivo vivo 3D, reproductor customizable para snippets y biblioteca con carpetas de video para la escena de Mendoza.",
 };
 
 export default function RootLayout({

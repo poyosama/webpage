@@ -1,145 +1,209 @@
 "use client";
 
 import { Canvas, useFrame } from "@react-three/fiber";
-import { RoundedBox } from "@react-three/drei";
+import { OrbitControls } from "@react-three/drei";
 import { useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { type Project, type Track } from "@/lib/mock";
 import { sfx } from "@/lib/sfx";
 
 export type VisualMode = "props" | "boids" | "ferro" | "cd";
-export type FontSkin = "sf" | "serif" | "mono" | "gothic";
 
-type Body3D = {
+type ProceduralPropBody = {
   pos: THREE.Vector3;
   vel: THREE.Vector3;
   rot: THREE.Euler;
   angVel: THREE.Vector3;
   radius: number;
-  kind: "crate" | "cone" | "torus" | "sphere" | "capsule";
+  geometry: THREE.BufferGeometry;
   color: string;
-  wire: boolean;
+  metalness: number;
+  roughness: number;
 };
 
-// Escena 1: GMod Uncanny Props con físicas reales (gravedad, colisión entre objetos, rebote en paredes y patada con el sub-bass o click)
-function UncannyPropsPhysics({
+// Generador de geometrías procedurales locas y 100% macizas
+function buildProceduralGeometry(index: number, radius: number): THREE.BufferGeometry {
+  const kind = index % 6;
+  if (kind === 0) {
+    // Nudo toroidal complejo (p=2, q=3 o p=3, q=4)
+    return new THREE.TorusKnotGeometry(radius * 0.62, radius * 0.2, 96, 20, 2 + (index % 2), 3 + (index % 3));
+  }
+  if (kind === 1) {
+    // Blob orgánico desplazado por armónicos sinusoidales
+    const geo = new THREE.SphereGeometry(radius * 0.85, 36, 36);
+    const pos = geo.attributes.position as THREE.BufferAttribute;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      const y = pos.getY(i);
+      const z = pos.getZ(i);
+      const d =
+        1 +
+        0.26 * Math.sin(x * 4.5 + index) * Math.cos(y * 4.5) +
+        0.18 * Math.cos(z * 5.2 - index);
+      pos.setXYZ(i, x * d, y * d, z * d);
+    }
+    geo.computeVertexNormals();
+    return geo;
+  }
+  if (kind === 2) {
+    // Estrella procedural extruida en 3D
+    const shape = new THREE.Shape();
+    const spikes = 5 + (index % 4);
+    for (let i = 0; i < spikes * 2; i++) {
+      const r = i % 2 === 0 ? radius * 0.92 : radius * 0.42;
+      const a = (i / (spikes * 2)) * Math.PI * 2;
+      if (i === 0) shape.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+      else shape.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+    }
+    shape.closePath();
+    const geo = new THREE.ExtrudeGeometry(shape, {
+      depth: radius * 0.45,
+      bevelEnabled: true,
+      bevelThickness: radius * 0.12,
+      bevelSize: radius * 0.1,
+      bevelSegments: 4,
+    });
+    geo.center();
+    return geo;
+  }
+  if (kind === 3) {
+    // Columna helicoidal / tornillo retorcido procedural
+    const geo = new THREE.CylinderGeometry(radius * 0.55, radius * 0.55, radius * 1.55, 24, 24);
+    const pos = geo.attributes.position as THREE.BufferAttribute;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      const y = pos.getY(i);
+      const z = pos.getZ(i);
+      const twist = y * 2.8;
+      const nx = x * Math.cos(twist) - z * Math.sin(twist);
+      const nz = x * Math.sin(twist) + z * Math.cos(twist);
+      pos.setXYZ(i, nx, y, nz);
+    }
+    geo.computeVertexNormals();
+    return geo;
+  }
+  if (kind === 4) {
+    // Cristal poliédrico tallado
+    const geo = new THREE.OctahedronGeometry(radius * 0.9, 1);
+    geo.scale(0.85, 1.35, 0.85);
+    return geo;
+  }
+  // Anillo hiperbólico ondulado
+  const geo = new THREE.TorusGeometry(radius * 0.68, radius * 0.24, 24, 64);
+  const pos = geo.attributes.position as THREE.BufferAttribute;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i);
+    const y = pos.getY(i);
+    const z = pos.getZ(i);
+    const angle = Math.atan2(y, x);
+    pos.setZ(i, z + Math.sin(angle * 3) * radius * 0.22);
+  }
+  geo.computeVertexNormals();
+  return geo;
+}
+
+// 1. PROPS 3D MACIZOS PROCEDURALES SIEMPRE EN GRAVEDAD 0G
+function UncannyPropsPhysics0G({
   accent,
   c2,
   impulseSignal,
-  gravityOn,
 }: {
   accent: string;
   c2: string;
   impulseSignal: number;
-  gravityOn: boolean;
 }) {
   const groupRef = useRef<THREE.Group>(null!);
   const lastImpulse = useRef(0);
 
-  const bodies = useMemo<Body3D[]>(() => {
-    const palette = [accent, c2, "#111111", "#ffffff", "#ff5500", "#e2e8f0"];
-    const kinds: Body3D["kind"][] = ["crate", "cone", "torus", "sphere", "capsule"];
-    return Array.from({ length: 16 }, (_, i) => ({
-      pos: new THREE.Vector3(
-        (Math.random() - 0.5) * 3.4,
-        (Math.random() - 0.2) * 2.6,
-        (Math.random() - 0.5) * 1.8
-      ),
-      vel: new THREE.Vector3(
-        (Math.random() - 0.5) * 2.2,
-        (Math.random() - 0.5) * 2.2,
-        (Math.random() - 0.5) * 1.5
-      ),
-      rot: new THREE.Euler(Math.random() * 3, Math.random() * 3, Math.random() * 3),
-      angVel: new THREE.Vector3(
-        (Math.random() - 0.5) * 3,
-        (Math.random() - 0.5) * 3,
-        (Math.random() - 0.5) * 3
-      ),
-      radius: 0.36 + (i % 3) * 0.08,
-      kind: kinds[i % kinds.length],
-      color: palette[i % palette.length],
-      wire: i % 5 === 0,
-    }));
+  const bodies = useMemo<ProceduralPropBody[]>(() => {
+    const palette = [accent, c2, "#111111", "#f43f5e", "#0284c7", "#eab308", "#a855f7", "#14b8a6"];
+    return Array.from({ length: 18 }, (_, i) => {
+      const radius = 0.38 + (i % 4) * 0.08;
+      return {
+        pos: new THREE.Vector3(
+          (Math.random() - 0.5) * 4.2,
+          (Math.random() - 0.5) * 2.6,
+          (Math.random() - 0.5) * 2.0
+        ),
+        vel: new THREE.Vector3(
+          (Math.random() - 0.5) * 1.4,
+          (Math.random() - 0.5) * 1.4,
+          (Math.random() - 0.5) * 1.1
+        ),
+        rot: new THREE.Euler(Math.random() * 3, Math.random() * 3, Math.random() * 3),
+        angVel: new THREE.Vector3(
+          (Math.random() - 0.5) * 2.4,
+          (Math.random() - 0.5) * 2.4,
+          (Math.random() - 0.5) * 2.4
+        ),
+        radius,
+        geometry: buildProceduralGeometry(i, radius),
+        color: palette[i % palette.length],
+        metalness: i % 2 === 0 ? 0.55 : 0.18,
+        roughness: i % 3 === 0 ? 0.14 : 0.32,
+      };
+    });
   }, [accent, c2]);
 
   useFrame(({ pointer }, dt) => {
     const step = Math.min(0.033, dt);
     const { beat, bass } = sfx.sampleReactiveLevels();
 
-    // Si apretaron "Patear Props" o entró un golpe de 808 fuerte
     const kickNow = impulseSignal !== lastImpulse.current;
     if (kickNow) lastImpulse.current = impulseSignal;
 
-    const boundsX = 2.55;
-    const boundsY = 1.75;
-    const boundsZ = 1.35;
+    const boundsX = 2.85;
+    const boundsY = 1.85;
+    const boundsZ = 1.45;
 
     for (let i = 0; i < bodies.length; i++) {
       const b = bodies[i];
-      if (gravityOn) {
-        b.vel.y -= 4.8 * step;
-      } else {
-        // Atracción suave hacia un vórtice central
-        b.vel.x += -b.pos.x * 0.9 * step;
-        b.vel.y += -b.pos.y * 0.9 * step;
-      }
+      // Gravedad 0G permanente: deriva orbital suave hacia el centro para que floten y choquen
+      b.vel.x += -b.pos.x * 0.38 * step;
+      b.vel.y += -b.pos.y * 0.38 * step;
+      b.vel.z += -b.pos.z * 0.38 * step;
 
-      // Empuje del cursor como imán físico
-      const mx = pointer.x * 2.2;
-      const my = pointer.y * 1.5;
+      // Interacción magnética con el mouse
+      const mx = pointer.x * 2.5;
+      const my = pointer.y * 1.65;
       const dxm = b.pos.x - mx;
       const dym = b.pos.y - my;
       const distM = Math.hypot(dxm, dym);
-      if (distM < 1.15 && distM > 0.001) {
-        const push = (1.15 - distM) * 4.5 * step;
+      if (distM < 1.25 && distM > 0.001) {
+        const push = (1.25 - distM) * 4.8 * step;
         b.vel.x += (dxm / distM) * push;
         b.vel.y += (dym / distM) * push;
       }
 
-      if (kickNow || bass > 0.92) {
-        const strength = kickNow ? 4.2 : 1.15;
-        b.vel.y += (0.6 + Math.random() * 0.9) * strength;
-        b.vel.x += (Math.random() - 0.5) * strength * 1.4;
-        b.angVel.set(
-          (Math.random() - 0.5) * 7,
-          (Math.random() - 0.5) * 7,
-          (Math.random() - 0.5) * 7
-        );
+      if (kickNow || bass > 0.94) {
+        const s = kickNow ? 3.4 : 0.9;
+        b.vel.x += (Math.random() - 0.5) * s * 1.6;
+        b.vel.y += (Math.random() - 0.5) * s * 1.6;
+        b.vel.z += (Math.random() - 0.5) * s;
       }
 
-      b.vel.multiplyScalar(0.992);
+      b.vel.multiplyScalar(0.994);
       b.pos.addScaledVector(b.vel, step);
 
-      b.rot.x += b.angVel.x * step * (1 + beat * 0.6);
-      b.rot.y += b.angVel.y * step * (1 + beat * 0.6);
+      b.rot.x += b.angVel.x * step * (1 + beat * 0.5);
+      b.rot.y += b.angVel.y * step * (1 + beat * 0.5);
       b.rot.z += b.angVel.z * step;
 
-      // Rebote contra la caja de cristal
-      if (b.pos.x > boundsX - b.radius) {
-        b.pos.x = boundsX - b.radius;
-        b.vel.x *= -0.78;
-      } else if (b.pos.x < -boundsX + b.radius) {
-        b.pos.x = -boundsX + b.radius;
-        b.vel.x *= -0.78;
+      if (Math.abs(b.pos.x) > boundsX - b.radius) {
+        b.pos.x = Math.sign(b.pos.x) * (boundsX - b.radius);
+        b.vel.x *= -0.88;
       }
-      if (b.pos.y > boundsY - b.radius) {
-        b.pos.y = boundsY - b.radius;
-        b.vel.y *= -0.75;
-      } else if (b.pos.y < -boundsY + b.radius) {
-        b.pos.y = -boundsY + b.radius;
-        b.vel.y *= -0.82;
+      if (Math.abs(b.pos.y) > boundsY - b.radius) {
+        b.pos.y = Math.sign(b.pos.y) * (boundsY - b.radius);
+        b.vel.y *= -0.88;
       }
-      if (b.pos.z > boundsZ - b.radius) {
-        b.pos.z = boundsZ - b.radius;
-        b.vel.z *= -0.75;
-      } else if (b.pos.z < -boundsZ + b.radius) {
-        b.pos.z = -boundsZ + b.radius;
-        b.vel.z *= -0.75;
+      if (Math.abs(b.pos.z) > boundsZ - b.radius) {
+        b.pos.z = Math.sign(b.pos.z) * (boundsZ - b.radius);
+        b.vel.z *= -0.88;
       }
     }
 
-    // Colisión elástica par-a-par
+    // Colisiones elásticas entre props macizos
     for (let i = 0; i < bodies.length; i++) {
       for (let j = i + 1; j < bodies.length; j++) {
         const a = bodies[i];
@@ -154,7 +218,7 @@ function UncannyPropsPhysics({
           b.pos.addScaledVector(n, -overlap * 0.5);
           const relVel = a.vel.clone().sub(b.vel).dot(n);
           if (relVel < 0) {
-            const imp = -relVel * 0.85;
+            const imp = -relVel * 0.92;
             a.vel.addScaledVector(n, imp);
             b.vel.addScaledVector(n, -imp);
           }
@@ -162,120 +226,125 @@ function UncannyPropsPhysics({
       }
     }
 
-    // Sincronizar meshes hijos
     const children = groupRef.current.children;
     for (let i = 0; i < bodies.length; i++) {
       const m = children[i];
       if (!m) continue;
       m.position.copy(bodies[i].pos);
       m.rotation.copy(bodies[i].rot);
-      const pulse = 1 + (i % 3 === 0 ? beat * 0.16 : 0);
+      const pulse = 1 + (i % 3 === 0 ? beat * 0.14 : 0);
       m.scale.setScalar(pulse);
     }
   });
 
   return (
-    <group>
-      {/* Cuarto de prueba estilo sandbox minimalista */}
-      <mesh position={[0, -1.82, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[6.4, 4.2, 12, 12]} />
-        <meshBasicMaterial color="#94a3b8" wireframe transparent opacity={0.22} />
-      </mesh>
-      <group ref={groupRef}>
-        {bodies.map((b, i) => (
-          <group key={i}>
-            {b.kind === "crate" && (
-              <RoundedBox args={[b.radius * 1.45, b.radius * 1.45, b.radius * 1.45]} radius={0.05}>
-                <meshStandardMaterial color={b.color} roughness={0.25} metalness={0.15} wireframe={b.wire} />
-              </RoundedBox>
-            )}
-            {b.kind === "cone" && (
-              <mesh>
-                <coneGeometry args={[b.radius * 0.95, b.radius * 1.7, 20]} />
-                <meshStandardMaterial color={b.color} roughness={0.3} metalness={0.1} wireframe={b.wire} />
-              </mesh>
-            )}
-            {b.kind === "torus" && (
-              <mesh>
-                <torusGeometry args={[b.radius * 0.72, b.radius * 0.28, 16, 32]} />
-                <meshStandardMaterial color={b.color} roughness={0.18} metalness={0.35} wireframe={b.wire} />
-              </mesh>
-            )}
-            {b.kind === "sphere" && (
-              <mesh>
-                <icosahedronGeometry args={[b.radius * 0.9, 1]} />
-                <meshStandardMaterial color={b.color} roughness={0.2} metalness={0.25} flatShading wireframe={b.wire} />
-              </mesh>
-            )}
-            {b.kind === "capsule" && (
-              <mesh>
-                <capsuleGeometry args={[b.radius * 0.52, b.radius * 0.85, 8, 16]} />
-                <meshStandardMaterial color={b.color} roughness={0.2} metalness={0.2} wireframe={b.wire} />
-              </mesh>
-            )}
-          </group>
-        ))}
-      </group>
+    <group ref={groupRef}>
+      {bodies.map((b, i) => (
+        <mesh key={i} geometry={b.geometry} castShadow receiveShadow>
+          <meshPhysicalMaterial
+            color={b.color}
+            roughness={b.roughness}
+            metalness={b.metalness}
+            clearcoat={0.85}
+            clearcoatRoughness={0.12}
+          />
+        </mesh>
+      ))}
     </group>
   );
 }
 
-// Escena 2: Enjambre de Partículas Algorítmicas (Atractor de Lorenz + Curl + Audio Pulse)
-function AlgorithmicParticles({ accent, c2 }: { accent: string; c2: string }) {
+// 2. PARTÍCULAS ALGORÍTMICAS DE ALTA RESOLUCIÓN (18.000 partículas redondas siguiendo un campo de flujo procedural)
+function HighResFlowParticles({ accent, c2 }: { accent: string; c2: string }) {
   const pointsRef = useRef<THREE.Points>(null!);
-  const count = 2400;
+  const count = 18000;
 
-  const { positions, seeds, colors } = useMemo(() => {
+  // Sprite circular suave en alta resolución para que no sean cuadraditos
+  const circleSprite = useMemo(() => {
+    const c = document.createElement("canvas");
+    c.width = 64;
+    c.height = 64;
+    const g = c.getContext("2d")!;
+    const grad = g.createRadialGradient(32, 32, 2, 32, 32, 30);
+    grad.addColorStop(0, "rgba(255,255,255,1)");
+    grad.addColorStop(0.45, "rgba(255,255,255,0.85)");
+    grad.addColorStop(1, "rgba(255,255,255,0)");
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 64, 64);
+    const tex = new THREE.CanvasTexture(c);
+    return tex;
+  }, []);
+
+  const { positions, colors, phases } = useMemo(() => {
     const pos = new Float32Array(count * 3);
-    const sd = new Float32Array(count * 3);
     const col = new Float32Array(count * 3);
+    const ph = new Float32Array(count);
     const cA = new THREE.Color(accent);
     const cB = new THREE.Color(c2);
-    const cDark = new THREE.Color("#111111");
+    const cInk = new THREE.Color("#18181b");
 
     for (let i = 0; i < count; i++) {
-      const r = 0.4 + Math.random() * 2.2;
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.acos(2 * Math.random() - 1);
-      pos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-      pos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
-      pos[i * 3 + 2] = r * Math.cos(phi);
+      // Distribución inicial sobre cintas de atractor procedural
+      const u = (i / count) * Math.PI * 24;
+      const stream = i % 5;
+      const r = 0.6 + (i / count) * 2.4;
+      pos[i * 3] = Math.cos(u + stream) * r + (Math.random() - 0.5) * 0.25;
+      pos[i * 3 + 1] = Math.sin(u * 1.5 - stream) * r * 0.65 + (Math.random() - 0.5) * 0.25;
+      pos[i * 3 + 2] = Math.sin(u * 0.7 + stream) * 1.6 + (Math.random() - 0.5) * 0.25;
 
-      sd[i * 3] = pos[i * 3];
-      sd[i * 3 + 1] = pos[i * 3 + 1];
-      sd[i * 3 + 2] = pos[i * 3 + 2];
+      ph[i] = Math.random() * Math.PI * 2;
 
-      const mix = i % 3 === 0 ? cA : i % 3 === 1 ? cB : cDark;
-      col[i * 3] = mix.r;
-      col[i * 3 + 1] = mix.g;
-      col[i * 3 + 2] = mix.b;
+      const tMix = (i % 100) / 100;
+      const chosen = i % 3 === 0 ? cA.clone().lerp(cB, tMix) : i % 3 === 1 ? cB : cInk;
+      col[i * 3] = chosen.r;
+      col[i * 3 + 1] = chosen.g;
+      col[i * 3 + 2] = chosen.b;
     }
-    return { positions: pos, seeds: sd, colors: col };
+    return { positions: pos, colors: col, phases: ph };
   }, [accent, c2]);
 
   useFrame(({ clock, pointer }, dt) => {
     const { beat } = sfx.sampleReactiveLevels();
     const t = clock.elapsedTime;
+    const step = Math.min(0.03, dt) * (1.1 + beat * 0.9);
     const geo = pointsRef.current.geometry;
     const attr = geo.getAttribute("position") as THREE.BufferAttribute;
     const arr = attr.array as Float32Array;
 
+    // Atractor cíclico de Thomas + guía del puntero: traza caminos curvos hipnóticos
+    const bParam = 0.19;
+    const mx = pointer.x * 2.2;
+    const my = pointer.y * 1.5;
+
     for (let i = 0; i < count; i++) {
       const ix = i * 3;
-      const sx = seeds[ix];
-      const sy = seeds[ix + 1];
-      const sz = seeds[ix + 2];
+      let x = arr[ix];
+      let y = arr[ix + 1];
+      let z = arr[ix + 2];
 
-      const wave = Math.sin(t * 1.4 + sx * 1.8 + sy * 1.3) * 0.35;
-      const swirl = t * 0.55 + (i % 7) * 0.1;
-      const scale = 1 + beat * 0.28 + wave * 0.2;
+      // Campo vectorial procedural que guía el destino de cada partícula
+      const vx = Math.sin(y * 1.55 + t * 0.7) - bParam * x + (mx - x) * 0.14;
+      const vy = Math.sin(z * 1.55 - t * 0.5) - bParam * y + (my - y) * 0.14;
+      const vz = Math.sin(x * 1.55 + phases[i] * 0.2) - bParam * z;
 
-      arr[ix] = (sx * Math.cos(swirl) - sz * Math.sin(swirl)) * scale + pointer.x * 0.35;
-      arr[ix + 1] = sy * scale + Math.cos(t * 1.9 + sx * 2.0) * 0.22 + pointer.y * 0.25;
-      arr[ix + 2] = (sx * Math.sin(swirl) + sz * Math.cos(swirl)) * scale;
+      x += vx * step * 1.45;
+      y += vy * step * 1.45;
+      z += vz * step * 1.45;
+
+      // Re-inyección si se aleja demasiado para mantener densidad máxima
+      if (x * x + y * y + z * z > 18) {
+        const a = phases[i] + t;
+        x = Math.cos(a) * 0.4;
+        y = Math.sin(a) * 0.4;
+        z = Math.sin(a * 2) * 0.4;
+      }
+
+      arr[ix] = x;
+      arr[ix + 1] = y;
+      arr[ix + 2] = z;
     }
     attr.needsUpdate = true;
-    pointsRef.current.rotation.y += dt * 0.12;
+    pointsRef.current.rotation.y += dt * 0.08;
   });
 
   return (
@@ -284,90 +353,184 @@ function AlgorithmicParticles({ accent, c2 }: { accent: string; c2: string }) {
         <bufferAttribute attach="attributes-position" args={[positions, 3]} />
         <bufferAttribute attach="attributes-color" args={[colors, 3]} />
       </bufferGeometry>
-      <pointsMaterial size={0.055} vertexColors transparent opacity={0.9} sizeAttenuation />
+      <pointsMaterial
+        map={circleSprite}
+        size={0.052}
+        vertexColors
+        transparent
+        alphaTest={0.05}
+        opacity={0.92}
+        sizeAttenuation
+        depthWrite={false}
+      />
     </points>
   );
 }
 
-// Escena 3: Escultura Ferrofluido Cromado Reactivo
-function FerrofluidMesh({ accent }: { accent: string }) {
+// 3. FERROFLUIDO INTERACTIVO (Se puede moldear pasando/arrastrando en la superficie + rotar en 3D con OrbitControls)
+function SculptableFerrofluid({ accent }: { accent: string }) {
   const meshRef = useRef<THREE.Mesh>(null!);
-  const baseGeo = useMemo(() => new THREE.IcosahedronGeometry(1.38, 24), []);
+  const baseGeo = useMemo(() => new THREE.IcosahedronGeometry(1.42, 32), []);
   const origPos = useMemo(() => {
     const p = baseGeo.attributes.position.array as Float32Array;
     return new Float32Array(p);
   }, [baseGeo]);
+  const sculptOffsets = useMemo(
+    () => new Float32Array(baseGeo.attributes.position.count),
+    [baseGeo]
+  );
+  const hoverDirRef = useRef<THREE.Vector3 | null>(null);
 
-  useFrame(({ clock, pointer }) => {
+  useFrame(({ clock }) => {
     const { beat, bass } = sfx.sampleReactiveLevels();
     const t = clock.elapsedTime;
     const pos = baseGeo.attributes.position as THREE.BufferAttribute;
     const arr = pos.array as Float32Array;
 
-    const spikeAmp = 0.22 + bass * 0.38 + beat * 0.18;
+    const spikeAmp = 0.2 + bass * 0.35 + beat * 0.16;
+    const hDir = hoverDirRef.current;
+
     for (let i = 0; i < pos.count; i++) {
       const ix = i * 3;
       const ox = origPos[ix];
       const oy = origPos[ix + 1];
       const oz = origPos[ix + 2];
+
+      // Si el usuario está pasando el mouse sobre la superficie, moldeamos las púas hacia afuera en esa zona
+      if (hDir) {
+        const dot = (ox * hDir.x + oy * hDir.y + oz * hDir.z) / 1.42;
+        if (dot > 0.72) {
+          sculptOffsets[i] = Math.min(0.85, sculptOffsets[i] + (dot - 0.72) * 0.22);
+        }
+      }
+      // Relajación elástica lenta del moldeado
+      sculptOffsets[i] *= 0.988;
+
       const n =
-        Math.sin(ox * 3.4 + t * 2.6) *
-        Math.cos(oy * 3.4 - t * 2.1) *
-        Math.sin(oz * 3.4 + t * 1.8);
-      const s = 1 + n * spikeAmp;
+        Math.sin(ox * 3.6 + t * 2.4) *
+        Math.cos(oy * 3.6 - t * 2.0) *
+        Math.sin(oz * 3.6 + t * 1.7);
+      const s = 1 + n * spikeAmp + sculptOffsets[i];
       arr[ix] = ox * s;
       arr[ix + 1] = oy * s;
       arr[ix + 2] = oz * s;
     }
     pos.needsUpdate = true;
     baseGeo.computeVertexNormals();
-
-    meshRef.current.rotation.y = t * 0.35 + pointer.x * 0.6;
-    meshRef.current.rotation.x = pointer.y * 0.45;
   });
 
   return (
-    <mesh ref={meshRef} geometry={baseGeo}>
-      <meshPhysicalMaterial
-        color="#18181b"
-        emissive={accent}
-        emissiveIntensity={0.22}
-        metalness={0.92}
-        roughness={0.12}
-        clearcoat={1}
-        iridescence={0.6}
-      />
-    </mesh>
+    <group>
+      <mesh
+        ref={meshRef}
+        geometry={baseGeo}
+        onPointerMove={(e) => {
+          e.stopPropagation();
+          const localPt = meshRef.current.worldToLocal(e.point.clone()).normalize();
+          hoverDirRef.current = localPt;
+        }}
+        onPointerOut={() => {
+          hoverDirRef.current = null;
+        }}
+      >
+        <meshPhysicalMaterial
+          color="#18181b"
+          emissive={accent}
+          emissiveIntensity={0.24}
+          metalness={0.94}
+          roughness={0.1}
+          clearcoat={1}
+          iridescence={0.65}
+        />
+      </mesh>
+      <OrbitControls enableZoom={false} enablePan={false} rotateSpeed={0.75} />
+    </group>
   );
 }
 
-// Escena 4: Artwork / Vinilo Acrílico en levitación
-function AcrylicDiscStage({ track }: { track: Track }) {
-  const groupRef = useRef<THREE.Group>(null!);
-  useFrame(({ clock, pointer }, dt) => {
+// 4. DISCO ACRÍLICO 3D (Orientado de frente desde el inicio + rotable 360º con el mouse)
+function InteractiveAcrylicDisc({ track }: { track: Track }) {
+  const spinRef = useRef<THREE.Group>(null!);
+
+  const labelTex = useMemo(() => {
+    const c = document.createElement("canvas");
+    c.width = 512;
+    c.height = 512;
+    const g = c.getContext("2d")!;
+    const grad = g.createRadialGradient(256, 256, 20, 256, 256, 256);
+    grad.addColorStop(0, track.c2);
+    grad.addColorStop(1, track.c1);
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 512, 512);
+
+    // Surcos circulares
+    g.strokeStyle = "rgba(255,255,255,0.16)";
+    g.lineWidth = 2;
+    for (let r = 70; r < 245; r += 12) {
+      g.beginPath();
+      g.arc(256, 256, r, 0, Math.PI * 2);
+      g.stroke();
+    }
+
+    g.fillStyle = "#ffffff";
+    g.font = "700 42px Inter, sans-serif";
+    g.textAlign = "center";
+    g.fillText(track.title.toUpperCase().slice(0, 14), 256, 200);
+    g.font = "600 24px monospace";
+    g.fillText(`${track.artist} · ${track.bpm} BPM`, 256, 330);
+
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }, [track]);
+
+  useFrame((_, dt) => {
     const { beat } = sfx.sampleReactiveLevels();
-    groupRef.current.rotation.z -= dt * 1.35;
-    groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, pointer.x * 0.45, 0.08);
-    groupRef.current.rotation.x = THREE.MathUtils.lerp(groupRef.current.rotation.x, -pointer.y * 0.35, 0.08);
-    const s = 1 + beat * 0.06 + Math.sin(clock.elapsedTime * 2) * 0.015;
-    groupRef.current.scale.setScalar(s);
+    spinRef.current.rotation.z -= dt * 0.95;
+    const s = 1 + beat * 0.05;
+    spinRef.current.scale.setScalar(s);
   });
 
   return (
-    <group ref={groupRef}>
-      <mesh>
-        <cylinderGeometry args={[1.65, 1.65, 0.05, 64]} />
-        <meshPhysicalMaterial
-          color={track.c1}
-          roughness={0.12}
-          metalness={0.6}
-          clearcoat={1}
-        />
-      </mesh>
-      <mesh position={[0, 0, 0.03]}>
-        <ringGeometry args={[0.22, 0.62, 48]} />
-        <meshBasicMaterial color={track.c2} side={THREE.DoubleSide} />
-      </mesh>
+    <group>
+      {/* Rotamos ligeramente para que se vea de frente y con volumen 3D inmediato */}
+      <group ref={spinRef} rotation={[0.22, -0.28, 0]}>
+        {/* Cuerpo exterior de acrílico translúcido (rotado Math.PI/2 en X para que mire a la cámara) */}
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[1.85, 1.85, 0.07, 72]} />
+          <meshPhysicalMaterial
+            color={track.c2}
+            transmission={0.72}
+            thickness={0.5}
+            roughness={0.08}
+            metalness={0.15}
+            clearcoat={1}
+            transparent
+            opacity={0.92}
+          />
+        </mesh>
+
+        {/* Cara frontal grabada con surcos y arte */}
+        <mesh position={[0, 0, 0.038]}>
+          <ringGeometry args={[0.24, 1.72, 72]} />
+          <meshStandardMaterial map={labelTex} roughness={0.22} metalness={0.35} side={THREE.DoubleSide} />
+        </mesh>
+
+        {/* Cara trasera grabada */}
+        <mesh position={[0, 0, -0.038]} rotation={[0, Math.PI, 0]}>
+          <ringGeometry args={[0.24, 1.72, 72]} />
+          <meshStandardMaterial map={labelTex} roughness={0.22} metalness={0.35} side={THREE.DoubleSide} />
+        </mesh>
+
+        {/* Anillo cromado central */}
+        <mesh position={[0, 0, 0]}>
+          <torusGeometry args={[0.24, 0.04, 16, 48]} />
+          <meshStandardMaterial color="#f8fafc" metalness={0.9} roughness={0.1} />
+        </mesh>
+      </group>
+
+      {/* Rotación libre 3D con el mouse */}
+      <OrbitControls enableZoom={false} enablePan={false} rotateSpeed={0.85} />
     </group>
   );
 }
@@ -380,6 +543,8 @@ export default function PerformativePlayer({
   onNext,
   onPrev,
   onClose,
+  onJumpToProject,
+  onOpenEditTrack,
 }: {
   track: Track;
   project: Project;
@@ -388,20 +553,43 @@ export default function PerformativePlayer({
   onNext: () => void;
   onPrev: () => void;
   onClose: () => void;
+  onJumpToProject: (projectId: string) => void;
+  onOpenEditTrack: () => void;
 }) {
   const [mode, setMode] = useState<VisualMode>("props");
-  const [fontSkin, setFontSkin] = useState<FontSkin>("sf");
   const [snippetClean, setSnippetClean] = useState(false);
   const [darkStage, setDarkStage] = useState(false);
-  const [gravityOn, setGravityOn] = useState(true);
   const [impulseSignal, setImpulseSignal] = useState(0);
+  const hasEnteredBodyRef = useRef(false);
 
   return (
     <div
-      className={`perf-player font-skin-${fontSkin} ${darkStage ? "stage-dark" : "stage-light"} ${
+      className={`perf-player font-skin-sf ${darkStage ? "stage-dark" : "stage-light"} ${
         snippetClean ? "snippet-clean" : ""
       }`}
+      onPointerMove={(e) => {
+        if (e.clientY > 90) {
+          hasEnteredBodyRef.current = true;
+        } else if (hasEnteredBodyRef.current && e.clientY <= 6) {
+          // Gesto de llevar el cursor bien arriba del todo de la pantalla para cerrar
+          hasEnteredBodyRef.current = false;
+          sfx.close();
+          onClose();
+        }
+      }}
     >
+      {/* Zona superior de cierre rápido al subir el cursor */}
+      <div
+        className="perf-top-edge-sensor"
+        title="Subí el cursor al borde superior o tocá para minimizar"
+        onClick={() => {
+          sfx.close();
+          onClose();
+        }}
+      >
+        <span className="perf-grabber-bar" />
+      </div>
+
       {/* Canvas 3D performativo a pantalla completa */}
       <div
         className="perf-canvas-wrap"
@@ -413,21 +601,20 @@ export default function PerformativePlayer({
         }}
       >
         <Canvas camera={{ position: [0, 0, 5.2], fov: 42 }} dpr={[1, 2]}>
-          <ambientLight intensity={darkStage ? 0.85 : 1.35} />
-          <directionalLight position={[4, 6, 5]} intensity={1.8} />
+          <ambientLight intensity={darkStage ? 0.95 : 1.45} />
+          <directionalLight position={[4, 6, 5]} intensity={1.85} />
           <pointLight position={[-4, -3, 3]} color={track.c2} intensity={6} />
 
           {mode === "props" && (
-            <UncannyPropsPhysics
+            <UncannyPropsPhysics0G
               accent={track.accent}
               c2={track.c2}
               impulseSignal={impulseSignal}
-              gravityOn={gravityOn}
             />
           )}
-          {mode === "boids" && <AlgorithmicParticles accent={track.accent} c2={track.c2} />}
-          {mode === "ferro" && <FerrofluidMesh accent={track.accent} />}
-          {mode === "cd" && <AcrylicDiscStage track={track} />}
+          {mode === "boids" && <HighResFlowParticles accent={track.accent} c2={track.c2} />}
+          {mode === "ferro" && <SculptableFerrofluid accent={track.accent} />}
+          {mode === "cd" && <InteractiveAcrylicDisc track={track} />}
         </Canvas>
       </div>
 
@@ -442,14 +629,35 @@ export default function PerformativePlayer({
             onClose();
           }}
         >
-          ↓ Minimizar reproductor
+          ↓ Cerrar (o subí el cursor al tope)
         </button>
 
         <div className="perf-badges">
-          <span className="mono-badge">
-            {track.bpm} BPM · KEY {track.key} · V{track.version}
-          </span>
-          <span className="mono-badge">{project.title}</span>
+          {/* Donde estaba el BPM y la Key ahora abre la pantalla Editar Track */}
+          <button
+            type="button"
+            className="mono-badge clickable-badge"
+            onMouseEnter={() => sfx.hover()}
+            onClick={() => {
+              sfx.open();
+              onOpenEditTrack();
+            }}
+          >
+            ✎ Editar track ({track.bpm} BPM · {track.key} · v{track.version})
+          </button>
+
+          {/* Clickear el proyecto te lleva directo a ese proyecto en la Biblioteca */}
+          <button
+            type="button"
+            className="mono-badge clickable-badge"
+            onMouseEnter={() => sfx.hover()}
+            onClick={() => {
+              sfx.nav();
+              onJumpToProject(project.id);
+            }}
+          >
+            📂 {project.title} ↗
+          </button>
         </div>
 
         <div className="perf-top-actions">
@@ -467,9 +675,12 @@ export default function PerformativePlayer({
         </div>
       </header>
 
-      {/* Overlay tipográfico gigante custom para grabar pantalla */}
+      {/* Overlay tipográfico en SF Display */}
       <div className="perf-center-typo">
-        <div className="perf-artwork-card" style={{ background: `linear-gradient(135deg, ${track.c1}, ${track.c2})` }}>
+        <div
+          className="perf-artwork-card"
+          style={{ background: `linear-gradient(135deg, ${track.c1}, ${track.c2})` }}
+        >
           <span>{track.glyph}</span>
           <small>0261 // MZA</small>
         </div>
@@ -480,90 +691,56 @@ export default function PerformativePlayer({
         {track.note && <span className="perf-note">“{track.note}”</span>}
       </div>
 
-      {/* Dock de customización en vivo (se oculta en modo Snippet Clean para que grabes la pantalla limpia) */}
+      {/* Dock inferior con Visual Engine en menú desplegable */}
       {!snippetClean && (
         <footer className="perf-dock">
           <div className="perf-customizer-row">
             <div className="cust-group">
-              <label>VISUAL ENGINE</label>
-              <div className="seg-pills">
-                {(
-                  [
-                    ["props", "📦 Props 3D + Físicas"],
-                    ["boids", "✨ Partículas Algorítmicas"],
-                    ["ferro", "💧 Ferrofluido Audio"],
-                    ["cd", "💿 Disco Acrílico"],
-                  ] as [VisualMode, string][]
-                ).map(([id, label]) => (
-                  <button
-                    key={id}
-                    type="button"
-                    className={mode === id ? "on" : ""}
-                    onMouseEnter={() => sfx.hover()}
-                    onClick={() => {
-                      sfx.tap();
-                      setMode(id);
-                    }}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
+              <label htmlFor="visual-engine-select">VISUAL ENGINE</label>
+              <select
+                id="visual-engine-select"
+                className="apple-select"
+                value={mode}
+                onChange={(e) => {
+                  sfx.tap();
+                  setMode(e.target.value as VisualMode);
+                }}
+              >
+                <option value="props">📦 Props 3D Procedurales (0G Macizos)</option>
+                <option value="boids">✨ 18K Partículas Algorítmicas (Flow Field)</option>
+                <option value="ferro">💧 Ferrofluido Moldeable + Rotación 3D</option>
+                <option value="cd">💿 Disco Acrílico 3D (Rotable con Mouse)</option>
+              </select>
             </div>
 
             <div className="cust-group">
-              <label>TIPOGRAFÍA</label>
-              <div className="seg-pills">
-                {(
-                  [
-                    ["sf", "SF Display"],
-                    ["serif", "Editorial Serif"],
-                    ["mono", "JetBrains Mono"],
-                    ["gothic", "0261 Display"],
-                  ] as [FontSkin, string][]
-                ).map(([id, label]) => (
-                  <button
-                    key={id}
-                    type="button"
-                    className={fontSkin === id ? "on" : ""}
-                    onMouseEnter={() => sfx.hover()}
-                    onClick={() => {
-                      sfx.tap();
-                      setFontSkin(id);
-                    }}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="cust-group">
-              <label>FÍSICAS / ESCENA</label>
+              <label>INTERACCIÓN EN VIVO</label>
               <div className="seg-pills">
                 {mode === "props" && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setImpulseSignal((n) => n + 1);
-                        sfx.drop();
-                      }}
-                    >
-                      💥 Patear Props
-                    </button>
-                    <button
-                      type="button"
-                      className={!gravityOn ? "on" : ""}
-                      onClick={() => {
-                        sfx.tap();
-                        setGravityOn((g) => !g);
-                      }}
-                    >
-                      {gravityOn ? "🪐 Gravedad 0G" : "🌍 Gravedad Normal"}
-                    </button>
-                  </>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setImpulseSignal((n) => n + 1);
+                      sfx.drop();
+                    }}
+                  >
+                    💥 Impulsar Props 0G
+                  </button>
                 )}
+                {(mode === "ferro" || mode === "cd") && (
+                  <span className="mono-badge">
+                    🖱️ Arrastrá con el mouse para rotar {mode === "ferro" ? "y moldear púas" : "el disco 3D"}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    sfx.open();
+                    onOpenEditTrack();
+                  }}
+                >
+                  ✎ Editar Track
+                </button>
                 <button
                   type="button"
                   className={darkStage ? "on" : ""}
@@ -583,7 +760,7 @@ export default function PerformativePlayer({
               ⏮
             </button>
             <button type="button" className="trans-play" onClick={onTogglePlay}>
-              {isPlaying ? "❚❚ Pausar" : "▶ Reproducir"}
+              {isPlaying ? "❚❚ Pausar (Espacio)" : "▶ Reproducir (Espacio)"}
             </button>
             <button type="button" className="trans-btn" onClick={onNext} aria-label="Siguiente">
               ⏭

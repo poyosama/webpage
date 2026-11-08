@@ -8,12 +8,26 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
-## Contexto del proyecto ("El Cerro de la Gloria" — Rediseño Apple / Editorial)
+## Contexto del proyecto ("El tablero" — Estética Apple / Editorial + Entorno 3D Manifold)
 - **Tono con el usuario:** español argentino bien casual con spanglish y puteadas amistosas; llamalo "juani", "gordo", "boludo", "negro", etc. Respuestas directas y concisas.
-- **Páginas del MVP (solo 4 + Reproductor):**
-  1. `Inicio` (Explorar): estética editorial blanca con grano tipo Apple / `SecondStory` (`imagen3.png`) + tira horizontal de portadas arriba + cluster central con ruido visual, recortes, stickers y espina verde neón (`imagen1.jpg` / `imagen2.jpg`).
-  2. `Biblioteca`: vista de proyectos en bloques arquitectónicos isométricos con etiquetas flotantes (`gif1.gif` / `manifold.art`) + vista de hileras compactas de CDs + inspector con el **Spinner 3D** (`DiscSpinner3D.tsx`, inspirado en `video.gif`) que muestra **exactamente la misma cantidad de discos que tracks tiene el proyecto**.
-  3. `Subir Tema`: flujo estilo instalador `.dmg` de macOS (`MacInstallerUpload.tsx`) — subís un archivo y se convierte en un Prop físico que arrastrás al socket de tu perfil, hace zoom a la biblioteca, lo tirás sobre el módulo del proyecto y lo acomodás en la ruedita 3D de temas.
-  4. `Perfil` (`@juani`): métricas del artista, catálogo de proyectos y red de colaboradores.
-  5. `Reproductor` (`PerformativePlayer.tsx` + mini-player flotante tipo Dynamic Island): pensado para grabar pantalla y tirar snippets tipo Untitled Pro. Tiene 4 motores visuales 3D en tiempo real (Props 3D con físicas/colisiones estilo GMod uncanny, Partículas algorítmicas, Ferrofluido cromado y Disco acrílico), selector de 4 fuentes en vivo y botón **Modo Snippet Clean**.
+- **Nombre de la web:** `El tablero` (arriba a la izquierda en la barra y en el título display).
+- **SFX (`src/lib/sfx.ts`):** micro-pulsos hápticos de baja frecuencia (4–10ms) y roce de aire casi imperceptible estilo Taptic Engine de iPhone.
+- **Páginas del MVP (en orden: `Inicio · Biblioteca · Subir Tema · @juani`):**
+  1. `Inicio`: 1º el ruido visual en el medio de la pantalla (el tablero de recortes, pines y artistas), 2º el nombre gigante `El tablero` con la tipografía apretada de `SecondStory`, y 3º la tira horizontal de miniportadas.
+  2. `Biblioteca` (`ManifoldLibrary3D.tsx` + `DiscSpinner3D.tsx`):
+     - Por default muestra el **entorno 3D real estilo `gif1.gif` (`manifold.art`)**: bloques arquitectónicos 3D en WebGL donde las caras reproducen videos/loops de 3–5s, con píldoras flotantes inclinadas y efecto *pop-out* al seleccionar un bloque.
+     - Cada proyecto tiene su **carpetita de videos de 3–5s** donde el usuario puede subir sus propios `.mp4`/`.webm`/`.gif` para que se proyecten en las caras 3D del bloque.
+     - Vista alternativa: **Hilera de Discos 3D** apilados en diagonal (como en el primer prototipo).
+     - Inspector inferior con el **Spinner 3D (`video.gif`)** de exactamente N discos según la cantidad de tracks.
+  3. `Subir Tema` (`MacInstallerUpload.tsx`): Paso 1 arrastrar Prop al perfil -> Paso 2 abre la **Biblioteca 3D (`ManifoldLibrary3D`)**, el proyecto seleccionado **popea** de la unidad y arrastrás el Prop ahí -> Paso 3 acomodás el track en la ruedita 3D (`DiscSpinner3D`).
+  4. `Perfil` (`@juani`): incluye el bloque de la **Biblioteca 3D** con los videos de cada proyecto como centro de la identidad visual, modal **Editar Perfil** completo y modal **Cuenta / Iniciar con Google**.
+  5. `Reproductor` (`PerformativePlayer.tsx` + Dynamic Island centrado):
+     - Barra espaciadora (`Space`) pausa/reproduce globalmente.
+     - Se cierra tanto clickeando arriba a la izquierda como llevando el cursor bien arriba del borde superior de la pantalla.
+     - Selector desplegable de **Visual Engine** (sin selector de fuentes, fijo en `SF Display`):
+       1. **Props 3D Procedurales**: siempre en gravedad `0G`, 100% macizos y con geometrías procedurales (nudos toroidales, blobs sinusoidales, estrellas extruidas, columnas helicoidales).
+       2. **18K Partículas Algorítmicas**: alta resolución con sprites circulares suaves siguiendo un campo vectorial procedural (Atractor de Thomas).
+       3. **Ferrofluido Moldeable**: se esculpe pasando el mouse sobre la superficie y se rota en 3D con el mouse.
+       4. **Disco Acrílico 3D**: orientado de frente desde el inicio y rotable 360° con el mouse.
+     - Arriba tiene link clickeable al proyecto en la Biblioteca y botón **Editar track** que abre el modal de edición de track.
 - Siempre hacé commit y `git push` a `main` al terminar un cambio para que Vercel se actualice automáticamente.
