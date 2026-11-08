@@ -13,31 +13,25 @@ function createDiscTexture(t: Track, idx: number, total: number) {
   c.height = 512;
   const g = c.getContext("2d")!;
 
-  // Fondo editorial contrastado tipo poster de video.gif
   g.fillStyle = idx % 2 === 0 ? t.c1 : "#f8fafc";
   g.fillRect(0, 0, 512, 512);
 
-  // Bloque gráfico de acento
   g.fillStyle = t.c2;
   g.fillRect(28, 28, 456, 210);
 
-  // Grano / trama sutil
   g.fillStyle = idx % 2 === 0 ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)";
   for (let y = 0; y < 512; y += 6) {
     g.fillRect(0, y, 512, 2);
   }
 
-  // Número grande estilo Swiss poster
   g.fillStyle = idx % 2 === 0 ? "#ffffff" : "#09090b";
   g.font = "700 138px Inter, -apple-system, sans-serif";
   g.fillText(String(idx + 1).padStart(2, "0"), 34, 380);
 
-  // Metadata arriba
   g.fillStyle = "#ffffff";
   g.font = "600 22px monospace";
   g.fillText(`${t.bpm} BPM · ${t.key} · V${t.version}`, 48, 76);
 
-  // Título abajo
   g.fillStyle = idx % 2 === 0 ? "#ffffff" : "#09090b";
   g.font = "600 32px Inter, -apple-system, sans-serif";
   g.fillText(t.title.slice(0, 18).toUpperCase(), 36, 444);
@@ -84,7 +78,7 @@ function DiscPlate({
   const liftRef = useRef(0);
 
   useFrame((_, dt) => {
-    const stepAngle = (Math.PI * 1.15) / Math.max(1, total);
+    const stepAngle = (Math.PI * 1.05) / Math.max(1, total);
     const rel = index - dragRef.current.angle;
     const theta = rel * stepAngle;
 
@@ -97,18 +91,17 @@ function DiscPlate({
       dt
     );
 
-    const radius = 1.65;
+    const radius = 1.85;
     const x = Math.sin(theta) * radius;
-    const z = Math.cos(theta) * radius * 0.55 + liftRef.current * 0.45;
-    const y = -Math.abs(rel) * 0.08 + liftRef.current * 0.22;
+    const z = Math.cos(theta) * radius * 0.58 + liftRef.current * 0.45;
+    const y = -Math.abs(rel) * 0.06 + liftRef.current * 0.24;
 
     const g = groupRef.current;
     g.position.set(x, y, z);
-    // Inclinación radial tipo abanico/molinete de video.gif
     g.rotation.set(
-      -0.18 + liftRef.current * 0.12,
-      -theta * 0.85 - 0.35,
-      -theta * 0.22
+      -0.22 + liftRef.current * 0.12,
+      -theta * 0.72 - 0.25,
+      -theta * 0.16
     );
   });
 
@@ -136,11 +129,7 @@ function DiscPlate({
           }
         }}
       >
-        <meshStandardMaterial
-          map={tex}
-          roughness={0.22}
-          metalness={0.08}
-        />
+        <meshBasicMaterial map={tex} />
       </RoundedBox>
     </group>
   );
@@ -248,11 +237,11 @@ export default function DiscSpinner3D({
           dragRef.current.dragging = false;
         }}
       >
-        <Canvas camera={{ position: [0, 0.35, 5.4], fov: 38 }} dpr={[1, 2]}>
-          <ambientLight intensity={1.15} />
+        {/* Cámara con zoom out y más desde arriba */}
+        <Canvas camera={{ position: [0, 1.35, 6.8], fov: 36 }} dpr={[1, 2]}>
+          <ambientLight intensity={1.4} />
           <directionalLight position={[4, 6, 5]} intensity={1.6} />
-          <directionalLight position={[-4, -2, 3]} intensity={0.65} color="#e2e8f0" />
-          <group position={[0, -0.05, 0]}>
+          <group position={[0, -0.15, 0]}>
             {tracks.map((t, i) => (
               <DiscPlate
                 key={t.id}

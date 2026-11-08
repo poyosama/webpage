@@ -7,13 +7,13 @@ import * as THREE from "three";
 import { type Project, type ProjectVideoClip } from "@/lib/mock";
 import { sfx } from "@/lib/sfx";
 
-// Crea una textura animada en vivo (60fps) o un VideoTexture real si el clip fue subido por el usuario (.mp4/.webm)
+// Genera una textura de video en vivo (60fps) o usa el archivo MP4/WebM subido por el usuario
 function useClipTexture(clip: ProjectVideoClip, projectTitle: string) {
   const canvas = useMemo(() => {
     if (typeof document === "undefined") return null;
     const c = document.createElement("canvas");
-    c.width = 256;
-    c.height = 256;
+    c.width = 512;
+    c.height = 512;
     return c;
   }, []);
 
@@ -57,70 +57,67 @@ function useClipTexture(clip: ProjectVideoClip, projectTitle: string) {
     if (!g) return;
     const t = clock.elapsedTime;
 
-    // Fondo base
+    // Fondo luminoso editorial estilo manifold.art (gif1.gif)
     g.fillStyle = clip.c1;
-    g.fillRect(0, 0, 256, 256);
+    g.fillRect(0, 0, 512, 512);
 
     if (clip.stylePreset === "vhs-grain") {
-      // Barras cromáticas en movimiento estilo arte galería de gif1.gif
       for (let i = 0; i < 8; i++) {
-        const y = ((t * 48 + i * 36) % 280) - 24;
-        g.fillStyle = i % 2 === 0 ? clip.c2 : "#ffffff";
-        g.globalAlpha = 0.78;
-        g.fillRect(0, y, 256, 22);
+        const y = ((t * 85 + i * 68) % 560) - 48;
+        g.fillStyle = i % 2 === 0 ? clip.c2 : "#f8fafc";
+        g.fillRect(24, y, 464, 38);
       }
-      g.globalAlpha = 1;
-      // Círculo oscilante
       g.fillStyle = "#09090b";
       g.beginPath();
-      g.arc(128 + Math.sin(t * 2.2) * 54, 128 + Math.cos(t * 1.7) * 44, 42, 0, Math.PI * 2);
+      g.arc(256 + Math.sin(t * 2.2) * 110, 256 + Math.cos(t * 1.7) * 90, 86, 0, Math.PI * 2);
       g.fill();
     } else if (clip.stylePreset === "thermal-wave") {
-      for (let x = 0; x < 256; x += 16) {
-        const h = 80 + Math.sin(t * 3 + x * 0.05) * 70;
-        g.fillStyle = x % 32 === 0 ? clip.c2 : "#fef08a";
-        g.fillRect(x, 256 - h, 14, h);
+      g.fillStyle = "#f8fafc";
+      g.fillRect(0, 0, 512, 512);
+      for (let x = 0; x < 512; x += 32) {
+        const h = 160 + Math.sin(t * 3 + x * 0.025) * 140;
+        g.fillStyle = x % 64 === 0 ? clip.c2 : clip.c1;
+        g.fillRect(x, 512 - h, 28, h);
       }
-      g.fillStyle = "rgba(255,255,255,0.9)";
+      g.fillStyle = clip.c2;
       g.beginPath();
-      g.arc(128, 92 + Math.sin(t * 4) * 18, 36, 0, Math.PI * 2);
+      g.arc(256, 170 + Math.sin(t * 3.5) * 35, 72, 0, Math.PI * 2);
       g.fill();
     } else if (clip.stylePreset === "kinetic-type") {
       g.fillStyle = clip.c2;
-      g.fillRect(16, 16, 224, 224);
+      g.fillRect(24, 24, 464, 464);
       g.fillStyle = clip.c1;
-      g.font = "700 42px Inter, sans-serif";
-      const offset = (t * 60) % 256;
-      g.fillText(projectTitle.toUpperCase(), -offset, 96);
-      g.fillText(projectTitle.toUpperCase(), 256 - offset, 96);
+      g.font = "800 78px Inter, sans-serif";
+      const offset = (t * 110) % 512;
+      g.fillText(projectTitle.toUpperCase(), -offset, 180);
+      g.fillText(projectTitle.toUpperCase(), 512 - offset, 180);
       g.fillStyle = "#ffffff";
-      g.fillText("0261 // LOOP", -offset * 0.7, 178);
+      g.fillText("0261 // VIDEO", -offset * 0.7, 340);
     } else if (clip.stylePreset === "liquid-ink") {
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 6; i++) {
         g.fillStyle = i % 2 === 0 ? clip.c2 : "#ffffff";
         g.beginPath();
-        const rx = 128 + Math.sin(t * 1.6 + i * 1.3) * 70;
-        const ry = 128 + Math.cos(t * 2.1 + i * 1.7) * 70;
-        g.arc(rx, ry, 34 + Math.sin(t * 3 + i) * 12, 0, Math.PI * 2);
+        const rx = 256 + Math.sin(t * 1.6 + i * 1.3) * 140;
+        const ry = 256 + Math.cos(t * 2.1 + i * 1.7) * 140;
+        g.arc(rx, ry, 72 + Math.sin(t * 3 + i) * 24, 0, Math.PI * 2);
         g.fill();
       }
     } else if (clip.stylePreset === "strobe-cut") {
-      const cell = 32;
-      for (let y = 0; y < 256; y += cell) {
-        for (let x = 0; x < 256; x += cell) {
-          const v = Math.sin(x * 0.04 + y * 0.04 + t * 4.5);
+      const cell = 64;
+      for (let y = 0; y < 512; y += cell) {
+        for (let x = 0; x < 512; x += cell) {
+          const v = Math.sin(x * 0.02 + y * 0.02 + t * 4.5);
           g.fillStyle = v > 0.15 ? clip.c2 : v < -0.2 ? "#ffffff" : clip.c1;
-          g.fillRect(x, y, cell - 2, cell - 2);
+          g.fillRect(x, y, cell - 4, cell - 4);
         }
       }
     } else {
-      // halftone-cam
       g.fillStyle = "#f8fafc";
-      g.fillRect(0, 0, 256, 256);
-      g.fillStyle = clip.c1;
-      for (let y = 16; y < 256; y += 24) {
-        for (let x = 16; x < 256; x += 24) {
-          const r = Math.max(2, 10 + Math.sin(t * 3.2 + (x + y) * 0.03) * 8);
+      g.fillRect(0, 0, 512, 512);
+      g.fillStyle = clip.c2;
+      for (let y = 32; y < 512; y += 48) {
+        for (let x = 32; x < 512; x += 48) {
+          const r = Math.max(4, 20 + Math.sin(t * 3.2 + (x + y) * 0.015) * 16);
           g.beginPath();
           g.arc(x, y, r, 0, Math.PI * 2);
           g.fill();
@@ -128,12 +125,15 @@ function useClipTexture(clip: ProjectVideoClip, projectTitle: string) {
       }
     }
 
-    // Etiqueta de clip abajo
-    g.fillStyle = "rgba(9,9,11,0.78)";
-    g.fillRect(10, 214, 236, 30);
+    // Título grande legible en la lámina/cara
+    g.fillStyle = "rgba(9,9,11,0.82)";
+    g.fillRect(20, 412, 472, 78);
     g.fillStyle = "#ffffff";
-    g.font = "600 13px monospace";
-    g.fillText(`▶ ${clip.label.slice(0, 24)}`, 18, 234);
+    g.font = "700 30px Inter, sans-serif";
+    g.fillText(projectTitle.toUpperCase(), 38, 452);
+    g.fillStyle = "rgba(255,255,255,0.72)";
+    g.font = "600 18px monospace";
+    g.fillText(`▶ ${clip.label.slice(0, 28)}`, 38, 478);
 
     texture.needsUpdate = true;
   });
@@ -141,6 +141,7 @@ function useClipTexture(clip: ProjectVideoClip, projectTitle: string) {
   return texture;
 }
 
+// Cuarto/Bloque arquitectónico 3D estilo gif1.gif (manifold.art) con caras de video auto-iluminadas
 function ProjectVideoCube({
   project,
   isSelected,
@@ -155,28 +156,41 @@ function ProjectVideoCube({
   const groupRef = useRef<THREE.Group>(null!);
   const [hovered, setHovered] = useState(false);
 
-  const clips = project.videos.length > 0
-    ? project.videos
-    : [
-        {
-          id: "fallback",
-          label: "loop.mp4",
-          kind: "procedural" as const,
-          stylePreset: "vhs-grain" as const,
-          c1: project.c1,
-          c2: project.c2,
-        },
-      ];
+  const clips =
+    project.videos.length > 0
+      ? project.videos
+      : [
+          {
+            id: "fallback",
+            label: "loop.mp4",
+            kind: "procedural" as const,
+            stylePreset: "vhs-grain" as const,
+            c1: project.c1,
+            c2: project.c2,
+          },
+        ];
 
   const tex0 = useClipTexture(clips[0 % clips.length], project.title);
   const tex1 = useClipTexture(clips[1 % clips.length], project.title);
   const tex2 = useClipTexture(clips[2 % clips.length], project.title);
 
-  // Cuando el proyecto está seleccionado o "popeado" (por ejemplo en Subir Tema), sale hacia afuera de la unidad arquitectónica
+  // Materiales auto-iluminados (meshBasicMaterial) para que los videos siempre se vean brillantes a todo color como en gif1.gif y NUNCA negros
+  const materials = useMemo(
+    () => [
+      new THREE.MeshBasicMaterial({ map: tex0 }),
+      new THREE.MeshBasicMaterial({ map: tex1 }),
+      new THREE.MeshBasicMaterial({ map: tex2 }),
+      new THREE.MeshBasicMaterial({ map: tex0 }),
+      new THREE.MeshBasicMaterial({ map: tex1 }),
+      new THREE.MeshBasicMaterial({ map: tex2 }),
+    ],
+    [tex0, tex1, tex2]
+  );
+
   useFrame((_, dt) => {
     const [bx, by, bz] = project.blockPos;
-    const popFactor = isPopped ? 0.65 : isSelected ? 0.35 : hovered ? 0.16 : 0;
-    const dir = new THREE.Vector3(bx, by + 0.4, bz).normalize();
+    const popFactor = isPopped ? 0.85 : isSelected ? 0.45 : hovered ? 0.2 : 0;
+    const dir = new THREE.Vector3(bx, by + 0.5, bz).normalize();
     const tx = bx + dir.x * popFactor;
     const ty = by + dir.y * popFactor;
     const tz = bz + dir.z * popFactor;
@@ -212,28 +226,19 @@ function ProjectVideoCube({
         onSelect(project);
       }}
     >
-      {/* Cubo 3D con un video/loop distinto en cada par de caras como en gif1.gif */}
-      <mesh castShadow receiveShadow>
+      <mesh material={materials}>
         <boxGeometry args={[w, h, d]} />
-        <meshStandardMaterial attach="material-0" map={tex0} roughness={0.25} />
-        <meshStandardMaterial attach="material-1" map={tex1} roughness={0.25} />
-        <meshStandardMaterial attach="material-2" map={tex2} roughness={0.2} />
-        <meshStandardMaterial attach="material-3" map={tex0} roughness={0.3} />
-        <meshStandardMaterial attach="material-4" map={tex1} roughness={0.22} />
-        <meshStandardMaterial attach="material-5" map={tex2} roughness={0.25} />
       </mesh>
 
-      {/* Borde arquitectónico nítido cuando está activo */}
       <lineSegments>
-        <edgesGeometry args={[new THREE.BoxGeometry(w + 0.01, h + 0.01, d + 0.01)]} />
-        <lineBasicMaterial color={isSelected || isPopped ? "#09090b" : "#cbd5e1"} />
+        <edgesGeometry args={[new THREE.BoxGeometry(w + 0.015, h + 0.015, d + 0.015)]} />
+        <lineBasicMaterial color={isSelected || isPopped ? "#09090b" : "#94a3b8"} />
       </lineSegments>
 
-      {/* Píldora flotante inclinada exactamente como en gif1.gif (manifold.art) */}
+      {/* Píldora flotante inclinada SIN distanceFactor (evita el bug de escala gigante en cámaras) */}
       <Html
-        position={[-w * 0.35, h * 0.42, d * 0.45]}
+        position={[-w * 0.35, h * 0.45, d * 0.45]}
         center
-        distanceFactor={8}
         zIndexRange={[10, 0]}
       >
         <button
@@ -246,14 +251,16 @@ function ProjectVideoCube({
           }}
         >
           <span>{project.title}</span>
-          <small>{project.videos.length}v · {project.tracks.length}t</small>
+          <small>
+            {project.videos.length}v · {project.tracks.length}t
+          </small>
         </button>
       </Html>
     </group>
   );
 }
 
-// Vista alternativa: Hilera diagonal 3D de proyectos (como al principio en el primer prototipo que le gustó a Juani)
+// Vista alternativa: Hilera diagonal 3D con ZOOM OUT y vista MÁS DESDE ARRIBA para que las láminas se vean amplias y claras
 function DiagonalProjectPlate({
   project,
   index,
@@ -286,19 +293,21 @@ function DiagonalProjectPlate({
     const d = index - offsetRef.current.off;
     lift.current = THREE.MathUtils.damp(lift.current, hovered || isSelected ? 1 : 0, 10, dt);
     const g = groupRef.current;
+
+    // Espaciado diagonal amplio como el primer prototipo pero visto desde más arriba y con ángulo abierto (-0.42 rad en Y)
     g.position.set(
-      d * 1.05 - lift.current * 0.38,
-      d * 0.48 + lift.current * 0.18,
-      -d * 1.15 + lift.current * 0.75
+      d * 1.25 - lift.current * 0.35,
+      d * 0.32 + lift.current * 0.28,
+      -d * 1.05 + lift.current * 0.65
     );
-    g.rotation.set(0, -0.72 + lift.current * 0.28, 0);
+    g.rotation.set(-0.14 + lift.current * 0.08, -0.42 + lift.current * 0.22, 0);
   });
 
   return (
     <group ref={groupRef}>
       <RoundedBox
-        args={[2.25, 2.25, 0.05]}
-        radius={0.03}
+        args={[2.35, 2.35, 0.05]}
+        radius={0.04}
         onPointerOver={(e) => {
           e.stopPropagation();
           setHovered(true);
@@ -317,12 +326,8 @@ function DiagonalProjectPlate({
           }
         }}
       >
-        <meshPhysicalMaterial
-          map={tex}
-          roughness={0.15}
-          metalness={0.08}
-          clearcoat={1}
-        />
+        {/* Material auto-iluminado para que el arte/video de cada lámina nunca se vea oscuro */}
+        <meshBasicMaterial map={tex} />
       </RoundedBox>
     </group>
   );
@@ -368,8 +373,7 @@ export default function ManifoldLibrary3D({
   const activeProject =
     projects.find((p) => p.id === selectedProjectId) || projects[0];
 
-  // Estado para el arrastre de la vista de hilera diagonal
-  const rowDragRef = useRef({ off: 0, vel: 0, dragging: false });
+  const rowDragRef = useRef({ off: 1.5, vel: 0, dragging: false });
   const movedRef = useRef(false);
   const startRef = useRef({ x: 0, off: 0, t: 0, lx: 0 });
 
@@ -385,16 +389,15 @@ export default function ManifoldLibrary3D({
             <span className="mono-tag">VIDEOS 3–5S EN CARAS 3D</span>
           </div>
 
+          {/* Cámara en perspectiva isométrica limpia (fov 30 alejada y desde arriba) */}
           <Canvas
-            orthographic
-            camera={{ position: [7.5, 6.8, 7.5], zoom: compact ? 64 : 74, near: -50, far: 100 }}
+            camera={{ position: [6.8, 6.2, 7.2], fov: 32 }}
             dpr={[1, 2]}
           >
-            <ambientLight intensity={1.35} />
-            <directionalLight position={[8, 14, 10]} intensity={1.55} />
-            <directionalLight position={[-8, -6, -6]} intensity={0.55} color="#cbd5e1" />
+            <ambientLight intensity={1.6} />
+            <directionalLight position={[8, 14, 10]} intensity={1.5} />
 
-            <group position={[0, 0.15, 0]}>
+            <group position={[0, 0.25, 0]}>
               {projects.map((p) => (
                 <ProjectVideoCube
                   key={p.id}
@@ -416,7 +419,7 @@ export default function ManifoldLibrary3D({
           </Canvas>
         </div>
       ) : (
-        /* Vista alternativa: Hilera de discos 3D apilados en perspectiva como al principio */
+        /* Vista alternativa: Hilera de láminas 3D con ZOOM OUT y cámara MÁS DESDE ARRIBA */
         <div
           className="manifold-3d-canvas-stage"
           onPointerDown={(e) => {
@@ -456,10 +459,10 @@ export default function ManifoldLibrary3D({
             <span className="mono-tag">{projects.length} PROYECTOS</span>
           </div>
 
-          <Canvas camera={{ position: [0, 0.55, 6.6], fov: 40 }} dpr={[1, 2]}>
-            <ambientLight intensity={1.35} />
-            <directionalLight position={[4, 6, 5]} intensity={1.6} />
-            <group position={[-1.1, -0.5, 0]}>
+          <Canvas camera={{ position: [0.8, 2.65, 9.6], fov: 36 }} dpr={[1, 2]}>
+            <ambientLight intensity={1.5} />
+            <directionalLight position={[4, 8, 6]} intensity={1.6} />
+            <group position={[-0.4, -0.35, 0]}>
               {projects.map((p, i) => (
                 <DiagonalProjectPlate
                   key={p.id}
@@ -483,9 +486,7 @@ export default function ManifoldLibrary3D({
           <div className="video-folder-left">
             <span className="folder-icon">📁</span>
             <div>
-              <b>
-                Carpeta de Videos (3–5s) · {activeProject.title}
-              </b>
+              <b>Carpeta de Videos (3–5s) · {activeProject.title}</b>
               <span>
                 Estos {activeProject.videos.length} clips se proyectan en las caras 3D del bloque de{" "}
                 {activeProject.title}

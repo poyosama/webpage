@@ -367,10 +367,10 @@ function HighResFlowParticles({ accent, c2 }: { accent: string; c2: string }) {
   );
 }
 
-// 3. FERROFLUIDO INTERACTIVO (Se puede moldear pasando/arrastrando en la superficie + rotar en 3D con OrbitControls)
-function SculptableFerrofluid({ accent }: { accent: string }) {
+// 3. FERROFLUIDO INTERACTIVO (Se puede moldear pasando/arrastrando en la superficie + rotar y zoomear en 3D)
+function SculptableFerrofluid({ accent, c2 }: { accent: string; c2: string }) {
   const meshRef = useRef<THREE.Mesh>(null!);
-  const baseGeo = useMemo(() => new THREE.IcosahedronGeometry(1.42, 32), []);
+  const baseGeo = useMemo(() => new THREE.IcosahedronGeometry(0.96, 36), []);
   const origPos = useMemo(() => {
     const p = baseGeo.attributes.position.array as Float32Array;
     return new Float32Array(p);
@@ -387,7 +387,7 @@ function SculptableFerrofluid({ accent }: { accent: string }) {
     const pos = baseGeo.attributes.position as THREE.BufferAttribute;
     const arr = pos.array as Float32Array;
 
-    const spikeAmp = 0.2 + bass * 0.35 + beat * 0.16;
+    const spikeAmp = 0.18 + bass * 0.28 + beat * 0.14;
     const hDir = hoverDirRef.current;
 
     for (let i = 0; i < pos.count; i++) {
@@ -396,20 +396,18 @@ function SculptableFerrofluid({ accent }: { accent: string }) {
       const oy = origPos[ix + 1];
       const oz = origPos[ix + 2];
 
-      // Si el usuario está pasando el mouse sobre la superficie, moldeamos las púas hacia afuera en esa zona
       if (hDir) {
-        const dot = (ox * hDir.x + oy * hDir.y + oz * hDir.z) / 1.42;
+        const dot = (ox * hDir.x + oy * hDir.y + oz * hDir.z) / 0.96;
         if (dot > 0.72) {
-          sculptOffsets[i] = Math.min(0.85, sculptOffsets[i] + (dot - 0.72) * 0.22);
+          sculptOffsets[i] = Math.min(0.65, sculptOffsets[i] + (dot - 0.72) * 0.22);
         }
       }
-      // Relajación elástica lenta del moldeado
       sculptOffsets[i] *= 0.988;
 
       const n =
-        Math.sin(ox * 3.6 + t * 2.4) *
-        Math.cos(oy * 3.6 - t * 2.0) *
-        Math.sin(oz * 3.6 + t * 1.7);
+        Math.sin(ox * 4.2 + t * 2.4) *
+        Math.cos(oy * 4.2 - t * 2.0) *
+        Math.sin(oz * 4.2 + t * 1.7);
       const s = 1 + n * spikeAmp + sculptOffsets[i];
       arr[ix] = ox * s;
       arr[ix + 1] = oy * s;
@@ -421,6 +419,9 @@ function SculptableFerrofluid({ accent }: { accent: string }) {
 
   return (
     <group>
+      <pointLight position={[3, 4, 4]} color="#ffffff" intensity={25} />
+      <pointLight position={[-4, -3, 3]} color={c2} intensity={18} />
+      <pointLight position={[0, 4, -4]} color={accent} intensity={16} />
       <mesh
         ref={meshRef}
         geometry={baseGeo}
@@ -434,21 +435,22 @@ function SculptableFerrofluid({ accent }: { accent: string }) {
         }}
       >
         <meshPhysicalMaterial
-          color="#18181b"
+          color="#1e1b24"
           emissive={accent}
-          emissiveIntensity={0.24}
-          metalness={0.94}
-          roughness={0.1}
+          emissiveIntensity={0.14}
+          metalness={0.35}
+          roughness={0.14}
           clearcoat={1}
-          iridescence={0.65}
+          clearcoatRoughness={0.08}
+          iridescence={0.75}
         />
       </mesh>
-      <OrbitControls enableZoom={false} enablePan={false} rotateSpeed={0.75} />
+      <OrbitControls enableZoom={true} minDistance={2.6} maxDistance={10} enablePan={false} rotateSpeed={0.75} />
     </group>
   );
 }
 
-// 4. DISCO ACRÍLICO 3D (Orientado de frente desde el inicio + rotable 360º con el mouse)
+// 4. DISCO ACRÍLICO 3D (Orientado de frente + rotable 360º y con ZOOM libre con la ruedita del mouse)
 function InteractiveAcrylicDisc({ track }: { track: Track }) {
   const spinRef = useRef<THREE.Group>(null!);
 
@@ -463,8 +465,7 @@ function InteractiveAcrylicDisc({ track }: { track: Track }) {
     g.fillStyle = grad;
     g.fillRect(0, 0, 512, 512);
 
-    // Surcos circulares
-    g.strokeStyle = "rgba(255,255,255,0.16)";
+    g.strokeStyle = "rgba(255,255,255,0.22)";
     g.lineWidth = 2;
     for (let r = 70; r < 245; r += 12) {
       g.beginPath();
@@ -493,11 +494,10 @@ function InteractiveAcrylicDisc({ track }: { track: Track }) {
 
   return (
     <group>
-      {/* Rotamos ligeramente para que se vea de frente y con volumen 3D inmediato */}
-      <group ref={spinRef} rotation={[0.22, -0.28, 0]}>
-        {/* Cuerpo exterior de acrílico translúcido (rotado Math.PI/2 en X para que mire a la cámara) */}
+      <pointLight position={[3, 4, 5]} color="#ffffff" intensity={18} />
+      <group ref={spinRef} rotation={[0.2, -0.24, 0]}>
         <mesh rotation={[Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[1.85, 1.85, 0.07, 72]} />
+          <cylinderGeometry args={[1.65, 1.65, 0.065, 72]} />
           <meshPhysicalMaterial
             color={track.c2}
             transmission={0.72}
@@ -510,27 +510,31 @@ function InteractiveAcrylicDisc({ track }: { track: Track }) {
           />
         </mesh>
 
-        {/* Cara frontal grabada con surcos y arte */}
-        <mesh position={[0, 0, 0.038]}>
-          <ringGeometry args={[0.24, 1.72, 72]} />
-          <meshStandardMaterial map={labelTex} roughness={0.22} metalness={0.35} side={THREE.DoubleSide} />
+        <mesh position={[0, 0, 0.036]}>
+          <ringGeometry args={[0.24, 1.54, 72]} />
+          <meshBasicMaterial map={labelTex} side={THREE.DoubleSide} />
         </mesh>
 
-        {/* Cara trasera grabada */}
-        <mesh position={[0, 0, -0.038]} rotation={[0, Math.PI, 0]}>
-          <ringGeometry args={[0.24, 1.72, 72]} />
-          <meshStandardMaterial map={labelTex} roughness={0.22} metalness={0.35} side={THREE.DoubleSide} />
+        <mesh position={[0, 0, -0.036]} rotation={[0, Math.PI, 0]}>
+          <ringGeometry args={[0.24, 1.54, 72]} />
+          <meshBasicMaterial map={labelTex} side={THREE.DoubleSide} />
         </mesh>
 
-        {/* Anillo cromado central */}
         <mesh position={[0, 0, 0]}>
           <torusGeometry args={[0.24, 0.04, 16, 48]} />
-          <meshStandardMaterial color="#f8fafc" metalness={0.9} roughness={0.1} />
+          <meshStandardMaterial color="#f8fafc" metalness={0.5} roughness={0.15} />
         </mesh>
       </group>
 
-      {/* Rotación libre 3D con el mouse */}
-      <OrbitControls enableZoom={false} enablePan={false} rotateSpeed={0.85} />
+      {/* Rotación 3D + Zoom con rueda del mouse habilitado */}
+      <OrbitControls
+        enableZoom={true}
+        minDistance={2.0}
+        maxDistance={11.0}
+        zoomSpeed={0.95}
+        enablePan={false}
+        rotateSpeed={0.85}
+      />
     </group>
   );
 }
@@ -613,7 +617,7 @@ export default function PerformativePlayer({
             />
           )}
           {mode === "boids" && <HighResFlowParticles accent={track.accent} c2={track.c2} />}
-          {mode === "ferro" && <SculptableFerrofluid accent={track.accent} />}
+          {mode === "ferro" && <SculptableFerrofluid accent={track.accent} c2={track.c2} />}
           {mode === "cd" && <InteractiveAcrylicDisc track={track} />}
         </Canvas>
       </div>
