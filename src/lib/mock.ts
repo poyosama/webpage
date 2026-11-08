@@ -5,6 +5,7 @@ export type ProjectVideoClip = {
   kind: "procedural" | "uploaded";
   stylePreset: "vhs-grain" | "thermal-wave" | "kinetic-type" | "strobe-cut" | "liquid-ink" | "halftone-cam";
   url?: string; // URL de video/gif subido por el usuario (mp4/webm/gif)
+  mediaType?: "video" | "image";
   c1: string;
   c2: string;
 };

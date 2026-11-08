@@ -134,13 +134,15 @@ export default function App() {
   // Subir un video corto (3–5s) o GIF a la carpetita de videos de un proyecto para sus caras 3D
   const handleUploadProjectVideo = (projectId: string, file: File) => {
     const url = URL.createObjectURL(file);
-    const isVideo = file.type.startsWith("video/");
+    const isImage =
+      file.type.startsWith("image/") || /\.(gif|png|jpe?g|webp|avif)$/i.test(file.name);
     const newClip: ProjectVideoClip = {
       id: `clip-${Date.now()}`,
       label: file.name,
       kind: "uploaded",
       stylePreset: "vhs-grain",
-      url: isVideo ? url : undefined,
+      url,
+      mediaType: isImage ? "image" : "video",
       c1: "#111111",
       c2: "#e11d48",
     };
@@ -148,6 +150,19 @@ export default function App() {
       prev.map((p) => {
         if (p.id !== projectId) return p;
         return { ...p, videos: [newClip, ...p.videos] };
+      })
+    );
+  };
+
+  // Quitar un video o GIF de la carpetita del bloque 3D
+  const handleRemoveProjectVideo = (projectId: string, clipId: string) => {
+    setProjects((prev) =>
+      prev.map((p) => {
+        if (p.id !== projectId) return p;
+        return {
+          ...p,
+          videos: p.videos.filter((v) => v.id !== clipId),
+        };
       })
     );
   };
@@ -557,6 +572,7 @@ export default function App() {
                 viewMode={libraryViewMode}
                 onSelectProject={(proj) => setSelectedProjectId(proj.id)}
                 onUploadProjectVideo={handleUploadProjectVideo}
+                onRemoveProjectVideo={handleRemoveProjectVideo}
               />
 
               {/* Inspector del proyecto seleccionado con su Spinner 3D de N discos exactos (video.gif) */}

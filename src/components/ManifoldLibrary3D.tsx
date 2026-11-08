@@ -111,15 +111,19 @@ const PRESET_TO_INT: Record<ProjectVideoClip["stylePreset"], number> = {
   "halftone-cam": 3,
 };
 
-// Material de cara 3D ultra rápido (Shader GPU o VideoTexture nativo si el usuario subió un MP4/WebM)
+// Material de cara 3D ultra rápido (Shader GPU o textura nativa de Video/GIF si el usuario subió un archivo)
 function useFastFaceMaterial(clip: ProjectVideoClip, projectTitle: string, pillTag: string, timeOffset: number) {
   const overlayTex = useMemo(
     () => createStaticLabelOverlay(projectTitle, clip.label, pillTag),
     [projectTitle, clip.label, pillTag]
   );
 
+  const isImageOrGif =
+    clip.mediaType === "image" ||
+    Boolean(clip.url && /\.(gif|png|jpe?g|webp|avif)$/i.test(clip.label));
+
   const videoTex = useMemo(() => {
-    if (typeof document === "undefined" || !clip.url) return null;
+    if (typeof document === "undefined" || !clip.url || isImageOrGif) return null;
     const v = document.createElement("video");
     v.src = clip.url;
     v.loop = true;
@@ -130,11 +134,21 @@ function useFastFaceMaterial(clip: ProjectVideoClip, projectTitle: string, pillT
     const vt = new THREE.VideoTexture(v);
     vt.colorSpace = THREE.SRGBColorSpace;
     return { video: v, tex: vt };
-  }, [clip.url]);
+  }, [clip.url, isImageOrGif]);
+
+  const imageTex = useMemo(() => {
+    if (typeof document === "undefined" || !clip.url || !isImageOrGif) return null;
+    const tex = new THREE.TextureLoader().load(clip.url);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }, [clip.url, isImageOrGif]);
 
   const material = useMemo(() => {
     if (videoTex) {
       return new THREE.MeshBasicMaterial({ map: videoTex.tex });
+    }
+    if (imageTex) {
+      return new THREE.MeshBasicMaterial({ map: imageTex });
     }
     return new THREE.ShaderMaterial({
       vertexShader: faceVertexShader,
@@ -147,7 +161,7 @@ function useFastFaceMaterial(clip: ProjectVideoClip, projectTitle: string, pillT
         uOverlayTex: { value: overlayTex },
       },
     });
-  }, [clip.c1, clip.c2, clip.stylePreset, overlayTex, timeOffset, videoTex]);
+  }, [clip.c1, clip.c2, clip.stylePreset, overlayTex, timeOffset, videoTex, imageTex]);
 
   useEffect(() => {
     return () => {
@@ -156,10 +170,13 @@ function useFastFaceMaterial(clip: ProjectVideoClip, projectTitle: string, pillT
         videoTex.video.src = "";
         videoTex.tex.dispose();
       }
+      if (imageTex) {
+        imageTex.dispose();
+      }
       overlayTex.dispose();
       material.dispose();
     };
-  }, [videoTex, overlayTex, material]);
+  }, [videoTex, imageTex, overlayTex, material]);
 
   useFrame(({ clock }) => {
     if (material instanceof THREE.ShaderMaterial) {
@@ -358,6 +375,7 @@ export default function ManifoldLibrary3D({
   viewMode = "manifold",
   onSelectProject,
   onUploadProjectVideo,
+  onRemoveProjectVideo,
   compact = false,
 }: {
   projects: Project[];
@@ -366,6 +384,7 @@ export default function ManifoldLibrary3D({
   viewMode?: "manifold" | "disc-row";
   onSelectProject: (p: Project) => void;
   onUploadProjectVideo?: (projectId: string, file: File) => void;
+  onRemoveProjectVideo?: (projectId: string, clipId: string) => void;
   compact?: boolean;
 }) {
   const activeProject =
@@ -497,34 +516,56 @@ export default function ManifoldLibrary3D({
           <div className="video-folder-left">
             <span className="folder-icon">📁</span>
             <div>
-              <b>Carpeta de Videos (3–5s) · {activeProject.title}</b>
+              <b>Carpeta de Videos / GIFs (3–5s) · {activeProject.title}</b>
               <span>
-                Estos {activeProject.videos.length} clips se proyectan en las caras 3D del bloque de{" "}
-                {activeProject.title}
+                {activeProject.videos.length > 0
+                  ? `Estos ${activeProject.videos.length} clips se proyectan en las caras 3D del bloque de ${activeProject.title}`
+                  : `Sin clips cargados en ${activeProject.title} — subí tus videos o GIFs`}
               </span>
             </div>
           </div>
 
           <div className="video-folder-clips">
-            {activeProject.videos.map((v) => (
-              <span key={v.id} className="video-clip-pill">
-                <i style={{ background: v.c2 }} />
-                {v.label}
-              </span>
-            ))}
+            {activeProject.videos.length === 0 ? (
+              <span className="video-clip-empty">0 clips activos (loop base por defecto)</span>
+            ) : (
+              activeProject.videos.map((v) => (
+                <span key={v.id} className="video-clip-pill">
+                  <i style={{ background: v.c2 }} />
+                  <span className="video-clip-label">{v.label}</span>
+                  {onRemoveProjectVideo && (
+                    <button
+                      type="button"
+                      className="video-clip-remove-btn"
+                      title={`Quitar ${v.label} del bloque`}
+                      aria-label={`Quitar ${v.label}`}
+                      onMouseEnter={() => sfx.hover()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        sfx.tap();
+                        onRemoveProjectVideo(activeProject.id, v.id);
+                      }}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </span>
+              ))
+            )}
           </div>
 
           <label className="apple-btn primary upload-video-btn" onMouseEnter={() => sfx.hover()}>
             <span>+ Subir video 3–5s / GIF al bloque</span>
             <input
               type="file"
-              accept="video/mp4,video/webm,image/gif,video/*"
+              accept="video/mp4,video/webm,image/gif,image/*,video/*"
               hidden
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) {
                   sfx.drop();
                   onUploadProjectVideo(activeProject.id, file);
+                  e.target.value = "";
                 }
               }}
             />
