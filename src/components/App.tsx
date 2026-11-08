@@ -81,6 +81,12 @@ export default function App() {
   togglePlayRef.current = togglePlay;
 
   useEffect(() => {
+    const INTERACTIVE_SELECTOR =
+      'button, a, label, select, summary, input[type="range"], input[type="color"], [role="button"], .clean-track-row, .artist-dir-item, .filmstrip-thumb, .mini-art, .mini-meta, .prop-card, .upload-dropzone, .quick-proj-pill, .video-clip-remove-btn, .ios-seg-control button, .seg-pills button, .ios-icon-btn, .apple-btn, .mini-btn, .mini-play-btn, .mini-expand-pill';
+
+    let pressedEl: Element | null = null;
+    let hoveredEl: Element | null = null;
+
     const onKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName;
@@ -89,15 +95,68 @@ export default function App() {
       }
       if (e.code === "Space" || e.key === " ") {
         e.preventDefault();
+        sfx.press();
         togglePlayRef.current();
       } else if (e.key === "Escape") {
+        sfx.close();
         setEditingTrack(null);
         setEditProfileOpen(false);
         setAuthModalOpen(false);
       }
     };
+
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as HTMLElement | null;
+      const match = target?.closest?.(INTERACTIVE_SELECTOR) || null;
+      if (match) {
+        pressedEl = match;
+        sfx.press();
+      }
+    };
+
+    const onPointerUp = () => {
+      if (pressedEl) {
+        pressedEl = null;
+        sfx.release();
+      }
+    };
+
+    const onPointerOver = (e: PointerEvent) => {
+      const target = e.target as HTMLElement | null;
+      const match = target?.closest?.(INTERACTIVE_SELECTOR) || null;
+      if (match && match !== hoveredEl) {
+        hoveredEl = match;
+        sfx.hover();
+      } else if (!match) {
+        hoveredEl = null;
+      }
+    };
+
+    const onInputOrChange = (e: Event) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      if (
+        target.tagName === "SELECT" ||
+        (target.tagName === "INPUT" && (target as HTMLInputElement).type === "range")
+      ) {
+        sfx.tick();
+      }
+    };
+
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener("pointerdown", onPointerDown, { capture: true });
+    window.addEventListener("pointerup", onPointerUp, { capture: true });
+    window.addEventListener("pointerover", onPointerOver, { passive: true });
+    window.addEventListener("input", onInputOrChange, { passive: true });
+    window.addEventListener("change", onInputOrChange, { passive: true });
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("pointerdown", onPointerDown, { capture: true });
+      window.removeEventListener("pointerup", onPointerUp, { capture: true });
+      window.removeEventListener("pointerover", onPointerOver);
+      window.removeEventListener("input", onInputOrChange);
+      window.removeEventListener("change", onInputOrChange);
+    };
   }, []);
 
   const stepTrack = (dir: 1 | -1) => {

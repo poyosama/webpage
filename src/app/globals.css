@@ -2025,6 +2025,62 @@ button {
   font-weight: 700;
 }
 
+/* Feedback físico de presión (estilo Force Touch / iOS Haptic Touch) en menús y controles */
+.ios-brand-title,
+.ios-seg-control button,
+.ios-icon-btn,
+.seg-pills button,
+.quick-proj-pill,
+.apple-btn,
+.row-snippet-btn,
+.clean-track-row,
+.artist-dir-item,
+.roster-word,
+.collage-cta-pill,
+.mini-btn,
+.mini-play-btn,
+.mini-expand-pill,
+.mini-art,
+.mini-meta,
+.video-clip-remove-btn,
+.google-oauth-btn,
+.perf-close-btn,
+.perf-project-pill,
+.perf-edit-btn {
+  transition:
+    transform 0.11s cubic-bezier(0.22, 1, 0.36, 1),
+    background 0.16s ease,
+    box-shadow 0.16s ease,
+    opacity 0.14s ease;
+}
+
+.ios-brand-title:active,
+.ios-seg-control button:active,
+.ios-icon-btn:active,
+.seg-pills button:active,
+.quick-proj-pill:active,
+.apple-btn:active,
+.row-snippet-btn:active,
+.roster-word:active,
+.collage-cta-pill:active,
+.mini-btn:active,
+.mini-play-btn:active,
+.mini-expand-pill:active,
+.mini-art:active,
+.video-clip-remove-btn:active,
+.google-oauth-btn:active,
+.perf-close-btn:active,
+.perf-project-pill:active,
+.perf-edit-btn:active {
+  transform: scale(0.955) translateY(0.5px);
+}
+
+.clean-track-row:active,
+.artist-dir-item:active,
+.mini-meta:active {
+  transform: scale(0.985);
+}
+
 /* Responsivo */
 @media (max-width: 960px) {
   .explore-bottom-grid,

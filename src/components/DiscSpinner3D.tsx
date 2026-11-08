@@ -117,6 +117,14 @@ function DiscPlate({
           setHoveredIdx(null);
           document.body.style.cursor = "";
         }}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          sfx.press();
+        }}
+        onPointerUp={(e) => {
+          e.stopPropagation();
+          sfx.release();
+        }}
         onClick={(e) => {
           e.stopPropagation();
           if (!movedRef.current) {

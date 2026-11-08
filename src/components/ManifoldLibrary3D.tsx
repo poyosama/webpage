@@ -265,9 +265,16 @@ function ProjectVideoCube({
         setHovered(false);
         document.body.style.cursor = "";
       }}
+      onPointerDown={(e) => {
+        e.stopPropagation();
+        sfx.press();
+      }}
+      onPointerUp={(e) => {
+        e.stopPropagation();
+        sfx.release();
+      }}
       onClick={(e) => {
         e.stopPropagation();
-        sfx.tap();
         onSelect(project);
       }}
     >
@@ -335,10 +342,17 @@ function DiagonalProjectPlate({
         setHovered(false);
         document.body.style.cursor = "";
       }}
+      onPointerDown={(e) => {
+        e.stopPropagation();
+        sfx.press();
+      }}
+      onPointerUp={(e) => {
+        e.stopPropagation();
+        sfx.release();
+      }}
       onClick={(e) => {
         e.stopPropagation();
         if (!movedRef.current) {
-          sfx.tap();
           onSelect(project);
         }
       }}
@@ -355,6 +369,7 @@ function DiagonalRowPhysics({
   total: number;
   offsetRef: React.RefObject<{ off: number; vel: number; dragging: boolean }>;
 }) {
+  const lastSnap = useRef(1);
   useFrame((_, dt) => {
     const s = offsetRef.current;
     if (!s.dragging) {
@@ -363,6 +378,11 @@ function DiagonalRowPhysics({
       const target = Math.round(s.off);
       if (Math.abs(s.vel) < 1.2) s.off = THREE.MathUtils.damp(s.off, target, 8, dt);
       s.off = THREE.MathUtils.clamp(s.off, -0.3, Math.max(0, total - 0.7));
+    }
+    const cur = Math.round(s.off);
+    if (cur !== lastSnap.current) {
+      lastSnap.current = cur;
+      sfx.tick();
     }
   });
   return null;
