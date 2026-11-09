@@ -312,3 +312,13 @@
    - Indicador de estado en tiempo real `SUPABASE CLOUD CONECTADO // txhrbfgejcwmmurriccw`.
    - Opción de fallback para desarrollo offline y botón de desconexión / cerrar sesión seguro.
 
+---
+
+### Turno 19 — Instrucciones de Ejecución en SQL Editor de Supabase
+**Prompt del usuario:**
+- *"teng oque borrar lo que estaba antes en el sql editor ?"*
+
+**Respuesta y Guía:**
+- Se le confirmó al usuario que sí, que borre cualquier texto de ejemplo o plantilla que venga por defecto en el SQL Editor (o cree una pestaña nueva vacía con `+ New query`), pegue el contenido completo de `supabase/schema.sql` y le dé a `Run`.
+
+
