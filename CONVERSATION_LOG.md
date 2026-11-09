@@ -262,3 +262,21 @@
    - En perfiles y stickers se reemplazaron los emojis por tags e iniciales en mayúsculas (`RAW`, `MIC`, `808`, `VINYL`).
 4. **Propuesta de Arquitectura Backend & Storage para WebApp Funcional:**
    - Plan detallado para autenticación (Supabase Auth / Google OAuth), base de datos relacional Postgres (perfiles, proyectos, tracks, videos), y Cloudflare R2 / S3 para streaming de audio sin costo de transferencia.
+
+---
+
+### Turno 16 — Setup Inicial de Supabase: Instalación de SDK, Cliente y Schema SQL
+**Prompt del usuario:**
+- *"ya estoy aca y ahora?"* (adjunta captura del dashboard del nuevo proyecto `eltablero` en Supabase con URL `https://txhrbfgejcwmmurriccw.supabase.co`).
+
+**Implementación:**
+1. **Instalación de `@supabase/supabase-js`:**
+   - Agregada la librería oficial al proyecto con `npm install @supabase/supabase-js`.
+2. **Creación del Cliente Supabase (`src/lib/supabase.ts`):**
+   - Configurado con fallback a la URL del proyecto del usuario (`https://txhrbfgejcwmmurriccw.supabase.co`) y lectura de variables de entorno `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+3. **Creación del Schema SQL (`supabase/schema.sql`):**
+   - Definición de tablas relacionales: `profiles` (vinculada a `auth.users`), `projects`, `tracks`, `project_videos`.
+   - Políticas RLS (Row Level Security) para lectura pública y mutación exclusiva por usuario autenticado.
+   - Bucket de almacenamiento `el-tablero-media` para subidas de audio y portadas.
+4. **Guía paso a paso al usuario:**
+   - Instrucciones exactas para correr el SQL en el `SQL Editor` y copiar la `anon public key` para habilitar el backend en producción.
