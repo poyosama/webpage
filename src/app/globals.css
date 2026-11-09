@@ -4172,16 +4172,19 @@ button {
 
 /* ==================== CAPACITOR / iOS NATIVE APP STORE SAFE-AREA SUPPORT ==================== */
 @supports (padding-top: env(safe-area-inset-top)) {
-  .ios-navbar {
-    top: calc(12px + env(safe-area-inset-top, 0px));
-  }
+  @media (min-width: 721px) {
+    .ios-navbar {
+      top: calc(12px + env(safe-area-inset-top, 0px));
+    }
 
-  .apple-shell {
-    padding-top: calc(88px + env(safe-area-inset-top, 0px));
-    padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px));
+    .apple-shell {
+      padding-top: calc(88px + env(safe-area-inset-top, 0px));
+      padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px));
+    }
   }
 
   .ios-mini-player-dock {
-    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
   }
 }
+

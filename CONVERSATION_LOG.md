@@ -156,3 +156,14 @@
 - Reemplazado `capacitor.config.ts` por `capacitor.config.json` y mantenido `package.json` sincronizado con `package-lock.json` para que `next build` en Vercel no intente compilar tipos de `@capacitor/cli` ni falle por diferencias de lockfile.
 - Tipado limpio de `nextConfig` en `next.config.ts`.
 
+---
+
+### Turno 8 — Fix de Superposición de Navbar/Dynamic Island en iPhone (`IMG_3877.png` y `IMG_3878.png`) y Renovación de Cache `v3`
+**Prompt del usuario:**
+- *"no se ve esto"* (adjuntó `IMG_3877.png` y `IMG_3878.png` tomadas en iPhone mientras el deploy anterior estaba fallido: se veía la versión anterior y además la barra superior `.ios-navbar` en 3 filas tapaba el encabezado de `Biblioteca` / `Inicio`, y el Dynamic Island inferior tapaba el botón `+ Subir video 3–5s / GIF al bloque`).
+
+**Implementación:**
+- Compactada la fila superior de `.ios-navbar` en iPhone (`@media (max-width: 720px)`) para que `El tablero` + `@poyo` + `🎛️ Reproductor` + `🔊` entren siempre en **1 sola fila** y la píldora de 4 pestañas en la **2ª fila** (nunca en 3 filas).
+- Corregido el orden de `@supports (padding-top: env(safe-area-inset-top))` en `src/app/globals.css` para que no pise el `padding-top` ni `padding-bottom` mobile (`calc(114px + env(safe-area-inset-top))` arriba y `calc(148px + env(safe-area-inset-bottom))` abajo), dejando 100% visibles los títulos superiores, el switch `Por defecto / ◫ Lado a Lado` y el botón inferior de subir video.
+- Actualizadas las keys de `localStorage` a `v3` (`eltablero_clean_projects_v3`) para que el iPhone refresque automáticamente los proyectos con las 5 tapas reales y los nuevos tracks.
+

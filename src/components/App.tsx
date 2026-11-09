@@ -54,9 +54,9 @@ const PRODUCER_DROP_KINDS: ("Todos" | ProducerDropKind)[] = [
   "Catálogo de Beats",
 ];
 
-const STORAGE_PROJECTS_KEY = "eltablero_clean_projects_v2";
-const STORAGE_PROFILE_KEY = "eltablero_clean_profile_v2";
-const STORAGE_DROPS_KEY = "eltablero_clean_drops_v2";
+const STORAGE_PROJECTS_KEY = "eltablero_clean_projects_v3";
+const STORAGE_PROFILE_KEY = "eltablero_clean_profile_v3";
+const STORAGE_DROPS_KEY = "eltablero_clean_drops_v3";
 
 export default function App() {
   const [tab, setTab] = useState<ScreenTab>("inicio");
