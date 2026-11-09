@@ -531,6 +531,7 @@ export default function ManifoldLibrary3D({
   onSelectProject,
   onDiveIntoProject,
   onOpenCreateProject,
+  onDeleteProject,
   onUploadProjectVideo,
   onRemoveProjectVideo,
   compact = false,
@@ -543,6 +544,7 @@ export default function ManifoldLibrary3D({
   onSelectProject: (p: Project) => void;
   onDiveIntoProject?: (p: Project) => void;
   onOpenCreateProject?: () => void;
+  onDeleteProject?: (projectId: string) => void;
   onUploadProjectVideo?: (projectId: string, file: File) => void;
   onRemoveProjectVideo?: (projectId: string, clipId: string) => void;
   compact?: boolean;
@@ -552,9 +554,32 @@ export default function ManifoldLibrary3D({
 
   const [divingProject, setDivingProject] = useState<Project | null>(null);
 
-  const rowDragRef = useRef({ off: 1.5, vel: 0, dragging: false });
-  const movedRef = useRef(false);
-  const startRef = useRef({ x: 0, off: 0, t: 0, lx: 0 });
+  // Estado del abanico curvo fijo en modo Vinilos (estilo image.png, posición fija sin rotación 3D de cámara)
+  const selectedIndex = Math.max(
+    0,
+    projects.findIndex((p) => p.id === selectedProjectId)
+  );
+  const [arcOffset, setArcOffset] = useState<number>(selectedIndex);
+  const arcDragRef = useRef<{
+    dragging: boolean;
+    startY: number;
+    startX: number;
+    startOff: number;
+    moved: boolean;
+  }>({
+    dragging: false,
+    startY: 0,
+    startX: 0,
+    startOff: 0,
+    moved: false,
+  });
+
+  useEffect(() => {
+    const idx = projects.findIndex((p) => p.id === selectedProjectId);
+    if (idx >= 0 && !arcDragRef.current.dragging) {
+      setArcOffset(idx);
+    }
+  }, [selectedProjectId, projects]);
 
   const handleCubeOrPlateSelect = (proj: Project) => {
     onSelectProject(proj);
@@ -567,6 +592,57 @@ export default function ManifoldLibrary3D({
       }
     }
   };
+
+  const renderQuickPills = () => (
+    <div className="manifold-quick-pills">
+      {projects.map((p) => (
+        <div
+          key={p.id}
+          className={`quick-proj-pill-group ${p.id === selectedProjectId ? "on" : ""}`}
+        >
+          <button
+            type="button"
+            className={`quick-proj-pill ${p.id === selectedProjectId ? "on" : ""}`}
+            onClick={() => {
+              sfx.tap();
+              handleCubeOrPlateSelect(p);
+            }}
+          >
+            <span className="pill-dot" style={{ background: p.c2 }} />
+            <b>{p.title}</b>
+          </button>
+          {onDeleteProject && projects.length > 1 && (
+            <button
+              type="button"
+              className="pill-trash-btn"
+              title={`Eliminar proyecto ${p.title}`}
+              aria-label={`Eliminar proyecto ${p.title}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                sfx.tap();
+                onDeleteProject(p.id);
+              }}
+            >
+              🗑️
+            </button>
+          )}
+        </div>
+      ))}
+      {onOpenCreateProject && (
+        <button
+          type="button"
+          className="quick-proj-pill add-project-plus-pill"
+          title="Crear nuevo proyecto"
+          onClick={() => {
+            sfx.open();
+            onOpenCreateProject();
+          }}
+        >
+          +
+        </button>
+      )}
+    </div>
+  );
 
   return (
     <div className={`manifold-3d-wrapper ${compact ? "is-compact" : ""}`}>
@@ -606,38 +682,12 @@ export default function ManifoldLibrary3D({
               )}
             </div>
 
-            <div className="manifold-quick-pills">
-              {projects.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  className={`quick-proj-pill ${p.id === selectedProjectId ? "on" : ""}`}
-                  onClick={() => {
-                    sfx.tap();
-                    handleCubeOrPlateSelect(p);
-                  }}
-                >
-                  {p.title}
-                </button>
-              ))}
-              {onOpenCreateProject && (
-                <button
-                  type="button"
-                  className="quick-proj-pill add-project-plus-pill"
-                  title="Crear nuevo proyecto"
-                  onClick={() => {
-                    sfx.open();
-                    onOpenCreateProject();
-                  }}
-                >
-                  +
-                </button>
-              )}
-            </div>
+            {renderQuickPills()}
           </div>
 
           <div className={`manifold-canvas-inner ${divingProject ? "is-diving" : ""}`}>
             <Canvas
+              key="manifold-blocks-canvas"
               camera={{ position: [6.8, 6.2, 7.2], fov: 32 }}
               dpr={[1, 1.5]}
               gl={{ antialias: true, powerPreference: "high-performance" }}
@@ -683,35 +733,59 @@ export default function ManifoldLibrary3D({
           </div>
         </div>
       ) : (
+        /* ==================== MODO VINILOS: ABANICO CURVO EN ARCO FIJO (ESTILO IMAGE.PNG, SIN ROTAR EN 3D) ==================== */
         <div
-          className="manifold-3d-canvas-stage"
+          className="manifold-3d-canvas-stage vinyl-arc-stage"
           onPointerDown={(e) => {
+            if ((e.target as HTMLElement).closest("button")) return;
             (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
-            rowDragRef.current.dragging = true;
-            movedRef.current = false;
-            startRef.current = {
-              x: e.clientX,
-              off: rowDragRef.current.off,
-              t: performance.now(),
-              lx: e.clientX,
+            arcDragRef.current = {
+              dragging: true,
+              startY: e.clientY,
+              startX: e.clientX,
+              startOff: arcOffset,
+              moved: false,
             };
           }}
           onPointerMove={(e) => {
-            if (!rowDragRef.current.dragging) return;
-            const dx = e.clientX - startRef.current.x;
-            if (Math.abs(dx) > 5) movedRef.current = true;
-            const now = performance.now();
-            const dt = Math.max(1, now - startRef.current.t) / 1000;
-            rowDragRef.current.vel = -((e.clientX - startRef.current.lx) / 130) / dt;
-            startRef.current.t = now;
-            startRef.current.lx = e.clientX;
-            rowDragRef.current.off = startRef.current.off - dx / 130;
+            if (!arcDragRef.current.dragging) return;
+            const dy = e.clientY - arcDragRef.current.startY;
+            const dx = e.clientX - arcDragRef.current.startX;
+            const primaryDelta = Math.abs(dy) > Math.abs(dx) ? dy : dx;
+            if (Math.abs(primaryDelta) > 6) {
+              arcDragRef.current.moved = true;
+            }
+            const nextOff = Math.max(
+              0,
+              Math.min(
+                projects.length - 1,
+                arcDragRef.current.startOff - primaryDelta / 95
+              )
+            );
+            setArcOffset(nextOff);
           }}
           onPointerUp={() => {
-            rowDragRef.current.dragging = false;
+            if (!arcDragRef.current.dragging) return;
+            arcDragRef.current.dragging = false;
+            const snapped = Math.max(
+              0,
+              Math.min(projects.length - 1, Math.round(arcOffset))
+            );
+            setArcOffset(snapped);
+            const targetProj = projects[snapped];
+            if (targetProj && targetProj.id !== selectedProjectId) {
+              sfx.tick();
+              onSelectProject(targetProj);
+            }
           }}
           onPointerLeave={() => {
-            rowDragRef.current.dragging = false;
+            if (!arcDragRef.current.dragging) return;
+            arcDragRef.current.dragging = false;
+            const snapped = Math.max(
+              0,
+              Math.min(projects.length - 1, Math.round(arcOffset))
+            );
+            setArcOffset(snapped);
           }}
         >
           <div className="manifold-stage-overlay-top">
@@ -747,61 +821,139 @@ export default function ManifoldLibrary3D({
               )}
             </div>
 
-            <div className="manifold-quick-pills">
-              {projects.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  className={`quick-proj-pill ${p.id === selectedProjectId ? "on" : ""}`}
-                  onClick={() => {
-                    sfx.tap();
-                    handleCubeOrPlateSelect(p);
-                  }}
-                >
-                  {p.title}
-                </button>
-              ))}
-              {onOpenCreateProject && (
-                <button
-                  type="button"
-                  className="quick-proj-pill add-project-plus-pill"
-                  title="Crear nuevo proyecto"
-                  onClick={() => {
-                    sfx.open();
-                    onOpenCreateProject();
-                  }}
-                >
-                  +
-                </button>
-              )}
-            </div>
+            {renderQuickPills()}
           </div>
 
-          <div className="manifold-canvas-inner">
-            <Canvas
-              camera={{ position: [0.8, 2.65, 9.6], fov: 36 }}
-              dpr={[1, 1.5]}
-              gl={{ antialias: true, powerPreference: "high-performance" }}
-            >
-              <ResponsiveSceneGroup
-                basePosition={[-0.25, -0.25, 0]}
-                mobileScale={0.74}
-                desktopScale={1}
-              >
-                {projects.map((p, i) => (
-                  <DiagonalProjectPlate
+          {/* Abanico Curvo Fijo (idéntico a image.png: arco en C sobre la izquierda con inclinación tangencial y vinilo asomando) */}
+          <div className="vinyl-fan-arc-viewport">
+            <div className="vinyl-fan-arc-wheel">
+              {projects.map((p, idx) => {
+                const delta = idx - arcOffset;
+                const absDelta = Math.abs(delta);
+                // Ángulo tangencial a lo largo del arco C (como en la imagen de referencia)
+                const angleDeg = delta * 17.5;
+                const angleRad = (angleDeg * Math.PI) / 180;
+                const radiusX = 290;
+                const radiusY = 305;
+
+                // En ángulo 0 está más a la derecha; hacia arriba y abajo se curva hacia la izquierda
+                const tx = (Math.cos(angleRad) - 1) * radiusX + (absDelta < 0.35 ? 24 : 0);
+                const ty = Math.sin(angleRad) * radiusY;
+                const rotZ = angleDeg * 0.78;
+                const scale = Math.max(0.76, 1 - absDelta * 0.065);
+                const zIndex = Math.round(50 - absDelta * 10);
+                const isFocused = p.id === selectedProjectId;
+
+                return (
+                  <div
                     key={p.id}
-                    project={p}
-                    index={i}
-                    offsetRef={rowDragRef}
-                    isSelected={p.id === selectedProjectId}
-                    onSelect={handleCubeOrPlateSelect}
-                    movedRef={movedRef}
-                  />
-                ))}
-              </ResponsiveSceneGroup>
-              <DiagonalRowPhysics total={projects.length} offsetRef={rowDragRef} />
-            </Canvas>
+                    role="button"
+                    tabIndex={0}
+                    className={`vinyl-fan-sleeve-card ${isFocused ? "is-focused" : ""}`}
+                    style={{
+                      transform: `translate3d(${tx.toFixed(1)}px, ${ty.toFixed(1)}px, 0px) rotate(${rotZ.toFixed(2)}deg) scale(${scale.toFixed(3)})`,
+                      zIndex,
+                      opacity: absDelta > 3.4 ? 0 : Math.max(0.35, 1 - absDelta * 0.16),
+                    }}
+                    onClick={() => {
+                      if (arcDragRef.current.moved) return;
+                      sfx.tap();
+                      setArcOffset(idx);
+                      handleCubeOrPlateSelect(p);
+                    }}
+                  >
+                    {/* Disco de vinilo real asomando por el borde derecho del sobre */}
+                    <div
+                      className="vinyl-fan-record-disc"
+                      style={{
+                        borderColor: p.c2,
+                      }}
+                    >
+                      <div
+                        className="vinyl-fan-record-label"
+                        style={{
+                          background: `radial-gradient(circle, ${p.c2} 0%, ${p.c1} 85%)`,
+                        }}
+                      >
+                        <span className="vinyl-fan-record-hole" />
+                      </div>
+                    </div>
+
+                    {/* Sobre rectangular redondeado estilo editorial (image.png) */}
+                    <div
+                      className="vinyl-fan-sleeve-body"
+                      style={{
+                        background: `linear-gradient(135deg, ${p.c1} 0%, ${p.c2} 135%)`,
+                      }}
+                    >
+                      {/* Lomo tipográfico vertical izquierdo estilo RESONANCE (image.png) */}
+                      <div className="vinyl-fan-spine-text">
+                        <span>{p.title}</span>
+                        <small>
+                          {p.artist.toUpperCase()} · {p.type.toUpperCase()} · {p.tracks.length} TRACKS
+                        </small>
+                      </div>
+
+                      {/* Escudo / emblema central del proyecto */}
+                      <div className="vinyl-fan-center-crest">
+                        <div className="crest-ring">
+                          <strong>{p.tracks[0]?.glyph || "01"}</strong>
+                          <small>{p.type}</small>
+                        </div>
+                      </div>
+
+                      {/* Info inferior derecha */}
+                      <div className="vinyl-fan-corner-badge">
+                        <b>{p.artist}</b>
+                        <span>{p.year}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Panel lateral derecho fijo del proyecto enfocado en el abanico */}
+            {activeProject && (
+              <div className="vinyl-fan-inspector-card">
+                <span className="mono-tag">
+                  VINILO SELECCIONADO // {activeProject.type.toUpperCase()} · {activeProject.tracks.length} CANCIONES
+                </span>
+                <h2>{activeProject.title}</h2>
+                <p className="vinyl-fan-artist-line">
+                  por <b>{activeProject.artist}</b> · {activeProject.zone}
+                </p>
+                <p className="vinyl-fan-desc">{activeProject.description}</p>
+
+                <div className="vinyl-fan-actions">
+                  {onDiveIntoProject && (
+                    <button
+                      type="button"
+                      className="apple-btn primary"
+                      onClick={() => {
+                        sfx.open();
+                        onDiveIntoProject(activeProject);
+                      }}
+                    >
+                      💿 Abrir Proyecto ({activeProject.tracks.length} tracks) →
+                    </button>
+                  )}
+                  {onDeleteProject && projects.length > 1 && (
+                    <button
+                      type="button"
+                      className="apple-btn ghost danger-trash-btn"
+                      onClick={() => {
+                        sfx.tap();
+                        onDeleteProject(activeProject.id);
+                      }}
+                      title="Eliminar proyecto entero"
+                    >
+                      🗑️ Eliminar proyecto
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

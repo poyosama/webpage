@@ -9,25 +9,37 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 <!-- END:nextjs-agent-rules -->
 
 ## Contexto del proyecto ("El tablero" — Estética Apple / Editorial + Entorno 3D Manifold)
+- **REGLA OBLIGATORIA DE LOG:** Con **CADA** prompt nuevo del usuario, actualizá el archivo `CONVERSATION_LOG.md` en la raíz del repositorio antes de hacer `git commit` y `git push origin main`, para que si el usuario cambia de agente o sesión quede todo el historial completo guardado en el repo.
 - **Tono con el usuario:** español argentino bien casual con spanglish y puteadas amistosas; llamalo "juani", "gordo", "boludo", "negro", etc. Respuestas directas y concisas.
-- **Nombre de la web:** `El tablero` (arriba a la izquierda en la barra y en el título display).
-- **SFX (`src/lib/sfx.ts`):** micro-pulsos hápticos de baja frecuencia (4–10ms) y roce de aire casi imperceptible estilo Taptic Engine de iPhone.
-- **Páginas del MVP (en orden: `Inicio · Biblioteca · Subir Tema · @juani`):**
-  1. `Inicio`: 1º el ruido visual en el medio de la pantalla (el tablero de recortes, pines y artistas), 2º el nombre gigante `El tablero` con la tipografía apretada de `SecondStory`, y 3º la tira horizontal de miniportadas.
-  2. `Biblioteca` (`ManifoldLibrary3D.tsx` + `DiscSpinner3D.tsx`):
-     - Por default muestra el **entorno 3D real estilo `gif1.gif` (`manifold.art`)**: bloques arquitectónicos 3D en WebGL donde las caras reproducen videos/loops de 3–5s, con píldoras flotantes inclinadas y efecto *pop-out* al seleccionar un bloque.
-     - Cada proyecto tiene su **carpetita de videos de 3–5s** donde el usuario puede subir sus propios `.mp4`/`.webm`/`.gif` para que se proyecten en las caras 3D del bloque.
-     - Vista alternativa: **Hilera de Discos 3D** apilados en diagonal (como en el primer prototipo).
-     - Inspector inferior con el **Spinner 3D (`video.gif`)** de exactamente N discos según la cantidad de tracks.
-  3. `Subir Tema` (`MacInstallerUpload.tsx`): Paso 1 arrastrar Prop al perfil -> Paso 2 abre la **Biblioteca 3D (`ManifoldLibrary3D`)**, el proyecto seleccionado **popea** de la unidad y arrastrás el Prop ahí -> Paso 3 acomodás el track en la ruedita 3D (`DiscSpinner3D`).
-  4. `Perfil` (`@juani`): incluye el bloque de la **Biblioteca 3D** con los videos de cada proyecto como centro de la identidad visual, modal **Editar Perfil** completo y modal **Cuenta / Iniciar con Google**.
+- **Vocabulario:** NUNCA uses la palabra `"corte"` ni `"cortes"`. Usá siempre `"proyectos"`, `"tracks"` o `"canciones"`.
+- **Nombre de la web:** `El tablero` (`@quetablero` · arriba a la izquierda en la barra y en el título display).
+- **Artistas curados (`src/lib/mock.ts`):** `poyo`, `eyebags`, `Tizianolased`, `V4lentin0`, `Máximo`, `Ma7imza`, `Nvcho`, `alva musicc`, `dorkke`.
+- **Proyectos principales (`src/lib/mock.ts`):**
+  - `LA PLAGA` (Mixtape · `eyebags`)
+  - `PERDÓN POR LA DEMORA` (Mixtape · `Tizianolased`)
+  - `chickenNugget` (EP · `poyo`)
+  - `ESTO ES ESTAR EN SONIDO` (LP · `V4lentin0`)
+  - `AMORIO CLUB 2` (EP · `Máximo`)
+- **Páginas del MVP (en orden en la píldora superior: `Inicio · Subir · Biblioteca · @poyo`):**
+  1. `Inicio`:
+     - 1º el ruido visual en el medio de la pantalla (collage con `LA PLAGA`, `PERDÓN POR LA DEMORA`, `chickenNugget`, `ESTO ES ESTAR EN SONIDO`, `AMORIO CLUB 2`), 2º el nombre gigante `El tablero` con `"Tus proyectos. Tu identidad. Tu gente. Tu música."`, y 3º la tira horizontal de miniportadas sin scrollbar fantasma.
+     - Sección **Novedades de Productores (`Beatpost · Soundkit · Drumkit · Loopkit · Catálogo de Beats`)** con filtros, previews de audio y botón `🗑️`.
+     - Grilla inferior con `Proyectos fijados` (`PROYECTOS // ROTACIÓN DEL TABLERO`) y `Artistas en El Tablero` (`ARTISTAS // ROTACIÓN DEL TABLERO`).
+  2. `Subir` (`MacInstallerUpload.tsx`): Paso 1 arrastrar Prop al perfil -> Paso 2 abre la **Biblioteca 3D (`ManifoldLibrary3D`)**, el proyecto seleccionado **popea** de la unidad y arrastrás el Prop ahí -> Paso 3 acomodás el track en el `Spinner` (`DiscSpinner3D`). Incluye acceso directo a `+ Crear Proyecto`.
+  3. `Biblioteca` (`ManifoldLibrary3D.tsx` + `DiscSpinner3D.tsx`):
+     - Switch superior derecho entre 2 modos de display:
+       1. **`🎯 Adentro del Cubo` (Default):** una adentro de la otra; al tocar un cubo hace zoom hacia adentro mientras la cara frontal se desintegra en pequeños vóxeles blancos (`VoxelDivePortal`) y abre el interior del proyecto.
+       2. **`◫ Lado a Lado`:** escena de proyectos a la izquierda e inspector con `Spinner` a la derecha.
+     - Switch interno `🧊 Bloques / 💿 Vinilos` ubicado justo a la derecha de `"Arrastrá para mover · Seleccioná un proyecto"`:
+       - `🧊 Bloques`: cubos arquitectónicos 3D con videos `Canvas` de 3–5s en las caras.
+       - `💿 Vinilos`: abanico curvo fijo en arco C sobre la izquierda (nunca rota con la cámara 3D de los cubos), con sobres redondeados inclinados tangencialmente y el vinilo asomando por el borde derecho.
+     - Botón `+` al final de la fila de proyectos que lleva a la pantalla `Crear Proyecto` (`CreateProjectScreen.tsx`) con un enjambre de 28.000 partículas sentientes que forman el modelo 3D del logo `"El tablero"`, se dispersan de a una, en grupos y arman formas entre sí.
+     - Botones de basurita (`🗑️`) siempre visibles para eliminar proyectos enteros y eliminar tracks individuales.
+  4. `Perfil` (`@poyo`):
+     - Incluye el **Importador directo desde `[untitled]` (`UntitledImporter.tsx` + `/api/import-untitled`)** para importar proyectos vía link de `untitled.stream` o carpeta de WAVs/MP3s directamente a la Biblioteca 3D.
+     - Showcase de `Mis Proyectos & Canvas`, modal **Editar Perfil** y modal **Cuenta / Google Sign-In**.
   5. `Reproductor` (`PerformativePlayer.tsx` + Dynamic Island centrado):
-     - Barra espaciadora (`Space`) pausa/reproduce globalmente.
-     - Se cierra tanto clickeando arriba a la izquierda como llevando el cursor bien arriba del borde superior de la pantalla.
-     - Selector desplegable de **Visual Engine** (sin selector de fuentes, fijo en `SF Display`):
-       1. **Props 3D Procedurales**: siempre en gravedad `0G`, 100% macizos y con geometrías procedurales (nudos toroidales, blobs sinusoidales, estrellas extruidas, columnas helicoidales).
-       2. **18K Partículas Algorítmicas**: alta resolución con sprites circulares suaves siguiendo un campo vectorial procedural (Atractor de Thomas).
-       3. **Ferrofluido Moldeable**: se esculpe pasando el mouse sobre la superficie y se rota en 3D con el mouse.
-       4. **Disco Acrílico 3D**: orientado de frente desde el inicio y rotable 360° con el mouse.
-     - Arriba tiene link clickeable al proyecto en la Biblioteca y botón **Editar track** que abre el modal de edición de track.
+     - Dynamic Island con controles Play/Skip 100% centrados, solo título y artista a la izquierda, y slider de volumen a la derecha.
+     - Visualizador por defecto: **36.000 Partículas Algorítmicas (50% más pequeñas)** que laten/saltan hacia afuera cuando pegan los **808** (`30Hz–115Hz`) y vuelven a su posición al terminar el golpe de 808.
+     - Controles completos estilo Spotify (barra de progreso con duración, shuffle, repeat, like, cola `Queue` y volumen).
 - Siempre hacé commit y `git push` a `main` al terminar un cambio para que Vercel se actualice automáticamente.

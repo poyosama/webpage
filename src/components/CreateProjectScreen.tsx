@@ -363,12 +363,16 @@ function SentientTableroSwarm({
 }
 
 const PROJECT_TYPES: ProjectType[] = [
-  "Album",
-  "EP",
   "Mixtape",
-  "Single",
+  "EP",
   "LP",
-  "Beat Tape",
+  "Album",
+  "Single",
+  "Beatpost",
+  "Soundkit",
+  "Drumkit",
+  "Loopkit",
+  "Catálogo de Beats",
   "WIP",
 ];
 

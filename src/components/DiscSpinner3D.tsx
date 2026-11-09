@@ -185,11 +185,13 @@ export default function DiscSpinner3D({
   project,
   currentTrackId,
   onPlayTrack,
+  onDeleteTrack,
   compact = false,
 }: {
   project: Project;
   currentTrackId?: string;
   onPlayTrack: (track: Track, project: Project) => void;
+  onDeleteTrack?: (projectId: string, trackId: string) => void;
   compact?: boolean;
 }) {
   const tracks = project.tracks;
@@ -308,14 +310,29 @@ export default function DiscSpinner3D({
               </span>
               <h4>{focusedTrack.title}</h4>
             </div>
-            <button
-              type="button"
-              className="apple-btn primary"
-              onMouseEnter={() => sfx.hover()}
-              onClick={() => onPlayTrack(focusedTrack, project)}
-            >
-              {currentTrackId === focusedTrack.id ? "Sonando · Abrir Studio" : "▶ Reproducir"}
-            </button>
+            <div className="row-actions">
+              <button
+                type="button"
+                className="apple-btn primary"
+                onMouseEnter={() => sfx.hover()}
+                onClick={() => onPlayTrack(focusedTrack, project)}
+              >
+                {currentTrackId === focusedTrack.id ? "Sonando · Abrir Studio" : "▶ Reproducir"}
+              </button>
+              {onDeleteTrack && tracks.length > 1 && (
+                <button
+                  type="button"
+                  className="trash-icon-btn"
+                  title={`Eliminar track ${focusedTrack.title}`}
+                  onClick={() => {
+                    sfx.tap();
+                    onDeleteTrack(project.id, focusedTrack.id);
+                  }}
+                >
+                  🗑️
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

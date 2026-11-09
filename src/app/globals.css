@@ -3335,4 +3335,657 @@ button {
   }
 }
 
+/* ==================== ABANICO CURVO FIJO DE VINILOS (ESTILO IMAGE.PNG, CERO ROTACIÓN 3D) ==================== */
+.vinyl-arc-stage {
+  background: radial-gradient(circle at 22% 52%, rgba(0, 0, 0, 0.04) 0%, #ffffff 72%);
+  user-select: none;
+  touch-action: pan-y;
+}
+
+.vinyl-fan-arc-viewport {
+  position: relative;
+  width: 100%;
+  height: 540px;
+  display: grid;
+  grid-template-columns: minmax(320px, 1.15fr) minmax(260px, 0.85fr);
+  align-items: center;
+  padding: 96px 28px 24px;
+  overflow: hidden;
+}
+
+.vinyl-fan-arc-wheel {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding-left: clamp(24px, 7vw, 110px);
+}
+
+.vinyl-fan-sleeve-card {
+  position: absolute;
+  width: 310px;
+  height: 196px;
+  cursor: pointer;
+  transform-origin: -180px 50%;
+  transition:
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.25s ease,
+    filter 0.25s ease;
+  will-change: transform;
+}
+
+.vinyl-fan-sleeve-card:hover {
+  filter: brightness(1.06);
+}
+
+.vinyl-fan-sleeve-body {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 14px;
+  padding: 16px 18px;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow:
+    0 22px 44px rgba(0, 0, 0, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+  z-index: 2;
+}
+
+.vinyl-fan-sleeve-card.is-focused .vinyl-fan-sleeve-body {
+  box-shadow:
+    0 28px 60px rgba(0, 0, 0, 0.34),
+    0 0 0 2px rgba(255, 255, 255, 0.9);
+}
+
+/* Disco de vinilo real que asoma por la derecha del sobre cuando está enfocado */
+.vinyl-fan-record-disc {
+  position: absolute;
+  top: 50%;
+  right: -46px;
+  width: 172px;
+  height: 172px;
+  margin-top: -86px;
+  border-radius: 50%;
+  background:
+    repeating-radial-gradient(
+      circle at center,
+      #111113 0px,
+      #111113 3px,
+      #1f1f24 4px,
+      #111113 6px
+    );
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.38);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  display: grid;
+  place-items: center;
+  z-index: 1;
+  transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.vinyl-fan-sleeve-card.is-focused .vinyl-fan-record-disc {
+  transform: translateX(34px) rotate(24deg);
+}
+
+.vinyl-fan-sleeve-card:hover .vinyl-fan-record-disc {
+  transform: translateX(42px) rotate(45deg);
+}
+
+.vinyl-fan-record-label {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+}
+
+.vinyl-fan-record-hole {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fafafa;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* Lomo tipográfico vertical izquierdo estilo RESONANCE (image.png) */
+.vinyl-fan-spine-text {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.vinyl-fan-spine-text span {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.vinyl-fan-spine-text small {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.54rem;
+  opacity: 0.78;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.vinyl-fan-center-crest {
+  display: grid;
+  place-items: center;
+  margin: 0 auto;
+}
+
+.crest-ring {
+  width: 74px;
+  height: 74px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.55);
+  background: rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(6px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.crest-ring strong {
+  font-size: 1.25rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.crest-ring small {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.54rem;
+  text-transform: uppercase;
+  opacity: 0.85;
+  margin-top: 2px;
+}
+
+.vinyl-fan-corner-badge {
+  align-self: flex-end;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+}
+
+.vinyl-fan-corner-badge b {
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.vinyl-fan-corner-badge span {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.62rem;
+  opacity: 0.75;
+}
+
+.vinyl-fan-inspector-card {
+  position: relative;
+  z-index: 60;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--line-strong);
+  border-radius: 22px;
+  padding: 22px 24px;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.vinyl-fan-inspector-card h2 {
+  font-size: clamp(1.35rem, 2.4vw, 2rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+.vinyl-fan-artist-line {
+  font-size: 0.86rem;
+  color: var(--ink-secondary);
+}
+
+.vinyl-fan-desc {
+  font-size: 0.84rem;
+  color: var(--ink-muted);
+  line-height: 1.45;
+}
+
+.vinyl-fan-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+/* ==================== BOTONES DE BASURITA (ELIMINAR PROYECTOS Y TRACKS) ==================== */
+.quick-proj-pill-group {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(15, 15, 17, 0.1);
+  border-radius: 999px;
+  padding-right: 4px;
+  transition: transform 0.15s, border-color 0.15s;
+}
+
+.quick-proj-pill-group.on {
+  background: #09090b;
+  border-color: #09090b;
+}
+
+.quick-proj-pill-group .quick-proj-pill {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.pill-trash-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 0.72rem;
+  opacity: 0.65;
+  transition: opacity 0.15s, background 0.15s, transform 0.15s;
+}
+
+.pill-trash-btn:hover {
+  opacity: 1;
+  background: rgba(225, 29, 72, 0.18);
+  transform: scale(1.1);
+}
+
+.row-inline-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.trash-icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 0.84rem;
+  background: rgba(15, 15, 17, 0.05);
+  border: 1px solid rgba(15, 15, 17, 0.08);
+  transition: background 0.15s, border-color 0.15s, transform 0.15s;
+  flex-shrink: 0;
+}
+
+.trash-icon-btn:hover {
+  background: rgba(225, 29, 72, 0.14);
+  border-color: rgba(225, 29, 72, 0.35);
+  transform: scale(1.08);
+}
+
+.danger-trash-btn:hover {
+  background: #e11d48 !important;
+  color: #ffffff !important;
+  border-color: #e11d48 !important;
+}
+
+/* ==================== NOVEDADES DE PRODUCTORES (BEATPOST, SOUNDKIT, DRUMKIT, LOOPKIT, CATÁLOGO) ==================== */
+.producer-drops-section {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.producer-drops-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.producer-drops-header h3 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-top: 2px;
+}
+
+.producer-filter-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.producer-filter-pills button {
+  padding: 6px 13px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: rgba(15, 15, 17, 0.05);
+  color: var(--ink-secondary);
+  border: 1px solid var(--line);
+  transition: background 0.15s, color 0.15s;
+}
+
+.producer-filter-pills button.on {
+  background: #09090b;
+  color: #ffffff;
+  border-color: #09090b;
+}
+
+.producer-drops-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(265px, 1fr));
+  gap: 14px;
+}
+
+.producer-drop-card {
+  background: rgba(15, 15, 17, 0.025);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  cursor: pointer;
+  transition: transform 0.16s, box-shadow 0.16s, border-color 0.16s;
+}
+
+.producer-drop-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-soft);
+  border-color: var(--line-strong);
+}
+
+.producer-drop-card.is-playing {
+  border-color: #e11d48;
+  background: rgba(225, 29, 72, 0.04);
+}
+
+.producer-drop-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.producer-kind-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.producer-drop-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.producer-drop-swatch {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  font-size: 0.92rem;
+  flex-shrink: 0;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.16);
+}
+
+.producer-drop-main h4 {
+  font-size: 0.94rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.producer-byline {
+  font-size: 0.76rem;
+  color: var(--ink-secondary);
+}
+
+.producer-drop-desc {
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+  line-height: 1.42;
+}
+
+.producer-drop-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: auto;
+}
+
+.producer-listen-cta {
+  margin-left: auto;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* ==================== IMPORTADOR DE [untitled] EN PERFIL ==================== */
+.untitled-importer-card {
+  background: var(--bg-card);
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--radius-xl);
+  padding: 24px 26px;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.untitled-importer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.untitled-brand-badge {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.untitled-disc-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: #09090b;
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  font-size: 1.5rem;
+  flex-shrink: 0;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+}
+
+.untitled-brand-badge h2 {
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.untitled-brand-badge p {
+  font-size: 0.82rem;
+  color: var(--ink-secondary);
+  margin-top: 2px;
+}
+
+.untitled-url-bar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.untitled-url-bar input {
+  flex: 1;
+  min-width: 240px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--line-strong);
+  background: rgba(15, 15, 17, 0.03);
+  font-family: var(--font-mono), monospace;
+  font-size: 0.82rem;
+  color: var(--ink);
+}
+
+.untitled-quick-links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.untitled-preset-chip {
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: rgba(15, 15, 17, 0.05);
+  border: 1px solid var(--line);
+  font-family: var(--font-mono), monospace;
+  font-size: 0.7rem;
+  color: var(--ink-secondary);
+  transition: background 0.15s, color 0.15s;
+}
+
+.untitled-preset-chip:hover {
+  background: #09090b;
+  color: #ffffff;
+}
+
+.untitled-error-banner {
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(225, 29, 72, 0.1);
+  color: #be123c;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.untitled-preview-drawer {
+  margin-top: 6px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.untitled-preview-top {
+  display: grid;
+  grid-template-columns: 1.3fr 0.9fr auto;
+  gap: 14px;
+  align-items: end;
+}
+
+.untitled-tracks-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.untitled-track-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.untitled-track-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(15, 15, 17, 0.03);
+  border: 1px solid var(--line);
+}
+
+.untitled-track-title-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--ink);
+  outline: none;
+}
+
+.untitled-add-track-inline {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.untitled-add-track-inline input {
+  flex: 1;
+  min-width: 180px;
+  padding: 9px 13px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  font-size: 0.82rem;
+}
+
+.untitled-preview-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 960px) {
+  .vinyl-fan-arc-viewport {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: 620px;
+    padding: 130px 16px 20px;
+    gap: 24px;
+  }
+
+  .vinyl-fan-arc-wheel {
+    height: 340px;
+    justify-content: center;
+    padding-left: 0;
+  }
+
+  .vinyl-fan-sleeve-card {
+    width: 240px;
+    height: 152px;
+  }
+
+  .vinyl-fan-record-disc {
+    width: 132px;
+    height: 132px;
+    margin-top: -66px;
+    right: -32px;
+  }
+
+  .untitled-preview-top {
+    grid-template-columns: 1fr;
+  }
+}
+
+
 

@@ -5,9 +5,12 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import {
   INITIAL_ME_PROFILE,
+  INITIAL_PRODUCER_DROPS,
   INITIAL_PROJECTS,
   SCENE_ARTISTS,
   type ArtistProfile,
+  type ProducerDropItem,
+  type ProducerDropKind,
   type Project,
   type ProjectType,
   type ProjectVideoClip,
@@ -15,6 +18,7 @@ import {
 } from "@/lib/mock";
 import { sfx } from "@/lib/sfx";
 import MacInstallerUpload from "./MacInstallerUpload";
+import UntitledImporter from "./UntitledImporter";
 import type { QueueEntry, RepeatMode } from "./PerformativePlayer";
 
 const DiscSpinner3D = dynamic(() => import("./DiscSpinner3D"), { ssr: false });
@@ -25,13 +29,26 @@ const CreateProjectScreen = dynamic(() => import("./CreateProjectScreen"), { ssr
 type ScreenTab = "inicio" | "subir" | "biblioteca" | "perfil" | "crear-proyecto";
 
 const PROJECT_TYPES: ProjectType[] = [
-  "Album",
-  "EP",
   "Mixtape",
-  "Single",
+  "EP",
   "LP",
-  "Beat Tape",
+  "Album",
+  "Single",
+  "Beatpost",
+  "Soundkit",
+  "Drumkit",
+  "Loopkit",
+  "Catálogo de Beats",
   "WIP",
+];
+
+const PRODUCER_DROP_KINDS: ("Todos" | ProducerDropKind)[] = [
+  "Todos",
+  "Beatpost",
+  "Soundkit",
+  "Drumkit",
+  "Loopkit",
+  "Catálogo de Beats",
 ];
 
 export default function App() {
@@ -39,6 +56,8 @@ export default function App() {
   const [meProfile, setMeProfile] = useState<ArtistProfile>(INITIAL_ME_PROFILE);
   const [projects, setProjects] = useState<Project[]>(INITIAL_PROJECTS);
   const [selectedProjectId, setSelectedProjectId] = useState<string>(INITIAL_PROJECTS[0].id);
+  const [producerDrops, setProducerDrops] = useState<ProducerDropItem[]>(INITIAL_PRODUCER_DROPS);
+  const [producerFilter, setProducerFilter] = useState<"Todos" | ProducerDropKind>("Todos");
 
   // Estado del reproductor persistente + pantalla completa (con funciones completas de Spotify)
   const [currentTrack, setCurrentTrack] = useState<Track>(INITIAL_PROJECTS[0].tracks[1]);
@@ -49,7 +68,7 @@ export default function App() {
   const [volume, setVolume] = useState<number>(0.85);
   const [shuffle, setShuffle] = useState<boolean>(false);
   const [repeatMode, setRepeatMode] = useState<RepeatMode>("off");
-  const [likedTrackIds, setLikedTrackIds] = useState<string[]>(["fl-2", "ac-1"]);
+  const [likedTrackIds, setLikedTrackIds] = useState<string[]>(["lp-2", "cn-1"]);
   const [userQueue, setUserQueue] = useState<QueueEntry[]>([]);
   const [customAudioMap, setCustomAudioMap] = useState<Record<string, string>>({});
 
@@ -316,6 +335,49 @@ export default function App() {
     );
   };
 
+  const handleDeleteProject = (projectId: string) => {
+    setProjects((prev) => {
+      if (prev.length <= 1) return prev;
+      const next = prev.filter((p) => p.id !== projectId);
+      if (selectedProjectId === projectId && next[0]) {
+        setSelectedProjectId(next[0].id);
+      }
+      if (currentProject.id === projectId && next[0]) {
+        setCurrentProject(next[0]);
+        if (next[0].tracks[0]) setCurrentTrack(next[0].tracks[0]);
+      }
+      return next;
+    });
+    sfx.close();
+  };
+
+  const handleDeleteTrack = (projectId: string, trackId: string) => {
+    setProjects((prev) =>
+      prev.map((p) => {
+        if (p.id !== projectId) return p;
+        if (p.tracks.length <= 1) return p;
+        const nextTracks = p.tracks.filter((t) => t.id !== trackId);
+        const updated = { ...p, tracks: nextTracks };
+        if (currentProject.id === p.id) {
+          setCurrentProject(updated);
+          if (currentTrack.id === trackId && nextTracks[0]) {
+            setCurrentTrack(nextTracks[0]);
+          }
+        }
+        return updated;
+      })
+    );
+    if (editingTrack?.id === trackId) setEditingTrack(null);
+    sfx.close();
+  };
+
+  const handleDeleteTrackById = (trackId: string) => {
+    const owner = projects.find((p) => p.tracks.some((t) => t.id === trackId));
+    if (owner) {
+      handleDeleteTrack(owner.id, trackId);
+    }
+  };
+
   const handleSaveEditedTrack = (updatedTrack: Track) => {
     setProjects((prev) =>
       prev.map((p) => {
@@ -355,6 +417,10 @@ export default function App() {
     activeProject.zone,
     activeProject.year,
   ];
+  const filteredProducerDrops =
+    producerFilter === "Todos"
+      ? producerDrops
+      : producerDrops.filter((d) => d.kind === producerFilter);
 
   return (
     <div className="apple-shell">
@@ -459,7 +525,7 @@ export default function App() {
                   <span>EL TABLERO // UG BOARD</span>
                 </div>
 
-                {/* 1º: EL RUIDO EN EL MEDIO DE LA PANTALLA */}
+                {/* 1º: EL RUIDO EN EL MEDIO DE LA PANTALLA (CON LOS PROYECTOS Y ARTISTAS REALES) */}
                 <div className="corecore-stage">
                   <div className="neon-spine" aria-hidden>
                     <span className="spine-badge">@quetablero</span>
@@ -476,51 +542,58 @@ export default function App() {
                         type="button"
                         className="roster-word"
                         onMouseEnter={() => sfx.hover()}
-                        onClick={() => playTrack(projects[0].tracks[1], projects[0], false)}
+                        onClick={() =>
+                          projects[0] && playTrack(projects[0].tracks[0], projects[0], false)
+                        }
                       >
-                        <span className="gothic-drop">F</span>uego
-                        <span className="inline-swatch blue">L</span>ento
-                        <sup className="sup-tag">ep</sup>
+                        <span className="gothic-drop">L</span>A{" "}
+                        <span className="inline-swatch coral">P</span>LAGA
+                        <sup className="sup-tag">mixtape · eyebags</sup>
                       </button>
                       <span className="cutout-pill">📌 Mendoza</span>
                     </div>
 
                     <div className="collage-line">
-                      <span className="floating-emoji" aria-hidden>🌹</span>
+                      <span className="floating-emoji" aria-hidden>⏳</span>
                       <button
                         type="button"
                         className="roster-word"
                         onMouseEnter={() => sfx.hover()}
-                        onClick={() => playTrack(projects[1].tracks[0], projects[1], false)}
+                        onClick={() =>
+                          projects[1] && playTrack(projects[1].tracks[0], projects[1], false)
+                        }
                       >
-                        L<span className="inline-swatch cyan">u</span>zMala
-                        <span className="mesh-badge">〰</span>
-                        <sup className="sup-tag">live</sup>
+                        PERDÓN<span className="inline-swatch cyan">x</span>LA DEMORA
+                        <sup className="sup-tag">mixtape · tizianolased</sup>
                       </button>
-                      <span className="cutout-pill dark">★ 134 BPM</span>
+                      <span className="cutout-pill dark">🍗 chickenNugget</span>
                     </div>
 
                     <div className="collage-line">
-                      <span className="pixel-tag">PIN #04</span>
+                      <span className="pixel-tag">POYO // EP</span>
                       <button
                         type="button"
                         className="roster-word"
                         onMouseEnter={() => sfx.hover()}
-                        onClick={() => playTrack(projects[3].tracks[0], projects[3], false)}
+                        onClick={() =>
+                          projects[2] && playTrack(projects[2].tracks[0], projects[2], false)
+                        }
                       >
-                        <span className="outline-letter">N</span>ahue
-                        <span className="inline-swatch coral">B</span>
-                        <sup className="sup-tag">lp</sup>
+                        chicken<span className="inline-swatch gold">Nugget</span>
+                        <sup className="sup-tag">ep · poyo</sup>
                       </button>
                       <span className="floating-emoji" aria-hidden>🎛️</span>
                       <button
                         type="button"
                         className="roster-word"
                         onMouseEnter={() => sfx.hover()}
-                        onClick={() => playTrack(projects[2].tracks[0], projects[2], false)}
+                        onClick={() =>
+                          projects[3] && playTrack(projects[3].tracks[0], projects[3], false)
+                        }
                       >
-                        Tomi<span className="inline-swatch gold">261</span>
-                        <sup className="sup-tag">tape</sup>
+                        <span className="outline-letter">E</span>N{" "}
+                        <span className="inline-swatch blue">S</span>ONIDO
+                        <sup className="sup-tag">lp · v4lentin0</sup>
                       </button>
                     </div>
 
@@ -529,10 +602,12 @@ export default function App() {
                         type="button"
                         className="roster-word"
                         onMouseEnter={() => sfx.hover()}
-                        onClick={() => playTrack(projects[5].tracks[0], projects[5], false)}
+                        onClick={() =>
+                          projects[4] && playTrack(projects[4].tracks[0], projects[4], false)
+                        }
                       >
-                        kali<span className="inline-swatch teal">.wav</span>
-                        <sup className="sup-tag">subsuelo</sup>
+                        AMORIO<span className="inline-swatch teal">CLUB 2</span>
+                        <sup className="sup-tag">ep · máximo</sup>
                       </button>
                       <span className="star-stickers" aria-hidden>
                         <b className="star-blue">★</b>
@@ -572,7 +647,7 @@ export default function App() {
                       whileTap={{ scale: 0.985 }}
                       className="filmstrip-thumb"
                       onMouseEnter={() => sfx.hover()}
-                      onClick={() => playTrack(p.tracks[0], p, false)}
+                      onClick={() => p.tracks[0] && playTrack(p.tracks[0], p, false)}
                     >
                       <div
                         className="filmstrip-art"
@@ -590,6 +665,101 @@ export default function App() {
                       </div>
                     </motion.button>
                   ))}
+                </div>
+              </section>
+
+              {/* ==================== NOVEDADES DE PRODUCTORES: BEATPOST · SOUNDKIT · DRUMKIT · LOOPKIT · CATÁLOGO DE BEATS ==================== */}
+              <section className="apple-card producer-drops-section">
+                <div className="producer-drops-header">
+                  <div>
+                    <span className="mono-tag">
+                      NOVEDADES DE PRODUCTORES // BEATPOST · SOUNDKIT · DRUMKIT · LOOPKIT · CATÁLOGO DE BEATS
+                    </span>
+                    <h3>Herramientas, Kits &amp; Beats de la Escena</h3>
+                  </div>
+
+                  <div className="producer-filter-pills">
+                    {PRODUCER_DROP_KINDS.map((k) => (
+                      <button
+                        key={k}
+                        type="button"
+                        className={producerFilter === k ? "on" : ""}
+                        onClick={() => {
+                          sfx.tap();
+                          setProducerFilter(k);
+                        }}
+                      >
+                        {k}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="producer-drops-grid">
+                  {filteredProducerDrops.map((drop) => {
+                    const isPlayingDrop =
+                      currentTrack.id === drop.previewTrack.id && isPlaying;
+                    const linkedProj =
+                      projects.find((p) => p.id === drop.projectId) || projects[0];
+                    return (
+                      <div
+                        key={drop.id}
+                        className={`producer-drop-card ${isPlayingDrop ? "is-playing" : ""}`}
+                        onClick={() => playTrack(drop.previewTrack, linkedProj, false)}
+                      >
+                        <div className="producer-drop-top">
+                          <span
+                            className="producer-kind-badge"
+                            style={{ background: drop.accent }}
+                          >
+                            {drop.kind}
+                          </span>
+                          <span className="mono-tag">{drop.itemsCountLabel}</span>
+                          <button
+                            type="button"
+                            className="trash-icon-btn"
+                            title="Eliminar publicación"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              sfx.tap();
+                              setProducerDrops((prev) =>
+                                prev.filter((item) => item.id !== drop.id)
+                              );
+                            }}
+                          >
+                            🗑️
+                          </button>
+                        </div>
+
+                        <div className="producer-drop-main">
+                          <div
+                            className="producer-drop-swatch"
+                            style={{
+                              background: `linear-gradient(135deg, ${drop.c1}, ${drop.c2})`,
+                            }}
+                          >
+                            <span>{isPlayingDrop ? "❚❚" : "▶"}</span>
+                          </div>
+                          <div>
+                            <h4>{drop.title}</h4>
+                            <span className="producer-byline">
+                              por <b>{drop.producer}</b> ({drop.producerHandle})
+                            </span>
+                          </div>
+                        </div>
+
+                        <p className="producer-drop-desc">{drop.description}</p>
+
+                        <div className="producer-drop-foot">
+                          <span className="meta-chip">{drop.bpmLabel}</span>
+                          <span className="meta-chip">{drop.keyLabel}</span>
+                          <span className="producer-listen-cta">
+                            {isPlayingDrop ? "Sonando demo..." : "▶ Escuchar preview"}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </section>
 
@@ -630,16 +800,29 @@ export default function App() {
                               <span className="meta-chip">{track.bpm} BPM</span>
                               <span className="meta-chip">{track.key}</span>
                             </div>
-                            <button
-                              type="button"
-                              className="row-snippet-btn"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingTrack(track);
-                              }}
-                            >
-                              ✎ Editar
-                            </button>
+                            <div className="row-inline-actions">
+                              <button
+                                type="button"
+                                className="row-snippet-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingTrack(track);
+                                }}
+                              >
+                                ✎ Editar
+                              </button>
+                              <button
+                                type="button"
+                                className="trash-icon-btn"
+                                title={`Eliminar track ${track.title}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteTrack(proj.id, track.id);
+                                }}
+                              >
+                                🗑️
+                              </button>
+                            </div>
                           </div>
                         );
                       })}
@@ -749,6 +932,7 @@ export default function App() {
                         : undefined
                     }
                     onOpenCreateProject={() => navigate("crear-proyecto")}
+                    onDeleteProject={handleDeleteProject}
                     onUploadProjectVideo={handleUploadProjectVideo}
                     onRemoveProjectVideo={handleRemoveProjectVideo}
                   />
@@ -784,22 +968,39 @@ export default function App() {
                           {projects.map((p) => {
                             const active = p.id === activeProject.id;
                             return (
-                              <button
+                              <div
                                 key={p.id}
-                                type="button"
-                                className={`quick-proj-pill ${active ? "on" : ""}`}
-                                onClick={() => {
-                                  sfx.tap();
-                                  setSelectedProjectId(p.id);
-                                }}
+                                className={`quick-proj-pill-group ${active ? "on" : ""}`}
                               >
-                                <span
-                                  className="pill-dot"
-                                  style={{ background: p.c2 }}
-                                />
-                                <b>{p.title}</b>
-                                <small>{p.tracks.length}d</small>
-                              </button>
+                                <button
+                                  type="button"
+                                  className={`quick-proj-pill ${active ? "on" : ""}`}
+                                  onClick={() => {
+                                    sfx.tap();
+                                    setSelectedProjectId(p.id);
+                                  }}
+                                >
+                                  <span
+                                    className="pill-dot"
+                                    style={{ background: p.c2 }}
+                                  />
+                                  <b>{p.title}</b>
+                                  <small>{p.tracks.length}d</small>
+                                </button>
+                                {projects.length > 1 && (
+                                  <button
+                                    type="button"
+                                    className="pill-trash-btn"
+                                    title={`Eliminar proyecto ${p.title}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteProject(p.id);
+                                    }}
+                                  >
+                                    🗑️
+                                  </button>
+                                )}
+                              </div>
                             );
                           })}
                           <button
@@ -914,10 +1115,23 @@ export default function App() {
                         <button
                           type="button"
                           className="apple-btn primary"
-                          onClick={() => playTrack(activeProject.tracks[0], activeProject, true)}
+                          onClick={() =>
+                            activeProject.tracks[0] &&
+                            playTrack(activeProject.tracks[0], activeProject, true)
+                          }
                         >
                           ▶ Abrir en Reproductor 3D
                         </button>
+                        {projects.length > 1 && (
+                          <button
+                            type="button"
+                            className="apple-btn ghost danger-trash-btn"
+                            title={`Eliminar proyecto ${activeProject.title}`}
+                            onClick={() => handleDeleteProject(activeProject.id)}
+                          >
+                            🗑️ Eliminar proyecto
+                          </button>
+                        )}
                       </div>
                     </div>
 
@@ -926,6 +1140,7 @@ export default function App() {
                         project={activeProject}
                         currentTrackId={currentTrack.id}
                         onPlayTrack={(tr, pr) => playTrack(tr, pr, false)}
+                        onDeleteTrack={handleDeleteTrack}
                       />
 
                       <div className="inspector-tracklist">
@@ -933,7 +1148,7 @@ export default function App() {
                           <span className="mono-tag">
                             {activeProject.tracks.length} CANCIONES EN ESTE PROYECTO
                           </span>
-                          <h3>Tracks del proyecto (tocá ✎ para editar track)</h3>
+                          <h3>Tracks del proyecto (✎ editar · 🗑️ eliminar)</h3>
                         </div>
                         {activeProject.tracks.map((t, idx) => {
                           const isCurrent = currentTrack.id === t.id;
@@ -956,16 +1171,31 @@ export default function App() {
                                 <span className="meta-chip">{t.key}</span>
                                 <span className="meta-chip">v{t.version}</span>
                               </div>
-                              <button
-                                type="button"
-                                className="row-snippet-btn"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditingTrack(t);
-                                }}
-                              >
-                                ✎ Editar track
-                              </button>
+                              <div className="row-inline-actions">
+                                <button
+                                  type="button"
+                                  className="row-snippet-btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingTrack(t);
+                                  }}
+                                >
+                                  ✎ Editar
+                                </button>
+                                {activeProject.tracks.length > 1 && (
+                                  <button
+                                    type="button"
+                                    className="trash-icon-btn"
+                                    title={`Eliminar track ${t.title}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteTrack(activeProject.id, t.id);
+                                    }}
+                                  >
+                                    🗑️
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           );
                         })}
@@ -1012,7 +1242,7 @@ export default function App() {
                     className="profile-avatar-large"
                     style={{ background: meProfile.color }}
                   >
-                    <span>{meProfile.stickers[0] || "🍇"}</span>
+                    <span>{meProfile.stickers[0] || "🍗"}</span>
                   </div>
                   <div className="profile-main-copy">
                     <div className="profile-badges">
@@ -1066,7 +1296,7 @@ export default function App() {
                     <span>TRACKS SUBIDOS</span>
                   </div>
                   <div>
-                    <b>{myProjects.length}</b>
+                    <b>{projects.length}</b>
                     <span>PROYECTOS EN 3D</span>
                   </div>
                   <div>
@@ -1083,6 +1313,18 @@ export default function App() {
                   </div>
                 </div>
               </section>
+
+              {/* IMPORTADOR DIRECTO DESDE [untitled] EN LA PÁGINA DEL PERFIL */}
+              <UntitledImporter
+                meProfile={meProfile}
+                existingCount={projects.length}
+                onImportProject={(newProj) => {
+                  setProjects((prev) => [newProj, ...prev]);
+                  setSelectedProjectId(newProj.id);
+                  setInsideCubeOpen(false);
+                  navigate("biblioteca");
+                }}
+              />
 
               <section className="profile-manifold-showcase">
                 <div className="section-header-row">
@@ -1119,6 +1361,7 @@ export default function App() {
                   onChangeViewMode={(m) => setLibraryViewMode(m)}
                   onSelectProject={(proj) => setSelectedProjectId(proj.id)}
                   onOpenCreateProject={() => navigate("crear-proyecto")}
+                  onDeleteProject={handleDeleteProject}
                   onUploadProjectVideo={handleUploadProjectVideo}
                 />
               </section>
@@ -1275,6 +1518,7 @@ export default function App() {
             track={editingTrack}
             onClose={() => setEditingTrack(null)}
             onSave={handleSaveEditedTrack}
+            onDelete={() => handleDeleteTrackById(editingTrack.id)}
           />
         )}
       </AnimatePresence>
@@ -1328,10 +1572,12 @@ function EditTrackModal({
   track,
   onClose,
   onSave,
+  onDelete,
 }: {
   track: Track;
   onClose: () => void;
   onSave: (t: Track) => void;
+  onDelete: () => void;
 }) {
   const [title, setTitle] = useState(track.title);
   const [artist, setArtist] = useState(track.artist);
@@ -1380,11 +1626,11 @@ function EditTrackModal({
           </label>
           <label className="modal-field">
             <span>FEATURING (OPCIONAL)</span>
-            <input value={feat} onChange={(e) => setFeat(e.target.value)} placeholder="ej. LUZ MALA" />
+            <input value={feat} onChange={(e) => setFeat(e.target.value)} placeholder="ej. eyebags" />
           </label>
           <label className="modal-field">
             <span>PRODUCTOR / MIX</span>
-            <input value={prod} onChange={(e) => setProd(e.target.value)} placeholder="ej. Nahue B" />
+            <input value={prod} onChange={(e) => setProd(e.target.value)} placeholder="ej. Ma7imza" />
           </label>
           <label className="modal-field">
             <span>BPM</span>
@@ -1434,31 +1680,40 @@ function EditTrackModal({
         </div>
 
         <div className="modal-foot">
-          <button type="button" className="apple-btn ghost" onClick={onClose}>
-            Cancelar
-          </button>
           <button
             type="button"
-            className="apple-btn primary"
-            onClick={() =>
-              onSave({
-                ...track,
-                title,
-                artist,
-                feat: feat.trim() || undefined,
-                prod: prod.trim() || undefined,
-                bpm: Number(bpm) || track.bpm,
-                key: musicalKey || track.key,
-                version: Number(version) || track.version,
-                note: note.trim() || undefined,
-                c2,
-                accent: c2,
-                customAudioUrl,
-              })
-            }
+            className="apple-btn ghost danger-trash-btn"
+            onClick={onDelete}
           >
-            ✓ Guardar cambios en el track
+            🗑️ Eliminar track
           </button>
+          <div className="row-actions">
+            <button type="button" className="apple-btn ghost" onClick={onClose}>
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="apple-btn primary"
+              onClick={() =>
+                onSave({
+                  ...track,
+                  title,
+                  artist,
+                  feat: feat.trim() || undefined,
+                  prod: prod.trim() || undefined,
+                  bpm: Number(bpm) || track.bpm,
+                  key: musicalKey || track.key,
+                  version: Number(version) || track.version,
+                  note: note.trim() || undefined,
+                  c2,
+                  accent: c2,
+                  customAudioUrl,
+                })
+              }
+            >
+              ✓ Guardar cambios en el track
+            </button>
+          </div>
         </div>
       </motion.div>
     </motion.div>
