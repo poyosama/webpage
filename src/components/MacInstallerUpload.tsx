@@ -117,8 +117,8 @@ export default function MacInstallerUpload({
     <section className="dmg-section">
       <div className="section-header-row">
         <div>
-          <span className="mono-tag">MACOS DMG WORKFLOW // EL TABLERO</span>
-          <h1 className="editorial-h1">Instalar nuevo corte en tu Biblioteca 3D</h1>
+          <span className="mono-tag">SUBIR // EL TABLERO</span>
+          <h1 className="editorial-h1">Subir a tu Biblioteca 3D</h1>
         </div>
         <div className="dmg-steps-indicator">
           <button
@@ -140,7 +140,7 @@ export default function MacInstallerUpload({
               setStep("zoomed-library");
             }}
           >
-            2. Biblioteca 3D (Pop-out)
+            2. Mis Proyectos (Pop-out)
           </button>
           <span>→</span>
           <button
@@ -151,7 +151,7 @@ export default function MacInstallerUpload({
               setStep("wheel-place");
             }}
           >
-            3. Ruedita de Temas
+            3. Spinner
           </button>
         </div>
       </div>
@@ -164,7 +164,7 @@ export default function MacInstallerUpload({
             <i className="tl-green" />
           </div>
           <span className="dmg-window-title">
-            {title || "nuevo_tema"}.dmg — Instalador de Prop · El tablero
+            {title || "nuevo_track"}.dmg — Subir a Proyecto · El tablero
           </span>
           <span className="mono-tag">ARRASTRÁ EL PROP O TOCÁ CADA PASO</span>
         </div>
@@ -176,11 +176,11 @@ export default function MacInstallerUpload({
           </label>
 
           <div className="dmg-field">
-            <span>NOMBRE DEL TEMA</span>
+            <span>NOMBRE DEL TRACK</span>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="nombre del corte..."
+              placeholder="nombre del track..."
             />
           </div>
 
@@ -392,8 +392,8 @@ export default function MacInstallerUpload({
                   </span>
                   <h3>
                     {step === "installed"
-                      ? `¡Instalado! "${title}" ya es un disco más en la ruedita de ${targetProject.title}`
-                      : "Acomodá el nuevo corte en la ruedita 3D de temas"}
+                      ? `¡Listo! "${title}" ya está en el Spinner de ${targetProject.title}`
+                      : "Ubicá el nuevo track en el Spinner del proyecto"}
                   </h3>
                 </div>
                 <div className="row-actions">

@@ -30,16 +30,21 @@ export type Track = {
   customAudioUrl?: string;
 };
 
+export type ProjectType = "EP" | "LP" | "Album" | "Mixtape" | "Single" | "Beat Tape" | "WIP";
+
 export type Project = {
   id: string;
   title: string;
   artist: string;
   artistId: string;
-  type: "EP" | "LP" | "Single" | "Beat Tape" | "WIP";
-  status: "Publicado" | "WIP" | "Privado";
+  type: ProjectType;
+  status: "Publicado" | "WIP" | "Privado" | "En mezcla" | "Master";
   year: string;
   dateLabel: string;
   zone: string;
+  genre?: string;
+  attributes?: string[];
+  targetTrackCount?: number;
   c1: string;
   c2: string;
   accent: string;
@@ -188,7 +193,7 @@ export const INITIAL_PROJECTS: Project[] = [
     c2: "#e11d48",
     accent: "#e11d48",
     tagGlyph: "01 // EP",
-    description: "Grabado entre marzo y noviembre en Godoy Cruz. 5 cortes sin filtro.",
+    description: "Grabado entre marzo y noviembre en Mendoza. 5 tracks sin filtro.",
     plays: "6.4K",
     blockPos: [-1.15, 0.85, 0.55],
     blockSize: [1.55, 1.45, 1.55],

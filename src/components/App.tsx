@@ -9,11 +9,13 @@ import {
   SCENE_ARTISTS,
   type ArtistProfile,
   type Project,
+  type ProjectType,
   type ProjectVideoClip,
   type Track,
 } from "@/lib/mock";
 import { sfx } from "@/lib/sfx";
 import MacInstallerUpload from "./MacInstallerUpload";
+import type { QueueEntry, RepeatMode } from "./PerformativePlayer";
 
 const DiscSpinner3D = dynamic(() => import("./DiscSpinner3D"), { ssr: false });
 const PerformativePlayer = dynamic(() => import("./PerformativePlayer"), { ssr: false });
@@ -21,21 +23,39 @@ const ManifoldLibrary3D = dynamic(() => import("./ManifoldLibrary3D"), { ssr: fa
 
 type ScreenTab = "inicio" | "biblioteca" | "subir" | "perfil";
 
+const PROJECT_TYPES: ProjectType[] = [
+  "Album",
+  "EP",
+  "Mixtape",
+  "Single",
+  "LP",
+  "Beat Tape",
+  "WIP",
+];
+
 export default function App() {
   const [tab, setTab] = useState<ScreenTab>("inicio");
   const [meProfile, setMeProfile] = useState<ArtistProfile>(INITIAL_ME_PROFILE);
   const [projects, setProjects] = useState<Project[]>(INITIAL_PROJECTS);
   const [selectedProjectId, setSelectedProjectId] = useState<string>(INITIAL_PROJECTS[0].id);
 
-  // Estado del reproductor persistente + pantalla completa
+  // Estado del reproductor persistente + pantalla completa (con funciones completas de Spotify)
   const [currentTrack, setCurrentTrack] = useState<Track>(INITIAL_PROJECTS[0].tracks[1]);
   const [currentProject, setCurrentProject] = useState<Project>(INITIAL_PROJECTS[0]);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [playerExpanded, setPlayerExpanded] = useState<boolean>(false);
   const [muted, setMuted] = useState<boolean>(false);
+  const [volume, setVolume] = useState<number>(0.85);
+  const [shuffle, setShuffle] = useState<boolean>(false);
+  const [repeatMode, setRepeatMode] = useState<RepeatMode>("off");
+  const [likedTrackIds, setLikedTrackIds] = useState<string[]>(["fl-2", "ac-1"]);
+  const [userQueue, setUserQueue] = useState<QueueEntry[]>([]);
   const [customAudioMap, setCustomAudioMap] = useState<Record<string, string>>({});
 
-  // Vista en Biblioteca: "manifold" (entorno 3D gif1.gif por default) o "disc-row" (hilera de discos 3D como al principio)
+  // Input temporal para agregar atributos personalizados a un proyecto en Biblioteca
+  const [newAttrInput, setNewAttrInput] = useState<string>("");
+
+  // Vista en Biblioteca: "manifold" (Bloques) o "disc-row" (Vinilos)
   const [libraryViewMode, setLibraryViewMode] = useState<"manifold" | "disc-row">("manifold");
 
   // Modales: Editar Track, Editar Perfil y Login/Register con Google
@@ -55,7 +75,9 @@ export default function App() {
     sfx.startGroove(
       track.bpm,
       track.audioFreq,
-      track.customAudioUrl || customAudioMap[track.id]
+      track.customAudioUrl || customAudioMap[track.id],
+      track.durationSec,
+      true
     );
     if (openFull) setPlayerExpanded(true);
   };
@@ -71,18 +93,35 @@ export default function App() {
       sfx.startGroove(
         currentTrack.bpm,
         currentTrack.audioFreq,
-        currentTrack.customAudioUrl || customAudioMap[currentTrack.id]
+        currentTrack.customAudioUrl || customAudioMap[currentTrack.id],
+        currentTrack.durationSec,
+        false
       );
     }
   };
 
-  // Referencia para que la Barra Espaciadora siempre pause/reproduzca sin importar en qué pantalla estés
+  const handleVolumeChange = (nextVol: number) => {
+    const clamped = Math.max(0, Math.min(1, nextVol));
+    setVolume(clamped);
+    if (clamped > 0 && muted) {
+      setMuted(false);
+      sfx.setMuted(false);
+    }
+    sfx.setVolume(clamped);
+  };
+
+  const handleToggleMute = () => {
+    const next = !muted;
+    setMuted(next);
+    sfx.setMuted(next);
+  };
+
   const togglePlayRef = useRef(togglePlay);
   togglePlayRef.current = togglePlay;
 
   useEffect(() => {
     const INTERACTIVE_SELECTOR =
-      'button, a, label, select, summary, input[type="range"], input[type="color"], [role="button"], .clean-track-row, .artist-dir-item, .filmstrip-thumb, .mini-art, .mini-meta, .prop-card, .upload-dropzone, .quick-proj-pill, .video-clip-remove-btn, .ios-seg-control button, .seg-pills button, .ios-icon-btn, .apple-btn, .mini-btn, .mini-play-btn, .mini-expand-pill';
+      'button, a, label, select, summary, input[type="range"], input[type="color"], [role="button"], .clean-track-row, .artist-dir-item, .filmstrip-thumb, .mini-art, .mini-meta, .prop-card, .upload-dropzone, .quick-proj-pill, .video-clip-remove-btn, .ios-seg-control button, .seg-pills button, .ios-icon-btn, .apple-btn, .mini-btn, .mini-play-btn';
 
     let pressedEl: Element | null = null;
     let hoveredEl: Element | null = null;
@@ -160,11 +199,60 @@ export default function App() {
   }, []);
 
   const stepTrack = (dir: 1 | -1) => {
+    // Si va hacia adelante y hay canciones en la cola del usuario, reproducir la primera de la cola
+    if (dir === 1 && userQueue.length > 0) {
+      const [nextItem, ...rest] = userQueue;
+      setUserQueue(rest);
+      playTrack(nextItem.track, nextItem.project, playerExpanded);
+      return;
+    }
+
     const list = currentProject.tracks;
+    if (shuffle && list.length > 1) {
+      const candidates = list.filter((t) => t.id !== currentTrack.id);
+      const randomTrack = candidates[Math.floor(Math.random() * candidates.length)] || list[0];
+      playTrack(randomTrack, currentProject, playerExpanded);
+      return;
+    }
+
     const idx = list.findIndex((t) => t.id === currentTrack.id);
     const nextIdx = (idx + dir + list.length) % list.length;
     const nextTrack = list[nextIdx] || list[0];
     playTrack(nextTrack, currentProject, playerExpanded);
+  };
+
+  // Actualizar metadata completable del proyecto (tipo, atributos, zona, año, estado, etc.)
+  const updateProjectMeta = (projectId: string, patch: Partial<Project>) => {
+    setProjects((prev) =>
+      prev.map((p) => {
+        if (p.id !== projectId) return p;
+        const updated = { ...p, ...patch };
+        if (currentProject.id === p.id) setCurrentProject(updated);
+        return updated;
+      })
+    );
+  };
+
+  const handleAddAttribute = (projectId: string, rawAttr: string) => {
+    const clean = rawAttr.trim();
+    if (!clean) return;
+    const target = projects.find((p) => p.id === projectId);
+    if (!target) return;
+    const existing = target.attributes || [target.zone, target.year];
+    if (existing.includes(clean)) return;
+    updateProjectMeta(projectId, { attributes: [...existing, clean] });
+    setNewAttrInput("");
+    sfx.tap();
+  };
+
+  const handleRemoveAttribute = (projectId: string, attrToRemove: string) => {
+    const target = projects.find((p) => p.id === projectId);
+    if (!target) return;
+    const existing = target.attributes || [target.zone, target.year];
+    updateProjectMeta(projectId, {
+      attributes: existing.filter((a) => a !== attrToRemove),
+    });
+    sfx.tap();
   };
 
   const handleAddTrackToProject = (
@@ -190,7 +278,6 @@ export default function App() {
     setSelectedProjectId(projectId);
   };
 
-  // Subir un video corto (3–5s) o GIF a la carpetita de videos de un proyecto para sus caras 3D
   const handleUploadProjectVideo = (projectId: string, file: File) => {
     const url = URL.createObjectURL(file);
     const isImage =
@@ -213,7 +300,6 @@ export default function App() {
     );
   };
 
-  // Quitar un video o GIF de la carpetita del bloque 3D
   const handleRemoveProjectVideo = (projectId: string, clipId: string) => {
     setProjects((prev) =>
       prev.map((p) => {
@@ -226,7 +312,6 @@ export default function App() {
     );
   };
 
-  // Guardar cambios desde la pantalla "Editar Track"
   const handleSaveEditedTrack = (updatedTrack: Track) => {
     setProjects((prev) =>
       prev.map((p) => {
@@ -244,7 +329,9 @@ export default function App() {
         sfx.startGroove(
           updatedTrack.bpm,
           updatedTrack.audioFreq,
-          updatedTrack.customAudioUrl || customAudioMap[updatedTrack.id]
+          updatedTrack.customAudioUrl || customAudioMap[updatedTrack.id],
+          updatedTrack.durationSec,
+          false
         );
       }
     }
@@ -260,12 +347,16 @@ export default function App() {
   };
 
   const myProjects = projects.filter((p) => p.artistId === meProfile.id);
+  const activeAttributes = activeProject.attributes || [
+    activeProject.zone,
+    activeProject.year,
+  ];
 
   return (
     <div className="apple-shell">
       <div className="paper-grain" aria-hidden />
 
-      {/* Top Navigation Bar: Izquierda = El tablero chupete · Centro = Segmented Control (Biblioteca antes de Subir) */}
+      {/* Top Navigation Bar */}
       <header className="ios-navbar">
         <button
           type="button"
@@ -283,7 +374,7 @@ export default function App() {
             [
               ["inicio", "Inicio"],
               ["biblioteca", "Biblioteca"],
-              ["subir", "Subir Tema"],
+              ["subir", "Subir"],
               ["perfil", meProfile.handle],
             ] as [ScreenTab, string][]
           ).map(([id, label]) => (
@@ -333,11 +424,7 @@ export default function App() {
             type="button"
             className="ios-icon-btn"
             onMouseEnter={() => sfx.hover()}
-            onClick={() => {
-              const next = !muted;
-              setMuted(next);
-              sfx.setMuted(next);
-            }}
+            onClick={handleToggleMute}
           >
             {muted ? "🔇" : "🔊"}
           </button>
@@ -353,19 +440,18 @@ export default function App() {
           exit={{ opacity: 0, y: -8, filter: "blur(5px)" }}
           transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
         >
-          {/* ==================== 1. INICIO (ORDEN: 1º RUIDO EN EL MEDIO -> 2º EL TABLERO -> 3º TIRA DE MINIPORTADAS) ==================== */}
+          {/* ==================== 1. INICIO ==================== */}
           {tab === "inicio" && (
             <div className="explore-page">
               <section className="secondstory-strip-card">
                 <div className="strip-top-meta">
-                  <span>EL TABLERO // MENDOZA UNDERGROUND BOARD</span>
-                  <span>ESPACIO = PAUSA/PLAY · TOCÁ UN RECORTE PARA ESCUCHAR</span>
+                  <span>EL TABLERO // UG BOARD</span>
                 </div>
 
-                {/* 1º: EL RUIDO EN EL MEDIO DE LA PANTALLA (El Tablero vivo de pines, recortes, artistas y cortes) */}
+                {/* 1º: EL RUIDO EN EL MEDIO DE LA PANTALLA */}
                 <div className="corecore-stage">
                   <div className="neon-spine" aria-hidden>
-                    <span className="spine-badge">tablero·0261</span>
+                    <span className="spine-badge">@quetablero</span>
                   </div>
 
                   <div className="Roster-collage">
@@ -385,7 +471,7 @@ export default function App() {
                         <span className="inline-swatch blue">L</span>ento
                         <sup className="sup-tag">ep</sup>
                       </button>
-                      <span className="cutout-pill">📌 Godoy Cruz</span>
+                      <span className="cutout-pill">📌 Mendoza</span>
                     </div>
 
                     <div className="collage-line">
@@ -457,22 +543,21 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* 2º: NOMBRE DE LA WEB ("El tablero") con la fuente apretada estilo SecondStory */}
+                {/* 2º: NOMBRE DE LA WEB ("El tablero") */}
                 <div className="secondstory-mega-footer">
                   <p className="micro-editorial-copy">
-                    Todo el ruido creativo de Mendoza clavado en un solo tablero: maquetas,
-                    proyectos 3D con video, versiones y snippets listos para grabar.
+                    Tus proyectos. Tu identidad. Tu gente. Tu música.
                   </p>
                   <h1 className="mega-display-title">El tablero</h1>
                 </div>
 
-                {/* 3º: TIRA HORIZONTAL DE MINIPORTADAS */}
+                {/* 3º: TIRA HORIZONTAL DE MINIPORTADAS (sin scrollbar fantasma) */}
                 <div className="filmstrip-row">
                   {projects.map((p, idx) => (
                     <motion.button
                       key={p.id}
                       type="button"
-                      whileHover={{ y: -4, scale: 1.015 }}
+                      whileHover={{ y: -3, scale: 1.01 }}
                       whileTap={{ scale: 0.985 }}
                       className="filmstrip-thumb"
                       onMouseEnter={() => sfx.hover()}
@@ -497,12 +582,12 @@ export default function App() {
                 </div>
               </section>
 
-              {/* Grilla inferior de cortes y artistas */}
+              {/* Grilla inferior de proyectos y artistas */}
               <section className="explore-bottom-grid">
                 <div className="apple-card">
                   <div className="card-head">
-                    <span className="mono-tag">ROTACIÓN DEL TABLERO // MENDOZA</span>
-                    <h3>Cortes fijados esta semana</h3>
+                    <span className="mono-tag">PROYECTOS // ROTACIÓN DEL TABLERO</span>
+                    <h3>Proyectos fijados</h3>
                   </div>
                   <div className="track-list-clean">
                     {projects
@@ -552,8 +637,8 @@ export default function App() {
 
                 <div className="apple-card">
                   <div className="card-head">
-                    <span className="mono-tag">ESCENA LOCAL // 0261</span>
-                    <h3>Artistas en El tablero</h3>
+                    <span className="mono-tag">ARTISTAS // ROTACIÓN DEL TABLERO</span>
+                    <h3>Artistas en El Tablero</h3>
                   </div>
                   <div className="artist-directory-list">
                     {SCENE_ARTISTS.map((a) => (
@@ -592,13 +677,13 @@ export default function App() {
             </div>
           )}
 
-          {/* ==================== 2. BIBLIOTECA (ENTORNO 3D MANIFOLD POR DEFAULT + HILERA DE DISCOS 3D + CARPETA DE VIDEOS 3-5S) ==================== */}
+          {/* ==================== 2. BIBLIOTECA ==================== */}
           {tab === "biblioteca" && (
             <div className="library-page">
               <div className="section-header-row">
                 <div>
                   <span className="mono-tag">BIBLIOTECA 3D // EL TABLERO</span>
-                  <h1 className="editorial-h1">Bloques 3D con Video &amp; Discos por Corte</h1>
+                  <h1 className="editorial-h1">Mis Proyectos</h1>
                 </div>
                 <div className="seg-pills">
                   <button
@@ -609,7 +694,7 @@ export default function App() {
                       setLibraryViewMode("manifold");
                     }}
                   >
-                    🧊 Entorno 3D con Videos (Default)
+                    🧊 Bloques
                   </button>
                   <button
                     type="button"
@@ -619,12 +704,11 @@ export default function App() {
                       setLibraryViewMode("disc-row");
                     }}
                   >
-                    💿 Hilera de Discos 3D
+                    💿 Vinilos
                   </button>
                 </div>
               </div>
 
-              {/* Escena WebGL 3D real igual a gif1.gif o Hilera 3D */}
               <ManifoldLibrary3D
                 projects={projects}
                 selectedProjectId={activeProject.id}
@@ -634,26 +718,101 @@ export default function App() {
                 onRemoveProjectVideo={handleRemoveProjectVideo}
               />
 
-              {/* Inspector del proyecto seleccionado con su Spinner 3D de N discos exactos (video.gif) */}
+              {/* Inspector del proyecto seleccionado con Metadata completable por el usuario y Spinner 3D */}
               <section className="project-inspector-sheet">
                 <div className="inspector-header">
-                  <div>
-                    <span className="mono-tag">
-                      PROYECTO ABIERTO // {activeProject.type} · {activeProject.zone} ·{" "}
-                      {activeProject.videos.length} CLIPS DE VIDEO
-                    </span>
+                  <div className="inspector-meta-builder">
+                    {/* Metadata completable por el usuario: Tipo de Proyecto, Cantidad de Canciones, Estado y Atributos */}
+                    <div className="project-editable-meta-bar">
+                      <label className="meta-pill-select">
+                        <span>TIPO</span>
+                        <select
+                          value={activeProject.type}
+                          onChange={(e) => {
+                            sfx.tick();
+                            updateProjectMeta(activeProject.id, {
+                              type: e.target.value as ProjectType,
+                            });
+                          }}
+                        >
+                          {PROJECT_TYPES.map((pt) => (
+                            <option key={pt} value={pt}>
+                              {pt}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <div className="meta-pill-static">
+                        <span>CANCIONES</span>
+                        <b>{activeProject.tracks.length} tracks</b>
+                      </div>
+
+                      <label className="meta-pill-select">
+                        <span>ESTADO</span>
+                        <select
+                          value={activeProject.status}
+                          onChange={(e) => {
+                            sfx.tick();
+                            updateProjectMeta(activeProject.id, {
+                              status: e.target.value as Project["status"],
+                            });
+                          }}
+                        >
+                          <option value="Publicado">Publicado</option>
+                          <option value="En mezcla">En mezcla</option>
+                          <option value="Master">Master</option>
+                          <option value="WIP">WIP</option>
+                          <option value="Privado">Privado</option>
+                        </select>
+                      </label>
+
+                      {activeAttributes.map((attr) => (
+                        <span key={attr} className="meta-user-attr-pill">
+                          {attr}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveAttribute(activeProject.id, attr)}
+                            title="Quitar atributo"
+                          >
+                            ✕
+                          </button>
+                        </span>
+                      ))}
+
+                      <form
+                        className="meta-add-attr-form"
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          handleAddAttribute(activeProject.id, newAttrInput);
+                        }}
+                      >
+                        <input
+                          value={newAttrInput}
+                          onChange={(e) => setNewAttrInput(e.target.value)}
+                          placeholder="+ Atributo (ej. Trap, 2026...)"
+                        />
+                        {newAttrInput.trim() && (
+                          <button type="submit" className="meta-attr-submit">
+                            +
+                          </button>
+                        )}
+                      </form>
+                    </div>
+
                     <h2>
                       {activeProject.title} — <em>{activeProject.artist}</em>
                     </h2>
                     <p>{activeProject.description}</p>
                   </div>
+
                   <div className="row-actions">
                     <button
                       type="button"
                       className="apple-btn ghost"
                       onClick={() => navigate("subir")}
                     >
-                      + Instalar nuevo corte acá
+                      + Subir track al proyecto
                     </button>
                     <button
                       type="button"
@@ -675,9 +834,9 @@ export default function App() {
                   <div className="inspector-tracklist">
                     <div className="card-head">
                       <span className="mono-tag">
-                        {activeProject.tracks.length} DISCOS EN ESTE PROYECTO
+                        {activeProject.tracks.length} CANCIONES EN ESTE PROYECTO
                       </span>
-                      <h3>Cortes del proyecto (tocá ✎ para editar track)</h3>
+                      <h3>Tracks del proyecto (tocá ✎ para editar track)</h3>
                     </div>
                     {activeProject.tracks.map((t, idx) => {
                       const isCurrent = currentTrack.id === t.id;
@@ -719,7 +878,7 @@ export default function App() {
             </div>
           )}
 
-          {/* ==================== 3. SUBIR TEMA (CON BIBLIOTECA 3D Y POP-OUT DEL PROYECTO) ==================== */}
+          {/* ==================== 3. SUBIR ==================== */}
           {tab === "subir" && (
             <MacInstallerUpload
               meProfile={meProfile}
@@ -729,7 +888,7 @@ export default function App() {
             />
           )}
 
-          {/* ==================== 4. PERFIL (CON LA BIBLIOTECA 3D INTEGRADA + EDITAR PERFIL + CUENTA GOOGLE) ==================== */}
+          {/* ==================== 4. PERFIL ==================== */}
           {tab === "perfil" && (
             <div className="profile-page">
               <section className="profile-hero-card">
@@ -810,7 +969,6 @@ export default function App() {
                 </div>
               </section>
 
-              {/* La Biblioteca 3D directamente en el Perfil como centro de la identidad visual y customización de videos de cada proyecto */}
               <section className="profile-manifold-showcase">
                 <div className="section-header-row">
                   <div>
@@ -818,7 +976,7 @@ export default function App() {
                       IDENTIDAD VISUAL // BIBLIOTECA 3D DE {meProfile.handle.toUpperCase()}
                     </span>
                     <h2 className="editorial-h2">
-                      Mis Bloques &amp; Carpetas de Videos (3–5s)
+                      Mis Proyectos &amp; Canvas
                     </h2>
                   </div>
                   <button
@@ -826,7 +984,7 @@ export default function App() {
                     className="apple-btn ghost"
                     onClick={() => navigate("subir")}
                   >
-                    + Subir nuevo corte con Prop
+                    + Subir con Prop
                   </button>
                 </div>
 
@@ -843,7 +1001,7 @@ export default function App() {
         </motion.main>
       </AnimatePresence>
 
-      {/* ==================== DYNAMIC ISLAND REPRODUCTOR SIEMPRE CENTRADO ABAJO ==================== */}
+      {/* ==================== DYNAMIC ISLAND REPRODUCTOR (CONTROLES 100% CENTRADOS + SOLO TRACK/ARTISTA + SLIDER DE VOLUMEN) ==================== */}
       <AnimatePresence>
         {!playerExpanded && (
           <div className="ios-mini-player-dock">
@@ -854,32 +1012,30 @@ export default function App() {
               exit={{ y: 80, opacity: 0 }}
               transition={{ type: "spring", stiffness: 320, damping: 28 }}
             >
+              {/* Columna Izquierda: Portada + Nombre del Track y Artista (sin BPM ni Key) */}
               <div
-                className="mini-art"
-                style={{
-                  background: `linear-gradient(135deg, ${currentTrack.c1}, ${currentTrack.c2})`,
-                }}
+                className="mini-left"
                 onClick={() => {
                   sfx.open();
                   setPlayerExpanded(true);
                 }}
               >
-                <span className={isPlaying ? "spin-slow" : ""}>{currentTrack.glyph}</span>
+                <div
+                  className="mini-art"
+                  style={{
+                    background: `linear-gradient(135deg, ${currentTrack.c1}, ${currentTrack.c2})`,
+                  }}
+                >
+                  <span className={isPlaying ? "spin-slow" : ""}>{currentTrack.glyph}</span>
+                </div>
+
+                <div className="mini-meta">
+                  <b>{currentTrack.title}</b>
+                  <span>{currentTrack.artist}</span>
+                </div>
               </div>
 
-              <div
-                className="mini-meta"
-                onClick={() => {
-                  sfx.open();
-                  setPlayerExpanded(true);
-                }}
-              >
-                <b>{currentTrack.title}</b>
-                <span>
-                  {currentTrack.artist} · {currentTrack.bpm} BPM · {currentTrack.key}
-                </span>
-              </div>
-
+              {/* Columna Central: Controles Play / Skip perfectamente centrados en el eje del Dynamic Island */}
               <div className="mini-controls">
                 <button
                   type="button"
@@ -907,17 +1063,27 @@ export default function App() {
                 </button>
               </div>
 
-              <button
-                type="button"
-                className="mini-expand-pill"
-                onMouseEnter={() => sfx.hover()}
-                onClick={() => {
-                  sfx.open();
-                  setPlayerExpanded(true);
-                }}
-              >
-                <span>✨ Abrir Reproductor</span>
-              </button>
+              {/* Columna Derecha: Slider de Volumen en lugar del botón Abrir Reproductor */}
+              <div className="mini-volume-wrap">
+                <button
+                  type="button"
+                  className="mini-vol-btn"
+                  onClick={handleToggleMute}
+                  aria-label={muted ? "Activar sonido" : "Silenciar"}
+                >
+                  {muted || volume === 0 ? "🔇" : volume < 0.5 ? "🔉" : "🔊"}
+                </button>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={muted ? 0 : volume}
+                  onChange={(e) => handleVolumeChange(Number(e.target.value))}
+                  className="apple-volume-slider"
+                  aria-label="Volumen"
+                />
+              </div>
             </motion.div>
           </div>
         )}
@@ -936,10 +1102,34 @@ export default function App() {
             <PerformativePlayer
               track={currentTrack}
               project={currentProject}
+              allProjects={projects}
               isPlaying={isPlaying}
+              volume={volume}
+              muted={muted}
+              shuffle={shuffle}
+              repeatMode={repeatMode}
+              likedTrackIds={likedTrackIds}
+              userQueue={userQueue}
               onTogglePlay={togglePlay}
               onNext={() => stepTrack(1)}
               onPrev={() => stepTrack(-1)}
+              onSelectTrack={(t, p) => playTrack(t, p, true)}
+              onToggleShuffle={() => setShuffle((s) => !s)}
+              onCycleRepeat={() =>
+                setRepeatMode((m) => (m === "off" ? "all" : m === "all" ? "one" : "off"))
+              }
+              onToggleLike={(id) =>
+                setLikedTrackIds((prev) =>
+                  prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+                )
+              }
+              onAddToQueue={(t, p) => setUserQueue((prev) => [...prev, { track: t, project: p }])}
+              onRemoveFromQueue={(idx) =>
+                setUserQueue((prev) => prev.filter((_, i) => i !== idx))
+              }
+              onClearQueue={() => setUserQueue([])}
+              onVolumeChange={handleVolumeChange}
+              onToggleMute={handleToggleMute}
               onClose={() => setPlayerExpanded(false)}
               onJumpToProject={(projId) => {
                 setPlayerExpanded(false);
@@ -1046,7 +1236,7 @@ function EditTrackModal({
         <div className="modal-head">
           <div>
             <span className="mono-tag">STUDIO INSPECTOR // EDITAR TRACK</span>
-            <h3>Editar metadata y versión del corte</h3>
+            <h3>Editar metadata y versión del track</h3>
           </div>
           <button type="button" className="apple-btn ghost" onClick={onClose}>
             ✕ Cerrar
@@ -1055,7 +1245,7 @@ function EditTrackModal({
 
         <div className="modal-form-grid">
           <label className="modal-field">
-            <span>TÍTULO DEL CORTE</span>
+            <span>TÍTULO DEL TRACK</span>
             <input value={title} onChange={(e) => setTitle(e.target.value)} />
           </label>
           <label className="modal-field">
@@ -1314,7 +1504,7 @@ function GoogleAuthModal({
         </div>
 
         <p className="modal-subcopy">
-          Con tu cuenta de Google sincronizás tus bloques 3D, tus carpetas de videos de 3–5s y tus
+          Con tu cuenta de Google sincronizás tus bloques 3D, tus Canvas de videos 3–5s y tus
           links privados en Supabase Auth + Cloudflare R2.
         </p>
 

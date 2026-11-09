@@ -420,8 +420,8 @@ export default function ManifoldLibrary3D({
         <div className="manifold-3d-canvas-stage">
           <div className="manifold-stage-overlay-top">
             <div>
-              <span className="mono-tag">ENTORNO 3D GPU // MANIFOLD CLUSTER</span>
-              <h3>Arrastrá para orbitar la unidad 3D · Tocá un bloque para que popee</h3>
+              <span className="mono-tag">MIS PROYECTOS // BLOQUES</span>
+              <h3>Arrastrá para mover · Seleccioná un proyecto</h3>
             </div>
             <div className="manifold-quick-pills">
               {projects.map((p) => (
@@ -503,7 +503,7 @@ export default function ManifoldLibrary3D({
           <div className="manifold-stage-overlay-top">
             <div>
               <span className="mono-tag">MIS PROYECTOS // VINILOS</span>
-              <h3>Arrastrá con click para correr la hilera · Tocá una lámina para abrir</h3>
+              <h3>Arrastrá para mover · Seleccioná un proyecto</h3>
             </div>
             <span className="mono-tag">{projects.length} PROYECTOS</span>
           </div>
@@ -534,14 +534,10 @@ export default function ManifoldLibrary3D({
       {activeProject && onUploadProjectVideo && (
         <div className="project-video-folder-bar">
           <div className="video-folder-left">
-            <span className="folder-icon">📁</span>
+            <span className="folder-icon">🎞️</span>
             <div>
-              <b>Carpeta de Videos / GIFs (3–5s) · {activeProject.title}</b>
-              <span>
-                {activeProject.videos.length > 0
-                  ? `Estos ${activeProject.videos.length} clips se proyectan en las caras 3D del bloque de ${activeProject.title}`
-                  : `Sin clips cargados en ${activeProject.title} — subí tus videos o GIFs`}
-              </span>
+              <b>Canvas</b>
+              <span>Videos 3-5s</span>
             </div>
           </div>
 

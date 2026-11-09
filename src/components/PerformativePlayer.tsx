@@ -2,12 +2,20 @@
 
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { type Project, type Track } from "@/lib/mock";
 import { sfx } from "@/lib/sfx";
 
-export type VisualMode = "props" | "boids" | "ferro" | "cd";
+export type VisualMode = "boids" | "props" | "ferro" | "cd";
+export type RepeatMode = "off" | "all" | "one";
+
+function formatTime(sec: number): string {
+  if (!Number.isFinite(sec) || sec < 0) return "0:00";
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
 
 type ProceduralPropBody = {
   pos: THREE.Vector3;
@@ -21,16 +29,20 @@ type ProceduralPropBody = {
   roughness: number;
 };
 
-// Generador de geometrías procedurales locas y 100% macizas
 function buildProceduralGeometry(index: number, radius: number): THREE.BufferGeometry {
   const kind = index % 6;
   if (kind === 0) {
-    // Nudo toroidal complejo (p=2, q=3 o p=3, q=4)
-    return new THREE.TorusKnotGeometry(radius * 0.62, radius * 0.2, 96, 20, 2 + (index % 2), 3 + (index % 3));
+    return new THREE.TorusKnotGeometry(
+      radius * 0.62,
+      radius * 0.2,
+      72,
+      16,
+      2 + (index % 2),
+      3 + (index % 3)
+    );
   }
   if (kind === 1) {
-    // Blob orgánico desplazado por armónicos sinusoidales
-    const geo = new THREE.SphereGeometry(radius * 0.85, 36, 36);
+    const geo = new THREE.SphereGeometry(radius * 0.85, 28, 28);
     const pos = geo.attributes.position as THREE.BufferAttribute;
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i);
@@ -46,7 +58,6 @@ function buildProceduralGeometry(index: number, radius: number): THREE.BufferGeo
     return geo;
   }
   if (kind === 2) {
-    // Estrella procedural extruida en 3D
     const shape = new THREE.Shape();
     const spikes = 5 + (index % 4);
     for (let i = 0; i < spikes * 2; i++) {
@@ -61,14 +72,13 @@ function buildProceduralGeometry(index: number, radius: number): THREE.BufferGeo
       bevelEnabled: true,
       bevelThickness: radius * 0.12,
       bevelSize: radius * 0.1,
-      bevelSegments: 4,
+      bevelSegments: 3,
     });
     geo.center();
     return geo;
   }
   if (kind === 3) {
-    // Columna helicoidal / tornillo retorcido procedural
-    const geo = new THREE.CylinderGeometry(radius * 0.55, radius * 0.55, radius * 1.55, 24, 24);
+    const geo = new THREE.CylinderGeometry(radius * 0.55, radius * 0.55, radius * 1.55, 20, 20);
     const pos = geo.attributes.position as THREE.BufferAttribute;
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i);
@@ -83,13 +93,11 @@ function buildProceduralGeometry(index: number, radius: number): THREE.BufferGeo
     return geo;
   }
   if (kind === 4) {
-    // Cristal poliédrico tallado
     const geo = new THREE.OctahedronGeometry(radius * 0.9, 1);
     geo.scale(0.85, 1.35, 0.85);
     return geo;
   }
-  // Anillo hiperbólico ondulado
-  const geo = new THREE.TorusGeometry(radius * 0.68, radius * 0.24, 24, 64);
+  const geo = new THREE.TorusGeometry(radius * 0.68, radius * 0.24, 20, 48);
   const pos = geo.attributes.position as THREE.BufferAttribute;
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i);
@@ -102,7 +110,192 @@ function buildProceduralGeometry(index: number, radius: number): THREE.BufferGeo
   return geo;
 }
 
-// 1. PROPS 3D MACIZOS PROCEDURALES SIEMPRE EN GRAVEDAD 0G
+// 1. 36.000 PARTÍCULAS ALGORÍTMICAS DE BAJA LATENCIA CON LATIDO ELÁSTICO 808
+function HighResFlowParticles({
+  accent,
+  c2,
+  impulseSignal,
+}: {
+  accent: string;
+  c2: string;
+  impulseSignal: number;
+}) {
+  const pointsRef = useRef<THREE.Points>(null!);
+  const matRef = useRef<THREE.PointsMaterial>(null!);
+  // Duplicamos a 36.000 partículas y las hacemos 50% más pequeñas con sprite liviano 16x16 sin mipmaps para 0 lag
+  const count = 36000;
+  const lastImpulseRef = useRef(0);
+  const dispRef = useRef(0);
+  const velRef = useRef(0);
+
+  const circleSprite = useMemo(() => {
+    const c = document.createElement("canvas");
+    c.width = 16;
+    c.height = 16;
+    const g = c.getContext("2d")!;
+    const grad = g.createRadialGradient(8, 8, 1, 8, 8, 7.5);
+    grad.addColorStop(0, "rgba(255,255,255,1)");
+    grad.addColorStop(0.55, "rgba(255,255,255,0.8)");
+    grad.addColorStop(1, "rgba(255,255,255,0)");
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 16, 16);
+    const tex = new THREE.CanvasTexture(c);
+    tex.generateMipmaps = false;
+    tex.minFilter = THREE.LinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    return tex;
+  }, []);
+
+  const { renderPositions, homePositions, scatterDirs, colors, phases } = useMemo(() => {
+    const renderPos = new Float32Array(count * 3);
+    const homePos = new Float32Array(count * 3);
+    const scatter = new Float32Array(count * 3);
+    const col = new Float32Array(count * 3);
+    const ph = new Float32Array(count);
+    const cA = new THREE.Color(accent);
+    const cB = new THREE.Color(c2);
+    const cInk = new THREE.Color("#18181b");
+
+    for (let i = 0; i < count; i++) {
+      const ix = i * 3;
+      const u = (i / count) * Math.PI * 28;
+      const stream = i % 6;
+      const r = 0.55 + (i / count) * 2.45;
+      const hx = Math.cos(u + stream) * r + (Math.random() - 0.5) * 0.24;
+      const hy = Math.sin(u * 1.5 - stream) * r * 0.65 + (Math.random() - 0.5) * 0.24;
+      const hz = Math.sin(u * 0.7 + stream) * 1.65 + (Math.random() - 0.5) * 0.24;
+
+      homePos[ix] = hx;
+      homePos[ix + 1] = hy;
+      homePos[ix + 2] = hz;
+
+      renderPos[ix] = hx;
+      renderPos[ix + 1] = hy;
+      renderPos[ix + 2] = hz;
+
+      // Vector de explosión/latido 808 para que salten para todos lados y vuelvan a su posición exacta
+      const len = Math.hypot(hx, hy, hz) || 1;
+      const rx = hx / len + (Math.random() - 0.5) * 1.35;
+      const ry = hy / len + (Math.random() - 0.5) * 1.35;
+      const rz = hz / len + (Math.random() - 0.5) * 1.35;
+      const rLen = Math.hypot(rx, ry, rz) || 1;
+      // Magnitud variable por partícula para que el estallido del 808 tenga profundidad volumétrica
+      const burstStrength = 0.45 + Math.pow(Math.random(), 0.7) * 1.65;
+      scatter[ix] = (rx / rLen) * burstStrength;
+      scatter[ix + 1] = (ry / rLen) * burstStrength;
+      scatter[ix + 2] = (rz / rLen) * burstStrength;
+
+      ph[i] = Math.random() * Math.PI * 2;
+
+      const tMix = (i % 100) / 100;
+      const chosen = i % 3 === 0 ? cA.clone().lerp(cB, tMix) : i % 3 === 1 ? cB : cInk;
+      col[ix] = chosen.r;
+      col[ix + 1] = chosen.g;
+      col[ix + 2] = chosen.b;
+    }
+    return {
+      renderPositions: renderPos,
+      homePositions: homePos,
+      scatterDirs: scatter,
+      colors: col,
+      phases: ph,
+    };
+  }, [accent, c2]);
+
+  useFrame(({ clock, pointer }, dt) => {
+    const { beat, eightOhEight } = sfx.sampleReactiveLevels();
+    const clampedDt = Math.min(0.033, dt);
+    const t = clock.elapsedTime;
+
+    // Si el usuario clickea o pega el 808 de la canción, las partículas saltan según la fuerza del 808 y vuelven elásticamente
+    if (impulseSignal !== lastImpulseRef.current) {
+      lastImpulseRef.current = impulseSignal;
+      velRef.current += 9.5;
+    }
+
+    // Fuerza objetivo proporcional a qué tan fuerte suena el 808 en este instante
+    const target808 = Math.min(1.6, eightOhEight * 1.45);
+    if (target808 > dispRef.current) {
+      // Ataque rápido de golpe de 808: salta hacia afuera con fuerza proporcional al 808
+      velRef.current += (target808 - dispRef.current) * 58 * clampedDt;
+    }
+    // Resorte elástico que las devuelve exactamente a su posición original apenas termina el 808
+    const springForce = (target808 - dispRef.current) * 32 - velRef.current * 9.2;
+    velRef.current += springForce * clampedDt;
+    dispRef.current = Math.max(0, dispRef.current + velRef.current * clampedDt);
+
+    const pulseDisp = dispRef.current;
+    if (matRef.current) {
+      // 50% más chicas (0.025 base) y laten un poquito en tamaño con el 808
+      matRef.current.size = 0.025 * (1 + pulseDisp * 0.38);
+    }
+
+    const step = clampedDt * (0.95 + beat * 0.45);
+    const geo = pointsRef.current.geometry;
+    const attr = geo.getAttribute("position") as THREE.BufferAttribute;
+    const arr = attr.array as Float32Array;
+
+    const bParam = 0.19;
+    const mx = pointer.x * 2.2;
+    const my = pointer.y * 1.5;
+
+    for (let i = 0; i < count; i++) {
+      const ix = i * 3;
+      let hx = homePositions[ix];
+      let hy = homePositions[ix + 1];
+      let hz = homePositions[ix + 2];
+
+      // Flujo suave de base (posición madre a la que siempre vuelven después del 808)
+      const vx = Math.sin(hy * 1.55 + t * 0.65) - bParam * hx + (mx - hx) * 0.12;
+      const vy = Math.sin(hz * 1.55 - t * 0.48) - bParam * hy + (my - hy) * 0.12;
+      const vz = Math.sin(hx * 1.55 + phases[i] * 0.2) - bParam * hz;
+
+      hx += vx * step * 1.25;
+      hy += vy * step * 1.25;
+      hz += vz * step * 1.25;
+
+      if (hx * hx + hy * hy + hz * hz > 18) {
+        const a = phases[i] + t;
+        hx = Math.cos(a) * 0.45;
+        hy = Math.sin(a) * 0.45;
+        hz = Math.sin(a * 2) * 0.45;
+      }
+
+      homePositions[ix] = hx;
+      homePositions[ix + 1] = hy;
+      homePositions[ix + 2] = hz;
+
+      // Posición renderizada = Posición madre + Desplazamiento explosivo del 808 (cuando pulseDisp -> 0, vuelven exacto a homePositions)
+      arr[ix] = hx + scatterDirs[ix] * pulseDisp;
+      arr[ix + 1] = hy + scatterDirs[ix + 1] * pulseDisp;
+      arr[ix + 2] = hz + scatterDirs[ix + 2] * pulseDisp;
+    }
+    attr.needsUpdate = true;
+    pointsRef.current.rotation.y += clampedDt * 0.07;
+  });
+
+  return (
+    <points ref={pointsRef} frustumCulled={false}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[renderPositions, 3]} />
+        <bufferAttribute attach="attributes-color" args={[colors, 3]} />
+      </bufferGeometry>
+      <pointsMaterial
+        ref={matRef}
+        map={circleSprite}
+        size={0.025}
+        vertexColors
+        transparent
+        alphaTest={0.04}
+        opacity={0.9}
+        sizeAttenuation
+        depthWrite={false}
+      />
+    </points>
+  );
+}
+
+// 2. PROPS 3D MACIZOS PROCEDURALES SIEMPRE EN GRAVEDAD 0G
 function UncannyPropsPhysics0G({
   accent,
   c2,
@@ -158,12 +351,10 @@ function UncannyPropsPhysics0G({
 
     for (let i = 0; i < bodies.length; i++) {
       const b = bodies[i];
-      // Gravedad 0G permanente: deriva orbital suave hacia el centro para que floten y choquen
       b.vel.x += -b.pos.x * 0.38 * step;
       b.vel.y += -b.pos.y * 0.38 * step;
       b.vel.z += -b.pos.z * 0.38 * step;
 
-      // Interacción magnética con el mouse
       const mx = pointer.x * 2.5;
       const my = pointer.y * 1.65;
       const dxm = b.pos.x - mx;
@@ -203,7 +394,6 @@ function UncannyPropsPhysics0G({
       }
     }
 
-    // Colisiones elásticas entre props macizos
     for (let i = 0; i < bodies.length; i++) {
       for (let j = i + 1; j < bodies.length; j++) {
         const a = bodies[i];
@@ -254,120 +444,7 @@ function UncannyPropsPhysics0G({
   );
 }
 
-// 2. PARTÍCULAS ALGORÍTMICAS DE ALTA RESOLUCIÓN (18.000 partículas redondas siguiendo un campo de flujo procedural)
-function HighResFlowParticles({ accent, c2 }: { accent: string; c2: string }) {
-  const pointsRef = useRef<THREE.Points>(null!);
-  const count = 18000;
-
-  // Sprite circular suave en alta resolución para que no sean cuadraditos
-  const circleSprite = useMemo(() => {
-    const c = document.createElement("canvas");
-    c.width = 64;
-    c.height = 64;
-    const g = c.getContext("2d")!;
-    const grad = g.createRadialGradient(32, 32, 2, 32, 32, 30);
-    grad.addColorStop(0, "rgba(255,255,255,1)");
-    grad.addColorStop(0.45, "rgba(255,255,255,0.85)");
-    grad.addColorStop(1, "rgba(255,255,255,0)");
-    g.fillStyle = grad;
-    g.fillRect(0, 0, 64, 64);
-    const tex = new THREE.CanvasTexture(c);
-    return tex;
-  }, []);
-
-  const { positions, colors, phases } = useMemo(() => {
-    const pos = new Float32Array(count * 3);
-    const col = new Float32Array(count * 3);
-    const ph = new Float32Array(count);
-    const cA = new THREE.Color(accent);
-    const cB = new THREE.Color(c2);
-    const cInk = new THREE.Color("#18181b");
-
-    for (let i = 0; i < count; i++) {
-      // Distribución inicial sobre cintas de atractor procedural
-      const u = (i / count) * Math.PI * 24;
-      const stream = i % 5;
-      const r = 0.6 + (i / count) * 2.4;
-      pos[i * 3] = Math.cos(u + stream) * r + (Math.random() - 0.5) * 0.25;
-      pos[i * 3 + 1] = Math.sin(u * 1.5 - stream) * r * 0.65 + (Math.random() - 0.5) * 0.25;
-      pos[i * 3 + 2] = Math.sin(u * 0.7 + stream) * 1.6 + (Math.random() - 0.5) * 0.25;
-
-      ph[i] = Math.random() * Math.PI * 2;
-
-      const tMix = (i % 100) / 100;
-      const chosen = i % 3 === 0 ? cA.clone().lerp(cB, tMix) : i % 3 === 1 ? cB : cInk;
-      col[i * 3] = chosen.r;
-      col[i * 3 + 1] = chosen.g;
-      col[i * 3 + 2] = chosen.b;
-    }
-    return { positions: pos, colors: col, phases: ph };
-  }, [accent, c2]);
-
-  useFrame(({ clock, pointer }, dt) => {
-    const { beat } = sfx.sampleReactiveLevels();
-    const t = clock.elapsedTime;
-    const step = Math.min(0.03, dt) * (1.1 + beat * 0.9);
-    const geo = pointsRef.current.geometry;
-    const attr = geo.getAttribute("position") as THREE.BufferAttribute;
-    const arr = attr.array as Float32Array;
-
-    // Atractor cíclico de Thomas + guía del puntero: traza caminos curvos hipnóticos
-    const bParam = 0.19;
-    const mx = pointer.x * 2.2;
-    const my = pointer.y * 1.5;
-
-    for (let i = 0; i < count; i++) {
-      const ix = i * 3;
-      let x = arr[ix];
-      let y = arr[ix + 1];
-      let z = arr[ix + 2];
-
-      // Campo vectorial procedural que guía el destino de cada partícula
-      const vx = Math.sin(y * 1.55 + t * 0.7) - bParam * x + (mx - x) * 0.14;
-      const vy = Math.sin(z * 1.55 - t * 0.5) - bParam * y + (my - y) * 0.14;
-      const vz = Math.sin(x * 1.55 + phases[i] * 0.2) - bParam * z;
-
-      x += vx * step * 1.45;
-      y += vy * step * 1.45;
-      z += vz * step * 1.45;
-
-      // Re-inyección si se aleja demasiado para mantener densidad máxima
-      if (x * x + y * y + z * z > 18) {
-        const a = phases[i] + t;
-        x = Math.cos(a) * 0.4;
-        y = Math.sin(a) * 0.4;
-        z = Math.sin(a * 2) * 0.4;
-      }
-
-      arr[ix] = x;
-      arr[ix + 1] = y;
-      arr[ix + 2] = z;
-    }
-    attr.needsUpdate = true;
-    pointsRef.current.rotation.y += dt * 0.08;
-  });
-
-  return (
-    <points ref={pointsRef}>
-      <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
-        <bufferAttribute attach="attributes-color" args={[colors, 3]} />
-      </bufferGeometry>
-      <pointsMaterial
-        map={circleSprite}
-        size={0.052}
-        vertexColors
-        transparent
-        alphaTest={0.05}
-        opacity={0.92}
-        sizeAttenuation
-        depthWrite={false}
-      />
-    </points>
-  );
-}
-
-// 3. FERROFLUIDO INTERACTIVO (Se puede moldear pasando/arrastrando en la superficie + rotar y zoomear en 3D)
+// 3. FERROFLUIDO INTERACTIVO
 function SculptableFerrofluid({ accent, c2 }: { accent: string; c2: string }) {
   const meshRef = useRef<THREE.Mesh>(null!);
   const baseGeo = useMemo(() => new THREE.IcosahedronGeometry(0.96, 36), []);
@@ -445,12 +522,18 @@ function SculptableFerrofluid({ accent, c2 }: { accent: string; c2: string }) {
           iridescence={0.75}
         />
       </mesh>
-      <OrbitControls enableZoom={true} minDistance={2.6} maxDistance={10} enablePan={false} rotateSpeed={0.75} />
+      <OrbitControls
+        enableZoom={true}
+        minDistance={2.6}
+        maxDistance={10}
+        enablePan={false}
+        rotateSpeed={0.75}
+      />
     </group>
   );
 }
 
-// 4. DISCO ACRÍLICO 3D (Orientado de frente + rotable 360º y con ZOOM libre con la ruedita del mouse)
+// 4. DISCO ACRÍLICO 3D
 function InteractiveAcrylicDisc({ track }: { track: Track }) {
   const spinRef = useRef<THREE.Group>(null!);
 
@@ -526,7 +609,6 @@ function InteractiveAcrylicDisc({ track }: { track: Track }) {
         </mesh>
       </group>
 
-      {/* Rotación 3D + Zoom con rueda del mouse habilitado */}
       <OrbitControls
         enableZoom={true}
         minDistance={2.0}
@@ -539,32 +621,107 @@ function InteractiveAcrylicDisc({ track }: { track: Track }) {
   );
 }
 
+export type QueueEntry = {
+  track: Track;
+  project: Project;
+};
+
 export default function PerformativePlayer({
   track,
   project,
+  allProjects,
   isPlaying,
+  volume,
+  muted,
+  shuffle,
+  repeatMode,
+  likedTrackIds,
+  userQueue,
   onTogglePlay,
   onNext,
   onPrev,
+  onSelectTrack,
+  onToggleShuffle,
+  onCycleRepeat,
+  onToggleLike,
+  onAddToQueue,
+  onRemoveFromQueue,
+  onClearQueue,
+  onVolumeChange,
+  onToggleMute,
   onClose,
   onJumpToProject,
   onOpenEditTrack,
 }: {
   track: Track;
   project: Project;
+  allProjects: Project[];
   isPlaying: boolean;
+  volume: number;
+  muted: boolean;
+  shuffle: boolean;
+  repeatMode: RepeatMode;
+  likedTrackIds: string[];
+  userQueue: QueueEntry[];
   onTogglePlay: () => void;
   onNext: () => void;
   onPrev: () => void;
+  onSelectTrack: (t: Track, p: Project) => void;
+  onToggleShuffle: () => void;
+  onCycleRepeat: () => void;
+  onToggleLike: (trackId: string) => void;
+  onAddToQueue: (t: Track, p: Project) => void;
+  onRemoveFromQueue: (index: number) => void;
+  onClearQueue: () => void;
+  onVolumeChange: (v: number) => void;
+  onToggleMute: () => void;
   onClose: () => void;
   onJumpToProject: (projectId: string) => void;
   onOpenEditTrack: () => void;
 }) {
-  const [mode, setMode] = useState<VisualMode>("props");
+  // Default en "boids" (36K Partículas con reacción 808) como pidió Juani
+  const [mode, setMode] = useState<VisualMode>("boids");
   const [snippetClean, setSnippetClean] = useState(false);
   const [darkStage, setDarkStage] = useState(false);
   const [impulseSignal, setImpulseSignal] = useState(0);
+  const [queueOpen, setQueueOpen] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
+  const [showRemaining, setShowRemaining] = useState(false);
+
+  const [currentSec, setCurrentSec] = useState(0);
+  const [durationSec, setDurationSec] = useState(track.durationSec || 174);
   const hasEnteredBodyRef = useRef(false);
+
+  useEffect(() => {
+    sfx.setTrackDuration(track.durationSec || 174);
+    setDurationSec(track.durationSec || 174);
+  }, [track.id, track.durationSec]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      const st = sfx.getPlaybackState();
+      setCurrentSec(st.currentSec);
+      setDurationSec(st.durationSec || track.durationSec || 174);
+      if (st.ended && isPlaying) {
+        if (repeatMode === "one") {
+          sfx.seek(0);
+        } else {
+          onNext();
+        }
+      }
+    }, 120);
+    return () => clearInterval(id);
+  }, [isPlaying, repeatMode, onNext, track.durationSec]);
+
+  const progressPct = durationSec > 0 ? Math.min(100, (currentSec / durationSec) * 100) : 0;
+  const isLiked = likedTrackIds.includes(track.id);
+
+  // Siguientes del proyecto actual (como "Siguiente de: <Proyecto>" en Spotify)
+  const projectNextTracks = useMemo(() => {
+    const idx = project.tracks.findIndex((t) => t.id === track.id);
+    if (idx === -1) return project.tracks;
+    return [...project.tracks.slice(idx + 1), ...project.tracks.slice(0, idx)];
+  }, [project.tracks, track.id]);
 
   return (
     <div
@@ -575,7 +732,6 @@ export default function PerformativePlayer({
         if (e.clientY > 90) {
           hasEnteredBodyRef.current = true;
         } else if (hasEnteredBodyRef.current && e.clientY <= 6) {
-          // Gesto de llevar el cursor bien arriba del todo de la pantalla para cerrar
           hasEnteredBodyRef.current = false;
           sfx.close();
           onClose();
@@ -594,21 +750,32 @@ export default function PerformativePlayer({
         <span className="perf-grabber-bar" />
       </div>
 
-      {/* Canvas 3D performativo a pantalla completa */}
+      {/* Canvas 3D performativo a pantalla completa (DPR optimizado a 1.25 en partículas para 60fps clavados con 36K partículas) */}
       <div
         className="perf-canvas-wrap"
         onClick={() => {
-          if (mode === "props") {
+          if (mode === "props" || mode === "boids") {
             setImpulseSignal((n) => n + 1);
             sfx.tap();
           }
         }}
       >
-        <Canvas camera={{ position: [0, 0, 5.2], fov: 42 }} dpr={[1, 2]}>
+        <Canvas
+          camera={{ position: [0, 0, 5.2], fov: 42 }}
+          dpr={mode === "boids" ? [1, 1.25] : [1, 1.75]}
+          gl={{ antialias: mode !== "boids", powerPreference: "high-performance" }}
+        >
           <ambientLight intensity={darkStage ? 0.95 : 1.45} />
           <directionalLight position={[4, 6, 5]} intensity={1.85} />
           <pointLight position={[-4, -3, 3]} color={track.c2} intensity={6} />
 
+          {mode === "boids" && (
+            <HighResFlowParticles
+              accent={track.accent}
+              c2={track.c2}
+              impulseSignal={impulseSignal}
+            />
+          )}
           {mode === "props" && (
             <UncannyPropsPhysics0G
               accent={track.accent}
@@ -616,7 +783,6 @@ export default function PerformativePlayer({
               impulseSignal={impulseSignal}
             />
           )}
-          {mode === "boids" && <HighResFlowParticles accent={track.accent} c2={track.c2} />}
           {mode === "ferro" && <SculptableFerrofluid accent={track.accent} c2={track.c2} />}
           {mode === "cd" && <InteractiveAcrylicDisc track={track} />}
         </Canvas>
@@ -633,11 +799,10 @@ export default function PerformativePlayer({
             onClose();
           }}
         >
-          ↓ Cerrar (o subí el cursor al tope)
+          ↓ Minimizar
         </button>
 
         <div className="perf-badges">
-          {/* Donde estaba el BPM y la Key ahora abre la pantalla Editar Track */}
           <button
             type="button"
             className="mono-badge clickable-badge"
@@ -650,7 +815,6 @@ export default function PerformativePlayer({
             ✎ Editar track ({track.bpm} BPM · {track.key} · v{track.version})
           </button>
 
-          {/* Clickear el proyecto te lleva directo a ese proyecto en la Biblioteca */}
           <button
             type="button"
             className="mono-badge clickable-badge"
@@ -667,6 +831,17 @@ export default function PerformativePlayer({
         <div className="perf-top-actions">
           <button
             type="button"
+            className={`pill-control ${darkStage ? "active" : ""}`}
+            onMouseEnter={() => sfx.hover()}
+            onClick={() => {
+              sfx.tap();
+              setDarkStage((d) => !d);
+            }}
+          >
+            {darkStage ? "☀️ Claro" : "🌑 Oscuro"}
+          </button>
+          <button
+            type="button"
             className={`pill-control ${snippetClean ? "active" : ""}`}
             onMouseEnter={() => sfx.hover()}
             onClick={() => {
@@ -679,96 +854,401 @@ export default function PerformativePlayer({
         </div>
       </header>
 
-      {/* Overlay tipográfico en SF Display */}
+      {/* Overlay tipográfico central en SF Display */}
       <div className="perf-center-typo">
         <div
           className="perf-artwork-card"
           style={{ background: `linear-gradient(135deg, ${track.c1}, ${track.c2})` }}
         >
           <span>{track.glyph}</span>
-          <small>0261 // MZA</small>
+          <small>{project.type}</small>
         </div>
         <p className="perf-kicker">
-          {track.artist} {track.feat ? `feat. ${track.feat}` : ""} — prod. {track.prod || track.artist}
+          {track.artist} {track.feat ? `feat. ${track.feat}` : ""} — prod.{" "}
+          {track.prod || track.artist}
         </p>
         <h1 className="perf-title">{track.title}</h1>
-        {track.note && <span className="perf-note">“{track.note}”</span>}
+        {notesOpen && (
+          <span className="perf-note">
+            “{track.note || `Sesión de ${project.title} · ${track.bpm} BPM · Tonalidad ${track.key}`}”
+          </span>
+        )}
       </div>
 
-      {/* Dock inferior con Visual Engine en menú desplegable */}
+      {/* PANEL LATERAL DE COLA DE REPRODUCCIÓN (QUEUE ESTILO SPOTIFY) */}
+      {queueOpen && !snippetClean && (
+        <aside className="spotify-queue-drawer" onClick={(e) => e.stopPropagation()}>
+          <div className="queue-drawer-head">
+            <div>
+              <span className="mono-tag"> REPRODUCTOR // COLA</span>
+              <h3>Cola de reproducción</h3>
+            </div>
+            <button
+              type="button"
+              className="apple-btn ghost"
+              onClick={() => setQueueOpen(false)}
+            >
+              ✕
+            </button>
+          </div>
+
+          <div className="queue-section">
+            <span className="queue-sec-label">SONANDO AHORA</span>
+            <div className="queue-item active">
+              <div
+                className="queue-item-art"
+                style={{ background: `linear-gradient(135deg, ${track.c1}, ${track.c2})` }}
+              >
+                {track.glyph}
+              </div>
+              <div className="queue-item-meta">
+                <b>{track.title}</b>
+                <span>
+                  {track.artist} · {project.title}
+                </span>
+              </div>
+              <span className="queue-item-dur">{track.duration}</span>
+            </div>
+          </div>
+
+          {userQueue.length > 0 && (
+            <div className="queue-section">
+              <div className="queue-sec-row">
+                <span className="queue-sec-label">SIGUIENTE EN LA COLA ({userQueue.length})</span>
+                <button
+                  type="button"
+                  className="queue-clear-btn"
+                  onClick={() => {
+                    sfx.tap();
+                    onClearQueue();
+                  }}
+                >
+                  Borrar cola
+                </button>
+              </div>
+              {userQueue.map((item, idx) => (
+                <div
+                  key={`${item.track.id}-${idx}`}
+                  className="queue-item"
+                  onClick={() => {
+                    onRemoveFromQueue(idx);
+                    onSelectTrack(item.track, item.project);
+                  }}
+                >
+                  <div
+                    className="queue-item-art"
+                    style={{
+                      background: `linear-gradient(135deg, ${item.track.c1}, ${item.track.c2})`,
+                    }}
+                  >
+                    {item.track.glyph}
+                  </div>
+                  <div className="queue-item-meta">
+                    <b>{item.track.title}</b>
+                    <span>
+                      {item.track.artist} · {item.project.title}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="queue-item-action"
+                    title="Quitar de la cola"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      sfx.tap();
+                      onRemoveFromQueue(idx);
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="queue-section">
+            <span className="queue-sec-label">SIGUIENTE DE: {project.title}</span>
+            {projectNextTracks.map((t) => (
+              <div
+                key={t.id}
+                className="queue-item"
+                onClick={() => onSelectTrack(t, project)}
+              >
+                <div
+                  className="queue-item-art"
+                  style={{ background: `linear-gradient(135deg, ${t.c1}, ${t.c2})` }}
+                >
+                  {t.glyph}
+                </div>
+                <div className="queue-item-meta">
+                  <b>{t.title}</b>
+                  <span>{t.artist}</span>
+                </div>
+                <span className="queue-item-dur">{t.duration}</span>
+                <button
+                  type="button"
+                  className="queue-item-action"
+                  title="Agregar a la cola"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    sfx.tap();
+                    onAddToQueue(t, project);
+                  }}
+                >
+                  + Cola
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div className="queue-section">
+            <span className="queue-sec-label">AGREGAR DE OTROS PROYECTOS</span>
+            {allProjects
+              .filter((p) => p.id !== project.id)
+              .slice(0, 3)
+              .flatMap((p) => p.tracks.slice(0, 2).map((t) => ({ t, p })))
+              .map(({ t, p }) => (
+                <div
+                  key={t.id}
+                  className="queue-item"
+                  onClick={() => onSelectTrack(t, p)}
+                >
+                  <div
+                    className="queue-item-art"
+                    style={{ background: `linear-gradient(135deg, ${t.c1}, ${t.c2})` }}
+                  >
+                    {t.glyph}
+                  </div>
+                  <div className="queue-item-meta">
+                    <b>{t.title}</b>
+                    <span>
+                      {t.artist} · {p.title}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="queue-item-action"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      sfx.tap();
+                      onAddToQueue(t, p);
+                    }}
+                  >
+                    + Cola
+                  </button>
+                </div>
+              ))}
+          </div>
+        </aside>
+      )}
+
+      {/* DOCK INFERIOR COMPLETO ESTILO SPOTIFY */}
       {!snippetClean && (
-        <footer className="perf-dock">
-          <div className="perf-customizer-row">
-            <div className="cust-group">
-              <label htmlFor="visual-engine-select">VISUAL ENGINE</label>
+        <footer className="perf-dock spotify-full-dock">
+          <div className="spotify-dock-grid">
+            {/* IZQUIERDA: Track actual + Artista + Favorito (Like) */}
+            <div className="spotify-now-playing">
+              <div
+                className="spotify-now-art"
+                style={{ background: `linear-gradient(135deg, ${track.c1}, ${track.c2})` }}
+                onClick={() => onJumpToProject(project.id)}
+                title={`Ir a ${project.title}`}
+              >
+                <span>{track.glyph}</span>
+              </div>
+              <div className="spotify-now-meta">
+                <b>{track.title}</b>
+                <span>
+                  {track.artist} {track.feat ? `feat. ${track.feat}` : ""}
+                </span>
+              </div>
+              <button
+                type="button"
+                className={`spotify-like-btn ${isLiked ? "liked" : ""}`}
+                onClick={() => {
+                  sfx.tap();
+                  onToggleLike(track.id);
+                }}
+                aria-label="Guardar en tus me gusta"
+                title={isLiked ? "Quitar de Me gusta" : "Guardar en Me gusta"}
+              >
+                {isLiked ? "♥" : "♡"}
+              </button>
+            </div>
+
+            {/* CENTRO: Controles de transporte centrados (Shuffle, Prev, Play/Pause, Next, Repeat) + Barra de progreso con duración */}
+            <div className="spotify-center-console">
+              <div className="spotify-transport-buttons">
+                <button
+                  type="button"
+                  className={`spotify-icon-btn ${shuffle ? "active" : ""}`}
+                  onClick={() => {
+                    sfx.tap();
+                    onToggleShuffle();
+                  }}
+                  title="Aleatorio (Shuffle)"
+                  aria-label="Aleatorio"
+                >
+                  🔀
+                  {shuffle && <i className="spotify-active-dot" />}
+                </button>
+
+                <button
+                  type="button"
+                  className="spotify-icon-btn"
+                  onClick={() => {
+                    if (currentSec > 3) {
+                      sfx.seek(0);
+                      setCurrentSec(0);
+                    } else {
+                      onPrev();
+                    }
+                  }}
+                  title="Anterior"
+                  aria-label="Anterior"
+                >
+                  ⏮
+                </button>
+
+                <button
+                  type="button"
+                  className="spotify-play-circle"
+                  onClick={onTogglePlay}
+                  title={isPlaying ? "Pausar" : "Reproducir"}
+                  aria-label={isPlaying ? "Pausar" : "Reproducir"}
+                >
+                  {isPlaying ? "❚❚" : "▶"}
+                </button>
+
+                <button
+                  type="button"
+                  className="spotify-icon-btn"
+                  onClick={onNext}
+                  title="Siguiente"
+                  aria-label="Siguiente"
+                >
+                  ⏭
+                </button>
+
+                <button
+                  type="button"
+                  className={`spotify-icon-btn ${repeatMode !== "off" ? "active" : ""}`}
+                  onClick={() => {
+                    sfx.tap();
+                    onCycleRepeat();
+                  }}
+                  title={
+                    repeatMode === "off"
+                      ? "Repetir desactivado"
+                      : repeatMode === "all"
+                      ? "Repetir proyecto"
+                      : "Repetir este track (1)"
+                  }
+                  aria-label="Repetir"
+                >
+                  {repeatMode === "one" ? "🔂" : "🔁"}
+                  {repeatMode !== "off" && <i className="spotify-active-dot" />}
+                </button>
+              </div>
+
+              <div className="spotify-progress-row">
+                <span className="spotify-time-label">{formatTime(currentSec)}</span>
+                <div className="spotify-progress-bar-wrap">
+                  <div
+                    className="spotify-progress-fill"
+                    style={{ width: `${progressPct}%` }}
+                  />
+                  <input
+                    type="range"
+                    min={0}
+                    max={Math.max(1, durationSec)}
+                    step={0.2}
+                    value={Math.min(durationSec, currentSec)}
+                    onChange={(e) => {
+                      const nextSec = Number(e.target.value);
+                      setCurrentSec(nextSec);
+                      sfx.seek(nextSec);
+                    }}
+                    className="spotify-progress-input"
+                    aria-label="Progreso de la canción"
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="spotify-time-label clickable"
+                  onClick={() => setShowRemaining((v) => !v)}
+                  title="Alternar duración total / tiempo restante"
+                >
+                  {showRemaining
+                    ? `-${formatTime(Math.max(0, durationSec - currentSec))}`
+                    : formatTime(durationSec)}
+                </button>
+              </div>
+            </div>
+
+            {/* DERECHA: Visual Engine + Notas/Lyrics + Cola (Queue) + Volumen con Slider */}
+            <div className="spotify-right-utilities">
               <select
                 id="visual-engine-select"
-                className="apple-select"
+                className="apple-select compact-select"
                 value={mode}
                 onChange={(e) => {
                   sfx.tap();
                   setMode(e.target.value as VisualMode);
                 }}
+                aria-label="Visual Engine"
               >
-                <option value="props">📦 Props 3D Procedurales (0G Macizos)</option>
-                <option value="boids">✨ 18K Partículas Algorítmicas (Flow Field)</option>
-                <option value="ferro">💧 Ferrofluido Moldeable + Rotación 3D</option>
-                <option value="cd">💿 Disco Acrílico 3D (Rotable con Mouse)</option>
+                <option value="boids">✨ 36K Partículas (808 Pulse)</option>
+                <option value="props">📦 Props 3D (0G)</option>
+                <option value="ferro">💧 Ferrofluido 3D</option>
+                <option value="cd">💿 Disco Acrílico 3D</option>
               </select>
-            </div>
 
-            <div className="cust-group">
-              <label>INTERACCIÓN EN VIVO</label>
-              <div className="seg-pills">
-                {mode === "props" && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setImpulseSignal((n) => n + 1);
-                      sfx.drop();
-                    }}
-                  >
-                    💥 Impulsar Props 0G
-                  </button>
-                )}
-                {(mode === "ferro" || mode === "cd") && (
-                  <span className="mono-badge">
-                    🖱️ Arrastrá con el mouse para rotar {mode === "ferro" ? "y moldear púas" : "el disco 3D"}
-                  </span>
-                )}
+              <button
+                type="button"
+                className={`spotify-util-btn ${notesOpen ? "active" : ""}`}
+                onClick={() => {
+                  sfx.tap();
+                  setNotesOpen((v) => !v);
+                }}
+                title="Notas de sesión / Lyrics"
+              >
+                🎙️
+              </button>
+
+              <button
+                type="button"
+                className={`spotify-util-btn ${queueOpen ? "active" : ""}`}
+                onClick={() => {
+                  sfx.tap();
+                  setQueueOpen((v) => !v);
+                }}
+                title="Cola de reproducción (Queue)"
+              >
+                ☰ Cola {userQueue.length > 0 ? `(${userQueue.length})` : ""}
+              </button>
+
+              <div className="spotify-volume-group">
                 <button
                   type="button"
-                  onClick={() => {
-                    sfx.open();
-                    onOpenEditTrack();
-                  }}
+                  className="spotify-util-btn"
+                  onClick={onToggleMute}
+                  title={muted ? "Activar sonido" : "Silenciar"}
                 >
-                  ✎ Editar Track
+                  {muted || volume === 0 ? "🔇" : volume < 0.5 ? "🔉" : "🔊"}
                 </button>
-                <button
-                  type="button"
-                  className={darkStage ? "on" : ""}
-                  onClick={() => {
-                    sfx.tap();
-                    setDarkStage((d) => !d);
-                  }}
-                >
-                  {darkStage ? "☀️ Papel Blanco" : "🌑 Fondo Estudio"}
-                </button>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={muted ? 0 : volume}
+                  onChange={(e) => onVolumeChange(Number(e.target.value))}
+                  className="apple-volume-slider"
+                  aria-label="Volumen"
+                />
               </div>
             </div>
-          </div>
-
-          <div className="perf-transport">
-            <button type="button" className="trans-btn" onClick={onPrev} aria-label="Anterior">
-              ⏮
-            </button>
-            <button type="button" className="trans-play" onClick={onTogglePlay}>
-              {isPlaying ? "❚❚ Pausar (Espacio)" : "▶ Reproducir (Espacio)"}
-            </button>
-            <button type="button" className="trans-btn" onClick={onNext} aria-label="Siguiente">
-              ⏭
-            </button>
           </div>
         </footer>
       )}

@@ -203,8 +203,8 @@ export default function DiscSpinner3D({
   return (
     <div className={`disc-spinner-wrap ${compact ? "is-compact" : ""}`}>
       <div className="disc-spinner-meta">
-        <span className="mono-tag">SPINNER // {tracks.length} DISCOS EXACTOS</span>
-        <span className="mono-tag">YR 26 · ARRASTRÁ O TOCÁ UNA LÁMINA</span>
+        <span className="mono-tag">Spinner</span>
+        <span className="mono-tag">ARRASTRÁ O TOCÁ UN DISCO</span>
       </div>
 
       <div
@@ -304,7 +304,7 @@ export default function DiscSpinner3D({
               onMouseEnter={() => sfx.hover()}
               onClick={() => onPlayTrack(focusedTrack, project)}
             >
-              {currentTrackId === focusedTrack.id ? "Sonando · Abrir Studio" : "▶ Reproducir corte"}
+              {currentTrackId === focusedTrack.id ? "Sonando · Abrir Studio" : "▶ Reproducir"}
             </button>
           </div>
         </div>
