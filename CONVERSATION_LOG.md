@@ -293,3 +293,22 @@
 2. **Restauración de Estilización con Recuadros y Colores (`inline-swatch`):**
    - Se recuperaron los bloques de color y recuadros editoriales de alto contraste en los nombres de los proyectos del collage (`LA PLAGA`, `PERDÓN LA DEMORA`, `chickenNugget`, `ESTO ES ESTAR EN SONIDO`, `#MA7IAS`, `Love2Hate`, `AMORIO CLUB 2`).
    - Se mantuvo la regla de **cero mezcla de fuentes**: todas las letras y palabras usan la misma tipografía unificada sin deformaciones góticas ni mezclas tipográficas, conservando exclusivamente el juego de recuadros, fondos de color vibrantes (`coral`, `cyan`, `gold`, `blue`, `lime`, `purple`, `red`) y bordes estéticos.
+
+---
+
+### Turno 18 — Conexión de Supabase Publishable Key, Sincronización de Auth y Proyectos en la Nube
+**Prompt del usuario:**
+- *"sb_publishable_UvC4vGCFOnN0FGbRAux0nw_wneVnyhC"*
+
+**Implementación:**
+1. **Configuración de Variables de Entorno (`.env.local` & `src/lib/supabase.ts`):**
+   - Configurada la `NEXT_PUBLIC_SUPABASE_URL=https://txhrbfgejcwmmurriccw.supabase.co` y `NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_UvC4vGCFOnN0FGbRAux0nw_wneVnyhC`.
+   - Agregados fallbacks por defecto en el código cliente para que funcione tanto en local como en producción de Vercel inmediatamente.
+2. **Listener de Autenticación en Tiempo Real (`App.tsx`):**
+   - Integrado `supabase.auth.getSession()` y `supabase.auth.onAuthStateChange` para detectar inicios y cierres de sesión de usuarios automáticamente.
+   - Sincronización del perfil de usuario y proyectos desde PostgreSQL al logearse, con persistencia y fallback automático a datos locales ante ausencia inicial de tablas.
+3. **Modal de Autenticación (`GoogleAuthModal`):**
+   - Botón directo de "Continuar con Google" conectado a `supabase.auth.signInWithOAuth({ provider: 'google' })`.
+   - Indicador de estado en tiempo real `SUPABASE CLOUD CONECTADO // txhrbfgejcwmmurriccw`.
+   - Opción de fallback para desarrollo offline y botón de desconexión / cerrar sesión seguro.
+

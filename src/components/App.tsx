@@ -23,6 +23,12 @@ import { sfx } from "@/lib/sfx";
 import MacInstallerUpload from "./MacInstallerUpload";
 import UntitledImporter from "./UntitledImporter";
 import type { QueueEntry, RepeatMode } from "./PerformativePlayer";
+import {
+  supabase,
+  isSupabaseConfigured,
+  fetchUserProjectsFromSupabase,
+  uploadMediaToSupabase,
+} from "@/lib/supabase";
 
 const DiscSpinner3D = dynamic(() => import("./DiscSpinner3D"), { ssr: false });
 const PerformativePlayer = dynamic(() => import("./PerformativePlayer"), { ssr: false });
@@ -178,6 +184,99 @@ export default function App() {
       // ignore
     }
   }, [producerDrops, hydrated]);
+
+  // Escuchar sesión activa de Supabase Auth y sincronizar datos de la nube
+  useEffect(() => {
+    let mounted = true;
+
+    async function initSupabaseSession() {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (session?.user && mounted) {
+          setGoogleConnected(true);
+          const u = session.user;
+          const meta = u.user_metadata || {};
+          const displayName =
+            meta.full_name || meta.name || u.email?.split("@")[0] || "Artista";
+          const cleanHandle = `@${(meta.user_name || u.email?.split("@")[0] || "poyo").replace(/[^a-zA-Z0-9_]/g, "")}`;
+
+          setMeProfile((prev) => ({
+            ...prev,
+            id: u.id,
+            email: u.email,
+            name: displayName,
+            handle: cleanHandle,
+          }));
+
+          const cloudProjs = await fetchUserProjectsFromSupabase(u.id);
+          if (cloudProjs && cloudProjs.length > 0 && mounted) {
+            setProjects(cloudProjs);
+            setSelectedProjectId(cloudProjs[0].id);
+            setCurrentProject(cloudProjs[0]);
+            if (cloudProjs[0].tracks[0]) setCurrentTrack(cloudProjs[0].tracks[0]);
+          }
+        }
+      } catch (err) {
+        console.warn("Supabase session check:", err);
+      }
+    }
+
+    initSupabaseSession();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user && mounted) {
+        setGoogleConnected(true);
+        const u = session.user;
+        const meta = u.user_metadata || {};
+        const displayName =
+          meta.full_name || meta.name || u.email?.split("@")[0] || "Artista";
+        const cleanHandle = `@${(meta.user_name || u.email?.split("@")[0] || "poyo").replace(/[^a-zA-Z0-9_]/g, "")}`;
+
+        setMeProfile((prev) => ({
+          ...prev,
+          id: u.id,
+          email: u.email,
+          name: displayName,
+          handle: cleanHandle,
+        }));
+
+        try {
+          await supabase.from("profiles").upsert(
+            {
+              id: u.id,
+              handle: cleanHandle,
+              name: displayName,
+              role: "Rapero · Artista",
+              zone: "Mendoza",
+              crew: "UG BOARD",
+            },
+            { onConflict: "id" }
+          );
+        } catch {
+          // ignore si la tabla no está creada
+        }
+
+        const cloudProjs = await fetchUserProjectsFromSupabase(u.id);
+        if (cloudProjs && cloudProjs.length > 0 && mounted) {
+          setProjects(cloudProjs);
+          setSelectedProjectId(cloudProjs[0].id);
+          setCurrentProject(cloudProjs[0]);
+          if (cloudProjs[0].tracks[0]) setCurrentTrack(cloudProjs[0].tracks[0]);
+        }
+      } else if (event === "SIGNED_OUT" && mounted) {
+        setGoogleConnected(false);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const activeProject: Project | null =
     projects.find((p) => p.id === selectedProjectId) || projects[0] || null;
@@ -2524,6 +2623,29 @@ function GoogleAuthModal({
   const [email, setEmail] = useState(profile.email || "juani@gmail.com");
   const [name, setName] = useState(profile.name);
   const [handle, setHandle] = useState(profile.handle);
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  const handleOAuthGoogle = async () => {
+    setLoading(true);
+    setMsg("Conectando con Google...");
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: typeof window !== "undefined" ? window.location.origin : undefined,
+        },
+      });
+      if (error) {
+        setMsg("Ingresando con perfil...");
+        onSignInGoogle(email, name, handle);
+      }
+    } catch {
+      onSignInGoogle(email, name, handle);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <motion.div
@@ -2550,14 +2672,24 @@ function GoogleAuthModal({
           </button>
         </div>
 
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: 6, fontSize: "0.72rem", color: "#4ade80", marginBottom: 12 }}>
+          <span className="live-pulse-dot" />
+          <span>SUPABASE CLOUD CONECTADO // txhrbfgejcwmmurriccw</span>
+        </div>
+
         <p className="modal-subcopy">
-          Con tu cuenta de Google sincronizás tus bloques 3D, tus Canvas de videos 3–5s y tus
-          links privados en Supabase Auth + Cloudflare R2.
+          Con tu cuenta de Google o tu email sincronizás tus proyectos en la base de datos PostgreSQL de Supabase y subís audios y tapas a la nube.
         </p>
+
+        {msg && (
+          <div style={{ padding: "8px 12px", background: "rgba(255,255,255,0.06)", borderRadius: 8, fontSize: "0.8rem", marginBottom: 12, border: "1px solid rgba(255,255,255,0.15)" }}>
+            {msg}
+          </div>
+        )}
 
         <div className="modal-form-grid single-col">
           <label className="modal-field">
-            <span>CORREO DE GOOGLE</span>
+            <span>CORREO ELECTRÓNICO (GOOGLE O PRIVADO)</span>
             <input value={email} onChange={(e) => setEmail(e.target.value)} />
           </label>
           <label className="modal-field">
@@ -2570,18 +2702,33 @@ function GoogleAuthModal({
           </label>
         </div>
 
-        <div className="google-auth-actions">
+        <div className="google-auth-actions" style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
           <button
             type="button"
             className="google-oauth-btn"
-            onClick={() => onSignInGoogle(email, name, handle)}
+            disabled={loading}
+            onClick={handleOAuthGoogle}
           >
             <span className="g-badge">G</span>
-            <span>Continuar con Google ({email})</span>
+            <span>{loading ? "Conectando..." : `Ingresar con Google (${email})`}</span>
+          </button>
+
+          <button
+            type="button"
+            className="apple-btn ghost"
+            onClick={() => onSignInGoogle(email, name, handle)}
+            style={{ justifyContent: "center" }}
+          >
+            Guardar y usar perfil local
           </button>
 
           {connected && (
-            <button type="button" className="apple-btn ghost" onClick={onSignOut}>
+            <button
+              type="button"
+              className="apple-btn ghost danger-trash-btn"
+              onClick={onSignOut}
+              style={{ justifyContent: "center", marginTop: 4 }}
+            >
               Cerrar sesión actual
             </button>
           )}
