@@ -810,18 +810,27 @@ button {
   border-radius: var(--radius-xl);
   overflow: hidden;
   box-shadow: var(--shadow-soft);
+  min-width: 0;
+  max-width: 100%;
 }
 
 .manifold-3d-canvas-stage {
   position: relative;
-  height: 520px;
+  display: flex;
+  flex-direction: column;
   cursor: grab;
   user-select: none;
   background: radial-gradient(circle at 50% 45%, #ffffff 0%, #f1f5f9 100%);
 }
 
-.manifold-3d-wrapper.is-compact .manifold-3d-canvas-stage {
-  height: 390px;
+.manifold-canvas-inner {
+  position: relative;
+  width: 100%;
+  height: 480px;
+}
+
+.manifold-3d-wrapper.is-compact .manifold-canvas-inner {
+  height: 360px;
 }
 
 .manifold-3d-canvas-stage:active {
@@ -829,20 +838,25 @@ button {
 }
 
 .manifold-stage-overlay-top {
-  position: absolute;
-  top: 18px;
-  left: 22px;
-  right: 22px;
+  position: relative;
   z-index: 5;
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  pointer-events: none;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 16px 22px 12px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
   gap: 12px;
 }
 
+.manifold-overlay-titles {
+  min-width: 0;
+}
+
 .manifold-stage-overlay-top h3 {
-  font-size: 0.96rem;
+  font-size: 0.94rem;
   font-weight: 600;
   letter-spacing: -0.02em;
   margin-top: 2px;
@@ -853,6 +867,13 @@ button {
   flex-wrap: wrap;
   gap: 6px;
   pointer-events: auto;
+  max-width: 100%;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.manifold-quick-pills::-webkit-scrollbar {
+  display: none;
 }
 
 .quick-proj-pill {
@@ -860,10 +881,11 @@ button {
   border-radius: 999px;
   font-size: 0.72rem;
   font-weight: 600;
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.9);
   border: 1px solid var(--line-strong);
   color: var(--ink);
-  backdrop-filter: blur(8px);
+  white-space: nowrap;
+  flex-shrink: 0;
   transition: transform 0.15s, background 0.15s;
 }
 
@@ -2553,7 +2575,21 @@ button {
   transform: scale(0.985);
 }
 
-/* Responsivo */
+/* Asegurar que ningún hijo de grilla desborde el ancho del iPhone */
+.explore-bottom-grid > *,
+.inspector-split > *,
+.dmg-manifold-install-split > *,
+.dmg-arena > *,
+.spotify-dock-grid > *,
+.apple-card,
+.project-inspector-sheet,
+.disc-spinner-wrap,
+.inspector-tracklist {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* ==================== RESPONSIVO TABLET & IPHONE (ESTÉTICA NATIVA iOS 18) ==================== */
 @media (max-width: 960px) {
   .explore-bottom-grid,
   .inspector-split,
@@ -2565,10 +2601,412 @@ button {
   }
 
   .spotify-right-utilities {
-    justify-content: center;
+    justify-content: space-between;
+    width: 100%;
   }
 
   .profile-metrics-bar {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+@media (max-width: 720px) {
+  .apple-shell {
+    padding: 112px 12px 110px;
+  }
+
+  /* Navbar en iPhone: Fila 1 = Marca + Acciones rápidas · Fila 2 = Segmented Control de 4 tabs exactos */
+  .ios-navbar {
+    top: 8px;
+    left: 10px;
+    right: 10px;
+    border-radius: 20px;
+    padding: 7px 10px;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .ios-brand-title {
+    padding: 2px 4px;
+    gap: 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .ios-brand-title strong {
+    font-size: 1.02rem;
+    white-space: nowrap;
+  }
+
+  .ios-nav-right {
+    gap: 5px;
+    margin-left: auto;
+  }
+
+  .ios-icon-btn {
+    padding: 5px 9px;
+    font-size: 0.7rem;
+    white-space: nowrap;
+  }
+
+  .ios-seg-control {
+    order: 3;
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    padding: 3px;
+    gap: 2px;
+  }
+
+  .ios-seg-control button {
+    padding: 6px 4px;
+    font-size: 0.74rem;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Inicio en iPhone */
+  .secondstory-strip-card {
+    padding: 14px;
+    border-radius: 22px;
+  }
+
+  .corecore-stage {
+    min-height: 250px;
+    padding: 26px 6px 20px;
+  }
+
+  .roster-word {
+    font-size: clamp(1.7rem, 7.8vw, 2.45rem);
+  }
+
+  .collage-line {
+    gap: 6px;
+  }
+
+  .cutout-pill {
+    padding: 4px 8px;
+    font-size: 0.68rem;
+  }
+
+  .collage-cta-pill {
+    padding: 6px 11px;
+    font-size: 0.7rem;
+  }
+
+  .secondstory-mega-footer {
+    padding: 16px 0;
+    gap: 10px;
+  }
+
+  .mega-display-title {
+    font-size: clamp(3rem, 15vw, 4.6rem);
+  }
+
+  /* Miniportadas en grilla 3x2 limpia en iPhone */
+  .filmstrip-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    padding: 14px 2px 4px;
+    margin: 0;
+  }
+
+  .thumb-glyph {
+    font-size: 1.45rem;
+  }
+
+  .filmstrip-art {
+    padding: 8px;
+  }
+
+  .filmstrip-art small {
+    font-size: 0.54rem;
+  }
+
+  .apple-card,
+  .project-inspector-sheet,
+  .profile-hero-card {
+    padding: 16px;
+    border-radius: 22px;
+  }
+
+  /* Filas de tracks en iPhone sin desborde lateral */
+  .clean-track-row {
+    gap: 8px;
+    padding: 8px 6px;
+  }
+
+  .clean-track-row .row-pills {
+    display: none;
+  }
+
+  .row-snippet-btn {
+    padding: 5px 9px;
+    font-size: 0.68rem;
+  }
+
+  /* Biblioteca 3D en iPhone: Header limpio arriba + tira deslizable de proyectos + visor 3D centrado */
+  .editorial-h1 {
+    font-size: 1.65rem;
+  }
+
+  .section-header-row {
+    margin-bottom: 14px;
+    gap: 10px;
+  }
+
+  .manifold-stage-overlay-top {
+    padding: 12px 14px 10px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .manifold-stage-overlay-top h3 {
+    font-size: 0.82rem;
+    line-height: 1.25;
+  }
+
+  .manifold-quick-pills {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    width: 100%;
+    padding-bottom: 2px;
+  }
+
+  .manifold-canvas-inner {
+    height: 320px;
+  }
+
+  .manifold-3d-wrapper.is-compact .manifold-canvas-inner {
+    height: 270px;
+  }
+
+  .manifold-3d-pill {
+    padding: 4px 9px;
+    font-size: 0.64rem;
+    gap: 5px;
+  }
+
+  .project-video-folder-bar {
+    padding: 12px 14px;
+    gap: 10px;
+  }
+
+  .upload-video-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Inspector & Spinner 3D en iPhone */
+  .inspector-header {
+    gap: 12px;
+    padding-bottom: 14px;
+  }
+
+  .inspector-header h2 {
+    font-size: 1.3rem;
+  }
+
+  .row-actions {
+    width: 100%;
+  }
+
+  .row-actions .apple-btn {
+    flex: 1;
+    justify-content: center;
+    padding: 9px 12px;
+    font-size: 0.76rem;
+  }
+
+  .disc-spinner-wrap {
+    padding: 12px;
+    overflow: hidden;
+  }
+
+  .disc-spinner-stage {
+    height: 255px;
+    width: 100%;
+  }
+
+  .disc-focused-bar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .disc-focused-bar .apple-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Subir (.dmg) en iPhone */
+  .dmg-steps-indicator {
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+
+  .dmg-steps-indicator button {
+    white-space: nowrap;
+    font-size: 0.72rem;
+    padding: 5px 10px;
+  }
+
+  .dmg-titlebar {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .dmg-window-title {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.74rem;
+    text-align: center;
+  }
+
+  .dmg-titlebar .mono-tag {
+    display: none;
+  }
+
+  .dmg-inspector {
+    padding: 12px 14px;
+    gap: 8px;
+  }
+
+  .dmg-file-btn {
+    width: 100%;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .dmg-stage {
+    padding: 14px;
+  }
+
+  .dmg-arena {
+    padding: 16px;
+    gap: 16px;
+    min-height: 220px;
+  }
+
+  /* Dynamic Island en iPhone: compacto de 1 sola línea, controles al medio y volumen a la derecha */
+  .ios-mini-player-dock {
+    bottom: 10px;
+    padding: 0 10px;
+  }
+
+  .ios-mini-player {
+    border-radius: 999px;
+    padding: 6px 12px 6px 8px;
+    gap: 8px;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+
+  .mini-art {
+    width: 38px;
+    height: 38px;
+    font-size: 0.82rem;
+  }
+
+  .mini-meta b {
+    font-size: 0.8rem;
+  }
+
+  .mini-meta span {
+    font-size: 0.68rem;
+  }
+
+  .mini-controls {
+    gap: 4px;
+  }
+
+  .mini-btn {
+    width: 30px;
+    height: 30px;
+    font-size: 0.76rem;
+  }
+
+  .mini-play-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 0.78rem;
+  }
+
+  .mini-volume-wrap {
+    gap: 4px;
+  }
+
+  .mini-volume-wrap .apple-volume-slider {
+    width: 54px;
+  }
+
+  /* Reproductor 3D Fullscreen estilo Spotify iOS en iPhone */
+  .perf-player {
+    padding: 16px 12px 14px;
+  }
+
+  .perf-topbar {
+    gap: 6px;
+  }
+
+  .pill-control,
+  .mono-badge {
+    padding: 6px 10px;
+    font-size: 0.68rem;
+  }
+
+  .perf-artwork-card {
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+  }
+
+  .perf-artwork-card span {
+    font-size: 1.4rem;
+  }
+
+  .perf-title {
+    font-size: clamp(2rem, 9vw, 3.1rem);
+  }
+
+  .perf-dock.spotify-full-dock {
+    padding: 12px 14px;
+    border-radius: 20px;
+  }
+
+  .spotify-dock-grid {
+    gap: 10px;
+  }
+
+  .spotify-now-art {
+    width: 42px;
+    height: 42px;
+  }
+
+  .spotify-transport-buttons {
+    gap: 14px;
+  }
+
+  .apple-select.compact-select {
+    min-width: 0;
+    flex: 1;
+    font-size: 0.72rem;
+    padding: 7px 9px;
+  }
+
+  .spotify-queue-drawer {
+    top: 64px;
+    left: 12px;
+    right: 12px;
+    bottom: 190px;
+    width: auto;
+  }
+}
+

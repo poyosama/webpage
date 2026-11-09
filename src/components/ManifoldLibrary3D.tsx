@@ -1,11 +1,31 @@
 "use client";
 
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { type Project, type ProjectVideoClip } from "@/lib/mock";
 import { sfx } from "@/lib/sfx";
+
+function ResponsiveSceneGroup({
+  children,
+  basePosition,
+  mobileScale = 0.72,
+  desktopScale = 0.94,
+}: {
+  children: React.ReactNode;
+  basePosition: [number, number, number];
+  mobileScale?: number;
+  desktopScale?: number;
+}) {
+  const width = useThree((s) => s.size.width);
+  const scale = width < 440 ? mobileScale : width < 640 ? 0.82 : desktopScale;
+  return (
+    <group position={basePosition} scale={scale}>
+      {children}
+    </group>
+  );
+}
 
 // Shader GLSL 100% en GPU (0% uso de CPU por frame, corre a 120 FPS)
 const faceVertexShader = `
@@ -419,7 +439,7 @@ export default function ManifoldLibrary3D({
       {viewMode === "manifold" ? (
         <div className="manifold-3d-canvas-stage">
           <div className="manifold-stage-overlay-top">
-            <div>
+            <div className="manifold-overlay-titles">
               <span className="mono-tag">MIS PROYECTOS // BLOQUES</span>
               <h3>Arrastrá para mover · Seleccioná un proyecto</h3>
             </div>
@@ -440,33 +460,39 @@ export default function ManifoldLibrary3D({
             </div>
           </div>
 
-          <Canvas
-            camera={{ position: [6.8, 6.2, 7.2], fov: 32 }}
-            dpr={[1, 1.5]}
-            gl={{ antialias: true, powerPreference: "high-performance" }}
-          >
-            <group position={[0, 0.2, 0]}>
-              {projects.map((p) => (
-                <ProjectVideoCube
-                  key={p.id}
-                  project={p}
-                  isSelected={p.id === selectedProjectId}
-                  isPopped={p.id === poppedProjectId}
-                  onSelect={onSelectProject}
-                />
-              ))}
-            </group>
+          <div className="manifold-canvas-inner">
+            <Canvas
+              camera={{ position: [6.8, 6.2, 7.2], fov: 32 }}
+              dpr={[1, 1.5]}
+              gl={{ antialias: true, powerPreference: "high-performance" }}
+            >
+              <ResponsiveSceneGroup
+                basePosition={[0, 0.15, 0]}
+                mobileScale={0.7}
+                desktopScale={compact ? 0.88 : 0.94}
+              >
+                {projects.map((p) => (
+                  <ProjectVideoCube
+                    key={p.id}
+                    project={p}
+                    isSelected={p.id === selectedProjectId}
+                    isPopped={p.id === poppedProjectId}
+                    onSelect={onSelectProject}
+                  />
+                ))}
+              </ResponsiveSceneGroup>
 
-            <OrbitControls
-              enableZoom={true}
-              minDistance={5.5}
-              maxDistance={15}
-              enablePan={false}
-              rotateSpeed={0.7}
-              minPolarAngle={0.4}
-              maxPolarAngle={1.38}
-            />
-          </Canvas>
+              <OrbitControls
+                enableZoom={true}
+                minDistance={5.5}
+                maxDistance={15}
+                enablePan={false}
+                rotateSpeed={0.7}
+                minPolarAngle={0.4}
+                maxPolarAngle={1.38}
+              />
+            </Canvas>
+          </div>
         </div>
       ) : (
         <div
@@ -501,33 +527,39 @@ export default function ManifoldLibrary3D({
           }}
         >
           <div className="manifold-stage-overlay-top">
-            <div>
+            <div className="manifold-overlay-titles">
               <span className="mono-tag">MIS PROYECTOS // VINILOS</span>
               <h3>Arrastrá para mover · Seleccioná un proyecto</h3>
             </div>
             <span className="mono-tag">{projects.length} PROYECTOS</span>
           </div>
 
-          <Canvas
-            camera={{ position: [0.8, 2.65, 9.6], fov: 36 }}
-            dpr={[1, 1.5]}
-            gl={{ antialias: true, powerPreference: "high-performance" }}
-          >
-            <group position={[-0.4, -0.35, 0]}>
-              {projects.map((p, i) => (
-                <DiagonalProjectPlate
-                  key={p.id}
-                  project={p}
-                  index={i}
-                  offsetRef={rowDragRef}
-                  isSelected={p.id === selectedProjectId}
-                  onSelect={onSelectProject}
-                  movedRef={movedRef}
-                />
-              ))}
-            </group>
-            <DiagonalRowPhysics total={projects.length} offsetRef={rowDragRef} />
-          </Canvas>
+          <div className="manifold-canvas-inner">
+            <Canvas
+              camera={{ position: [0.8, 2.65, 9.6], fov: 36 }}
+              dpr={[1, 1.5]}
+              gl={{ antialias: true, powerPreference: "high-performance" }}
+            >
+              <ResponsiveSceneGroup
+                basePosition={[-0.25, -0.25, 0]}
+                mobileScale={0.74}
+                desktopScale={1}
+              >
+                {projects.map((p, i) => (
+                  <DiagonalProjectPlate
+                    key={p.id}
+                    project={p}
+                    index={i}
+                    offsetRef={rowDragRef}
+                    isSelected={p.id === selectedProjectId}
+                    onSelect={onSelectProject}
+                    movedRef={movedRef}
+                  />
+                ))}
+              </ResponsiveSceneGroup>
+              <DiagonalRowPhysics total={projects.length} offsetRef={rowDragRef} />
+            </Canvas>
+          </div>
         </div>
       )}
 

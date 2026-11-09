@@ -1,10 +1,20 @@
 "use client";
 
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { type Project, type Track } from "@/lib/mock";
 import { sfx } from "@/lib/sfx";
+
+function ResponsiveSpinnerGroup({ children }: { children: React.ReactNode }) {
+  const width = useThree((s) => s.size.width);
+  const scale = width < 420 ? 0.76 : width < 540 ? 0.86 : 1;
+  return (
+    <group position={[0, -0.15, 0]} scale={scale}>
+      {children}
+    </group>
+  );
+}
 
 function createDiscTexture(t: Track, idx: number, total: number) {
   const c = document.createElement("canvas");
@@ -246,7 +256,7 @@ export default function DiscSpinner3D({
         <Canvas camera={{ position: [0, 1.35, 6.8], fov: 36 }} dpr={[1, 2]}>
           <ambientLight intensity={1.4} />
           <directionalLight position={[4, 6, 5]} intensity={1.6} />
-          <group position={[0, -0.15, 0]}>
+          <ResponsiveSpinnerGroup>
             {tracks.map((t, i) => (
               <DiscPlate
                 key={t.id}
@@ -265,7 +275,7 @@ export default function DiscSpinner3D({
                 }}
               />
             ))}
-          </group>
+          </ResponsiveSpinnerGroup>
           <SpinnerPhysics
             total={tracks.length}
             dragRef={dragRef}
