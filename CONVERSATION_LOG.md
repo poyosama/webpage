@@ -378,6 +378,16 @@
 - El login con Google fue 100% exitoso (el token de acceso JWT vino generado en la URL). Sin embargo, Supabase redirigió por defecto a `http://localhost:3000` porque en **Authentication -> URL Configuration** la opción **Site URL** viene configurada en localhost por defecto.
 - Se le indicó al usuario cambiar **Site URL** en Supabase a `https://eltablero.blog` (o la URL de Vercel) y agregar en **Redirect URLs** `https://eltablero.blog/**` y `https://*.vercel.app/**`.
 
+---
+
+### Turno 26 — Reconfirmación de Configuración de Site URL en Supabase
+**Prompt del usuario:**
+- Reenvío de la captura mostrando `http://localhost:3000/#access_token=...`.
+
+**Respuesta:**
+- Se reiteró con captura mental paso a paso dónde cambiar la Site URL en Supabase para que redireccione a la URL de producción (`https://eltablero.blog`).
+
+
 
 
 
