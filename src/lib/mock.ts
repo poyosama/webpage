@@ -119,6 +119,7 @@ export type ArtistProfile = {
   friendsCount: number;
   followersCount: number;
   playsTotal: string;
+  accountType?: "artista" | "oyente";
   stickers: string[];
 };
 
@@ -128,6 +129,7 @@ export const INITIAL_ME_PROFILE: ArtistProfile = {
   name: "poyo",
   email: "poyo@eltablero.mza",
   role: "Rapero · Artista",
+  accountType: "artista",
   category: "rapero",
   zone: "Mendoza",
   crew: "EL TABLERO // UG",

@@ -4843,4 +4843,212 @@ video::-webkit-media-controls-overlay-play-button {
   color: var(--ink-secondary);
 }
 
+/* ==================== LANDING SCENE CON MICRO VINILOS & CDS ==================== */
+.landing-stage-wrapper {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: #070709;
+  color: #ffffff;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.landing-canvas-container {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+  z-index: 1;
+}
+
+.landing-top-bar {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 22px 28px;
+}
+
+.landing-brand-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.landing-enter-guest-btn {
+  color: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+  font-size: 0.82rem;
+  padding: 8px 16px;
+  border-radius: 999px;
+  transition: all 0.18s;
+}
+
+.landing-enter-guest-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.landing-center-content {
+  position: relative;
+  z-index: 10;
+  margin: auto;
+  text-align: center;
+  max-width: 680px;
+  padding: 0 24px 40px;
+  pointer-events: none;
+}
+
+.landing-center-content * {
+  pointer-events: auto;
+}
+
+.landing-display-title {
+  font-size: clamp(3.2rem, 9vw, 6.4rem);
+  font-weight: 800;
+  letter-spacing: -0.065em;
+  line-height: 0.95;
+  margin: 0 0 14px;
+  color: #ffffff;
+  text-shadow: 0 4px 32px rgba(0, 0, 0, 0.65);
+}
+
+.landing-manifesto-sub {
+  font-size: clamp(0.95rem, 2.2vw, 1.25rem);
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.72);
+  letter-spacing: -0.01em;
+  margin: 0 auto 28px;
+  max-width: 520px;
+}
+
+.landing-center-pill {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(24, 24, 27, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  padding: 6px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.landing-pill-btn {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.85);
+  border: none;
+  font-size: 0.92rem;
+  font-weight: 600;
+  padding: 10px 24px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.landing-pill-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.landing-pill-btn.primary {
+  background: #ffffff;
+  color: #09090b;
+}
+
+.landing-pill-btn.primary:hover {
+  background: rgba(255, 255, 255, 0.9);
+  transform: scale(1.02);
+}
+
+.landing-pill-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.15);
+  margin: 0 4px;
+}
+
+.landing-referral-hint {
+  display: block;
+  margin-top: 18px;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+/* ==================== GUARDADOS / SAVED PROJECTS ==================== */
+.saved-projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 18px;
+  margin-top: 20px;
+}
+
+.saved-project-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: transform 0.18s, border-color 0.18s;
+}
+
+.saved-project-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--line-strong);
+}
+
+.saved-card-header {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.saved-card-thumb {
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  object-fit: cover;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.saved-card-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.saved-card-meta h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0 0 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.saved-card-meta p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--ink-secondary);
+}
+
+.saved-card-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+
 

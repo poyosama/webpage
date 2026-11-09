@@ -535,3 +535,46 @@
 
 
 
+
+---
+
+### Turno 32 — Landing Page con Micro Vinilos & CDs 3D, Referral Invites (Estilo HeySpace), Modo Oyente vs Artista, Colección "Guardados", Texto Dinámico en Crear Proyecto, Subida de Portada de Proyecto y URLs Limpias
+**Prompts del usuario:**
+1. *"bueno lo siguiente va a ser hacer una version de la ui orientada para el que solo esta en la plataforma para escuchar, junto con tambien la capacidad de los artistas guardar en su biblioteca proyectos de otros, que sea una parte de la biblioteca que se llame "Guardados"*
+2. *"de por si a los que solo son oyentes solo tiene que aparecerles esta parte de la biblioteca y no la de mis proyectos ya que no son aristas. a la hora de crearte una cuenta te tiene q preguntar si sos artista u oyente."*
+3. *"mas bien tambien crea la landing page que sea igual al reproductor con las particulas pero sin widgets ni nada solo la pildora del medio que te diga "registrarme" "iniciar sesion". en el medio donde va el nombre del tema en el reproductor para esa pagina tiene que decir El tablero, con la fuente del tablero."*
+4. *"acordate que es por referral invite igual que heyspace eh asi que a la hora de registrarse el usuario tiene que pegar el link e iniciar sesion con su cuenta ed google. previo a la autenticacion de google tiene que ser valido el link de invitacion. sin ser valido no se pasa a conectar la cuenta de google ! se puede hacer que las particulas de esta pantalla en vez de ser circulitos sean pequeños vinilos y cds ? optimizalo bien eh"*
+5. *"el boton del medio de crear mi primer poryecto no sirve ! y te dije que lo de los ejemplos lo saques porque no van a ser necesarios... ademas ya podrias ir empezando a guardar los proyectos y las cosas en la nube vos guarda todo en la nube nada de forma local excepto cache par escuchar sin conexion y tal"*
+6. *"a la hora de crear el proyecto quiero que donde dice "el tablero" diga eso mientras no haya un nombre de proyecto. cuando el usuario empieza a tipear el nombre de proyecto que las particulas vayan creando el texto que dice el nombre del proyecto. que los botones sean mas bonitos, ui oriented con buenos text placeholders y botones legibles y bonitos, el subir tracks esta muy camuflado y no se le puede subir una tapa del disco."*
+7. *"crear proyecto en biblioteca 3d tendria que decir crear proyecto"*
+8. *"despues en la otra imagen donde esta el proyecto en la biblioteca tendrai que decir para cambiarle la portada tambien eso es re importante xd"*
+9. *"y que en el url se esconda todo que no aparezca ningun login token ni muchos numeros a no ser de que estes en un proyecto y puedas copiar el url del proyectoy te lleve si sos miembro de la red social, pero quero que las url solo digan eltablero.blog ; eltablero.blog/library ; eltablero.blog/profile ; eltablero.blog/upload y asi y listo"*
+
+**Implementación:**
+1. **Landing Page con Enjambre 3D de Micro Vinilos & Micro CDs (`LandingScene.tsx` + `globals.css`):**
+   - Creado componente `LandingScene.tsx` con canvas Three.js de 18.000 partículas point sprite texturizadas con micro vinilos detallados (surcos, centro rojo y agujero central) y micro CDs plateados con reflejo iridiscente, corriendo a 60 FPS con rotación y respuesta suave al puntero.
+   - En el centro de la pantalla, emulando la estética del reproductor: título display gigante `"El tablero"` con tipografía apretada, subtítulo *"Tus proyectos. Tu identidad. Tu gente. Tu música."* y píldora central minimalista con botones `Registrarme` e `Iniciar sesión`.
+   - Botón minimalista en la esquina superior derecha: `Explorar como invitado →` para ingresar a la plataforma sin trabas.
+2. **Referral Invite Gate estilo HeySpace (`LandingScene.tsx`):**
+   - Modal interactivo de registro privado: requiere ingresar un link o código de invitación válido (`TABLERO-UG-2026`, `POYO-VIP`, `CHICKENNUGGET`, etc.).
+   - Si el referral es inválido o está vacío, bloquea completamente el inicio con Google y muestra mensaje de advertencia en español argentino: *"Link o código de invitación inválido, che. El tablero es una red privada solo por invitación (referral). Pedile acceso a un miembro."*
+   - Pregunta el rol antes de autenticar: `🎙️ Artista / Productor` o `🎧 Oyente`. Al validar el código, deriva a la autenticación de Google con el rol preseleccionado.
+3. **Modo Oyente vs. Artista y Colección "Guardados" (`App.tsx`, `mock.ts`, `supabase.ts`):**
+   - Agregado campo `accountType: "artista" | "oyente"` a `ArtistProfile`, configurable en `EditProfileModal` y al registrarse.
+   - Si el usuario es **Oyente**: la barra de navegación superior muestra exclusivamente `Inicio · Guardados · @perfil` (ocultando por completo la pestaña "Subir" y los accesos a "Crear Proyecto"). En la biblioteca solo se muestra la sección **Guardados**.
+   - Si el usuario es **Artista**: la biblioteca permite conmutar entre `Mis Proyectos (X)` y `Guardados (Y)`.
+   - Sistema de guardado de proyectos: cualquier proyecto en Inicio o en la biblioteca tiene el botón `+ Guardar` / `✓ Guardado`, persistido en `saved_projects` en Supabase PostgreSQL y en `localStorage` como caché offline.
+4. **Crear Proyecto con Texto Dinámico por Partículas Sentientes (`CreateProjectScreen.tsx`):**
+   - `buildLogoTargets(count, titleText)` rasteriza dinámicamente el texto tipeado por el usuario en tiempo real en un canvas 2D con tamaño de fuente auto-adaptativo y extrusión volumétrica Z en 3D.
+   - Mientras el input está vacío, las 28.000 partículas sentientes modelan el logo `"El tablero"`. Al tipear cualquier nombre de proyecto, las partículas se reordenan fluidamente y arman las letras del título en 3D.
+   - Selector dedicado para subir la **Portada / Tapa del disco** (JPG, PNG, WEBP) con preview en miniatura y botón de reemplazo.
+   - Botón de guardado actualizado a `"Crear proyecto"`.
+   - Campo de canciones iniciales rediseñado con tarjeta de alto contraste y estado visual claro (`✓ X canciones cargadas`).
+5. **Cambio de Portada de Proyectos en la Biblioteca (`ManifoldLibrary3D.tsx`, `App.tsx`):**
+   - En el inspector de proyectos de `ManifoldLibrary3D.tsx` (tanto en modo Vinilos como en Bloques) y en el inspector interior de `App.tsx`: añadido botón `Cambiar portada` con selector de archivo de imagen, actualizando la portada en el proyecto y en Supabase (`updateProjectCoverInSupabase`).
+   - Botón `+ Crear mi primer Proyecto` en el estado de 0 proyectos navega directamente a la pantalla de creación sin errores.
+   - Eliminados todos los botones de "Restaurar proyectos de la escena / ejemplos". Todo opera con proyectos reales.
+6. **URLs Limpias y Limpieza de Tokens OAuth (`App.tsx`):**
+   - Se eliminan automáticamente los fragmentos `#access_token=...` de la URL tras el login de Google mediante `window.history.replaceState`.
+   - Sincronización bidireccional limpia de rutas en el navegador: `/` (Inicio), `/library` (Biblioteca/Guardados), `/upload` (Subir), `/profile` (Perfil), `/create` (Crear Proyecto) y `/project/:id` (acceso directo a un proyecto).
+   - Añadido botón `🔗 Copiar link` en el inspector para compartir proyectos con URL canónica `https://eltablero.blog/project/${projectId}`.

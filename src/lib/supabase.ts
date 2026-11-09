@@ -246,3 +246,115 @@ export async function saveUserProfileToSupabase(profile: Partial<ArtistProfile> 
   }
 }
 
+// ==================== DB: GUARDAR O ACTUALIZAR PROYECTO ENTERO ====================
+export async function saveProjectToSupabase(project: Project, userId?: string): Promise<boolean> {
+  try {
+    const { error: projErr } = await supabase.from("projects").upsert(
+      {
+        id: project.id,
+        title: project.title,
+        artist: project.artist,
+        type: project.type,
+        year: project.year,
+        status: project.status,
+        zone: project.zone,
+        description: project.description,
+        cover_url: project.coverUrl || null,
+        user_id: userId || null,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "id" }
+    );
+
+    if (projErr) {
+      console.warn("Error guardando proyecto en Supabase:", projErr.message);
+      return false;
+    }
+
+    if (project.tracks && project.tracks.length > 0) {
+      const trackRows = project.tracks.map((t, idx) => ({
+        id: t.id,
+        project_id: project.id,
+        title: t.title,
+        artist: t.artist,
+        prod: t.prod || null,
+        bpm: t.bpm,
+        musical_key: t.key,
+        duration: t.duration,
+        duration_sec: t.durationSec,
+        version: t.version,
+        glyph: t.glyph,
+        audio_url: t.customAudioUrl || null,
+        cover_url: t.coverUrl || project.coverUrl || null,
+        order_index: idx,
+      }));
+      await supabase.from("tracks").upsert(trackRows, { onConflict: "id" });
+    }
+
+    return true;
+  } catch (err) {
+    console.warn("Fallo saveProjectToSupabase:", err);
+    return false;
+  }
+}
+
+// ==================== DB: ACTUALIZAR PORTADA DE UN PROYECTO ====================
+export async function updateProjectCoverInSupabase(projectId: string, coverUrl: string): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from("projects")
+      .update({ cover_url: coverUrl, updated_at: new Date().toISOString() })
+      .eq("id", projectId);
+    if (error) {
+      console.warn("Error actualizando cover en Supabase:", error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn("Fallo updateProjectCoverInSupabase:", err);
+    return false;
+  }
+}
+
+// ==================== DB: ELIMINAR PROYECTO ====================
+export async function deleteProjectFromSupabase(projectId: string): Promise<boolean> {
+  try {
+    const { error } = await supabase.from("projects").delete().eq("id", projectId);
+    if (error) {
+      console.warn("Error eliminando proyecto de Supabase:", error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn("Fallo deleteProjectFromSupabase:", err);
+    return false;
+  }
+}
+
+// ==================== DB: GUARDADOS / BOOKMARKS ====================
+export async function fetchSavedProjectIdsFromSupabase(userId: string): Promise<string[]> {
+  try {
+    const { data, error } = await supabase
+      .from("saved_projects")
+      .select("project_id")
+      .eq("user_id", userId);
+    if (error || !data) return [];
+    return data.map((d: any) => d.project_id);
+  } catch {
+    return [];
+  }
+}
+
+export async function toggleSavedProjectInSupabase(userId: string, projectId: string, isSaved: boolean): Promise<void> {
+  try {
+    if (isSaved) {
+      await supabase.from("saved_projects").upsert({ user_id: userId, project_id: projectId });
+    } else {
+      await supabase.from("saved_projects").delete().eq("user_id", userId).eq("project_id", projectId);
+    }
+  } catch (err) {
+    console.warn("toggleSavedProjectInSupabase warn:", err);
+  }
+}
+
+

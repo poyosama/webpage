@@ -15,13 +15,14 @@ import { sfx } from "@/lib/sfx";
 
 type SentientBehavior = "auto" | "logo" | "clusters" | "shapes" | "scatter";
 
-// Genera una nube de puntos 3D volumétrica con la tipografía apretada de "El tablero" (estilo SecondStory)
-function buildLogoTargets(count: number): Float32Array {
+// Genera una nube de puntos 3D volumétrica con el texto tipeado o "El tablero" por defecto
+function buildLogoTargets(count: number, rawText: string = "El tablero"): Float32Array {
   const targets = new Float32Array(count * 3);
   if (typeof document === "undefined") return targets;
 
-  const W = 720;
-  const H = 220;
+  const text = (rawText.trim() || "El tablero").toUpperCase();
+  const W = 880;
+  const H = 240;
   const c = document.createElement("canvas");
   c.width = W;
   c.height = H;
@@ -30,15 +31,19 @@ function buildLogoTargets(count: number): Float32Array {
   g.fillStyle = "#000000";
   g.fillRect(0, 0, W, H);
 
-  // Marco y punto de marca sutil + texto "El tablero" bien apretado
+  // Tamaño tipográfico adaptativo para que entre cualquier nombre de proyecto
+  let fontSize = 126;
+  if (text.length > 20) fontSize = 54;
+  else if (text.length > 14) fontSize = 72;
+  else if (text.length > 9) fontSize = 94;
+
   g.fillStyle = "#ffffff";
-  g.font = '800 132px -apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, sans-serif';
+  g.font = `800 ${fontSize}px -apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, sans-serif`;
   g.textAlign = "center";
   g.textBaseline = "middle";
-  // Simulamos el tracking apretado (-0.065em) dibujando letra por letra
-  const text = "El tablero";
+
   const chars = text.split("");
-  const tightFactor = 0.87;
+  const tightFactor = 0.88;
   const widths = chars.map((ch) => g.measureText(ch).width * tightFactor);
   const totalW = widths.reduce((a, b) => a + b, 0);
   let curX = (W - totalW) / 2;
@@ -56,8 +61,8 @@ function buildLogoTargets(count: number): Float32Array {
   for (let y = 0; y < H; y += 2) {
     for (let x = 0; x < W; x += 2) {
       const lum = img[(y * W + x) * 4];
-      if (lum > 110) {
-        validPixels.push([(x / W - 0.5) * 6.4, (0.5 - y / H) * 1.95]);
+      if (lum > 105) {
+        validPixels.push([(x / W - 0.5) * 6.6, (0.5 - y / H) * 2.0]);
       }
     }
   }
@@ -69,9 +74,9 @@ function buildLogoTargets(count: number): Float32Array {
   for (let i = 0; i < count; i++) {
     const ix = i * 3;
     const [px, py] = validPixels[(i * 7) % validPixels.length];
-    // Extrusión 3D en varias capas de profundidad Z para que sea un modelo 3D macizo del logo "El tablero"
+    // Extrusión 3D en varias capas de profundidad Z
     const layer = ((i % 9) - 4) / 4; // -1 a +1
-    const zDepth = layer * 0.26 + (Math.random() - 0.5) * 0.05;
+    const zDepth = layer * 0.28 + (Math.random() - 0.5) * 0.05;
     targets[ix] = px + (Math.random() - 0.5) * 0.022;
     targets[ix + 1] = py + (Math.random() - 0.5) * 0.022;
     targets[ix + 2] = zDepth;
@@ -85,11 +90,13 @@ function SentientTableroSwarm({
   c2,
   behavior,
   keystrokePulse,
+  targetText,
 }: {
   accent: string;
   c2: string;
   behavior: SentientBehavior;
   keystrokePulse: number;
+  targetText: string;
 }) {
   const pointsRef = useRef<THREE.Points>(null!);
   const count = 28000;
@@ -115,7 +122,7 @@ function SentientTableroSwarm({
     return tex;
   }, []);
 
-  const logoTargets = useMemo(() => buildLogoTargets(count), [count]);
+  const logoTargets = useMemo(() => buildLogoTargets(count, targetText), [count, targetText]);
 
   const { positions, velocities, colors, clusterIds, phases, shapeTargets } = useMemo(() => {
     const pos = new Float32Array(count * 3);
@@ -401,8 +408,18 @@ export default function CreateProjectScreen({
   const [behavior, setBehavior] = useState<SentientBehavior>("auto");
   const [keystrokePulse, setKeystrokePulse] = useState(0);
 
+  const [coverUrl, setCoverUrl] = useState<string>("");
   const [uploadedClips, setUploadedClips] = useState<ProjectVideoClip[]>([]);
   const [uploadedTracks, setUploadedTracks] = useState<Track[]>([]);
+
+  const handleCoverFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    sfx.drop();
+    const url = URL.createObjectURL(file);
+    setCoverUrl(url);
+    setKeystrokePulse((n) => n + 1);
+  };
 
   const addAttr = () => {
     const clean = attrInput.trim();
@@ -555,6 +572,7 @@ export default function CreateProjectScreen({
       dateLabel: "HOY",
       zone,
       attributes: attrs,
+      coverUrl: coverUrl || undefined,
       c1: "#111111",
       c2: color,
       accent: color,
@@ -599,7 +617,7 @@ export default function CreateProjectScreen({
               setBehavior("logo");
             }}
           >
-            Modelo 3D &ldquo;El tablero&rdquo;
+            Modelo 3D Tipográfico
           </button>
           <button
             type="button"
@@ -627,14 +645,14 @@ export default function CreateProjectScreen({
         </div>
       </div>
 
-      {/* Escenario 3D Sentiente con el modelo 3D volumétrico de "El tablero" + bandadas y formas */}
+      {/* Escenario 3D Sentiente con el modelo 3D volumétrico del texto tipeado o "El tablero" */}
       <div className="sentient-stage-card">
         <div className="sentient-canvas-box">
           <div className="sentient-stage-hud">
             <span className="mono-tag">
-              28K PARTÍCULAS SENTIENTES · LOGO 3D &ldquo;EL TABLERO&rdquo; + BANDADAS AUTÓNOMAS
+              28K PARTÍCULAS SENTIENTES · MODELANDO: &ldquo;{(title.trim() || "El tablero").toUpperCase()}&rdquo;
             </span>
-            <span className="mono-tag">MOVÉ EL CURSOR O ESCRIBÍ ABAJO PARA EXCITAR EL ENJAMBRE</span>
+            <span className="mono-tag">ESCRIBÍ EL NOMBRE ABAJO PARA QUE LAS PARTÍCULAS ARMEN EL TEXTO</span>
           </div>
 
           <Canvas
@@ -648,6 +666,7 @@ export default function CreateProjectScreen({
               c2={color}
               behavior={behavior}
               keystrokePulse={keystrokePulse}
+              targetText={title}
             />
             <OrbitControls
               enableZoom={true}
@@ -727,6 +746,57 @@ export default function CreateProjectScreen({
               </div>
             </div>
 
+            {/* Selector dedicado para Tapa / Portada del Proyecto */}
+            <div className="modal-field full">
+              <span>PORTADA / TAPA DEL DISCO (OPCIONAL)</span>
+              <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                {coverUrl ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <img
+                      src={coverUrl}
+                      alt="Preview tapa"
+                      style={{
+                        width: "60px",
+                        height: "60px",
+                        objectFit: "cover",
+                        borderRadius: "8px",
+                        border: "1px solid rgba(255,255,255,0.2)",
+                      }}
+                    />
+                    <label className="apple-btn ghost" style={{ cursor: "pointer", fontSize: "12px" }}>
+                      <span>Cambiar portada</span>
+                      <input type="file" accept="image/*" hidden onChange={handleCoverFile} />
+                    </label>
+                    <button
+                      type="button"
+                      className="apple-btn ghost"
+                      style={{ fontSize: "12px" }}
+                      onClick={() => setCoverUrl("")}
+                    >
+                      Quitar
+                    </button>
+                  </div>
+                ) : (
+                  <label
+                    className="apple-btn ghost"
+                    style={{
+                      cursor: "pointer",
+                      width: "100%",
+                      justifyContent: "center",
+                      border: "1px dashed rgba(255,255,255,0.25)",
+                      padding: "14px 18px",
+                    }}
+                  >
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "8px", fontWeight: 600 }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                      + Subir Portada / Tapa del Proyecto (JPG, PNG, WEBP)
+                    </span>
+                    <input type="file" accept="image/*" hidden onChange={handleCoverFile} />
+                  </label>
+                )}
+              </div>
+            </div>
+
             <label className="modal-field full">
               <span>DESCRIPCIÓN / CONCEPTO DEL PROYECTO</span>
               <input
@@ -773,10 +843,17 @@ export default function CreateProjectScreen({
             </div>
 
             <div className="modal-field">
-              <span>CANCIONES INICIALES (WAV / MP3 OPCIONAL)</span>
-              <label className="apple-btn ghost" style={{ justifyContent: "center" }}>
-                <span>
-                  {uploadedTracks.length > 0 ? `${uploadedTracks.length} tracks listos` : "+ Subir tracks (WAV / MP3)"}
+              <span>CANCIONES INICIALES (WAV / MP3)</span>
+              <label
+                className="apple-btn ghost"
+                style={{
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  border: uploadedTracks.length > 0 ? "1px solid rgba(255,255,255,0.4)" : "1px solid rgba(255,255,255,0.15)",
+                }}
+              >
+                <span style={{ fontWeight: 600 }}>
+                  {uploadedTracks.length > 0 ? `✓ ${uploadedTracks.length} canciones cargadas` : "+ Subir canciones (WAV / MP3)"}
                 </span>
                 <input
                   type="file"
@@ -789,10 +866,10 @@ export default function CreateProjectScreen({
             </div>
 
             <div className="modal-field">
-              <span>CANVAS (VIDEOS 3-5S / GIFS OPCIONALES)</span>
-              <label className="apple-btn ghost" style={{ justifyContent: "center" }}>
+              <span>CANVAS (VIDEOS 3-5S / GIFS)</span>
+              <label className="apple-btn ghost" style={{ justifyContent: "center", cursor: "pointer" }}>
                 <span>
-                  {uploadedClips.length > 0 ? `${uploadedClips.length} clips listos` : "+ Subir videos 3-5s"}
+                  {uploadedClips.length > 0 ? `✓ ${uploadedClips.length} clips cargados` : "+ Subir videos 3-5s"}
                 </span>
                 <input
                   type="file"
@@ -810,7 +887,7 @@ export default function CreateProjectScreen({
               Cancelar
             </button>
             <button type="submit" className="apple-btn primary">
-              Crear Proyecto en Biblioteca 3D
+              Crear proyecto
             </button>
           </div>
         </form>

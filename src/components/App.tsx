@@ -30,12 +30,16 @@ import {
   fetchCommunityProfilesFromSupabase,
   saveUserProfileToSupabase,
   uploadMediaToSupabase,
+  updateProjectCoverInSupabase,
+  toggleSavedProjectInSupabase,
+  fetchSavedProjectIdsFromSupabase,
 } from "@/lib/supabase";
 
 const DiscSpinner3D = dynamic(() => import("./DiscSpinner3D"), { ssr: false });
 const PerformativePlayer = dynamic(() => import("./PerformativePlayer"), { ssr: false });
 const ManifoldLibrary3D = dynamic(() => import("./ManifoldLibrary3D"), { ssr: false });
 const CreateProjectScreen = dynamic(() => import("./CreateProjectScreen"), { ssr: false });
+const LandingScene = dynamic(() => import("./LandingScene"), { ssr: false });
 
 type ScreenTab = "inicio" | "subir" | "biblioteca" | "perfil" | "crear-proyecto";
 
@@ -183,6 +187,114 @@ export default function App() {
   const [editProfileOpen, setEditProfileOpen] = useState<boolean>(false);
   const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
   const [googleConnected, setGoogleConnected] = useState<boolean>(false);
+
+  // Landing Page con micro vinilos y referral invite (estilo HeySpace)
+  const [showLanding, setShowLanding] = useState<boolean>(false);
+
+  // Proyectos guardados en la biblioteca ("Guardados") para oyentes y artistas
+  const [savedProjectIds, setSavedProjectIds] = useState<string[]>([]);
+  const [librarySubTab, setLibrarySubTab] = useState<"proyectos" | "guardados">("proyectos");
+
+  // Limpiar tokens de OAuth (#access_token=...) y sincronizar URLs limpias (/library, /profile, /upload, /project/:id)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    if (window.location.hash.includes("access_token") || window.location.hash.includes("error")) {
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    }
+
+    const path = window.location.pathname;
+    if (path === "/landing") {
+      setShowLanding(true);
+    } else if (path === "/library" || path === "/guardados") {
+      setTab("biblioteca");
+      if (path === "/guardados") setLibrarySubTab("guardados");
+    } else if (path === "/upload" || path === "/subir") {
+      setTab("subir");
+    } else if (path === "/profile" || path === "/perfil") {
+      setTab("perfil");
+    } else if (path === "/create" || path === "/crear-proyecto") {
+      setTab("crear-proyecto");
+    } else if (path.startsWith("/project/")) {
+      const pId = path.replace("/project/", "").trim();
+      if (pId) {
+        setSelectedProjectId(pId);
+        setTab("biblioteca");
+        setInsideCubeOpen(true);
+      }
+    }
+
+    const onPop = () => {
+      const cur = window.location.pathname;
+      if (cur === "/landing") setShowLanding(true);
+      else if (cur === "/library") {
+        setShowLanding(false);
+        setTab("biblioteca");
+      } else if (cur === "/upload") {
+        setShowLanding(false);
+        setTab("subir");
+      } else if (cur === "/profile") {
+        setShowLanding(false);
+        setTab("perfil");
+      } else if (cur === "/create") {
+        setShowLanding(false);
+        setTab("crear-proyecto");
+      } else {
+        setShowLanding(false);
+        setTab("inicio");
+      }
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  // Hidratar proyectos guardados
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("eltablero_saved_project_ids");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) setSavedProjectIds(parsed);
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("eltablero_saved_project_ids", JSON.stringify(savedProjectIds));
+    } catch {}
+  }, [savedProjectIds]);
+
+  const toggleSaveProject = (projectId: string) => {
+    sfx.tap();
+    setSavedProjectIds((prev) => {
+      const exists = prev.includes(projectId);
+      const next = exists ? prev.filter((id) => id !== projectId) : [...prev, projectId];
+      if (googleConnected && meProfile.id) {
+        toggleSavedProjectInSupabase(meProfile.id, projectId, !exists);
+      }
+      return next;
+    });
+  };
+
+  const handleUpdateProjectCover = (projectId: string, newCoverUrl: string) => {
+    updateProjectMeta(projectId, { coverUrl: newCoverUrl });
+    if (googleConnected) {
+      updateProjectCoverInSupabase(projectId, newCoverUrl);
+    }
+    sfx.drop();
+  };
+
+  const handleCopyProjectLink = (projectId: string) => {
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://eltablero.blog";
+    const url = `${origin}/project/${projectId}`;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(url).then(() => {
+        sfx.tick();
+        alert(`¡Link del proyecto copiado!: ${url}`);
+      });
+    }
+  };
 
   // Hidratar proyectos y perfil guardados por el usuario en su dispositivo (Web / Capacitor iOS)
   useEffect(() => {
@@ -854,13 +966,26 @@ export default function App() {
   };
 
   const navigate = (nextTab: ScreenTab) => {
-    if (nextTab === tab) return;
     sfx.nav();
     setTab(nextTab);
+    setShowLanding(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
+
+    if (typeof window !== "undefined") {
+      const pathToTab: Record<ScreenTab, string> = {
+        inicio: "/",
+        biblioteca: "/library",
+        subir: "/upload",
+        perfil: "/profile",
+        "crear-proyecto": "/create",
+      };
+      const cleanPath = pathToTab[nextTab] || "/";
+      window.history.pushState({ tab: nextTab }, "", cleanPath);
+    }
   };
 
   const myProjects = projects.filter((p) => p.artistId === meProfile.id);
+  const savedProjectsList = projects.filter((p) => savedProjectIds.includes(p.id));
   const activeAttributes = activeProject
     ? activeProject.attributes || [activeProject.zone, activeProject.year]
     : [];
@@ -890,12 +1015,18 @@ export default function App() {
 
         <nav className="ios-seg-control" aria-label="Navegación principal">
           {(
-            [
-              ["inicio", "Inicio"],
-              ["subir", "Subir"],
-              ["biblioteca", "Biblioteca"],
-              ["perfil", meProfile.handle],
-            ] as [ScreenTab, string][]
+            (meProfile.accountType === "oyente"
+              ? [
+                  ["inicio", "Inicio"],
+                  ["biblioteca", "Guardados"],
+                  ["perfil", meProfile.handle],
+                ]
+              : [
+                  ["inicio", "Inicio"],
+                  ["subir", "Subir"],
+                  ["biblioteca", "Biblioteca"],
+                  ["perfil", meProfile.handle],
+                ]) as [ScreenTab, string][]
           ).map(([id, label]) => {
             const isActive =
               tab === id || (id === "biblioteca" && tab === "crear-proyecto");
@@ -906,7 +1037,10 @@ export default function App() {
                 className={isActive ? "active" : ""}
                 onMouseEnter={() => sfx.hover()}
                 onClick={() => {
-                  if (id === "biblioteca") setInsideCubeOpen(false);
+                  if (id === "biblioteca") {
+                    setInsideCubeOpen(false);
+                    if (meProfile.accountType === "oyente") setLibrarySubTab("guardados");
+                  }
                   navigate(id);
                 }}
               >
@@ -924,6 +1058,22 @@ export default function App() {
         </nav>
 
         <div className="ios-nav-right">
+          {/* Landing / Referral View Button */}
+          <button
+            type="button"
+            className="ios-icon-btn"
+            onMouseEnter={() => sfx.hover()}
+            onClick={() => {
+              sfx.open();
+              setShowLanding(true);
+            }}
+            title="Ver Landing Page y Referral Invite"
+            aria-label="Ver Landing Page"
+            style={{ fontSize: "0.78rem", padding: "4px 8px", gap: 4 }}
+          >
+            <span>✦ Landing</span>
+          </button>
+
           {/* Theme Toggle Button (Dark / Light) */}
           <button
             type="button"
@@ -1503,92 +1653,193 @@ export default function App() {
             </div>
           )}
 
-          {/* ==================== 2. BIBLIOTECA ==================== */}
+          {/* ==================== 2. BIBLIOTECA / GUARDADOS ==================== */}
           {tab === "biblioteca" && (
             <div className="library-page">
               <div className="section-header-row">
                 <div>
-                  <span className="mono-tag">BIBLIOTECA 3D // EL TABLERO</span>
-                  <h1 className="editorial-h1">Mis Proyectos</h1>
+                  <span className="mono-tag">
+                    {meProfile.accountType === "oyente"
+                      ? "COLECCIÓN PERSONAL // GUARDADOS"
+                      : "BIBLIOTECA 3D // EL TABLERO"}
+                  </span>
+                  <h1 className="editorial-h1">
+                    {meProfile.accountType === "oyente" ? "Guardados" : "Mis Proyectos"}
+                  </h1>
                 </div>
 
-                {/* Switch superior + botón de wipear/restaurar ejemplos */}
+                {/* Sub-pestañas para Artistas (Mis Proyectos vs Guardados) + Botones de vista */}
                 <div className="row-actions">
-                  {projects.length > 0 ? (
-                    <button
-                      type="button"
-                      className="apple-btn ghost danger-trash-btn"
-                      onClick={handleWipeAllProjects}
-                      title="Dejar la biblioteca en 0 proyectos para arrancar en limpio"
-                    >
-                      Wipear ejemplos (0 proyectos)
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className="apple-btn ghost"
-                      onClick={handleRestoreDemoProjects}
-                    >
-                      Restaurar proyectos de la escena
-                    </button>
+                  {meProfile.accountType !== "oyente" && (
+                    <div className="seg-pills">
+                      <button
+                        type="button"
+                        className={librarySubTab === "proyectos" ? "on" : ""}
+                        onClick={() => {
+                          sfx.tap();
+                          setLibrarySubTab("proyectos");
+                        }}
+                      >
+                        Mis Proyectos ({projects.length})
+                      </button>
+                      <button
+                        type="button"
+                        className={librarySubTab === "guardados" ? "on" : ""}
+                        onClick={() => {
+                          sfx.tap();
+                          setLibrarySubTab("guardados");
+                        }}
+                      >
+                        Guardados ({savedProjectsList.length})
+                      </button>
+                    </div>
                   )}
 
-                  <div className="seg-pills">
-                    <button
-                      type="button"
-                      className={libraryLayoutMode === "inside" ? "on" : ""}
-                      onClick={() => {
-                        sfx.tap();
-                        setLibraryLayoutMode("inside");
-                        setInsideCubeOpen(false);
-                      }}
-                    >
-                      Por defecto
-                    </button>
-                    <button
-                      type="button"
-                      className={libraryLayoutMode === "side-by-side" ? "on" : ""}
-                      onClick={() => {
-                        sfx.tap();
-                        setLibraryLayoutMode("side-by-side");
-                      }}
-                    >
-                      ◫ Lado a Lado
-                    </button>
-                  </div>
+                  {librarySubTab === "proyectos" && meProfile.accountType !== "oyente" && (
+                    <>
+                      {projects.length > 0 && (
+                        <button
+                          type="button"
+                          className="apple-btn ghost danger-trash-btn"
+                          onClick={handleWipeAllProjects}
+                          title="Dejar la biblioteca en 0 proyectos para arrancar en limpio"
+                        >
+                          Limpiar proyectos ({projects.length})
+                        </button>
+                      )}
+
+                      <div className="seg-pills">
+                        <button
+                          type="button"
+                          className={libraryLayoutMode === "inside" ? "on" : ""}
+                          onClick={() => {
+                            sfx.tap();
+                            setLibraryLayoutMode("inside");
+                            setInsideCubeOpen(false);
+                          }}
+                        >
+                          Por defecto
+                        </button>
+                        <button
+                          type="button"
+                          className={libraryLayoutMode === "side-by-side" ? "on" : ""}
+                          onClick={() => {
+                            sfx.tap();
+                            setLibraryLayoutMode("side-by-side");
+                          }}
+                        >
+                          ◫ Lado a Lado
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 
-              <div
-                className={
-                  libraryLayoutMode === "side-by-side" && activeProject
-                    ? "library-side-by-side-grid"
-                    : "library-inside-stack"
-                }
-              >
-                {/* Escena 3D de Mis Proyectos (se muestra siempre en Lado a Lado, o cuando estás afuera del cubo en modo Por defecto) */}
-                {(libraryLayoutMode === "side-by-side" || !insideCubeOpen || !activeProject) && (
-                  <ManifoldLibrary3D
-                    projects={projects}
-                    selectedProjectId={activeProject?.id || ""}
-                    viewMode={libraryViewMode}
-                    onChangeViewMode={(m) => setLibraryViewMode(m)}
-                    onSelectProject={(proj) => setSelectedProjectId(proj.id)}
-                    onDiveIntoProject={
-                      libraryLayoutMode === "inside"
-                        ? (proj) => {
-                            setSelectedProjectId(proj.id);
-                            setInsideCubeOpen(true);
-                          }
-                        : undefined
-                    }
-                    onOpenCreateProject={() => navigate("crear-proyecto")}
-                    onDeleteProject={handleDeleteProject}
-                    onUploadProjectVideo={handleUploadProjectVideo}
-                    onRemoveProjectVideo={handleRemoveProjectVideo}
-                    onUploadProjectTrack={handleUploadProjectTrack}
-                  />
-                )}
+              {/* Si es oyente o eligió la pestaña Guardados, se muestran los proyectos guardados */}
+              {(meProfile.accountType === "oyente" || librarySubTab === "guardados") ? (
+                <div className="saved-library-section">
+                  {savedProjectsList.length === 0 ? (
+                    <div className="manifold-empty-cluster-overlay" style={{ position: "relative", inset: "auto", margin: "40px auto", textAlign: "center" }}>
+                      <span className="mono-tag">0 PROYECTOS GUARDADOS // TU COLECCIÓN</span>
+                      <h3 style={{ fontSize: "1.4rem", margin: "10px 0" }}>Todavía no guardaste ningún proyecto</h3>
+                      <p style={{ maxWidth: 460, margin: "0 auto 20px", color: "var(--ink-secondary)", fontSize: "0.85rem" }}>
+                        Explorá el Inicio y tocá el botón &ldquo;+ Guardar&rdquo; en los proyectos de la escena para tenerlos siempre a mano en tu biblioteca.
+                      </p>
+                      <button type="button" className="apple-btn primary" onClick={() => navigate("inicio")}>
+                        Explorar música de la escena →
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="saved-projects-grid">
+                      {savedProjectsList.map((sp) => (
+                        <div key={sp.id} className="saved-project-card">
+                          <div className="saved-card-header">
+                            <img
+                              src={sp.coverUrl || "/covers/perdon-la-demora.png"}
+                              alt={sp.title}
+                              className="saved-card-thumb"
+                              onClick={() => {
+                                if (sp.tracks[0]) playTrack(sp.tracks[0], sp, false);
+                              }}
+                              style={{ cursor: "pointer" }}
+                            />
+                            <div className="saved-card-meta">
+                              <span className="mono-tag" style={{ fontSize: "0.68rem" }}>
+                                {sp.type.toUpperCase()} · {sp.tracks.length} TRACKS
+                              </span>
+                              <h3>{sp.title}</h3>
+                              <p>{sp.artist} · {sp.zone}</p>
+                            </div>
+                          </div>
+
+                          <div className="saved-card-actions">
+                            <button
+                              type="button"
+                              className="apple-btn primary"
+                              style={{ fontSize: "0.8rem", padding: "6px 14px", flex: 1, justifyContent: "center" }}
+                              onClick={() => {
+                                if (sp.tracks[0]) playTrack(sp.tracks[0], sp, false);
+                              }}
+                            >
+                              ▶ Reproducir ({sp.tracks.length})
+                            </button>
+                            <button
+                              type="button"
+                              className="apple-btn ghost"
+                              style={{ fontSize: "0.8rem", padding: "6px 12px" }}
+                              onClick={() => toggleSaveProject(sp.id)}
+                              title="Quitar de Guardados"
+                            >
+                              ✕ Quitar
+                            </button>
+                            <button
+                              type="button"
+                              className="apple-btn ghost"
+                              style={{ fontSize: "0.8rem", padding: "6px 10px" }}
+                              onClick={() => handleCopyProjectLink(sp.id)}
+                              title="Copiar link"
+                            >
+                              🔗
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div
+                  className={
+                    libraryLayoutMode === "side-by-side" && activeProject
+                      ? "library-side-by-side-grid"
+                      : "library-inside-stack"
+                  }
+                >
+                  {/* Escena 3D de Mis Proyectos (se muestra siempre en Lado a Lado, o cuando estás afuera del cubo en modo Por defecto) */}
+                  {(libraryLayoutMode === "side-by-side" || !insideCubeOpen || !activeProject) && (
+                    <ManifoldLibrary3D
+                      projects={projects}
+                      selectedProjectId={activeProject?.id || ""}
+                      viewMode={libraryViewMode}
+                      onChangeViewMode={(m) => setLibraryViewMode(m)}
+                      onSelectProject={(proj) => setSelectedProjectId(proj.id)}
+                      onDiveIntoProject={
+                        libraryLayoutMode === "inside"
+                          ? (proj) => {
+                              setSelectedProjectId(proj.id);
+                              setInsideCubeOpen(true);
+                            }
+                          : undefined
+                      }
+                      onOpenCreateProject={() => navigate("crear-proyecto")}
+                      onDeleteProject={handleDeleteProject}
+                      onUploadProjectVideo={handleUploadProjectVideo}
+                      onRemoveProjectVideo={handleRemoveProjectVideo}
+                      onUploadProjectTrack={handleUploadProjectTrack}
+                      onUpdateProjectCover={handleUpdateProjectCover}
+                    />
+                  )}
 
                 {/* Interior del Proyecto / Inspector con Spinner 3D (se muestra al entrar al cubo en Modo Por defecto, o al lado en Modo 2) */}
                 {activeProject && (libraryLayoutMode === "side-by-side" || insideCubeOpen) && (
@@ -1744,6 +1995,41 @@ export default function App() {
                           }}
                         >
                           Editar
+                        </button>
+                        <label
+                          className="apple-btn ghost"
+                          style={{ cursor: "pointer" }}
+                          title="Cambiar tapa o portada del proyecto"
+                        >
+                          <span>Cambiar portada</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            hidden
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) {
+                                handleUpdateProjectCover(activeProject.id, URL.createObjectURL(f));
+                                e.target.value = "";
+                              }
+                            }}
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          className="apple-btn ghost"
+                          onClick={() => toggleSaveProject(activeProject.id)}
+                          title={savedProjectIds.includes(activeProject.id) ? "Quitar de Guardados" : "Guardar en tu biblioteca"}
+                        >
+                          {savedProjectIds.includes(activeProject.id) ? "✓ Guardado" : "Guardar"}
+                        </button>
+                        <button
+                          type="button"
+                          className="apple-btn ghost"
+                          onClick={() => handleCopyProjectLink(activeProject.id)}
+                          title="Copiar link limpio del proyecto"
+                        >
+                          🔗 Copiar link
                         </button>
                         <button
                           type="button"
@@ -1951,6 +2237,7 @@ export default function App() {
                   </motion.section>
                 )}
               </div>
+              )}
             </div>
           )}
 
@@ -2459,6 +2746,22 @@ export default function App() {
           />
         )}
       </AnimatePresence>
+
+      {/* ==================== LANDING SCENE CON REFERRAL GATE (ESTILO HEYSPACE) ==================== */}
+      <AnimatePresence>
+        {showLanding && (
+          <LandingScene
+            onEnterAsGuest={() => setShowLanding(false)}
+            onOpenGoogleAuth={() => {
+              setShowLanding(false);
+              setAuthModalOpen(true);
+            }}
+            onSetAccountRole={(role) => {
+              setMeProfile((prev) => ({ ...prev, accountType: role }));
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -2833,6 +3136,7 @@ function EditProfileModal({
   const [name, setName] = useState(profile.name);
   const [handle, setHandle] = useState(profile.handle);
   const [avatarUrl, setAvatarUrl] = useState(profile.avatarUrl || "");
+  const [accountType, setAccountType] = useState<"artista" | "oyente">(profile.accountType || "artista");
   const [role, setRole] = useState(profile.role);
   const [zone, setZone] = useState(profile.zone);
   const [bio, setBio] = useState(profile.bio);
@@ -2849,6 +3153,7 @@ function EditProfileModal({
       name,
       handle: handle.startsWith("@") ? handle : `@${handle}`,
       avatarUrl: avatarUrl.trim() || undefined,
+      accountType,
       role,
       zone,
       bio,
@@ -2956,6 +3261,32 @@ function EditProfileModal({
                 />
               </div>
             </div>
+          </div>
+
+          {/* TIPO DE CUENTA: ARTISTA / OYENTE */}
+          <div className="modal-field full">
+            <span>TIPO DE CUENTA EN EL TABLERO</span>
+            <div className="seg-pills" style={{ marginTop: 6 }}>
+              <button
+                type="button"
+                className={accountType === "artista" ? "on" : ""}
+                onClick={() => setAccountType("artista")}
+              >
+                🎙️ Artista / Productor
+              </button>
+              <button
+                type="button"
+                className={accountType === "oyente" ? "on" : ""}
+                onClick={() => setAccountType("oyente")}
+              >
+                🎧 Oyente (Coleccionar &amp; Escuchar)
+              </button>
+            </div>
+            <small style={{ color: "var(--ink-secondary)", fontSize: "0.68rem", marginTop: 4, display: "block" }}>
+              {accountType === "oyente"
+                ? "Como oyente, tu biblioteca se enfoca exclusivamente en tus proyectos guardados."
+                : "Como artista o productor, podés crear proyectos 3D, subir tracks WAV/MP3 y canvas."}
+            </small>
           </div>
 
           <label className="modal-field">
