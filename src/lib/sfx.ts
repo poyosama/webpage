@@ -246,38 +246,86 @@ export const sfx = {
       ended,
     };
   },
-  startGroove(bpm: number, rootFreq: number, customObjectUrl?: string, durationSec = 174, resetTime = false) {
-    this.stopGroove();
+  pauseGroove() {
+    if (currentAudioEl && !Number.isNaN(currentAudioEl.currentTime)) {
+      virtualCurrentSec = currentAudioEl.currentTime;
+      currentAudioEl.pause();
+    }
+    virtualPlaying = false;
+    lastProgressTick = 0;
+    if (beatTimer !== null) {
+      clearInterval(beatTimer);
+      beatTimer = null;
+    }
+    return virtualCurrentSec;
+  },
+  resumeGroove(bpm: number, rootFreq: number, customObjectUrl?: string, durationSec = 174) {
+    return this.startGroove(bpm, rootFreq, customObjectUrl, durationSec, false);
+  },
+  startGroove(
+    bpm: number,
+    rootFreq: number,
+    customObjectUrl?: string,
+    durationSec = 174,
+    resetTime = false
+  ) {
     virtualDurationSec = Math.max(15, durationSec || 174);
     if (resetTime) {
       virtualCurrentSec = 0;
     }
+
+    if (beatTimer !== null) {
+      clearInterval(beatTimer);
+      beatTimer = null;
+    }
+
     virtualPlaying = true;
     lastProgressTick = performance.now();
 
     const c = ac();
 
     if (customObjectUrl && typeof window !== "undefined") {
-      currentAudioEl = new Audio(customObjectUrl);
-      currentAudioEl.crossOrigin = "anonymous";
-      currentAudioEl.loop = false;
-      currentAudioEl.muted = muted;
-      currentAudioEl.volume = volume;
-      currentAudioEl.playbackRate = playbackRate;
-      if (virtualCurrentSec > 0) {
-        currentAudioEl.currentTime = virtualCurrentSec;
-      }
-      if (c && analyserNode && !connectedElements.has(currentAudioEl)) {
-        try {
-          mediaSourceNode = c.createMediaElementSource(currentAudioEl);
-          mediaSourceNode.connect(analyserNode);
-          analyserNode.connect(c.destination);
-          connectedElements.add(currentAudioEl);
-        } catch {
-          // Fallback si ya estaba conectado
+      // Si ya existe el audio element con la misma URL, simplemente reproducir desde donde quedó
+      if (currentAudioEl && currentAudioEl.src === customObjectUrl) {
+        currentAudioEl.muted = muted;
+        currentAudioEl.volume = volume;
+        currentAudioEl.playbackRate = playbackRate;
+        if (resetTime) {
+          currentAudioEl.currentTime = 0;
+        } else if (virtualCurrentSec > 0 && !Number.isNaN(virtualCurrentSec)) {
+          currentAudioEl.currentTime = virtualCurrentSec;
         }
+        currentAudioEl.play().catch(() => {});
+      } else {
+        if (currentAudioEl) {
+          currentAudioEl.pause();
+        }
+        currentAudioEl = new Audio(customObjectUrl);
+        currentAudioEl.crossOrigin = "anonymous";
+        currentAudioEl.loop = false;
+        currentAudioEl.muted = muted;
+        currentAudioEl.volume = volume;
+        currentAudioEl.playbackRate = playbackRate;
+        if (virtualCurrentSec > 0) {
+          currentAudioEl.currentTime = virtualCurrentSec;
+        }
+        if (c && analyserNode && !connectedElements.has(currentAudioEl)) {
+          try {
+            mediaSourceNode = c.createMediaElementSource(currentAudioEl);
+            mediaSourceNode.connect(analyserNode);
+            analyserNode.connect(c.destination);
+            connectedElements.add(currentAudioEl);
+          } catch {
+            // Fallback si ya estaba conectado
+          }
+        }
+        currentAudioEl.play().catch(() => {});
       }
-      currentAudioEl.play().catch(() => {});
+    } else {
+      if (currentAudioEl) {
+        currentAudioEl.pause();
+        currentAudioEl = null;
+      }
     }
 
     const stepMs = (60 / Math.max(68, Math.min(165, bpm)) / 2) * 1000;
@@ -343,7 +391,10 @@ export const sfx = {
     tickStep();
     beatTimer = window.setInterval(tickStep, stepMs);
   },
-  stopGroove() {
+  stopGroove(reset = true) {
+    if (currentAudioEl && !Number.isNaN(currentAudioEl.currentTime)) {
+      virtualCurrentSec = currentAudioEl.currentTime;
+    }
     virtualPlaying = false;
     lastProgressTick = 0;
     if (beatTimer !== null) {
@@ -352,7 +403,12 @@ export const sfx = {
     }
     if (currentAudioEl) {
       currentAudioEl.pause();
-      currentAudioEl = null;
+      if (reset) {
+        currentAudioEl = null;
+      }
+    }
+    if (reset) {
+      virtualCurrentSec = 0;
     }
   },
   sampleReactiveLevels() {

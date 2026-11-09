@@ -7,7 +7,7 @@ import * as THREE from "three";
 import { type Project, type Track } from "@/lib/mock";
 import { sfx } from "@/lib/sfx";
 
-export type VisualMode = "boids" | "props" | "ferro" | "cd";
+export type VisualMode = "boids" | "ferro";
 export type RepeatMode = "off" | "all" | "one";
 
 function formatTime(sec: number): string {
@@ -15,99 +15,6 @@ function formatTime(sec: number): string {
   const m = Math.floor(sec / 60);
   const s = Math.floor(sec % 60);
   return `${m}:${String(s).padStart(2, "0")}`;
-}
-
-type ProceduralPropBody = {
-  pos: THREE.Vector3;
-  vel: THREE.Vector3;
-  rot: THREE.Euler;
-  angVel: THREE.Vector3;
-  radius: number;
-  geometry: THREE.BufferGeometry;
-  color: string;
-  metalness: number;
-  roughness: number;
-};
-
-function buildProceduralGeometry(index: number, radius: number): THREE.BufferGeometry {
-  const kind = index % 6;
-  if (kind === 0) {
-    return new THREE.TorusKnotGeometry(
-      radius * 0.62,
-      radius * 0.2,
-      72,
-      16,
-      2 + (index % 2),
-      3 + (index % 3)
-    );
-  }
-  if (kind === 1) {
-    const geo = new THREE.SphereGeometry(radius * 0.85, 28, 28);
-    const pos = geo.attributes.position as THREE.BufferAttribute;
-    for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i);
-      const y = pos.getY(i);
-      const z = pos.getZ(i);
-      const d =
-        1 +
-        0.26 * Math.sin(x * 4.5 + index) * Math.cos(y * 4.5) +
-        0.18 * Math.cos(z * 5.2 - index);
-      pos.setXYZ(i, x * d, y * d, z * d);
-    }
-    geo.computeVertexNormals();
-    return geo;
-  }
-  if (kind === 2) {
-    const shape = new THREE.Shape();
-    const spikes = 5 + (index % 4);
-    for (let i = 0; i < spikes * 2; i++) {
-      const r = i % 2 === 0 ? radius * 0.92 : radius * 0.42;
-      const a = (i / (spikes * 2)) * Math.PI * 2;
-      if (i === 0) shape.moveTo(Math.cos(a) * r, Math.sin(a) * r);
-      else shape.lineTo(Math.cos(a) * r, Math.sin(a) * r);
-    }
-    shape.closePath();
-    const geo = new THREE.ExtrudeGeometry(shape, {
-      depth: radius * 0.45,
-      bevelEnabled: true,
-      bevelThickness: radius * 0.12,
-      bevelSize: radius * 0.1,
-      bevelSegments: 3,
-    });
-    geo.center();
-    return geo;
-  }
-  if (kind === 3) {
-    const geo = new THREE.CylinderGeometry(radius * 0.55, radius * 0.55, radius * 1.55, 20, 20);
-    const pos = geo.attributes.position as THREE.BufferAttribute;
-    for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i);
-      const y = pos.getY(i);
-      const z = pos.getZ(i);
-      const twist = y * 2.8;
-      const nx = x * Math.cos(twist) - z * Math.sin(twist);
-      const nz = x * Math.sin(twist) + z * Math.cos(twist);
-      pos.setXYZ(i, nx, y, nz);
-    }
-    geo.computeVertexNormals();
-    return geo;
-  }
-  if (kind === 4) {
-    const geo = new THREE.OctahedronGeometry(radius * 0.9, 1);
-    geo.scale(0.85, 1.35, 0.85);
-    return geo;
-  }
-  const geo = new THREE.TorusGeometry(radius * 0.68, radius * 0.24, 20, 48);
-  const pos = geo.attributes.position as THREE.BufferAttribute;
-  for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i);
-    const y = pos.getY(i);
-    const z = pos.getZ(i);
-    const angle = Math.atan2(y, x);
-    pos.setZ(i, z + Math.sin(angle * 3) * radius * 0.22);
-  }
-  geo.computeVertexNormals();
-  return geo;
 }
 
 // 1. 36.000 PARTÍCULAS ALGORÍTMICAS DE BAJA LATENCIA CON LATIDO ELÁSTICO 808
@@ -295,203 +202,94 @@ function HighResFlowParticles({
   );
 }
 
-// 2. PROPS 3D MACIZOS PROCEDURALES SIEMPRE EN GRAVEDAD 0G
-function UncannyPropsPhysics0G({
-  accent,
-  c2,
-  impulseSignal,
-}: {
-  accent: string;
-  c2: string;
-  impulseSignal: number;
-}) {
-  const groupRef = useRef<THREE.Group>(null!);
-  const lastImpulse = useRef(0);
-
-  const bodies = useMemo<ProceduralPropBody[]>(() => {
-    const palette = [accent, c2, "#111111", "#f43f5e", "#0284c7", "#eab308", "#a855f7", "#14b8a6"];
-    return Array.from({ length: 18 }, (_, i) => {
-      const radius = 0.38 + (i % 4) * 0.08;
-      return {
-        pos: new THREE.Vector3(
-          (Math.random() - 0.5) * 4.2,
-          (Math.random() - 0.5) * 2.6,
-          (Math.random() - 0.5) * 2.0
-        ),
-        vel: new THREE.Vector3(
-          (Math.random() - 0.5) * 1.4,
-          (Math.random() - 0.5) * 1.4,
-          (Math.random() - 0.5) * 1.1
-        ),
-        rot: new THREE.Euler(Math.random() * 3, Math.random() * 3, Math.random() * 3),
-        angVel: new THREE.Vector3(
-          (Math.random() - 0.5) * 2.4,
-          (Math.random() - 0.5) * 2.4,
-          (Math.random() - 0.5) * 2.4
-        ),
-        radius,
-        geometry: buildProceduralGeometry(i, radius),
-        color: palette[i % palette.length],
-        metalness: i % 2 === 0 ? 0.55 : 0.18,
-        roughness: i % 3 === 0 ? 0.14 : 0.32,
-      };
-    });
-  }, [accent, c2]);
-
-  useFrame(({ pointer }, dt) => {
-    const step = Math.min(0.033, dt);
-    const { beat, bass } = sfx.sampleReactiveLevels();
-
-    const kickNow = impulseSignal !== lastImpulse.current;
-    if (kickNow) lastImpulse.current = impulseSignal;
-
-    const boundsX = 2.85;
-    const boundsY = 1.85;
-    const boundsZ = 1.45;
-
-    for (let i = 0; i < bodies.length; i++) {
-      const b = bodies[i];
-      b.vel.x += -b.pos.x * 0.38 * step;
-      b.vel.y += -b.pos.y * 0.38 * step;
-      b.vel.z += -b.pos.z * 0.38 * step;
-
-      const mx = pointer.x * 2.5;
-      const my = pointer.y * 1.65;
-      const dxm = b.pos.x - mx;
-      const dym = b.pos.y - my;
-      const distM = Math.hypot(dxm, dym);
-      if (distM < 1.25 && distM > 0.001) {
-        const push = (1.25 - distM) * 4.8 * step;
-        b.vel.x += (dxm / distM) * push;
-        b.vel.y += (dym / distM) * push;
-      }
-
-      if (kickNow || bass > 0.94) {
-        const s = kickNow ? 3.4 : 0.9;
-        b.vel.x += (Math.random() - 0.5) * s * 1.6;
-        b.vel.y += (Math.random() - 0.5) * s * 1.6;
-        b.vel.z += (Math.random() - 0.5) * s;
-      }
-
-      b.vel.multiplyScalar(0.994);
-      b.pos.addScaledVector(b.vel, step);
-
-      b.rot.x += b.angVel.x * step * (1 + beat * 0.5);
-      b.rot.y += b.angVel.y * step * (1 + beat * 0.5);
-      b.rot.z += b.angVel.z * step;
-
-      if (Math.abs(b.pos.x) > boundsX - b.radius) {
-        b.pos.x = Math.sign(b.pos.x) * (boundsX - b.radius);
-        b.vel.x *= -0.88;
-      }
-      if (Math.abs(b.pos.y) > boundsY - b.radius) {
-        b.pos.y = Math.sign(b.pos.y) * (boundsY - b.radius);
-        b.vel.y *= -0.88;
-      }
-      if (Math.abs(b.pos.z) > boundsZ - b.radius) {
-        b.pos.z = Math.sign(b.pos.z) * (boundsZ - b.radius);
-        b.vel.z *= -0.88;
-      }
-    }
-
-    for (let i = 0; i < bodies.length; i++) {
-      for (let j = i + 1; j < bodies.length; j++) {
-        const a = bodies[i];
-        const b = bodies[j];
-        const diff = a.pos.clone().sub(b.pos);
-        const d = diff.length();
-        const minD = a.radius + b.radius;
-        if (d > 0 && d < minD) {
-          const n = diff.divideScalar(d);
-          const overlap = minD - d;
-          a.pos.addScaledVector(n, overlap * 0.5);
-          b.pos.addScaledVector(n, -overlap * 0.5);
-          const relVel = a.vel.clone().sub(b.vel).dot(n);
-          if (relVel < 0) {
-            const imp = -relVel * 0.92;
-            a.vel.addScaledVector(n, imp);
-            b.vel.addScaledVector(n, -imp);
-          }
-        }
-      }
-    }
-
-    const children = groupRef.current.children;
-    for (let i = 0; i < bodies.length; i++) {
-      const m = children[i];
-      if (!m) continue;
-      m.position.copy(bodies[i].pos);
-      m.rotation.copy(bodies[i].rot);
-      const pulse = 1 + (i % 3 === 0 ? beat * 0.14 : 0);
-      m.scale.setScalar(pulse);
-    }
-  });
-
-  return (
-    <group ref={groupRef}>
-      {bodies.map((b, i) => (
-        <mesh key={i} geometry={b.geometry} castShadow receiveShadow>
-          <meshPhysicalMaterial
-            color={b.color}
-            roughness={b.roughness}
-            metalness={b.metalness}
-            clearcoat={0.85}
-            clearcoatRoughness={0.12}
-          />
-        </mesh>
-      ))}
-    </group>
-  );
-}
-
-// 3. FERROFLUIDO INTERACTIVO
+// 2. FERROFLUIDO 3D ESCULTABLE HD (3X MÁS POLÍGONOS + ACELERACIÓN GPU 60 FPS)
 function SculptableFerrofluid({ accent, c2 }: { accent: string; c2: string }) {
   const meshRef = useRef<THREE.Mesh>(null!);
-  const baseGeo = useMemo(() => new THREE.IcosahedronGeometry(0.96, 36), []);
-  const origPos = useMemo(() => {
-    const p = baseGeo.attributes.position.array as Float32Array;
-    return new Float32Array(p);
-  }, [baseGeo]);
-  const sculptOffsets = useMemo(
-    () => new Float32Array(baseGeo.attributes.position.count),
-    [baseGeo]
-  );
+  const uniformsRef = useRef({
+    uTime: { value: 0 },
+    uBass: { value: 0 },
+    uBeat: { value: 0 },
+    uHoverDir: { value: new THREE.Vector3(0, 0, 1) },
+    uHoverStrength: { value: 0 },
+  });
+
+  // 3x más resolución poligonal que antes (Icosahedron detail 64 = 40.962 vértices, 81.920 triángulos)
+  const highPolyGeo = useMemo(() => new THREE.IcosahedronGeometry(0.96, 64), []);
+
+  const material = useMemo(() => {
+    const mat = new THREE.MeshPhysicalMaterial({
+      color: new THREE.Color("#16141c"),
+      emissive: new THREE.Color(accent),
+      emissiveIntensity: 0.16,
+      metalness: 0.88,
+      roughness: 0.12,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.06,
+      iridescence: 0.95,
+      iridescenceIOR: 1.6,
+    });
+
+    mat.onBeforeCompile = (shader) => {
+      shader.uniforms.uTime = uniformsRef.current.uTime;
+      shader.uniforms.uBass = uniformsRef.current.uBass;
+      shader.uniforms.uBeat = uniformsRef.current.uBeat;
+      shader.uniforms.uHoverDir = uniformsRef.current.uHoverDir;
+      shader.uniforms.uHoverStrength = uniformsRef.current.uHoverStrength;
+
+      shader.vertexShader = `
+        uniform float uTime;
+        uniform float uBass;
+        uniform float uBeat;
+        uniform vec3 uHoverDir;
+        uniform float uHoverStrength;
+        ${shader.vertexShader}
+      `;
+
+      shader.vertexShader = shader.vertexShader.replace(
+        "#include <begin_vertex>",
+        `
+        #include <begin_vertex>
+        vec3 ox = position;
+        float n = sin(ox.x * 4.2 + uTime * 2.4) * cos(ox.y * 4.2 - uTime * 2.0) * sin(ox.z * 4.2 + uTime * 1.7);
+        float spikeAmp = 0.18 + uBass * 0.35 + uBeat * 0.16;
+        float s = 1.0 + n * spikeAmp;
+        if (uHoverStrength > 0.005) {
+          float dotVal = dot(normalize(ox), uHoverDir);
+          if (dotVal > 0.6) {
+            s += (dotVal - 0.6) * 0.55 * uHoverStrength;
+          }
+        }
+        transformed = ox * s;
+        `
+      );
+    };
+
+    return mat;
+  }, [accent]);
+
   const hoverDirRef = useRef<THREE.Vector3 | null>(null);
 
   useFrame(({ clock }) => {
     const { beat, bass } = sfx.sampleReactiveLevels();
     const t = clock.elapsedTime;
-    const pos = baseGeo.attributes.position as THREE.BufferAttribute;
-    const arr = pos.array as Float32Array;
+    uniformsRef.current.uTime.value = t;
+    uniformsRef.current.uBass.value = bass;
+    uniformsRef.current.uBeat.value = beat;
 
-    const spikeAmp = 0.18 + bass * 0.28 + beat * 0.14;
-    const hDir = hoverDirRef.current;
-
-    for (let i = 0; i < pos.count; i++) {
-      const ix = i * 3;
-      const ox = origPos[ix];
-      const oy = origPos[ix + 1];
-      const oz = origPos[ix + 2];
-
-      if (hDir) {
-        const dot = (ox * hDir.x + oy * hDir.y + oz * hDir.z) / 0.96;
-        if (dot > 0.72) {
-          sculptOffsets[i] = Math.min(0.65, sculptOffsets[i] + (dot - 0.72) * 0.22);
-        }
-      }
-      sculptOffsets[i] *= 0.988;
-
-      const n =
-        Math.sin(ox * 4.2 + t * 2.4) *
-        Math.cos(oy * 4.2 - t * 2.0) *
-        Math.sin(oz * 4.2 + t * 1.7);
-      const s = 1 + n * spikeAmp + sculptOffsets[i];
-      arr[ix] = ox * s;
-      arr[ix + 1] = oy * s;
-      arr[ix + 2] = oz * s;
+    if (hoverDirRef.current) {
+      uniformsRef.current.uHoverDir.value.lerp(hoverDirRef.current, 0.18);
+      uniformsRef.current.uHoverStrength.value = THREE.MathUtils.lerp(
+        uniformsRef.current.uHoverStrength.value,
+        1.0,
+        0.15
+      );
+    } else {
+      uniformsRef.current.uHoverStrength.value = THREE.MathUtils.lerp(
+        uniformsRef.current.uHoverStrength.value,
+        0.0,
+        0.08
+      );
     }
-    pos.needsUpdate = true;
-    baseGeo.computeVertexNormals();
   });
 
   return (
@@ -501,7 +299,8 @@ function SculptableFerrofluid({ accent, c2 }: { accent: string; c2: string }) {
       <pointLight position={[0, 4, -4]} color={accent} intensity={16} />
       <mesh
         ref={meshRef}
-        geometry={baseGeo}
+        geometry={highPolyGeo}
+        material={material}
         onPointerMove={(e) => {
           e.stopPropagation();
           const localPt = meshRef.current.worldToLocal(e.point.clone()).normalize();
@@ -510,112 +309,13 @@ function SculptableFerrofluid({ accent, c2 }: { accent: string; c2: string }) {
         onPointerOut={() => {
           hoverDirRef.current = null;
         }}
-      >
-        <meshPhysicalMaterial
-          color="#1e1b24"
-          emissive={accent}
-          emissiveIntensity={0.14}
-          metalness={0.35}
-          roughness={0.14}
-          clearcoat={1}
-          clearcoatRoughness={0.08}
-          iridescence={0.75}
-        />
-      </mesh>
+      />
       <OrbitControls
         enableZoom={true}
         minDistance={2.6}
         maxDistance={10}
         enablePan={false}
         rotateSpeed={0.75}
-      />
-    </group>
-  );
-}
-
-// 4. DISCO ACRÍLICO 3D
-function InteractiveAcrylicDisc({ track }: { track: Track }) {
-  const spinRef = useRef<THREE.Group>(null!);
-
-  const labelTex = useMemo(() => {
-    const c = document.createElement("canvas");
-    c.width = 512;
-    c.height = 512;
-    const g = c.getContext("2d")!;
-    const grad = g.createRadialGradient(256, 256, 20, 256, 256, 256);
-    grad.addColorStop(0, track.c2);
-    grad.addColorStop(1, track.c1);
-    g.fillStyle = grad;
-    g.fillRect(0, 0, 512, 512);
-
-    g.strokeStyle = "rgba(255,255,255,0.22)";
-    g.lineWidth = 2;
-    for (let r = 70; r < 245; r += 12) {
-      g.beginPath();
-      g.arc(256, 256, r, 0, Math.PI * 2);
-      g.stroke();
-    }
-
-    g.fillStyle = "#ffffff";
-    g.font = "700 42px Inter, sans-serif";
-    g.textAlign = "center";
-    g.fillText(track.title.toUpperCase().slice(0, 14), 256, 200);
-    g.font = "600 24px monospace";
-    g.fillText(`${track.artist} · ${track.bpm} BPM`, 256, 330);
-
-    const tex = new THREE.CanvasTexture(c);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    return tex;
-  }, [track]);
-
-  useFrame((_, dt) => {
-    const { beat } = sfx.sampleReactiveLevels();
-    spinRef.current.rotation.z -= dt * 0.95;
-    const s = 1 + beat * 0.05;
-    spinRef.current.scale.setScalar(s);
-  });
-
-  return (
-    <group>
-      <pointLight position={[3, 4, 5]} color="#ffffff" intensity={18} />
-      <group ref={spinRef} rotation={[0.2, -0.24, 0]}>
-        <mesh rotation={[Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[1.65, 1.65, 0.065, 72]} />
-          <meshPhysicalMaterial
-            color={track.c2}
-            transmission={0.72}
-            thickness={0.5}
-            roughness={0.08}
-            metalness={0.15}
-            clearcoat={1}
-            transparent
-            opacity={0.92}
-          />
-        </mesh>
-
-        <mesh position={[0, 0, 0.036]}>
-          <ringGeometry args={[0.24, 1.54, 72]} />
-          <meshBasicMaterial map={labelTex} side={THREE.DoubleSide} />
-        </mesh>
-
-        <mesh position={[0, 0, -0.036]} rotation={[0, Math.PI, 0]}>
-          <ringGeometry args={[0.24, 1.54, 72]} />
-          <meshBasicMaterial map={labelTex} side={THREE.DoubleSide} />
-        </mesh>
-
-        <mesh position={[0, 0, 0]}>
-          <torusGeometry args={[0.24, 0.04, 16, 48]} />
-          <meshStandardMaterial color="#f8fafc" metalness={0.5} roughness={0.15} />
-        </mesh>
-      </group>
-
-      <OrbitControls
-        enableZoom={true}
-        minDistance={2.0}
-        maxDistance={11.0}
-        zoomSpeed={0.95}
-        enablePan={false}
-        rotateSpeed={0.85}
       />
     </group>
   );
@@ -754,7 +454,7 @@ export default function PerformativePlayer({
       <div
         className="perf-canvas-wrap"
         onClick={() => {
-          if (mode === "props" || mode === "boids") {
+          if (mode === "boids") {
             setImpulseSignal((n) => n + 1);
             sfx.tap();
           }
@@ -776,15 +476,7 @@ export default function PerformativePlayer({
               impulseSignal={impulseSignal}
             />
           )}
-          {mode === "props" && (
-            <UncannyPropsPhysics0G
-              accent={track.accent}
-              c2={track.c2}
-              impulseSignal={impulseSignal}
-            />
-          )}
           {mode === "ferro" && <SculptableFerrofluid accent={track.accent} c2={track.c2} />}
-          {mode === "cd" && <InteractiveAcrylicDisc track={track} />}
         </Canvas>
       </div>
 
@@ -1308,9 +1000,7 @@ export default function PerformativePlayer({
                 aria-label="Visual Engine"
               >
                 <option value="boids">36K Partículas (808 Pulse)</option>
-                <option value="props">Props 3D (0G)</option>
-                <option value="ferro">Ferrofluido 3D</option>
-                <option value="cd">Disco Acrílico 3D</option>
+                <option value="ferro">Ferrofluido 3D (Escultable HD)</option>
               </select>
 
               <button

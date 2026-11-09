@@ -1,13 +1,25 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { type Project, type Track, type ArtistProfile } from "@/lib/mock";
 import { sfx } from "@/lib/sfx";
-import DiscSpinner3D from "./DiscSpinner3D";
 
-const ManifoldLibrary3D = dynamic(() => import("./ManifoldLibrary3D"), { ssr: false });
+export type BatchTrackDraft = {
+  id: string;
+  fileName: string;
+  title: string;
+  prod: string;
+  bpm: number;
+  musicalKey: string;
+  color: string;
+  audioObjectUrl?: string;
+  durationSec: number;
+  duration: string;
+};
+
+const PALETTE = ["#e11d48", "#0284c7", "#ca8a04", "#65a30d", "#7e22ce", "#14b8a6", "#ec4899", "#f97316"];
+const KEYS = ["Am", "Cm", "F#m", "Em", "Dm", "Gm", "Bm", "C#m"];
 
 export default function MacInstallerUpload({
   meProfile,
@@ -27,464 +39,393 @@ export default function MacInstallerUpload({
   onPlayTrack: (track: Track, project: Project) => void;
   onOpenCreateProject: () => void;
 }) {
-  const [title, setTitle] = useState("mendoza_snippet_v1.wav");
-  const [bpm, setBpm] = useState(138);
-  const [musicalKey, setMusicalKey] = useState("F#m");
-  const [color, setColor] = useState("#e11d48");
-  const [audioObjectUrl, setAudioObjectUrl] = useState<string | undefined>(undefined);
-  const [fileName, setFileName] = useState<string>("demo_stem_808.wav");
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(projects[0]?.id || "");
+  const [batchItems, setBatchItems] = useState<BatchTrackDraft[]>([
+    {
+      id: "draft-1",
+      fileName: "mendoza_snippet_v1.wav",
+      title: "mendoza_snippet_v1",
+      prod: "",
+      bpm: 138,
+      musicalKey: "F#m",
+      color: "#e11d48",
+      durationSec: 134,
+      duration: "2:14",
+    },
+  ]);
+  const [activeVinilitoIdx, setActiveVinilitoIdx] = useState(0);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [installedCount, setInstalledCount] = useState<number | null>(null);
+  const [globalProd, setGlobalProd] = useState("");
 
-  // Flujo DMG: "prop-ready" -> "zoomed-library" (Manifold 3D con pop-out) -> "wheel-place" -> "installed"
-  const [step, setStep] = useState<"prop-ready" | "zoomed-library" | "wheel-place" | "installed">(
-    "prop-ready"
-  );
-  const [hoverTarget, setHoverTarget] = useState<string | null>(null);
-  const [selectedProjectId, setSelectedProjectId] = useState<string>(projects[0]?.id || "fuego-lento");
-  const [poppedProjectId, setPoppedProjectId] = useState<string | null>(projects[0]?.id || "fuego-lento");
-  const [wheelSlot, setWheelSlot] = useState<number>(0);
-
-  const profileSocketRef = useRef<HTMLDivElement>(null);
-  const poppedDropZoneRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const targetProject =
-    projects.find((p) => p.id === selectedProjectId) || projects[0];
+    projects.find((p) => p.id === selectedProjectId) || projects[0] || null;
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleFiles = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
     sfx.tap();
-    setFileName(file.name);
-    const clean = file.name.replace(/\.[^/.]+$/, "");
-    setTitle(clean);
-    const url = URL.createObjectURL(file);
-    setAudioObjectUrl(url);
+    const newDrafts: BatchTrackDraft[] = Array.from(files).map((file, i) => {
+      const clean = file.name.replace(/\.[^/.]+$/, "");
+      const col = PALETTE[(batchItems.length + i) % PALETTE.length];
+      const k = KEYS[(batchItems.length + i) % KEYS.length];
+      const url = URL.createObjectURL(file);
+      return {
+        id: `batch-${Date.now()}-${i}`,
+        fileName: file.name,
+        title: clean,
+        prod: globalProd.trim() || "",
+        bpm: 130 + ((i * 4) % 24),
+        musicalKey: k,
+        color: col,
+        audioObjectUrl: url,
+        durationSec: 145,
+        duration: "2:25",
+      };
+    });
+
+    setBatchItems((prev) => [...prev, ...newDrafts]);
+    setInstalledCount(null);
   };
 
-  const handlePropDragEnd = (_: unknown, info: { point: { x: number; y: number } }) => {
-    if (step === "prop-ready" && profileSocketRef.current) {
-      const rect = profileSocketRef.current.getBoundingClientRect();
-      const inside =
-        info.point.x >= rect.left - 45 &&
-        info.point.x <= rect.right + 45 &&
-        info.point.y >= rect.top - 45 &&
-        info.point.y <= rect.bottom + 45;
-      if (inside) {
-        sfx.drop();
-        setStep("zoomed-library");
-        return;
-      }
-    }
-
-    if (step === "zoomed-library" && poppedDropZoneRef.current && targetProject) {
-      const rect = poppedDropZoneRef.current.getBoundingClientRect();
-      const inside =
-        info.point.x >= rect.left - 35 &&
-        info.point.x <= rect.right + 35 &&
-        info.point.y >= rect.top - 35 &&
-        info.point.y <= rect.bottom + 35;
-      if (inside) {
-        sfx.drop();
-        setWheelSlot(targetProject.tracks.length);
-        setStep("wheel-place");
-      }
-    }
+  const updateDraft = (id: string, patch: Partial<BatchTrackDraft>) => {
+    setBatchItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, ...patch } : item))
+    );
   };
 
-  const commitInstall = () => {
-    if (!targetProject) return;
-    const newTrack: Track = {
-      id: `custom-${Date.now()}`,
-      title: title.trim() || "Untitled Cut",
-      artist: meProfile.name,
-      prod: meProfile.name,
-      bpm: Number(bpm) || 130,
-      key: musicalKey || "Am",
-      duration: "2:14",
-      durationSec: 134,
-      version: 1,
-      note: `Subido vía DMG Prop (${fileName})`,
-      c1: "#111111",
-      c2: color,
-      accent: color,
-      glyph: String(wheelSlot + 1).padStart(2, "0"),
-      audioFreq: 130.8,
-      customAudioUrl: audioObjectUrl,
-    };
+  const removeDraft = (id: string) => {
+    sfx.tap();
+    setBatchItems((prev) => {
+      const next = prev.filter((item) => item.id !== id);
+      if (activeVinilitoIdx >= next.length) {
+        setActiveVinilitoIdx(Math.max(0, next.length - 1));
+      }
+      return next;
+    });
+  };
+
+  const handleInstallAll = () => {
+    if (!targetProject) {
+      onOpenCreateProject();
+      return;
+    }
+    if (batchItems.length === 0) return;
+
     sfx.drop();
-    onAddTrackToProject(targetProject.id, newTrack, wheelSlot, audioObjectUrl);
-    setStep("installed");
+    const startIdx = targetProject.tracks.length;
+
+    batchItems.forEach((item, idx) => {
+      const newTrack: Track = {
+        id: `custom-track-${Date.now()}-${idx}`,
+        title: item.title.trim() || `Track #${startIdx + idx + 1}`,
+        artist: meProfile.name,
+        prod: item.prod.trim() || undefined,
+        bpm: item.bpm,
+        key: item.musicalKey,
+        duration: item.duration,
+        durationSec: item.durationSec,
+        version: 1,
+        note: `Subido vía Batch WAV (${item.fileName})`,
+        c1: "#111111",
+        c2: item.color,
+        accent: item.color,
+        glyph: String(startIdx + idx + 1).padStart(2, "0"),
+        audioFreq: 120 + ((idx * 8) % 40),
+        customAudioUrl: item.audioObjectUrl,
+      };
+
+      onAddTrackToProject(
+        targetProject.id,
+        newTrack,
+        startIdx + idx,
+        item.audioObjectUrl
+      );
+    });
+
+    setInstalledCount(batchItems.length);
+    setBatchItems([]);
   };
 
   return (
     <section className="dmg-section">
       <div className="section-header-row">
         <div>
-          <span className="mono-tag">SUBIR // EL TABLERO</span>
-          <h1 className="editorial-h1">Subir a tu Biblioteca 3D</h1>
+          <span className="mono-tag">SUBIR BATCH // EL TABLERO</span>
+          <h1 className="editorial-h1">Subir Archivos WAV a tu Proyecto</h1>
+          <p style={{ color: "var(--ink-secondary)", fontSize: "0.88rem", marginTop: 4 }}>
+            Arrastrá uno o muchos archivos de audio. Se arman los vinilitos y los instalás con un solo gesto hacia arriba.
+          </p>
         </div>
+
         <div className="row-actions">
-          <div className="dmg-steps-indicator">
-            <button
-              type="button"
-              className={step === "prop-ready" ? "on" : ""}
-              onClick={() => {
-                sfx.tap();
-                setStep("prop-ready");
-              }}
-            >
-              1. Prop → Perfil
-            </button>
-            <span>→</span>
-            <button
-              type="button"
-              className={step === "zoomed-library" ? "on" : ""}
-              onClick={() => {
-                sfx.tap();
-                setStep("zoomed-library");
-              }}
-            >
-              2. Mis Proyectos (Pop-out)
-            </button>
-            <span>→</span>
-            <button
-              type="button"
-              className={step === "wheel-place" || step === "installed" ? "on" : ""}
-              onClick={() => {
-                sfx.tap();
-                setStep("wheel-place");
-              }}
-            >
-              3. Spinner
-            </button>
-          </div>
+          {projects.length > 0 && (
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+              <span className="mono-tag" style={{ fontSize: "0.72rem" }}>PROYECTO DESTINO:</span>
+              <select
+                className="apple-select compact-select"
+                value={selectedProjectId || projects[0]?.id}
+                onChange={(e) => {
+                  sfx.tap();
+                  setSelectedProjectId(e.target.value);
+                }}
+              >
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.title} ({p.tracks.length} tracks)
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <button
             type="button"
-            className="apple-btn primary"
+            className="apple-btn ghost"
             onClick={() => {
               sfx.open();
               onOpenCreateProject();
             }}
           >
-            + Crear Proyecto
+            + Crear Nuevo Proyecto
           </button>
         </div>
       </div>
 
-      <div className="dmg-window">
-        <div className="dmg-titlebar">
-          <div className="traffic-lights">
-            <i className="tl-red" />
-            <i className="tl-yellow" />
-            <i className="tl-green" />
-          </div>
-          <span className="dmg-window-title">
-            {title || "nuevo_track"}.dmg — Subir a Proyecto · El tablero
-          </span>
-          <span className="mono-tag">ARRASTRÁ EL PROP O TOCÁ CADA PASO</span>
+      {/* DROPZONE GRANDE PARA ARRASTRAR MULTIPLES ARCHIVOS */}
+      <div
+        className={`batch-dropzone-hero ${isDraggingOver ? "is-dragover" : ""}`}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setIsDraggingOver(true);
+        }}
+        onDragLeave={() => setIsDraggingOver(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setIsDraggingOver(false);
+          handleFiles(e.dataTransfer.files);
+        }}
+        onClick={() => fileInputRef.current?.click()}
+      >
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept=".wav,.mp3,.m4a,.flac,.aac,.ogg,.aiff,.alac,.opus,audio/wav,audio/x-wav,audio/wave,audio/mpeg,audio/mp3,audio/mp4,audio/x-m4a,audio/aac,audio/flac,application/octet-stream"
+          style={{ display: "none" }}
+          onChange={(e) => handleFiles(e.target.files)}
+        />
+        <div className="batch-dropzone-icon">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
         </div>
+        <div style={{ textAlign: "center" }}>
+          <b style={{ fontSize: "1.05rem", display: "block", marginBottom: 4 }}>
+            Arrastrá acá tus WAVs o MP3s (podés soltar de a muchos juntos)
+          </b>
+          <span style={{ color: "var(--ink-secondary)", fontSize: "0.82rem" }}>
+            O hacé click para seleccionar canciones desde tu explorador de archivos
+          </span>
+        </div>
+        <div className="batch-dropzone-badge">
+          <span>{batchItems.length} {batchItems.length === 1 ? "vinilito listo" : "vinilitos listos"}</span>
+        </div>
+      </div>
 
-        <div className="dmg-inspector">
-          <label className="dmg-file-btn" onMouseEnter={() => sfx.hover()}>
-            <span>Elegir WAV / MP3 ({fileName})</span>
-            <input
-              type="file"
-              accept=".wav,.mp3,.m4a,.flac,.aac,.ogg,.aiff,.alac,.opus,audio/wav,audio/x-wav,audio/wave,audio/mpeg,audio/mp3,audio/mp4,audio/x-m4a,audio/aac,audio/flac,application/octet-stream"
-              onChange={handleFileChange}
-              hidden
-            />
-          </label>
-
-          <div className="dmg-field">
-            <span>NOMBRE DEL TRACK</span>
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="nombre del track..."
-            />
-          </div>
-
-          <div className="dmg-field small">
-            <span>BPM</span>
-            <input
-              type="number"
-              value={bpm}
-              onChange={(e) => setBpm(Number(e.target.value))}
-            />
-          </div>
-
-          <div className="dmg-field small">
-            <span>KEY</span>
-            <input
-              value={musicalKey}
-              onChange={(e) => setMusicalKey(e.target.value)}
-            />
-          </div>
-
-          <div className="dmg-field small">
-            <span>SELLO / COLOR</span>
-            <div className="color-dots">
-              {["#e11d48", "#0284c7", "#ca8a04", "#65a30d", "#7e22ce"].map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  style={{ background: c }}
-                  className={color === c ? "on" : ""}
-                  onClick={() => {
-                    sfx.tap();
-                    setColor(c);
-                  }}
-                />
-              ))}
+      {/* RESULTADO DE INSTALACIÓN EXITOSA */}
+      {installedCount !== null && (
+        <motion.div
+          className="batch-installed-card"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span className="batch-installed-check">✓</span>
+            <div>
+              <b style={{ fontSize: "1rem" }}>¡{installedCount} canciones instaladas con éxito!</b>
+              <p style={{ margin: "2px 0 0", color: "var(--ink-secondary)", fontSize: "0.82rem" }}>
+                Ya podés verlas en el Spinner 3D y reproducirlas en el proyecto <b>{targetProject?.title}</b>.
+              </p>
             </div>
           </div>
-        </div>
+          <button
+            type="button"
+            className="apple-btn primary"
+            onClick={() => {
+              if (targetProject && targetProject.tracks[0]) {
+                onPlayTrack(targetProject.tracks[targetProject.tracks.length - 1] || targetProject.tracks[0], targetProject);
+              }
+            }}
+          >
+            ▶ Escuchar en Reproductor
+          </button>
+        </motion.div>
+      )}
 
-        <AnimatePresence mode="wait">
-          {/* PASO 1: Prop -> Perfil */}
-          {step === "prop-ready" && (
-            <motion.div
-              key="step1"
-              className="dmg-stage"
-              initial={{ opacity: 0, scale: 0.97 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 1.06 }}
-              transition={{ duration: 0.28 }}
-            >
-              <div className="dmg-arena">
-                <div className="dmg-slot">
-                  <motion.div
-                    drag
-                    dragSnapToOrigin
-                    whileDrag={{ scale: 1.12, rotate: -4, zIndex: 40 }}
-                    whileHover={{ scale: 1.03 }}
-                    onDragStart={() => sfx.tap()}
-                    onDragEnd={handlePropDragEnd}
-                    className="track-prop-card"
-                    style={{ "--prop-accent": color } as React.CSSProperties}
-                  >
-                    <div className="prop-disc-visual">
-                      <div className="prop-disc-ring" style={{ background: color }} />
-                      <div className="prop-disc-hole" />
-                    </div>
-                    <div className="prop-card-meta">
-                      <b>{title}</b>
-                      <span>
-                        {bpm} BPM · {musicalKey} · PROP 3D
-                      </span>
-                    </div>
-                  </motion.div>
-                  <small className="dmg-hint">1. Arrastrá este Prop hacia tu Perfil →</small>
-                </div>
+      {/* MAZO DE VINILITOS SWIPEABLES */}
+      {batchItems.length > 0 && (
+        <div className="vinilitos-workspace">
+          <div className="vinilitos-head">
+            <div>
+              <span className="mono-tag">MAZO DE VINILITOS // {batchItems.length} DISCOS</span>
+              <h3>Swipeá entre las canciones para revisar o editar</h3>
+            </div>
+            <div className="vinilitos-global-prod">
+              <span>Productor común (opcional):</span>
+              <input
+                type="text"
+                value={globalProd}
+                placeholder="ej. dorkke, Gonza2k..."
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setGlobalProd(val);
+                  setBatchItems((prev) => prev.map((item) => ({ ...item, prod: val })));
+                }}
+              />
+            </div>
+          </div>
 
-                <div className="dmg-arrow">
-                  <div className="dmg-chevron">»</div>
-                  <span>DROP TO INSTALL</span>
-                </div>
-
-                <div
-                  ref={profileSocketRef}
-                  className={`dmg-profile-socket ${hoverTarget === "profile" ? "hovered" : ""}`}
-                  onMouseEnter={() => {
-                    setHoverTarget("profile");
-                    sfx.hover();
-                  }}
-                  onMouseLeave={() => setHoverTarget(null)}
+          {/* Carrusel de Vinilitos */}
+          <div className="vinilitos-carousel-track">
+            {batchItems.map((item, idx) => {
+              const isSelected = activeVinilitoIdx === idx;
+              return (
+                <motion.div
+                  key={item.id}
+                  className={`vinilito-card ${isSelected ? "active" : ""}`}
                   onClick={() => {
-                    sfx.drop();
-                    setStep("zoomed-library");
+                    sfx.tap();
+                    setActiveVinilitoIdx(idx);
                   }}
+                  whileHover={{ y: -4 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 25 }}
                 >
-                  <div className="socket-avatar">
-                    <span>{meProfile.name.charAt(0).toUpperCase()}</span>
+                  {/* Disco de vinilo 3D estilizado que sobresale del sobre */}
+                  <div className="vinilito-disc-preview">
+                    <div className="vinilito-grooves" />
+                    <div
+                      className="vinilito-label"
+                      style={{ background: item.color }}
+                    >
+                      <span className="vinilito-label-hole" />
+                      <small>{String(idx + 1).padStart(2, "0")}</small>
+                    </div>
                   </div>
-                  <b>{meProfile.handle}</b>
-                  <small>Soltá acá para hacer Zoom a tu Biblioteca 3D</small>
-                </div>
-              </div>
-            </motion.div>
-          )}
 
-          {/* PASO 2: Abre la Biblioteca 3D tal cual aparece; tocás un proyecto, popea de la unidad y le arrastrás el Prop */}
-          {step === "zoomed-library" && (
+                  {/* Sobre del disco */}
+                  <div className="vinilito-sleeve">
+                    <div className="vinilito-sleeve-header">
+                      <span className="mono-tag">#{String(idx + 1).padStart(2, "0")} · WAV</span>
+                      <button
+                        type="button"
+                        className="vinilito-remove"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeDraft(item.id);
+                        }}
+                        title="Quitar este disco"
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    <div className="vinilito-fields">
+                      <label>
+                        <span>TÍTULO DEL TRACK</span>
+                        <input
+                          value={item.title}
+                          onChange={(e) => updateDraft(item.id, { title: e.target.value })}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </label>
+
+                      <label>
+                        <span>PRODUCTOR (OPCIONAL)</span>
+                        <input
+                          value={item.prod}
+                          placeholder="ej. dorkke"
+                          onChange={(e) => updateDraft(item.id, { prod: e.target.value })}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </label>
+
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <label style={{ flex: 1 }}>
+                          <span>BPM</span>
+                          <input
+                            type="number"
+                            value={item.bpm}
+                            onChange={(e) => updateDraft(item.id, { bpm: Number(e.target.value) })}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </label>
+                        <label style={{ flex: 1 }}>
+                          <span>KEY</span>
+                          <input
+                            value={item.musicalKey}
+                            onChange={(e) => updateDraft(item.id, { musicalKey: e.target.value })}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+
+          {/* ==================== EL GESTO: SWIPE ARRIBA PARA DROPEAR E INSTALAR ==================== */}
+          <div className="swipe-up-installer-wrap">
+            <div className="swipe-up-label-top">
+              <span>↑ DESLIZÁ HACIA ARRIBA EL CONTROL O TOCÁ EL BOTÓN PARA DROPEAR TODO</span>
+            </div>
+
             <motion.div
-              key="step2"
-              className="dmg-stage"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 1.04 }}
-              transition={{ type: "spring", stiffness: 260, damping: 26 }}
+              className="swipe-up-handle-card"
+              drag="y"
+              dragConstraints={{ top: -110, bottom: 0 }}
+              dragElastic={0.15}
+              onDragEnd={(_, info) => {
+                if (info.offset.y < -65 || info.velocity.y < -150) {
+                  handleInstallAll();
+                }
+              }}
             >
-              <div className="dmg-zoom-header">
+              <div className="swipe-up-grabber" />
+              <div className="swipe-up-body">
+                <div className="swipe-arrow-anim">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="18 15 12 9 6 15" />
+                  </svg>
+                </div>
                 <div>
-                  <span className="mono-tag">
-                    ZOOM EN {meProfile.handle.toUpperCase()} // BIBLIOTECA 3D MANIFOLD
-                  </span>
-                  <h3>
-                    {targetProject
-                      ? "Tocá un cubo en la Biblioteca 3D para que popee de la unidad y arrastrá el Prop al proyecto popeado"
-                      : "Todavía tenés 0 proyectos en tu Biblioteca 3D · Creá un proyecto primero para instalar este track"}
-                  </h3>
+                  <b>Swipe arriba para dropear e instalar</b>
+                  <p>
+                    Se instalarán los {batchItems.length} vinilitos en el proyecto{" "}
+                    <b>{targetProject ? targetProject.title : "(creá un proyecto primero)"}</b>
+                  </p>
                 </div>
                 <button
                   type="button"
-                  className="apple-btn ghost"
-                  onClick={() => setStep("prop-ready")}
+                  className="apple-btn primary"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleInstallAll();
+                  }}
+                  style={{ marginLeft: "auto" }}
                 >
-                  ← Volver al Paso 1
+                  Instalar todos ({batchItems.length})
                 </button>
               </div>
-
-              <div className="dmg-manifold-install-split">
-                {/* Columna izquierda: El Prop listo + el dock del Proyecto que popeó */}
-                <div className="dmg-pop-sidebar">
-                  <div className="dmg-floating-prop-column">
-                    <motion.div
-                      drag
-                      dragSnapToOrigin
-                      whileDrag={{ scale: 1.1, rotate: 4, zIndex: 50 }}
-                      onDragStart={() => sfx.tap()}
-                      onDragEnd={handlePropDragEnd}
-                      className="track-prop-card compact"
-                      style={{ "--prop-accent": color } as React.CSSProperties}
-                    >
-                      <div className="prop-disc-visual">
-                        <div className="prop-disc-ring" style={{ background: color }} />
-                        <div className="prop-disc-hole" />
-                      </div>
-                      <div className="prop-card-meta">
-                        <b>{title}</b>
-                        <span>{bpm} BPM · {musicalKey}</span>
-                      </div>
-                    </motion.div>
-                    <small className="dmg-hint">↓ Arrastrá el Prop al proyecto popeado acá abajo</small>
-                  </div>
-
-                  {targetProject ? (
-                    <div
-                      ref={poppedDropZoneRef}
-                      className="popped-project-dropzone"
-                      onClick={() => {
-                        sfx.drop();
-                        setWheelSlot(targetProject.tracks.length);
-                        setStep("wheel-place");
-                      }}
-                    >
-                      <span className="mono-tag">BLOQUE POPEADO EN 3D</span>
-                      <h4>{targetProject.title}</h4>
-                      <p>
-                        {targetProject.artist} · {targetProject.tracks.length} discos actuales ·{" "}
-                        {targetProject.videos.length} videos
-                      </p>
-                      <span className="popped-cta">
-                        Soltá el Prop acá o tocá para abrir el Spinner →
-                      </span>
-                    </div>
-                  ) : (
-                    <div
-                      className="popped-project-dropzone"
-                      onClick={() => {
-                        sfx.open();
-                        onOpenCreateProject();
-                      }}
-                    >
-                      <span className="mono-tag">0 PROYECTOS EN TU BIBLIOTECA</span>
-                      <h4>Creá tu primer proyecto</h4>
-                      <p>Necesitás crear un proyecto antes de ubicar este track en el Spinner.</p>
-                      <span className="popped-cta">+ Ir a Crear Proyecto →</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Derecha: La Biblioteca 3D tal cual aparece, con el bloque seleccionado popeando hacia afuera */}
-                <ManifoldLibrary3D
-                  projects={projects}
-                  selectedProjectId={selectedProjectId}
-                  poppedProjectId={poppedProjectId}
-                  viewMode="manifold"
-                  compact
-                  onSelectProject={(proj) => {
-                    setSelectedProjectId(proj.id);
-                    setPoppedProjectId(proj.id);
-                  }}
-                  onOpenCreateProject={onOpenCreateProject}
-                />
-              </div>
             </motion.div>
-          )}
-
-          {/* PASO 3: Ruedita 3D de temas del proyecto */}
-          {(step === "wheel-place" || step === "installed") && targetProject && (
-            <motion.div
-              key="step3"
-              className="dmg-stage"
-              initial={{ opacity: 0, y: 18 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-            >
-              <div className="dmg-zoom-header">
-                <div>
-                  <span className="mono-tag">
-                    PROYECTO ABIERTO // {targetProject.title} ({targetProject.tracks.length} DISCOS)
-                  </span>
-                  <h3>
-                    {step === "installed"
-                      ? `¡Listo! "${title}" ya está en el Spinner de ${targetProject.title}`
-                      : "Ubicá el nuevo track en el Spinner del proyecto"}
-                  </h3>
-                </div>
-                <div className="row-actions">
-                  <button
-                    type="button"
-                    className="apple-btn ghost"
-                    onClick={() => setStep("zoomed-library")}
-                  >
-                    ← Volver a la Biblioteca 3D
-                  </button>
-                  {step !== "installed" && (
-                    <button
-                      type="button"
-                      className="apple-btn primary"
-                      onClick={commitInstall}
-                    >
-                      Confirmar en posición #{wheelSlot + 1}
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {step !== "installed" && (
-                <div className="wheel-slot-selector">
-                  {Array.from({ length: targetProject.tracks.length + 1 }, (_, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      className={`wheel-slot-pill ${wheelSlot === idx ? "on" : ""}`}
-                      onMouseEnter={() => sfx.hover()}
-                      onClick={() => {
-                        sfx.tick();
-                        setWheelSlot(idx);
-                      }}
-                    >
-                      <span>POSICIÓN #{idx + 1}</span>
-                      <b>
-                        {idx === wheelSlot
-                          ? `[NUEVO] ${title}`
-                          : targetProject.tracks[idx]?.title || "Final del proyecto"}
-                      </b>
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              <DiscSpinner3D
-                project={targetProject}
-                onPlayTrack={onPlayTrack}
-                compact
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

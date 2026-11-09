@@ -96,6 +96,13 @@ function DiscIcon({ size = 18 }: { size?: number }) {
   );
 }
 
+function formatTime(sec: number): string {
+  if (!Number.isFinite(sec) || sec < 0) return "0:00";
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 export default function App() {
   const [tab, setTab] = useState<ScreenTab>("inicio");
   const [meProfile, setMeProfile] = useState<ArtistProfile>(INITIAL_ME_PROFILE);
@@ -105,6 +112,37 @@ export default function App() {
   const [producerDrops, setProducerDrops] = useState<ProducerDropItem[]>([]);
   const [producerFilter, setProducerFilter] = useState<"Todos" | ProducerDropKind>("Todos");
   const [hydrated, setHydrated] = useState<boolean>(false);
+
+  // Modo oscuro / Modo claro global para todas las pantallas
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
+
+  useEffect(() => {
+    try {
+      const savedTheme = (localStorage.getItem("el-tablero-theme") as "dark" | "light") || "dark";
+      setTheme(savedTheme);
+      document.documentElement.setAttribute("data-theme", savedTheme);
+    } catch {
+      document.documentElement.setAttribute("data-theme", "dark");
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    sfx.tap();
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    document.documentElement.setAttribute("data-theme", next);
+    try {
+      localStorage.setItem("el-tablero-theme", next);
+    } catch {
+      // ignore
+    }
+  };
+
+  // Mini reproductor slider de progreso en tiempo real (sincronizado con el motor sfx)
+  const [miniPlayback, setMiniPlayback] = useState<{ currentSec: number; durationSec: number }>({
+    currentSec: 0,
+    durationSec: 174,
+  });
 
   // Estado del reproductor persistente + pantalla completa (con funciones completas de Spotify)
   const [currentTrack, setCurrentTrack] = useState<Track>(STANDBY_TRACK);
@@ -118,6 +156,17 @@ export default function App() {
   const [likedTrackIds, setLikedTrackIds] = useState<string[]>([]);
   const [userQueue, setUserQueue] = useState<QueueEntry[]>([]);
   const [customAudioMap, setCustomAudioMap] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      const st = sfx.getPlaybackState();
+      setMiniPlayback({
+        currentSec: st.currentSec,
+        durationSec: st.durationSec || currentTrack.durationSec || 174,
+      });
+    }, 120);
+    return () => clearInterval(id);
+  }, [currentTrack.durationSec]);
 
   // Input temporal para agregar atributos personalizados a un proyecto en Biblioteca
   const [newAttrInput, setNewAttrInput] = useState<string>("");
@@ -357,6 +406,7 @@ export default function App() {
     projects.find((p) => p.id === selectedProjectId) || projects[0] || null;
 
   const playTrack = (track: Track, project: Project, openFull = false) => {
+    const isDifferentTrack = track.id !== currentTrack.id;
     setCurrentTrack(track);
     setCurrentProject(project);
     setIsPlaying(true);
@@ -366,7 +416,7 @@ export default function App() {
       track.audioFreq,
       track.customAudioUrl || customAudioMap[track.id],
       track.durationSec,
-      true
+      isDifferentTrack
     );
     if (openFull) setPlayerExpanded(true);
   };
@@ -375,16 +425,15 @@ export default function App() {
     if (isPlaying) {
       setIsPlaying(false);
       sfx.pause();
-      sfx.stopGroove();
+      sfx.pauseGroove();
     } else {
       setIsPlaying(true);
       sfx.play();
-      sfx.startGroove(
+      sfx.resumeGroove(
         currentTrack.bpm,
         currentTrack.audioFreq,
         currentTrack.customAudioUrl || customAudioMap[currentTrack.id],
-        currentTrack.durationSec,
-        false
+        currentTrack.durationSec
       );
     }
   };
@@ -875,16 +924,58 @@ export default function App() {
         </nav>
 
         <div className="ios-nav-right">
+          {/* Theme Toggle Button (Dark / Light) */}
+          <button
+            type="button"
+            className="ios-icon-btn theme-toggle-btn"
+            onMouseEnter={() => sfx.hover()}
+            onClick={toggleTheme}
+            title={theme === "dark" ? "Cambiar a Modo Claro" : "Cambiar a Modo Oscuro"}
+            aria-label="Alternar modo oscuro / claro"
+          >
+            {theme === "dark" ? (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="5" />
+                <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+              </svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              </svg>
+            )}
+          </button>
+
           <button
             type="button"
             className="ios-icon-btn"
+            style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
             onMouseEnter={() => sfx.hover()}
             onClick={() => {
               sfx.open();
               setAuthModalOpen(true);
             }}
           >
-            {googleConnected ? meProfile.handle : "Iniciar con Google"}
+            {googleConnected ? (
+              <>
+                {meProfile.avatarUrl ? (
+                  <img
+                    src={meProfile.avatarUrl}
+                    alt={meProfile.name}
+                    style={{ width: 17, height: 17, borderRadius: "50%", objectFit: "cover" }}
+                  />
+                ) : (
+                  <span style={{ width: 17, height: 17, borderRadius: "50%", background: meProfile.color, display: "grid", placeItems: "center", fontSize: 9, color: "#fff", fontWeight: 700 }}>
+                    {meProfile.name.charAt(0).toUpperCase()}
+                  </span>
+                )}
+                <span>{meProfile.handle}</span>
+              </>
+            ) : (
+              <>
+                <GoogleCircleIcon size={14} />
+                <span>Iniciar con Google</span>
+              </>
+            )}
           </button>
           <button
             type="button"
@@ -1363,8 +1454,16 @@ export default function App() {
                               }
                             }}
                           >
-                            <div className="artist-dir-avatar" style={{ background: a.color }}>
-                              {a.stickers[0] || a.name.charAt(0).toUpperCase()}
+                            <div className="artist-dir-avatar" style={{ background: a.color, overflow: "hidden" }}>
+                              {a.avatarUrl ? (
+                                <img
+                                  src={a.avatarUrl}
+                                  alt={a.name}
+                                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                />
+                              ) : (
+                                a.stickers[0] || a.name.charAt(0).toUpperCase()
+                              )}
                             </div>
                             <div className="artist-dir-info">
                               <b>
@@ -1925,13 +2024,26 @@ export default function App() {
                 <div className="profile-hero-top">
                   <div
                     className="profile-avatar-large"
-                    style={{ background: meProfile.color }}
+                    style={{ background: meProfile.color, cursor: "pointer", position: "relative", overflow: "hidden" }}
+                    onClick={() => {
+                      sfx.open();
+                      setEditProfileOpen(true);
+                    }}
+                    title="Tocá para cambiar tu foto de perfil"
                   >
-                    <span>{meProfile.name.charAt(0).toUpperCase()}</span>
+                    {meProfile.avatarUrl ? (
+                      <img
+                        src={meProfile.avatarUrl}
+                        alt={meProfile.name}
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      />
+                    ) : (
+                      <span>{meProfile.name.charAt(0).toUpperCase()}</span>
+                    )}
                   </div>
                   <div className="profile-main-copy">
                     <div className="profile-badges">
-                      <span className="mono-tag">{meProfile.crew}</span>
+                      <span className="mono-tag">{meProfile.role}</span>
                       <span className="mono-tag">{meProfile.zone}</span>
                       {googleConnected && (
                         <span className="mono-tag google-verified">
@@ -2051,7 +2163,7 @@ export default function App() {
                       className="apple-btn ghost"
                       onClick={() => navigate("subir")}
                     >
-                      + Subir con Prop
+                      + Subir Canciones (Batch WAV)
                     </button>
                   </div>
                 </div>
@@ -2084,6 +2196,30 @@ export default function App() {
               exit={{ y: 80, opacity: 0 }}
               transition={{ type: "spring", stiffness: 320, damping: 28 }}
             >
+              {/* Barra superior de progreso interactiva (Scrubber) */}
+              <div className="mini-scrubber-track">
+                <div
+                  className="mini-scrubber-fill"
+                  style={{
+                    width: `${Math.min(100, (miniPlayback.currentSec / Math.max(1, miniPlayback.durationSec)) * 100)}%`,
+                  }}
+                />
+                <input
+                  type="range"
+                  min={0}
+                  max={Math.max(1, miniPlayback.durationSec)}
+                  step={0.2}
+                  value={Math.min(miniPlayback.durationSec, miniPlayback.currentSec)}
+                  onChange={(e) => {
+                    const sec = Number(e.target.value);
+                    setMiniPlayback((prev) => ({ ...prev, currentSec: sec }));
+                    sfx.seek(sec);
+                  }}
+                  className="mini-scrubber-input"
+                  aria-label="Progreso del track"
+                />
+              </div>
+
               {/* Columna Izquierda: Portada + Nombre del Track y Artista (sin BPM ni Key) */}
               <div
                 className="mini-left"
@@ -2111,7 +2247,13 @@ export default function App() {
 
                 <div className="mini-meta">
                   <b>{currentTrack.title}</b>
-                  <span>{currentTrack.artist}</span>
+                  <span>
+                    {currentTrack.artist}
+                    {currentTrack.prod ? ` · prod. ${currentTrack.prod}` : ""}
+                    <small style={{ marginLeft: 6, opacity: 0.72, fontFamily: "monospace" }}>
+                      {formatTime(miniPlayback.currentSec)} / {formatTime(miniPlayback.durationSec)}
+                    </small>
+                  </span>
                 </div>
               </div>
 
@@ -2384,8 +2526,8 @@ function EditTrackModal({
             <input value={feat} onChange={(e) => setFeat(e.target.value)} placeholder="ej. eyebags" />
           </label>
           <label className="modal-field">
-            <span>PRODUCTOR / MIX</span>
-            <input value={prod} onChange={(e) => setProd(e.target.value)} placeholder="ej. Ma7imza" />
+            <span>PRODUCTOR (OPCIONAL)</span>
+            <input value={prod} onChange={(e) => setProd(e.target.value)} placeholder="ej. dorkke, Gonza2k..." />
           </label>
           <label className="modal-field">
             <span>BPM</span>
@@ -2690,9 +2832,9 @@ function EditProfileModal({
 }) {
   const [name, setName] = useState(profile.name);
   const [handle, setHandle] = useState(profile.handle);
+  const [avatarUrl, setAvatarUrl] = useState(profile.avatarUrl || "");
   const [role, setRole] = useState(profile.role);
   const [zone, setZone] = useState(profile.zone);
-  const [crew, setCrew] = useState(profile.crew);
   const [bio, setBio] = useState(profile.bio);
   const [color, setColor] = useState(profile.color);
   const [stickersText, setStickersText] = useState(profile.stickers.join(" "));
@@ -2706,9 +2848,9 @@ function EditProfileModal({
       ...profile,
       name,
       handle: handle.startsWith("@") ? handle : `@${handle}`,
+      avatarUrl: avatarUrl.trim() || undefined,
       role,
       zone,
-      crew,
       bio,
       color,
       stickers: stickersText
@@ -2754,6 +2896,68 @@ function EditProfileModal({
         )}
 
         <div className="modal-form-grid">
+          {/* FOTO DE PERFIL */}
+          <div className="modal-field full profile-avatar-edit-field">
+            <span>FOTO DE PERFIL</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 6 }}>
+              <div
+                style={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: "50%",
+                  background: color,
+                  overflow: "hidden",
+                  display: "grid",
+                  placeItems: "center",
+                  flexShrink: 0,
+                  border: "2px solid var(--line-strong)",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                }}
+              >
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt={name}
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                ) : (
+                  <span style={{ fontSize: "1.4rem", fontWeight: 700, color: "#ffffff" }}>
+                    {name.charAt(0).toUpperCase()}
+                  </span>
+                )}
+              </div>
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+                <label className="apple-btn ghost" style={{ cursor: "pointer", alignSelf: "flex-start", fontSize: "0.78rem" }}>
+                  <span>Elegir imagen de tu dispositivo</span>
+                  <input
+                    type="file"
+                    accept="image/*,.png,.jpg,.jpeg,.webp,.gif"
+                    hidden
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          if (typeof reader.result === "string") {
+                            setAvatarUrl(reader.result);
+                          }
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                </label>
+                <input
+                  type="url"
+                  placeholder="O pegá el enlace a tu foto..."
+                  value={avatarUrl}
+                  onChange={(e) => setAvatarUrl(e.target.value)}
+                  style={{ fontSize: "0.8rem", padding: "6px 10px" }}
+                />
+              </div>
+            </div>
+          </div>
+
           <label className="modal-field">
             <span>NOMBRE ARTÍSTICO</span>
             <input value={name} onChange={(e) => setName(e.target.value)} />
@@ -2766,16 +2970,12 @@ function EditProfileModal({
             </small>
           </label>
           <label className="modal-field">
-            <span>ROL EN LA ESCENA</span>
-            <input value={role} onChange={(e) => setRole(e.target.value)} />
+            <span>ROL</span>
+            <input value={role} onChange={(e) => setRole(e.target.value)} placeholder="ej. Rapero · Artista" />
           </label>
           <label className="modal-field">
             <span>ZONA / DEPARTAMENTO</span>
             <input value={zone} onChange={(e) => setZone(e.target.value)} />
-          </label>
-          <label className="modal-field">
-            <span>CREW / SELLO</span>
-            <input value={crew} onChange={(e) => setCrew(e.target.value)} />
           </label>
           <label className="modal-field">
             <span>COLOR DE AVATAR</span>

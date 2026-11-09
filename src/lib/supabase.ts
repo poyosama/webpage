@@ -182,6 +182,7 @@ export async function fetchCommunityProfilesFromSupabase(): Promise<ArtistProfil
       crew: row.crew || "UG BOARD",
       bio: row.bio || "",
       color: row.color || "#111111",
+      avatarUrl: row.avatar_url || undefined,
       stickers: row.stickers || ["RAW", "MIC", "808"],
       tracksCount: 0,
       projectsCount: 0,

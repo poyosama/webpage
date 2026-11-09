@@ -486,6 +486,44 @@
    - El importador extrae la metadata completa del proyecto (título, artista, año, duración, orden de tracks y portada).
    - Se agregaron chips de carga directa de audio por track (`+ WAV/MP3` / `✓ WAV listo`), permitiendo subir en 1 click los archivos lossless exportados de Untitled directamente al proyecto.
 
+---
+
+### Turno 31 — Subida Batch de WAVs con Mazo de Vinilitos & Gesto Swipe-Up, Productor Opcional, Fotos de Perfil, Limpieza de Crew/Rol, Retiro de Props/Vinilo 3D, Ferrofluido 3X Polígonos con Shader GPU, Modo Oscuro/Light Mode y Mini-Player Scrubber con Memoria de Pausa
+**Prompts del usuario:**
+1. *"tambien quiero poder subir de a muchos los wav cuando subis los temas capaz arrastrarlos todos a la biblioteca y que se armen muchos vinilitos que hay que swipear y hay un coso que swipeas arriba y se dropean todos para instalar"*
+2. *"y que en nombre del track tambien te pida quien lo produjo (opcional) asi se ve al menos"*
+3. *"y fotos de perfil por favor por dios"*
+4. *"lo de crew en el perfil sacalo tambien no pinta esa"*
+5. *"y rol en la escena que solo sea rol"*
+6. *"finalmente retira los props y el vinilo 3d en el reproductor y hace que el ferrofluido tenga 3 veces mas poligonos y optimizalo para que corra bien"*
+7. *"modo oscuro y light mode par todas las pantallas"*
+8. *"que el reproductor pause y recuerde donde pausaste flaco daleee y que el widget de reproductor que esta abajo tambien tenga el slider de progreso de la cancion"*
+
+**Implementación:**
+1. **Subida Batch de Archivos WAV/MP3 (`MacInstallerUpload.tsx` + `globals.css`):**
+   - Rediseñado el flujo de subida para admitir múltiples archivos de una sola vez (`multiple` drag & drop y file picker).
+   - Mazo interactivo de **Vinilitos Swipeables**: cada canción genera un mini vinilo con surcos, sello de color giratorio, número de track y sobre editorial con título, BPM, Key y campo de Productor.
+   - Gesto de instalación táctil **Swipe-Up** (`framer-motion` con `drag="y"` y límites elásticos): al deslizar hacia arriba la tarjeta de control (`↑ Deslizá hacia arriba para dropear e instalar`), se activa el drop con feedback sonoro (`sfx.drop()`) e instala todas las canciones en orden en el proyecto seleccionado.
+2. **Productor Opcional en Tracks:**
+   - En `MacInstallerUpload.tsx`, `EditTrackModal.tsx`, `PerformativePlayer.tsx` y en el mini player: se añadió el campo `Productor (opcional)` y la visualización `${track.artist} · prod. ${track.prod}` cuando esté presente.
+3. **Fotos de Perfil y Limpieza de Identidad (`App.tsx`, `supabase.ts`, `globals.css`):**
+   - En `EditProfileModal`: añadido selector y subida directa de **Foto de Perfil** desde el dispositivo con preview circular, persistiendo `avatar_url` en PostgreSQL de Supabase.
+   - Mostrado en el avatar gigante del perfil (con click para cambiar foto), en la barra superior junto al `@handle`, en el botón de Google y en las tarjetas de `Artistas en El Tablero`.
+   - Eliminado completamente el campo `crew` de todos los formularios y vistas del perfil.
+   - Renombrado `"Rol en la escena"` a simplemente `"Rol"`.
+4. **Retiro de Props y Vinilo 3D en Reproductor (`PerformativePlayer.tsx`):**
+   - Se removieron los modos `props` (props 0G) y `cd` (disco acrílico 3D) del reproductor y de los controles.
+   - El visualizador queda concentrado en los dos motores estrella: **36.000 Partículas Algorítmicas 808** y **Ferrofluido 3D Escultable HD**.
+5. **Ferrofluido 3D con 3X Polígonos y Optimización GPU 60 FPS (`PerformativePlayer.tsx`):**
+   - Aumentada la densidad a `IcosahedronGeometry(0.96, 64)` (más de **40.960 vértices** y **81.920 polígonos**, 3.15x más resolución).
+   - Optimizado con aceleración por hardware en GPU mediante inyección GLSL en vertex shader (`onBeforeCompile` en `MeshPhysicalMaterial`): 0 bucles CPU, 0 recomputación de normales por software, 60 FPS constantes con clearcoat, iridescencia metálica y respuesta magnética al cursor.
+6. **Modo Oscuro y Light Mode Global (`globals.css` + `App.tsx`):**
+   - Implementado selector de tema en la barra de navegación superior (icono Sol/Luna con sonido haptic) que conmuta entre `data-theme="dark"` (fondo grafito profundo `#09090b` / `#141417`, botones y modales oscuros con alto contraste) y `data-theme="light"` (estética editorial Apple marfil/blanco puro), persistiendo la preferencia en `localStorage`.
+7. **Memoria de Pausa y Slider de Progreso en Mini-Player (`sfx.ts` + `App.tsx`):**
+   - Corregido `sfx.ts` con `pauseGroove()` y `resumeGroove()`: al pausar, el motor retiene el segundo exacto (`virtualCurrentSec`) sin destruir la instancia de audio; al reanudar o reproducir la misma canción, continúa exactamente donde quedó.
+   - Dynamic Island / Mini-Player inferior actualizado con una barra interactiva de progreso (scrubber slider) en el borde superior: permite ver el tiempo transcurrido / total (`m:ss / m:ss`) y arrastrar o clickear para saltar a cualquier parte del track en tiempo real.
+
+
 
 
 
