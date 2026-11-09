@@ -891,178 +891,18 @@ export default function ManifoldLibrary3D({
 
   return (
     <div className={`manifold-3d-wrapper ${compact ? "is-compact" : ""}`}>
-      {viewMode === "manifold" ? (
-        <div className="manifold-3d-canvas-stage">
-          <div className="manifold-stage-overlay-top">
-            <div className="manifold-title-and-switch">
-              <div className="manifold-overlay-titles">
-                <span className="mono-tag">MIS PROYECTOS // BLOQUES</span>
-                <h3>Arrastrá para mover · Seleccioná un proyecto</h3>
-              </div>
-
-              {onChangeViewMode && (
-                <div className="seg-pills inline-view-switch">
-                  <button
-                    type="button"
-                    className={viewMode === "manifold" ? "on" : ""}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      sfx.tap();
-                      onChangeViewMode("manifold");
-                    }}
-                  >
-                    🧊 Bloques
-                  </button>
-                  <button
-                    type="button"
-                    className={(viewMode as string) === "disc-row" ? "on" : ""}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      sfx.tap();
-                      onChangeViewMode("disc-row");
-                    }}
-                  >
-                    💿 Vinilos
-                  </button>
-                </div>
-              )}
+      {/* ==================== MODO VINILOS 3D: COLECCIÓN EN ARCO FIJO ==================== */}
+      <div className="manifold-3d-canvas-stage vinyl-arc-stage">
+        <div className="manifold-stage-overlay-top">
+          <div className="manifold-title-and-switch">
+            <div className="manifold-overlay-titles">
+              <span className="mono-tag">MIS PROYECTOS // VINILOS 3D</span>
+              <h3>Arrastrá para mover · Seleccioná un vinilo</h3>
             </div>
-
-            {renderQuickPills()}
           </div>
 
-          <div className={`manifold-canvas-inner ${divingProject ? "is-diving" : ""}`}>
-            <Canvas
-              key="manifold-blocks-canvas"
-              camera={{ position: [6.8, 6.2, 7.2], fov: 32 }}
-              dpr={[1, 1.5]}
-              gl={{ antialias: true, powerPreference: "high-performance" }}
-            >
-              <ResponsiveSceneGroup
-                basePosition={[0, 0.15, 0]}
-                mobileScale={0.7}
-                desktopScale={compact ? 0.88 : 0.94}
-              >
-                {/* Partículas que abrazan el cluster de cubos (y si hay 0 proyectos, orbitan suavemente sin cubos) */}
-                <ClusterEmbraceParticles
-                  projects={projects}
-                  selectedProjectId={selectedProjectId}
-                  divingProject={divingProject}
-                />
-
-                {/* Si hay 0 proyectos, se renderizan 0 cubos */}
-                {projects.map((p) => (
-                  <ProjectVideoCube
-                    key={p.id}
-                    project={p}
-                    isSelected={p.id === selectedProjectId}
-                    isPopped={p.id === poppedProjectId}
-                    isDivingThisCube={divingProject?.id === p.id}
-                    isAnyDiving={Boolean(divingProject)}
-                    onSelect={handleCubeOrPlateSelect}
-                  />
-                ))}
-
-                {divingProject && (
-                  <VoxelDivePortal
-                    project={divingProject}
-                    onProgress={setDiveProgress}
-                    onComplete={(proj) => {
-                      setDivingProject(null);
-                      setDiveProgress(0);
-                      onDiveIntoProject?.(proj);
-                    }}
-                  />
-                )}
-              </ResponsiveSceneGroup>
-
-              {!divingProject && (
-                <OrbitControls
-                  enableZoom={true}
-                  minDistance={5.5}
-                  maxDistance={15}
-                  enablePan={false}
-                  rotateSpeed={0.7}
-                  minPolarAngle={0.4}
-                  maxPolarAngle={1.38}
-                />
-              )}
-            </Canvas>
-
-            {/* Transición luminosa blanca sincronizada al cruzar el umbral de vóxeles del cubo */}
-            {divingProject && (
-              <div
-                className="cube-dive-bloom-overlay"
-                style={{ opacity: bloomOpacity }}
-                aria-hidden
-              />
-            )}
-
-            {/* Estado limpio cuando hay 0 proyectos (0 cubos en escena) */}
-            {projects.length === 0 && (
-              <div className="manifold-empty-cluster-overlay">
-                <span className="mono-tag">0 PROYECTOS // 0 CUBOS EN ESCENA</span>
-                <h4>Tu Biblioteca 3D está limpia</h4>
-                <p>
-                  Las partículas están listas para abrazar tus bloques. Creá tu primer proyecto o importalo desde <code>[untitled]</code> en tu perfil.
-                </p>
-                {onOpenCreateProject && (
-                  <button
-                    type="button"
-                    className="apple-btn primary"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      sfx.open();
-                      onOpenCreateProject();
-                    }}
-                  >
-                    + Crear mi primer Proyecto →
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
+          {renderQuickPills()}
         </div>
-      ) : (
-        /* ==================== MODO VINILOS: ABANICO CURVO EN ARCO FIJO ==================== */
-        <div className="manifold-3d-canvas-stage vinyl-arc-stage">
-          <div className="manifold-stage-overlay-top">
-            <div className="manifold-title-and-switch">
-              <div className="manifold-overlay-titles">
-                <span className="mono-tag">MIS PROYECTOS // VINILOS</span>
-                <h3>Arrastrá para mover · Seleccioná un proyecto</h3>
-              </div>
-
-              {onChangeViewMode && (
-                <div className="seg-pills inline-view-switch">
-                  <button
-                    type="button"
-                    className={(viewMode as string) === "manifold" ? "on" : ""}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      sfx.tap();
-                      onChangeViewMode("manifold");
-                    }}
-                  >
-                    🧊 Bloques
-                  </button>
-                  <button
-                    type="button"
-                    className={viewMode === "disc-row" ? "on" : ""}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      sfx.tap();
-                      onChangeViewMode("disc-row");
-                    }}
-                  >
-                    💿 Vinilos
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {renderQuickPills()}
-          </div>
 
           {projects.length === 0 ? (
             <div className="vinyl-fan-arc-viewport">
@@ -1342,7 +1182,6 @@ export default function ManifoldLibrary3D({
             </div>
           )}
         </div>
-      )}
 
       {activeProject && onUploadProjectVideo && (
         <div className="project-video-folder-bar">

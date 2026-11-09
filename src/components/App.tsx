@@ -89,8 +89,8 @@ export default function App() {
   // Input temporal para agregar atributos personalizados a un proyecto en Biblioteca
   const [newAttrInput, setNewAttrInput] = useState<string>("");
 
-  // Vista 3D interna en Mis Proyectos: "manifold" (Bloques) o "disc-row" (Vinilos)
-  const [libraryViewMode, setLibraryViewMode] = useState<"manifold" | "disc-row">("manifold");
+  // Vista 3D en Mis Proyectos: Vinilos 3D en arco fijo
+  const [libraryViewMode, setLibraryViewMode] = useState<"manifold" | "disc-row">("disc-row");
   // Modo de display en Biblioteca: 1 (default) "inside" (Por defecto) o 2 "side-by-side" (Lado a Lado)
   const [libraryLayoutMode, setLibraryLayoutMode] = useState<"inside" | "side-by-side">("inside");
   const [insideCubeOpen, setInsideCubeOpen] = useState<boolean>(false);

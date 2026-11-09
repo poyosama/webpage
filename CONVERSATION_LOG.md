@@ -211,6 +211,22 @@
 **Implementación:**
 - Confirmación al usuario de capacidad total de edición autónoma, modificación de código, compilación y push directo a producción sin requerir a Argon ni a ningún agente externo.
 
+---
+
+### Turno 13 — Eliminación de la Vista de Bloques 3D y Establecimiento de Vinilos como Vista Única
+**Prompt del usuario:**
+- *"dale deployalo"*
+
+**Implementación:**
+- **Eliminación de la escena de Bloques 3D (`ManifoldLibrary3D.tsx`):**
+  - Removido el branching condicional `viewMode === "manifold"`.
+  - Eliminado el selector/switch de `🧊 Bloques / 💿 Vinilos` del header.
+  - La escena de **Vinilos 3D en abanico curvo (arco fijo C)** pasa a ser la vista principal y única permanente en `Biblioteca`.
+  - Titulación actualizada a `MIS PROYECTOS // VINILOS 3D` con subtítulo `Arrastrá para mover · Seleccioná un vinilo`.
+  - Se mantienen los controles de selección de proyectos, las tapas de vinilos reales, la extracción de disco, la interacción en modo "Por defecto" / "Lado a Lado", el botón `+` para crear proyecto, el botón `🗑️` para eliminar proyectos, y la barra inferior de subida Canvas y tracks WAV/MP3.
+- En `src/components/App.tsx`, `libraryViewMode` se fijó por defecto en `"disc-row"`.
+
+
 
 
 
