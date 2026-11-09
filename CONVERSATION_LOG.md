@@ -280,3 +280,16 @@
    - Bucket de almacenamiento `el-tablero-media` para subidas de audio y portadas.
 4. **Guía paso a paso al usuario:**
    - Instrucciones exactas para correr el SQL en el `SQL Editor` y copiar la `anon public key` para habilitar el backend en producción.
+
+---
+
+### Turno 17 — Aclaración de API Key de Supabase y Restauración de Estilización de Recuadros en el Collage
+**Prompt del usuario:**
+- *"tenes que cambiarle de nuevo la fuente que usaste en El tablero porque yo te habia dicho que le saques todas las modificaciones a las fuentes pero enr ealidad era solo a las letras, habias usado colores y recuadros que me habian en cantado lo unico era mezclar fuentes literalmente, la estilizacion me encantaba / cual key t paso ??"* (adjunta captura de pantalla de Supabase Settings > API Keys).
+
+**Implementación:**
+1. **Aclaración sobre la API Key:**
+   - Se le indicó al usuario que copie la **`Publishable key`** (la de arriba, que arranca con `sb_publishable_...`), ya que es la clave pública y segura para el cliente del navegador con Row Level Security (RLS), a diferencia de la `Secret key` que nunca debe exponerse en el frontend.
+2. **Restauración de Estilización con Recuadros y Colores (`inline-swatch`):**
+   - Se recuperaron los bloques de color y recuadros editoriales de alto contraste en los nombres de los proyectos del collage (`LA PLAGA`, `PERDÓN LA DEMORA`, `chickenNugget`, `ESTO ES ESTAR EN SONIDO`, `#MA7IAS`, `Love2Hate`, `AMORIO CLUB 2`).
+   - Se mantuvo la regla de **cero mezcla de fuentes**: todas las letras y palabras usan la misma tipografía unificada sin deformaciones góticas ni mezclas tipográficas, conservando exclusivamente el juego de recuadros, fondos de color vibrantes (`coral`, `cyan`, `gold`, `blue`, `lime`, `purple`, `red`) y bordes estéticos.

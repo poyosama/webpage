@@ -355,25 +355,30 @@ button {
 
 .inline-swatch {
   display: inline-block;
-  padding: 0 6px;
-  margin: 0 2px;
-  border-radius: 4px;
-  color: #ffffff;
+  padding: 1px 7px;
+  margin: 0 3px;
+  border-radius: 6px;
+  font-family: inherit !important;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+  vertical-align: middle;
 }
 
 .inline-swatch.blue {
   background: #2563eb;
-  color: #84cc16;
+  color: #ffffff;
 }
 
 .inline-swatch.cyan {
   background: #06b6d4;
-  color: #083344;
+  color: #042f2e;
 }
 
 .inline-swatch.coral {
   background: #f43f5e;
-  color: #fef08a;
+  color: #ffffff;
 }
 
 .inline-swatch.gold {
@@ -384,6 +389,26 @@ button {
 .inline-swatch.teal {
   background: #14b8a6;
   color: #042f2e;
+}
+
+.inline-swatch.lime {
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.inline-swatch.purple {
+  background: #9333ea;
+  color: #ffffff;
+}
+
+.inline-swatch.red {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.inline-swatch.dark {
+  background: #18181b;
+  color: #fde047;
 }
 
 .sup-tag {

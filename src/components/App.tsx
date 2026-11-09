@@ -739,7 +739,7 @@ export default function App() {
                           if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
                         }}
                       >
-                        LA PLAGA
+                        LA <span className="inline-swatch coral">PLAGA</span>
                         <sup className="sup-tag">mixtape · eyebags</sup>
                       </button>
                       <span className="cutout-pill">Mendoza</span>
@@ -761,7 +761,7 @@ export default function App() {
                           if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
                         }}
                       >
-                        PERDÓN LA DEMORA
+                        PERDÓN <span className="inline-swatch cyan">LA DEMORA</span>
                         <sup className="sup-tag">mixtape · Tizianolased</sup>
                       </button>
                       <span className="cutout-pill dark">8 tracks · 23 min</span>
@@ -783,7 +783,7 @@ export default function App() {
                           if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
                         }}
                       >
-                        chickenNugget
+                        chicken<span className="inline-swatch gold">Nugget</span>
                         <sup className="sup-tag">ep · poyo × dorkke</sup>
                       </button>
                       <img
@@ -800,7 +800,7 @@ export default function App() {
                           if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
                         }}
                       >
-                        ESTO ES ESTAR EN SONIDO
+                        <span className="inline-swatch blue">ESTO ES ESTAR</span> EN SONIDO
                         <sup className="sup-tag">lp · V4lentin0</sup>
                       </button>
                     </div>
@@ -821,7 +821,7 @@ export default function App() {
                           if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
                         }}
                       >
-                        #MA7IAS
+                        <span className="inline-swatch lime">#MA7IAS</span>
                         <sup className="sup-tag">lp · Ma7imza</sup>
                       </button>
                       <img
@@ -838,7 +838,7 @@ export default function App() {
                           if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
                         }}
                       >
-                        Love2Hate
+                        Love<span className="inline-swatch purple">2Hate</span>
                         <sup className="sup-tag">ep · Icylucki</sup>
                       </button>
                       <button
@@ -850,7 +850,7 @@ export default function App() {
                           if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
                         }}
                       >
-                        AMORIO CLUB 2
+                        <span className="inline-swatch red">AMORIO CLUB 2</span>
                         <sup className="sup-tag">ep · Máximo</sup>
                       </button>
                       <button
