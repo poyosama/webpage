@@ -95,8 +95,9 @@ export default function App() {
   const [libraryLayoutMode, setLibraryLayoutMode] = useState<"inside" | "side-by-side">("inside");
   const [insideCubeOpen, setInsideCubeOpen] = useState<boolean>(false);
 
-  // Modales: Editar Track, Editar Perfil y Login/Register con Google
+  // Modales: Editar Track, Editar Proyecto, Editar Perfil y Login/Register con Google
   const [editingTrack, setEditingTrack] = useState<Track | null>(null);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [editProfileOpen, setEditProfileOpen] = useState<boolean>(false);
   const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
   const [googleConnected, setGoogleConnected] = useState<boolean>(true);
@@ -538,6 +539,17 @@ export default function App() {
         return nextProj;
       })
     );
+    sfx.drop();
+  };
+
+  const handleSaveEditedProject = (updatedProject: Project) => {
+    setProjects((prev) =>
+      prev.map((p) => (p.id === updatedProject.id ? updatedProject : p))
+    );
+    if (currentProject.id === updatedProject.id) {
+      setCurrentProject(updatedProject);
+    }
+    setEditingProject(null);
     sfx.drop();
   };
 
@@ -1346,6 +1358,16 @@ export default function App() {
                         <button
                           type="button"
                           className="apple-btn ghost"
+                          onClick={() => {
+                            sfx.open();
+                            setEditingProject(activeProject);
+                          }}
+                        >
+                          ✎ Editar Proyecto &amp; Tapa
+                        </button>
+                        <button
+                          type="button"
+                          className="apple-btn ghost"
                           onClick={() => navigate("subir")}
                         >
                           + Subir track al proyecto
@@ -1371,6 +1393,89 @@ export default function App() {
                       </div>
                     </div>
 
+                    {/* ==================== CANVAS VISUAL DEL PROYECTO (VIDEO 3-5S O GIF) ==================== */}
+                    <div className="inspector-canvas-section">
+                      <div className="inspector-canvas-header">
+                        <div>
+                          <span className="mono-tag">VISUAL CANVAS // VIDEO 3-5S O GIF EN LOOP</span>
+                          <h3 style={{ margin: "2px 0 0 0", fontSize: "1rem" }}>Canvas de {activeProject.title}</h3>
+                        </div>
+                        <div className="row-actions">
+                          <label className="apple-btn ghost" style={{ cursor: "pointer" }}>
+                            <span>{activeProject.videos.length > 0 ? "🔄 Cambiar Canvas" : "+ Subir Video / GIF al Canvas"}</span>
+                            <input
+                              type="file"
+                              accept="video/mp4,video/webm,image/gif,image/*,video/*"
+                              hidden
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleUploadProjectVideo(activeProject.id, file);
+                              }}
+                            />
+                          </label>
+                          {activeProject.videos.length > 0 && (
+                            <button
+                              type="button"
+                              className="apple-btn ghost danger-trash-btn"
+                              title="Quitar video del Canvas"
+                              onClick={() => handleRemoveProjectVideo(activeProject.id, activeProject.videos[0].id)}
+                            >
+                              ✕ Quitar
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="inspector-canvas-viewer-card">
+                        {activeProject.videos.length > 0 && activeProject.videos[0].url ? (
+                          <div className="canvas-video-wrapper">
+                            {activeProject.videos[0].mediaType === "image" || /\.(gif|png|jpe?g|webp|avif)$/i.test(activeProject.videos[0].label) ? (
+                              <img
+                                src={activeProject.videos[0].url}
+                                alt={activeProject.videos[0].label}
+                                className="canvas-active-video-elem"
+                              />
+                            ) : (
+                              <video
+                                src={activeProject.videos[0].url}
+                                autoPlay
+                                loop
+                                muted
+                                playsInline
+                                className="canvas-active-video-elem"
+                              />
+                            )}
+                            <div className="canvas-live-chip">
+                              <span className="live-pulse-dot" />
+                              <span>CANVAS LOOP ACTIVO · {activeProject.videos[0].label}</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="canvas-empty-state">
+                            <span style={{ fontSize: 32 }}>🎞️</span>
+                            <div style={{ textAlign: "center" }}>
+                              <b style={{ display: "block", marginBottom: 3, fontSize: "0.95rem" }}>Sin video de Canvas subido</b>
+                              <small style={{ color: "var(--ink-secondary)", fontSize: "0.78rem" }}>
+                                Subí un loop corto de 3 a 5 segundos (MP4, WebM o GIF) para que se vea en grande con la música.
+                              </small>
+                            </div>
+                            <label className="apple-btn primary" style={{ cursor: "pointer", marginTop: 4 }}>
+                              <span>+ Subir video 3–5s / GIF al Canvas</span>
+                              <input
+                                type="file"
+                                accept="video/mp4,video/webm,image/gif,image/*,video/*"
+                                hidden
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) handleUploadProjectVideo(activeProject.id, file);
+                                }}
+                              />
+                            </label>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
                     <div className="inspector-split">
                       <DiscSpinner3D
                         project={activeProject}
@@ -1384,7 +1489,7 @@ export default function App() {
                           <span className="mono-tag">
                             {activeProject.tracks.length} CANCIONES EN ESTE PROYECTO
                           </span>
-                          <h3>Tracks del proyecto (✎ editar · 🗑️ eliminar)</h3>
+                          <h3>Tracks del proyecto (✎ editar · 🖼️ imagen · 🗑️ eliminar)</h3>
                         </div>
                         {activeProject.tracks.map((t, idx) => {
                           const isCurrent = currentTrack.id === t.id;
@@ -1395,7 +1500,17 @@ export default function App() {
                               onMouseEnter={() => sfx.hover()}
                               onClick={() => playTrack(t, activeProject, false)}
                             >
-                              <span className="row-num">{String(idx + 1).padStart(2, "0")}</span>
+                              <div className="track-row-art-wrap">
+                                {t.coverUrl || activeProject.coverUrl ? (
+                                  <img
+                                    src={t.coverUrl || activeProject.coverUrl}
+                                    alt={t.title}
+                                    className="track-row-img-thumb"
+                                  />
+                                ) : (
+                                  <span className="track-row-art-fallback">{String(idx + 1).padStart(2, "0")}</span>
+                                )}
+                              </div>
                               <div className="row-main">
                                 <b>{t.title}</b>
                                 <span>
@@ -1408,6 +1523,26 @@ export default function App() {
                                 <span className="meta-chip">v{t.version}</span>
                               </div>
                               <div className="row-inline-actions">
+                                <label
+                                  className="row-snippet-btn"
+                                  title="Subir imagen / portada a este track"
+                                  style={{ cursor: "pointer" }}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <span>🖼️ Tapa</span>
+                                  <input
+                                    type="file"
+                                    accept="image/*,.png,.jpg,.jpeg,.webp,.gif"
+                                    hidden
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        const coverUrl = URL.createObjectURL(file);
+                                        handleSaveEditedTrack({ ...t, coverUrl });
+                                      }
+                                    }}
+                                  />
+                                </label>
                                 <button
                                   type="button"
                                   className="row-snippet-btn"
@@ -1816,6 +1951,21 @@ export default function App() {
         )}
       </AnimatePresence>
 
+      {/* ==================== MODAL "EDITAR PROYECTO & VINILO" ==================== */}
+      <AnimatePresence>
+        {editingProject && (
+          <EditProjectModal
+            project={editingProject}
+            onClose={() => setEditingProject(null)}
+            onSave={handleSaveEditedProject}
+            onDelete={() => {
+              handleDeleteProject(editingProject.id);
+              setEditingProject(null);
+            }}
+          />
+        )}
+      </AnimatePresence>
+
       {/* ==================== MODAL "EDITAR PERFIL" ==================== */}
       <AnimatePresence>
         {editProfileOpen && (
@@ -1882,6 +2032,7 @@ function EditTrackModal({
   const [note, setNote] = useState(track.note || "");
   const [c2, setC2] = useState(track.c2);
   const [customAudioUrl, setCustomAudioUrl] = useState<string | undefined>(track.customAudioUrl);
+  const [coverUrl, setCoverUrl] = useState<string | undefined>(track.coverUrl);
 
   return (
     <motion.div
@@ -1951,6 +2102,37 @@ function EditTrackModal({
               ))}
             </div>
           </label>
+
+          <label className="modal-field full">
+            <span>PORTADA / IMAGEN INDIVIDUAL DEL TRACK</span>
+            <div style={{ display: "flex", gap: 14, alignItems: "center", marginTop: 6 }}>
+              {coverUrl ? (
+                <img
+                  src={coverUrl}
+                  alt={title}
+                  style={{ width: 56, height: 56, borderRadius: 8, objectFit: "cover", border: "1px solid rgba(255,255,255,0.2)" }}
+                />
+              ) : (
+                <div style={{ width: 56, height: 56, borderRadius: 8, background: "#1c1d24", display: "grid", placeItems: "center", fontSize: 24 }}>
+                  💿
+                </div>
+              )}
+              <div style={{ flex: 1 }}>
+                <input
+                  type="file"
+                  accept="image/*,.png,.jpg,.jpeg,.webp,.gif"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) setCoverUrl(URL.createObjectURL(f));
+                  }}
+                />
+                <small style={{ display: "block", color: "rgba(255,255,255,0.5)", marginTop: 4, fontSize: 11 }}>
+                  Esta imagen se muestra en su disco del spinner 3D y en el reproductor.
+                </small>
+              </div>
+            </div>
+          </label>
+
           <label className="modal-field full">
             <span>NOTAS DE SESIÓN / CAMBIOS DE MEZCLA</span>
             <input
@@ -2001,10 +2183,178 @@ function EditTrackModal({
                   c2,
                   accent: c2,
                   customAudioUrl,
+                  coverUrl,
                 })
               }
             >
               ✓ Guardar cambios en el track
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/* ==================== COMPONENTE: MODAL EDITAR PROYECTO & VINILO ==================== */
+function EditProjectModal({
+  project,
+  onClose,
+  onSave,
+  onDelete,
+}: {
+  project: Project;
+  onClose: () => void;
+  onSave: (p: Project) => void;
+  onDelete: () => void;
+}) {
+  const [title, setTitle] = useState(project.title);
+  const [artist, setArtist] = useState(project.artist);
+  const [type, setType] = useState<ProjectType>(project.type);
+  const [year, setYear] = useState(project.year);
+  const [status, setStatus] = useState(project.status);
+  const [description, setDescription] = useState(project.description || "");
+  const [coverUrl, setCoverUrl] = useState<string | undefined>(project.coverUrl);
+  const [zone, setZone] = useState(project.zone || "Mendoza");
+
+  return (
+    <motion.div
+      className="apple-modal-backdrop"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onClose}
+    >
+      <motion.div
+        className="apple-modal-card"
+        initial={{ scale: 0.94, y: 16 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.94, y: 16 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="modal-head">
+          <div>
+            <span className="mono-tag">PROYECTO // METADATA &amp; VINILO</span>
+            <h3>Editar datos y portada del vinilo</h3>
+          </div>
+          <button type="button" className="apple-btn ghost" onClick={onClose}>
+            ✕ Cerrar
+          </button>
+        </div>
+
+        <div className="modal-form-grid">
+          <label className="modal-field">
+            <span>NOMBRE DEL PROYECTO</span>
+            <input value={title} onChange={(e) => setTitle(e.target.value)} required />
+          </label>
+          <label className="modal-field">
+            <span>ARTISTA O CREW</span>
+            <input value={artist} onChange={(e) => setArtist(e.target.value)} required />
+          </label>
+          <label className="modal-field">
+            <span>TIPO DE PROYECTO</span>
+            <select
+              className="apple-select"
+              value={type}
+              onChange={(e) => setType(e.target.value as ProjectType)}
+            >
+              {PROJECT_TYPES.map((pt) => (
+                <option key={pt} value={pt}>
+                  {pt}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="modal-field">
+            <span>ESTADO</span>
+            <select
+              className="apple-select"
+              value={status}
+              onChange={(e) => setStatus(e.target.value as Project["status"])}
+            >
+              <option value="Publicado">Publicado</option>
+              <option value="En mezcla">En mezcla</option>
+              <option value="Master">Master</option>
+              <option value="WIP">WIP</option>
+              <option value="Privado">Privado</option>
+            </select>
+          </label>
+          <label className="modal-field">
+            <span>AÑO / EDICIÓN</span>
+            <input value={year} onChange={(e) => setYear(e.target.value)} />
+          </label>
+          <label className="modal-field">
+            <span>ZONA</span>
+            <input value={zone} onChange={(e) => setZone(e.target.value)} />
+          </label>
+
+          <label className="modal-field full">
+            <span>TAPA / PORTADA DEL VINILO (IMAGEN)</span>
+            <div style={{ display: "flex", gap: 14, alignItems: "center", marginTop: 6 }}>
+              {coverUrl ? (
+                <img
+                  src={coverUrl}
+                  alt={title}
+                  style={{ width: 64, height: 64, borderRadius: 8, objectFit: "cover", border: "1px solid rgba(255,255,255,0.2)" }}
+                />
+              ) : (
+                <div style={{ width: 64, height: 64, borderRadius: 8, background: "#1c1d24", display: "grid", placeItems: "center", fontSize: 28 }}>
+                  💿
+                </div>
+              )}
+              <div style={{ flex: 1 }}>
+                <input
+                  type="file"
+                  accept="image/*,.png,.jpg,.jpeg,.webp,.gif"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) setCoverUrl(URL.createObjectURL(f));
+                  }}
+                />
+                <small style={{ display: "block", color: "rgba(255,255,255,0.5)", marginTop: 4, fontSize: 11 }}>
+                  Esta imagen viste el sobre del vinilo 3D, el sello central del disco y los tracks.
+                </small>
+              </div>
+            </div>
+          </label>
+
+          <label className="modal-field full">
+            <span>DESCRIPCIÓN / LINER NOTES</span>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              placeholder="Notas del proyecto, concepto o créditos..."
+            />
+          </label>
+        </div>
+
+        <div className="modal-foot">
+          <button type="button" className="apple-btn ghost danger-trash-btn" onClick={onDelete}>
+            🗑️ Eliminar proyecto
+          </button>
+          <div className="row-actions">
+            <button type="button" className="apple-btn ghost" onClick={onClose}>
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="apple-btn primary"
+              onClick={() => {
+                onSave({
+                  ...project,
+                  title: title.trim() || project.title,
+                  artist: artist.trim() || project.artist,
+                  type,
+                  year,
+                  status,
+                  zone,
+                  description,
+                  coverUrl,
+                });
+              }}
+            >
+              ✓ Guardar Cambios
             </button>
           </div>
         </div>

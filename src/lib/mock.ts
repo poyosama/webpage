@@ -34,6 +34,7 @@ export type Track = {
   glyph: string;
   audioFreq: number;
   customAudioUrl?: string;
+  coverUrl?: string;
 };
 
 export type ProjectType =

@@ -1,7 +1,7 @@
 "use client";
 
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { type Project, type Track } from "@/lib/mock";
 import { sfx } from "@/lib/sfx";
@@ -16,43 +16,128 @@ function ResponsiveSpinnerGroup({ children }: { children: React.ReactNode }) {
   );
 }
 
-function createDiscTexture(t: Track, idx: number, total: number) {
-  const c = document.createElement("canvas");
-  c.width = 512;
-  c.height = 512;
-  const g = c.getContext("2d")!;
+function useDiscPlateTexture(track: Track, projectCoverUrl?: string, index: number = 0, total: number = 1) {
+  const [texture, setTexture] = useState<THREE.Texture>(() => {
+    const c = document.createElement("canvas");
+    c.width = 512;
+    c.height = 620;
+    const g = c.getContext("2d")!;
+    g.fillStyle = "#0d0e12";
+    g.fillRect(0, 0, 512, 620);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  });
 
-  g.fillStyle = idx % 2 === 0 ? t.c1 : "#f8fafc";
-  g.fillRect(0, 0, 512, 512);
+  useEffect(() => {
+    let active = true;
+    const c = document.createElement("canvas");
+    c.width = 512;
+    c.height = 620;
+    const g = c.getContext("2d")!;
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 4;
 
-  g.fillStyle = t.c2;
-  g.fillRect(28, 28, 456, 210);
+    const imgUrl = track.coverUrl || projectCoverUrl;
 
-  g.fillStyle = idx % 2 === 0 ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)";
-  for (let y = 0; y < 512; y += 6) {
-    g.fillRect(0, y, 512, 2);
-  }
+    const draw = (img?: HTMLImageElement) => {
+      if (!active) return;
+      // Fondo oscuro elegante
+      g.fillStyle = "#0c0d12";
+      g.fillRect(0, 0, 512, 620);
 
-  g.fillStyle = idx % 2 === 0 ? "#ffffff" : "#09090b";
-  g.font = "700 138px Inter, -apple-system, sans-serif";
-  g.fillText(String(idx + 1).padStart(2, "0"), 34, 380);
+      if (img) {
+        // Tapa real del track / proyecto
+        g.drawImage(img, 0, 0, 512, 420);
 
-  g.fillStyle = "#ffffff";
-  g.font = "600 22px monospace";
-  g.fillText(`${t.bpm} BPM · ${t.key} · V${t.version}`, 48, 76);
+        // Degradado suave hacia el pie de metadata
+        const grad = g.createLinearGradient(0, 220, 0, 420);
+        grad.addColorStop(0, "rgba(12,13,18,0)");
+        grad.addColorStop(0.7, "rgba(12,13,18,0.85)");
+        grad.addColorStop(1, "#0c0d12");
+        g.fillStyle = grad;
+        g.fillRect(0, 220, 512, 200);
+      } else {
+        // Placeholder estilizado con la estética del track
+        const grad = g.createLinearGradient(0, 0, 512, 420);
+        grad.addColorStop(0, track.c1 || "#161720");
+        grad.addColorStop(1, track.c2 || "#282a36");
+        g.fillStyle = grad;
+        g.fillRect(0, 0, 512, 420);
 
-  g.fillStyle = idx % 2 === 0 ? "#ffffff" : "#09090b";
-  g.font = "600 32px Inter, -apple-system, sans-serif";
-  g.fillText(t.title.slice(0, 18).toUpperCase(), 36, 444);
+        // Surcos de vinilo concéntricos
+        g.strokeStyle = "rgba(255,255,255,0.14)";
+        g.lineWidth = 2;
+        g.beginPath();
+        g.arc(256, 210, 140, 0, Math.PI * 2);
+        g.stroke();
+        g.beginPath();
+        g.arc(256, 210, 80, 0, Math.PI * 2);
+        g.stroke();
+      }
 
-  g.fillStyle = idx % 2 === 0 ? "rgba(255,255,255,0.62)" : "rgba(9,9,11,0.55)";
-  g.font = "500 20px monospace";
-  g.fillText(`${t.artist} // TRACK ${idx + 1} DE ${total}`, 36, 480);
+      // Micro-surcos de vinilo
+      g.fillStyle = "rgba(255,255,255,0.025)";
+      for (let y = 0; y < 420; y += 4) {
+        g.fillRect(0, y, 512, 1);
+      }
 
-  const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 4;
-  return tex;
+      // Borde de cristal biselado
+      g.strokeStyle = "rgba(255,255,255,0.18)";
+      g.lineWidth = 3;
+      g.strokeRect(6, 6, 500, 608);
+
+      // Badge superior BPM & Key
+      g.fillStyle = "rgba(0,0,0,0.72)";
+      g.fillRect(20, 20, 190, 36);
+      g.fillStyle = "#ffffff";
+      g.font = "600 16px monospace";
+      g.fillText(`${track.bpm} BPM · ${track.key}`, 32, 44);
+
+      // Número de track gigante
+      g.fillStyle = "rgba(255,255,255,0.24)";
+      g.font = "800 78px Inter, -apple-system, sans-serif";
+      g.fillText(String(index + 1).padStart(2, "0"), 390, 85);
+
+      // Título del Track
+      g.fillStyle = "#ffffff";
+      g.font = "700 32px Inter, -apple-system, sans-serif";
+      const cleanTitle = (track.title || "Track").slice(0, 20);
+      g.fillText(cleanTitle, 26, 470);
+
+      // Artista
+      g.fillStyle = "rgba(255,255,255,0.72)";
+      g.font = "500 20px Inter, -apple-system, sans-serif";
+      const cleanArtist = (track.artist || "").slice(0, 26);
+      g.fillText(cleanArtist, 26, 510);
+
+      // Versión y duración
+      g.fillStyle = track.c2 || "#ffffff";
+      g.font = "600 16px monospace";
+      g.fillText(`V${track.version} · ${track.duration || "2:30"} · WAV MASTER`, 26, 555);
+
+      tex.needsUpdate = true;
+      setTexture(tex);
+    };
+
+    if (imgUrl) {
+      const image = new Image();
+      image.crossOrigin = "anonymous";
+      image.onload = () => draw(image);
+      image.onerror = () => draw();
+      image.src = imgUrl;
+    } else {
+      draw();
+    }
+
+    return () => {
+      active = false;
+      tex.dispose();
+    };
+  }, [track.id, track.coverUrl, track.title, track.artist, track.bpm, track.key, track.version, projectCoverUrl, index, total]);
+
+  return texture;
 }
 
 type FanDrag = {
@@ -71,6 +156,7 @@ function DiscPlate({
   setHoveredIdx,
   onSelectTrack,
   movedRef,
+  projectCoverUrl,
 }: {
   track: Track;
   index: number;
@@ -81,9 +167,10 @@ function DiscPlate({
   setHoveredIdx: (i: number | null) => void;
   onSelectTrack: (t: Track, i: number) => void;
   movedRef: React.RefObject<boolean>;
+  projectCoverUrl?: string;
 }) {
   const groupRef = useRef<THREE.Group>(null!);
-  const tex = useMemo(() => createDiscTexture(track, index, total), [track, index, total]);
+  const tex = useDiscPlateTexture(track, projectCoverUrl, index, total);
   const liftRef = useRef(0);
 
   useFrame((_, dt) => {
@@ -270,6 +357,7 @@ export default function DiscSpinner3D({
                 hoveredIdx={hoveredIdx}
                 setHoveredIdx={setHoveredIdx}
                 movedRef={movedRef}
+                projectCoverUrl={project.coverUrl}
                 onSelectTrack={(tr, idx) => {
                   dragRef.current.angle = idx;
                   setActiveIdx(idx);

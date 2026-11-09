@@ -224,9 +224,25 @@
   - La escena de **Vinilos 3D en abanico curvo (arco fijo C)** pasa a ser la vista principal y única permanente en `Biblioteca`.
   - Titulación actualizada a `MIS PROYECTOS // VINILOS 3D` con subtítulo `Arrastrá para mover · Seleccioná un vinilo`.
   - Se mantienen los controles de selección de proyectos, las tapas de vinilos reales, la extracción de disco, la interacción en modo "Por defecto" / "Lado a Lado", el botón `+` para crear proyecto, el botón `🗑️` para eliminar proyectos, y la barra inferior de subida Canvas y tracks WAV/MP3.
-- En `src/components/App.tsx`, `libraryViewMode` se fijó por defecto en `"disc-row"`.
+- En `src/components/App.tsx`, `libraryViewMode` se fijó por defecto en `"disc-row"`.---
 
+### Turno 14 — Portadas Individuales de Tracks, Editor de Proyecto y Vinilo, Canvas Visible en Inspector y Texturas Reales en Spinner 3D
+**Prompt del usuario:**
+- *"voy a necesitar tambien que en la biblioteca cambies esta cagada de las imagenes que aparecen en el spinner, quiero que cada track tenga para subirle una imagen y quiero que se pueda editar el nombre y eso del proyecto lo mismo con los vinilos que tengan una imagen que le puedo poner al proyecto y un canvas que se vea porque el que esta ahora creo que no se ve xd"*
 
-
-
+**Implementación:**
+1. **Texturas de Alta Calidad con Artwork Real en el Spinner 3D (`DiscSpinner3D.tsx`):**
+   - Se eliminaron las texturas rayadas procedurales generadas por canvas sintético.
+   - Implementado el hook `useDiscPlateTexture(track, projectCoverUrl, index, total)` que carga de forma asíncrona la portada real del track (o la del proyecto) en un canvas offscreen de alta definición (512x512) con ranuras concéntricas de vinilo de precisión, bisel de cristal y tipografía limpia, actualizando la textura WebGL (`needsUpdate = true`) sin parpadeos ni destellos.
+2. **Portadas Individuales por Track (`src/lib/mock.ts` + `App.tsx`):**
+   - Agregada la propiedad opcional `coverUrl?: string;` a la interfaz `Track`.
+   - En la lista de tracks del inspector (`.inspector-tracklist`), cada fila muestra ahora la miniatura de la portada (`track.coverUrl || project.coverUrl`) con fallback estético y un botón/input `🖼️ Tapa` para subir una imagen directa desde el explorador/archivos de iOS o escritorio.
+   - En el modal de edición de track individual (`EditTrackModal`), se agregó el campo de portada con subida directa y previsualización en vivo.
+3. **Editor de Proyecto y Portada de Vinilo (`EditProjectModal` en `App.tsx`):**
+   - Se sumó el botón `✎ Editar Proyecto & Tapa` en la cabecera del inspector del proyecto.
+   - Permite editar en tiempo real: Título, Artista / Colaboradores, Formato / Tipo (`Mixtape`, `EP`, `LP`, `Single`, `Beatpost`), Año, Zona, Estado (`Privado`, `Borrador`, `Publicado`), Descripción / Notas de Producción y cargar una nueva imagen de portada (`coverUrl`).
+   - Al guardar, la portada se propaga inmediatamente a la funda del vinilo en 3D, al sello central del disco y a las placas del spinner.
+4. **Reproductor de Canvas de Video Visible en Inspector (`App.tsx` + `globals.css`):**
+   - Se creó la sección `.inspector-canvas-section` ubicada en el inspector, que reproduce el primer video clip del proyecto (o GIF) en un elemento `<video>` nativo en loop, con muteo automático y bordes redondeados pulidos.
+   - Se incluyó un indicador en vivo `● LIVE CANVAS` con pulso dinámico y el botón para cambiar o subir nuevos videos verticales (3-5s) o GIFs.
 
