@@ -198,9 +198,19 @@
 - *"y como era la forma de hacerlo gratis ? jajajaj"*
 
 **Implementación:**
-- Explicación de las 2 alternativas gratuitas (sin pagar los \$99 USD anuales de Apple):
+- Explicación de las 2 alternativas gratuitas (sin pagar los $99 USD anuales de Apple):
   1. **PWA Standalone (100% gratis, sin Mac y sin Apple Developer):** Desde Safari en iPhone, tocar compartir y "Agregar a pantalla de inicio". Corre en pantalla completa nativa sin marcos de navegador, con soporte offline, WebGL 3D y Web Audio. Se creó `src/app/manifest.ts` para habilitar formalmente el Web App Manifest en Next.js.
   2. **Personal Team en Xcode (gratis con cable USB):** Usar un Apple ID gratuito para instalar el build nativo de Capacitor directo en el iPhone físico por 7 días de validez por build.
+
+---
+
+### Turno 12 — Consulta sobre eliminar vista de bloques y dejar solo vinilos
+**Prompt del usuario:**
+- *"si te digo que saques la vista por bloques y dejes solo los vinilos podes hacerlo o tiene que hacerlo si o si el argon ?"*
+
+**Implementación:**
+- Confirmación al usuario de capacidad total de edición autónoma, modificación de código, compilación y push directo a producción sin requerir a Argon ni a ningún agente externo.
+
 
 
 
