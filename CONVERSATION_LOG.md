@@ -387,6 +387,17 @@
 **Respuesta:**
 - Se reiteró con captura mental paso a paso dónde cambiar la Site URL en Supabase para que redireccione a la URL de producción (`https://eltablero.blog`).
 
+---
+
+### Turno 27 — Conflicto de Registro DNS CNAME `www` en Hostinger
+**Prompt del usuario:**
+- *"mira"* (adjunta captura de Hostinger DNS mostrando `El registro de recursos DNS no es válido o entra en conflicto con otro registro de recursos` en el campo `www`).
+
+**Diagnóstico y Solución:**
+- Hostinger ya crea por defecto un registro para `www` (sea CNAME o A) en la tabla inferior de registros existentes.
+- Solución explicada: buscar `www` en el buscador inferior de la tabla, eliminar o editar el registro preexistente para apuntarlo a `cname.vercel-dns.com`, o borrar la fila CNAME del formulario superior y agregar solo el registro A (`@ -> 76.76.21.21`), editando luego el `www` abajo.
+
+
 
 
 
