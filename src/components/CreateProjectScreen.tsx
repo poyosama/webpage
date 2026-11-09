@@ -414,24 +414,59 @@ export default function CreateProjectScreen({
   };
 
   const handleVideoFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
+    const rawFiles = Array.from(e.target.files || []);
+    if (rawFiles.length === 0) return;
     sfx.drop();
-    const added: ProjectVideoClip[] = files.map((file, i) => {
-      const isImg =
-        file.type.startsWith("image/") || /\.(gif|png|jpe?g|webp|avif)$/i.test(file.name);
-      return {
-        id: `clip-new-${Date.now()}-${i}`,
-        label: file.name,
-        kind: "uploaded",
-        stylePreset: "vhs-grain",
-        url: URL.createObjectURL(file),
-        mediaType: isImg ? "image" : "video",
-        c1: "#111111",
-        c2: color,
-      };
-    });
-    setUploadedClips((prev) => [...prev, ...added]);
+
+    // Si el usuario en iPhone eligió un audio (WAV, MP3, etc.) desde este input, lo ruteamos directo a tracks
+    const audioFiles = rawFiles.filter(
+      (f) => f.type.startsWith("audio/") || /\.(wav|mp3|m4a|flac|aac|ogg|aiff|alac)$/i.test(f.name)
+    );
+    const videoFiles = rawFiles.filter(
+      (f) => !f.type.startsWith("audio/") && !/\.(wav|mp3|m4a|flac|aac|ogg|aiff|alac)$/i.test(f.name)
+    );
+
+    if (audioFiles.length > 0) {
+      const addedTracks: Track[] = audioFiles.map((file, i) => {
+        const cleanName = file.name.replace(/\.[^/.]+$/, "");
+        return {
+          id: `tr-new-${Date.now()}-${i}`,
+          title: cleanName,
+          artist: meProfile.name,
+          prod: meProfile.name,
+          bpm: 136,
+          key: "F#m",
+          duration: "2:30",
+          durationSec: 150,
+          version: 1,
+          c1: "#111111",
+          c2: color,
+          accent: color,
+          glyph: String(uploadedTracks.length + i + 1).padStart(2, "0"),
+          audioFreq: 130.8,
+          customAudioUrl: URL.createObjectURL(file),
+        };
+      });
+      setUploadedTracks((prev) => [...prev, ...addedTracks]);
+    }
+
+    if (videoFiles.length > 0) {
+      const added: ProjectVideoClip[] = videoFiles.map((file, i) => {
+        const isImg =
+          file.type.startsWith("image/") || /\.(gif|png|jpe?g|webp|avif)$/i.test(file.name);
+        return {
+          id: `clip-new-${Date.now()}-${i}`,
+          label: file.name,
+          kind: "uploaded",
+          stylePreset: "vhs-grain",
+          url: URL.createObjectURL(file),
+          mediaType: isImg ? "image" : "video",
+          c1: "#111111",
+          c2: color,
+        };
+      });
+      setUploadedClips((prev) => [...prev, ...added]);
+    }
     setKeystrokePulse((n) => n + 1);
   };
 
@@ -738,6 +773,22 @@ export default function CreateProjectScreen({
             </div>
 
             <div className="modal-field">
+              <span>CANCIONES INICIALES (WAV / MP3 OPCIONAL)</span>
+              <label className="apple-btn ghost" style={{ justifyContent: "center" }}>
+                <span>
+                  🎵 {uploadedTracks.length > 0 ? `${uploadedTracks.length} tracks listos` : "+ Subir tracks (WAV / MP3)"}
+                </span>
+                <input
+                  type="file"
+                  accept=".wav,.mp3,.m4a,.flac,.aac,.ogg,.aiff,.alac,.opus,audio/wav,audio/x-wav,audio/wave,audio/mpeg,audio/mp3,audio/mp4,audio/x-m4a,audio/aac,audio/flac,application/octet-stream"
+                  multiple
+                  hidden
+                  onChange={handleTrackFiles}
+                />
+              </label>
+            </div>
+
+            <div className="modal-field">
               <span>CANVAS (VIDEOS 3-5S / GIFS OPCIONALES)</span>
               <label className="apple-btn ghost" style={{ justifyContent: "center" }}>
                 <span>
@@ -749,22 +800,6 @@ export default function CreateProjectScreen({
                   multiple
                   hidden
                   onChange={handleVideoFiles}
-                />
-              </label>
-            </div>
-
-            <div className="modal-field">
-              <span>CANCIONES INICIALES (WAV / MP3 OPCIONAL)</span>
-              <label className="apple-btn ghost" style={{ justifyContent: "center" }}>
-                <span>
-                  🎵 {uploadedTracks.length > 0 ? `${uploadedTracks.length} tracks listos` : "+ Subir tracks"}
-                </span>
-                <input
-                  type="file"
-                  accept="audio/*"
-                  multiple
-                  hidden
-                  onChange={handleTrackFiles}
                 />
               </label>
             </div>

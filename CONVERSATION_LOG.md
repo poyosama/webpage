@@ -167,3 +167,28 @@
 - Corregido el orden de `@supports (padding-top: env(safe-area-inset-top))` en `src/app/globals.css` para que no pise el `padding-top` ni `padding-bottom` mobile (`calc(114px + env(safe-area-inset-top))` arriba y `calc(148px + env(safe-area-inset-bottom))` abajo), dejando 100% visibles los títulos superiores, el switch `Por defecto / ◫ Lado a Lado` y el botón inferior de subir video.
 - Actualizadas las keys de `localStorage` a `v3` (`eltablero_clean_projects_v3`) para que el iPhone refresque automáticamente los proyectos con las 5 tapas reales y los nuevos tracks.
 
+---
+
+### Turno 9 — Reemplazo Total de Emojis por Formas Geométricas (SVGs) en Reproductor + Fix de Subida de Audio (WAV / MP3) en iPhone
+**Prompt del usuario:**
+- *"en el reproductor odio que los controladores sean emojis hace que sean formitas por dios y cuando subis un archivo desde el celular no me admite ni wav ni mp3 solo fotos y videos"*
+
+**Implementación:**
+- **Reemplazo 100% de emojis por formas geométricas vectoriales SVG:**
+  - En el reproductor completo (`PerformativePlayer.tsx`), mini-player Dynamic Island (`App.tsx`) y navbar (`App.tsx`), se reemplazaron todos los emojis (`⏮`, `⏭`, `▶`/`❚❚`, `🔇`/`🔉`/`🔊`, `🔀`, `🔁`, `🎛️`, `♥`/`♡`, `📝`, etc.) por iconos SVG vectoriales minimalistas y limpios.
+  - Se vinculó la tapa de álbum real (`project.coverUrl`) en el arte del Dynamic Island y del reproductor.
+- **Solución definitiva para selección de WAV / MP3 en iOS / iPhone:**
+  - En iOS Safari y WebViews, el atributo genérico `accept="audio/*"` dispara el sheet de `Fototeca / Tomar foto o video` o inhabilita archivos `.wav`/`.mp3` en la app `Archivos`.
+  - Se reemplazó en todos los inputs (`App.tsx`, `MacInstallerUpload.tsx`, `CreateProjectScreen.tsx`, `UntitledImporter.tsx`) por extensiones explícitas y MIME types de audio sin wildcards fotográficos (`.wav,.mp3,.m4a,.flac,.aac,.ogg,.aiff,.alac,.opus,audio/wav,audio/x-wav,audio/wave,audio/mpeg,audio/mp3,audio/mp4,audio/x-m4a,audio/aac,audio/flac,application/octet-stream`).
+  - En `Biblioteca` (`ManifoldLibrary3D.tsx`) se agregó un botón dedicado `+ Subir WAV / MP3 al bloque` junto al de videos, y se implementó un enrutador inteligente que detecta si el usuario seleccionó un archivo de audio en cualquier input para mandarlo automáticamente a canciones/tracks sin fallar.
+
+---
+
+### Turno 10 — Explicación y Guía Completa de Capacitor para Deployar en App Store
+**Prompt del usuario:**
+- *"explicame bien lo de capacitor porque no se como deployear en app store"*
+
+**Implementación:**
+- Guía explicada con tono directo, argentino y paso a paso para el usuario Juani (requerimientos de Apple Developer, Xcode en Mac, compilación estática de Next.js, sincronización de Capacitor con `npm run cap:sync && npm run cap:ios`, firmado con certificados de distribución, y subida a TestFlight / App Store Connect).
+
+

@@ -753,6 +753,7 @@ export default function ManifoldLibrary3D({
   onDeleteProject,
   onUploadProjectVideo,
   onRemoveProjectVideo,
+  onUploadProjectTrack,
   compact = false,
 }: {
   projects: Project[];
@@ -766,6 +767,7 @@ export default function ManifoldLibrary3D({
   onDeleteProject?: (projectId: string) => void;
   onUploadProjectVideo?: (projectId: string, file: File) => void;
   onRemoveProjectVideo?: (projectId: string, clipId: string) => void;
+  onUploadProjectTrack?: (projectId: string, file: File) => void;
   compact?: boolean;
 }) {
   const activeProject =
@@ -1381,6 +1383,25 @@ export default function ManifoldLibrary3D({
             )}
           </div>
 
+          {onUploadProjectTrack && (
+            <label className="apple-btn ghost upload-video-btn" onMouseEnter={() => sfx.hover()}>
+              <span>+ Subir WAV / MP3 al bloque</span>
+              <input
+                type="file"
+                accept=".wav,.mp3,.m4a,.flac,.aac,.ogg,.aiff,.alac,.opus,audio/wav,audio/x-wav,audio/wave,audio/mpeg,audio/mp3,audio/mp4,audio/x-m4a,audio/aac,audio/flac,application/octet-stream"
+                hidden
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    sfx.drop();
+                    onUploadProjectTrack(activeProject.id, file);
+                    e.target.value = "";
+                  }
+                }}
+              />
+            </label>
+          )}
+
           <label className="apple-btn primary upload-video-btn" onMouseEnter={() => sfx.hover()}>
             <span>+ Subir video 3–5s / GIF al bloque</span>
             <input
@@ -1391,7 +1412,15 @@ export default function ManifoldLibrary3D({
                 const file = e.target.files?.[0];
                 if (file) {
                   sfx.drop();
-                  onUploadProjectVideo(activeProject.id, file);
+                  // Si el usuario en iPhone seleccionó un audio en este botón, lo mandamos a track
+                  if (
+                    onUploadProjectTrack &&
+                    (file.type.startsWith("audio/") || /\.(wav|mp3|m4a|flac|aac|ogg|aiff|alac)$/i.test(file.name))
+                  ) {
+                    onUploadProjectTrack(activeProject.id, file);
+                  } else if (onUploadProjectVideo) {
+                    onUploadProjectVideo(activeProject.id, file);
+                  }
                   e.target.value = "";
                 }
               }}

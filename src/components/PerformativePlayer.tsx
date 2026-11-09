@@ -799,7 +799,10 @@ export default function PerformativePlayer({
             onClose();
           }}
         >
-          ↓ Minimizar
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+          <span>Minimizar</span>
         </button>
 
         <div className="perf-badges">
@@ -824,7 +827,7 @@ export default function PerformativePlayer({
               onJumpToProject(project.id);
             }}
           >
-            📂 {project.title} ↗
+            {project.title} ↗
           </button>
         </div>
 
@@ -838,7 +841,22 @@ export default function PerformativePlayer({
               setDarkStage((d) => !d);
             }}
           >
-            {darkStage ? "☀️ Claro" : "🌑 Oscuro"}
+            {darkStage ? (
+              <>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <circle cx="12" cy="12" r="5" />
+                  <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+                </svg>
+                <span>Claro</span>
+              </>
+            ) : (
+              <>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+                <span>Oscuro</span>
+              </>
+            )}
           </button>
           <button
             type="button"
@@ -849,7 +867,11 @@ export default function PerformativePlayer({
               setSnippetClean((v) => !v);
             }}
           >
-            {snippetClean ? "● REC SNIPPET (Salir)" : "🎥 Modo Snippet Clean"}
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <rect x="3" y="5" width="18" height="14" rx="3" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            <span>{snippetClean ? "Salir Snippet" : "Modo Snippet"}</span>
           </button>
         </div>
       </header>
@@ -858,9 +880,13 @@ export default function PerformativePlayer({
       <div className="perf-center-typo">
         <div
           className="perf-artwork-card"
-          style={{ background: `linear-gradient(135deg, ${track.c1}, ${track.c2})` }}
+          style={{
+            background: project.coverUrl
+              ? `url(${project.coverUrl}) center / cover no-repeat`
+              : `linear-gradient(135deg, ${track.c1}, ${track.c2})`,
+          }}
         >
-          <span>{track.glyph}</span>
+          {!project.coverUrl && <span>{track.glyph}</span>}
           <small>{project.type}</small>
         </div>
         <p className="perf-kicker">
@@ -880,7 +906,7 @@ export default function PerformativePlayer({
         <aside className="spotify-queue-drawer" onClick={(e) => e.stopPropagation()}>
           <div className="queue-drawer-head">
             <div>
-              <span className="mono-tag"> REPRODUCTOR // COLA</span>
+              <span className="mono-tag">REPRODUCTOR // COLA</span>
               <h3>Cola de reproducción</h3>
             </div>
             <button
@@ -897,9 +923,13 @@ export default function PerformativePlayer({
             <div className="queue-item active">
               <div
                 className="queue-item-art"
-                style={{ background: `linear-gradient(135deg, ${track.c1}, ${track.c2})` }}
+                style={{
+                  background: project.coverUrl
+                    ? `url(${project.coverUrl}) center / cover no-repeat`
+                    : `linear-gradient(135deg, ${track.c1}, ${track.c2})`,
+                }}
               >
-                {track.glyph}
+                {!project.coverUrl && track.glyph}
               </div>
               <div className="queue-item-meta">
                 <b>{track.title}</b>
@@ -938,10 +968,12 @@ export default function PerformativePlayer({
                   <div
                     className="queue-item-art"
                     style={{
-                      background: `linear-gradient(135deg, ${item.track.c1}, ${item.track.c2})`,
+                      background: item.project.coverUrl
+                        ? `url(${item.project.coverUrl}) center / cover no-repeat`
+                        : `linear-gradient(135deg, ${item.track.c1}, ${item.track.c2})`,
                     }}
                   >
-                    {item.track.glyph}
+                    {!item.project.coverUrl && item.track.glyph}
                   </div>
                   <div className="queue-item-meta">
                     <b>{item.track.title}</b>
@@ -976,9 +1008,13 @@ export default function PerformativePlayer({
               >
                 <div
                   className="queue-item-art"
-                  style={{ background: `linear-gradient(135deg, ${t.c1}, ${t.c2})` }}
+                  style={{
+                    background: project.coverUrl
+                      ? `url(${project.coverUrl}) center / cover no-repeat`
+                      : `linear-gradient(135deg, ${t.c1}, ${t.c2})`,
+                  }}
                 >
-                  {t.glyph}
+                  {!project.coverUrl && t.glyph}
                 </div>
                 <div className="queue-item-meta">
                   <b>{t.title}</b>
@@ -1015,9 +1051,13 @@ export default function PerformativePlayer({
                 >
                   <div
                     className="queue-item-art"
-                    style={{ background: `linear-gradient(135deg, ${t.c1}, ${t.c2})` }}
+                    style={{
+                      background: p.coverUrl
+                        ? `url(${p.coverUrl}) center / cover no-repeat`
+                        : `linear-gradient(135deg, ${t.c1}, ${t.c2})`,
+                    }}
                   >
-                    {t.glyph}
+                    {!p.coverUrl && t.glyph}
                   </div>
                   <div className="queue-item-meta">
                     <b>{t.title}</b>
@@ -1042,19 +1082,23 @@ export default function PerformativePlayer({
         </aside>
       )}
 
-      {/* DOCK INFERIOR COMPLETO ESTILO SPOTIFY */}
+      {/* DOCK INFERIOR COMPLETO ESTILO SPOTIFY CON ICONOS GEOMÉTRICOS PUROS (CERO EMOJIS) */}
       {!snippetClean && (
         <footer className="perf-dock spotify-full-dock">
           <div className="spotify-dock-grid">
-            {/* IZQUIERDA: Track actual + Artista + Favorito (Like) */}
+            {/* IZQUIERDA: Track actual + Artista + Favorito (Like geométrico) */}
             <div className="spotify-now-playing">
               <div
                 className="spotify-now-art"
-                style={{ background: `linear-gradient(135deg, ${track.c1}, ${track.c2})` }}
+                style={{
+                  background: project.coverUrl
+                    ? `url(${project.coverUrl}) center / cover no-repeat`
+                    : `linear-gradient(135deg, ${track.c1}, ${track.c2})`,
+                }}
                 onClick={() => onJumpToProject(project.id)}
                 title={`Ir a ${project.title}`}
               >
-                <span>{track.glyph}</span>
+                {!project.coverUrl && <span>{track.glyph}</span>}
               </div>
               <div className="spotify-now-meta">
                 <b>{track.title}</b>
@@ -1072,11 +1116,22 @@ export default function PerformativePlayer({
                 aria-label="Guardar en tus me gusta"
                 title={isLiked ? "Quitar de Me gusta" : "Guardar en Me gusta"}
               >
-                {isLiked ? "♥" : "♡"}
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill={isLiked ? "currentColor" : "none"}
+                  stroke="currentColor"
+                  strokeWidth="2.1"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                </svg>
               </button>
             </div>
 
-            {/* CENTRO: Controles de transporte centrados (Shuffle, Prev, Play/Pause, Next, Repeat) + Barra de progreso con duración */}
+            {/* CENTRO: Controles de transporte geométricos (Shuffle, Prev, Play/Pause, Next, Repeat) + Barra de progreso */}
             <div className="spotify-center-console">
               <div className="spotify-transport-buttons">
                 <button
@@ -1089,7 +1144,22 @@ export default function PerformativePlayer({
                   title="Aleatorio (Shuffle)"
                   aria-label="Aleatorio"
                 >
-                  🔀
+                  <svg
+                    width="17"
+                    height="17"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.1"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="16 3 21 3 21 8" />
+                    <line x1="4" y1="20" x2="21" y2="3" />
+                    <polyline points="21 16 21 21 16 21" />
+                    <line x1="15" y1="15" x2="21" y2="21" />
+                    <line x1="4" y1="4" x2="9" y2="9" />
+                  </svg>
                   {shuffle && <i className="spotify-active-dot" />}
                 </button>
 
@@ -1107,7 +1177,9 @@ export default function PerformativePlayer({
                   title="Anterior"
                   aria-label="Anterior"
                 >
-                  ⏮
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M6 5h2.4v14H6V5zm3.8 7 9.2 6.5V5.5L9.8 12z" />
+                  </svg>
                 </button>
 
                 <button
@@ -1117,7 +1189,16 @@ export default function PerformativePlayer({
                   title={isPlaying ? "Pausar" : "Reproducir"}
                   aria-label={isPlaying ? "Pausar" : "Reproducir"}
                 >
-                  {isPlaying ? "❚❚" : "▶"}
+                  {isPlaying ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                      <rect x="6" y="5" width="4.2" height="14" rx="1.2" />
+                      <rect x="13.8" y="5" width="4.2" height="14" rx="1.2" />
+                    </svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: 2 }}>
+                      <path d="M7.5 4.8v14.4L19.2 12 7.5 4.8z" />
+                    </svg>
+                  )}
                 </button>
 
                 <button
@@ -1127,7 +1208,9 @@ export default function PerformativePlayer({
                   title="Siguiente"
                   aria-label="Siguiente"
                 >
-                  ⏭
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M5 18.5 14.2 12 5 5.5v13zM15.6 5H18v14h-2.4V5z" />
+                  </svg>
                 </button>
 
                 <button
@@ -1146,7 +1229,33 @@ export default function PerformativePlayer({
                   }
                   aria-label="Repetir"
                 >
-                  {repeatMode === "one" ? "🔂" : "🔁"}
+                  <svg
+                    width="17"
+                    height="17"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.1"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="17 1 21 5 17 9" />
+                    <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+                    <polyline points="7 23 3 19 7 15" />
+                    <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+                  </svg>
+                  {repeatMode === "one" && (
+                    <span
+                      style={{
+                        position: "absolute",
+                        fontSize: "0.52rem",
+                        fontWeight: 800,
+                        lineHeight: 1,
+                      }}
+                    >
+                      1
+                    </span>
+                  )}
                   {repeatMode !== "off" && <i className="spotify-active-dot" />}
                 </button>
               </div>
@@ -1186,7 +1295,7 @@ export default function PerformativePlayer({
               </div>
             </div>
 
-            {/* DERECHA: Visual Engine + Notas/Lyrics + Cola (Queue) + Volumen con Slider */}
+            {/* DERECHA: Visual Engine + Notas/Lyrics + Cola (Queue) + Volumen con Slider (Iconos SVG) */}
             <div className="spotify-right-utilities">
               <select
                 id="visual-engine-select"
@@ -1198,10 +1307,10 @@ export default function PerformativePlayer({
                 }}
                 aria-label="Visual Engine"
               >
-                <option value="boids">✨ 36K Partículas (808 Pulse)</option>
-                <option value="props">📦 Props 3D (0G)</option>
-                <option value="ferro">💧 Ferrofluido 3D</option>
-                <option value="cd">💿 Disco Acrílico 3D</option>
+                <option value="boids">36K Partículas (808 Pulse)</option>
+                <option value="props">Props 3D (0G)</option>
+                <option value="ferro">Ferrofluido 3D</option>
+                <option value="cd">Disco Acrílico 3D</option>
               </select>
 
               <button
@@ -1212,8 +1321,13 @@ export default function PerformativePlayer({
                   setNotesOpen((v) => !v);
                 }}
                 title="Notas de sesión / Lyrics"
+                aria-label="Notas de sesión"
               >
-                🎙️
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                  <line x1="12" y1="19" x2="12" y2="22" />
+                </svg>
               </button>
 
               <button
@@ -1225,7 +1339,15 @@ export default function PerformativePlayer({
                 }}
                 title="Cola de reproducción (Queue)"
               >
-                ☰ Cola {userQueue.length > 0 ? `(${userQueue.length})` : ""}
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 4, verticalAlign: "middle" }}>
+                  <line x1="8" y1="6" x2="21" y2="6" />
+                  <line x1="8" y1="12" x2="21" y2="12" />
+                  <line x1="8" y1="18" x2="21" y2="18" />
+                  <line x1="3" y1="6" x2="3.01" y2="6" />
+                  <line x1="3" y1="12" x2="3.01" y2="12" />
+                  <line x1="3" y1="18" x2="3.01" y2="18" />
+                </svg>
+                <span>Cola {userQueue.length > 0 ? `(${userQueue.length})` : ""}</span>
               </button>
 
               <div className="spotify-volume-group">
@@ -1234,8 +1356,26 @@ export default function PerformativePlayer({
                   className="spotify-util-btn"
                   onClick={onToggleMute}
                   title={muted ? "Activar sonido" : "Silenciar"}
+                  aria-label={muted ? "Activar sonido" : "Silenciar"}
                 >
-                  {muted || volume === 0 ? "🔇" : volume < 0.5 ? "🔉" : "🔊"}
+                  {muted || volume === 0 ? (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+                      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" />
+                      <line x1="23" y1="9" x2="17" y2="15" />
+                      <line x1="17" y1="9" x2="23" y2="15" />
+                    </svg>
+                  ) : volume < 0.5 ? (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+                      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" />
+                      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                    </svg>
+                  ) : (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+                      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" />
+                      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                      <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+                    </svg>
+                  )}
                 </button>
                 <input
                   type="range"

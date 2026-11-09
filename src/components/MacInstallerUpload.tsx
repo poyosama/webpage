@@ -186,7 +186,12 @@ export default function MacInstallerUpload({
         <div className="dmg-inspector">
           <label className="dmg-file-btn" onMouseEnter={() => sfx.hover()}>
             <span>📎 Elegir WAV / MP3 ({fileName})</span>
-            <input type="file" accept="audio/*" onChange={handleFileChange} hidden />
+            <input
+              type="file"
+              accept=".wav,.mp3,.m4a,.flac,.aac,.ogg,.aiff,.alac,.opus,audio/wav,audio/x-wav,audio/wave,audio/mpeg,audio/mp3,audio/mp4,audio/x-m4a,audio/aac,audio/flac,application/octet-stream"
+              onChange={handleFileChange}
+              hidden
+            />
           </label>
 
           <div className="dmg-field">

@@ -305,7 +305,7 @@ export default function UntitledImporter({
           <span>📂 Subir carpeta WAV / MP3 de [untitled]</span>
           <input
             type="file"
-            accept="audio/*"
+            accept=".wav,.mp3,.m4a,.flac,.aac,.ogg,.aiff,.alac,.opus,audio/wav,audio/x-wav,audio/wave,audio/mpeg,audio/mp3,audio/mp4,audio/x-m4a,audio/aac,audio/flac,application/octet-stream"
             multiple
             hidden
             onChange={handleBulkAudioFiles}

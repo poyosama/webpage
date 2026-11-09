@@ -509,6 +509,37 @@ export default function App() {
     sfx.drop();
   };
 
+  const handleUploadProjectTrack = (projectId: string, file: File) => {
+    const objectUrl = URL.createObjectURL(file);
+    const cleanName = file.name.replace(/\.[^/.]+$/, "");
+    const newTrack: Track = {
+      id: `tr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      title: cleanName,
+      artist: meProfile.handle,
+      bpm: 140,
+      key: "F#m",
+      duration: "2:34",
+      durationSec: 154,
+      version: "WAV Master",
+      note: "Subido desde iPhone / Archivos",
+      glyph: "01",
+      c1: "#ffffff",
+      c2: "#888888",
+      audioFreq: 80,
+      customAudioUrl: objectUrl,
+    };
+    setProjects((prev) =>
+      prev.map((p) => {
+        if (p.id !== projectId) return p;
+        const nextTracks = [...p.tracks, newTrack];
+        const nextProj = { ...p, tracks: nextTracks };
+        if (currentProject.id === p.id) setCurrentProject(nextProj);
+        return nextProj;
+      })
+    );
+    sfx.drop();
+  };
+
   const navigate = (nextTab: ScreenTab) => {
     if (nextTab === tab) return;
     sfx.nav();
@@ -601,15 +632,38 @@ export default function App() {
               setPlayerExpanded(true);
             }}
           >
-            🎛️ Reproductor
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}>
+              <line x1="4" y1="21" x2="4" y2="14"></line>
+              <line x1="4" y1="10" x2="4" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12" y2="3"></line>
+              <line x1="20" y1="21" x2="20" y2="16"></line>
+              <line x1="20" y1="12" x2="20" y2="3"></line>
+              <line x1="1" y1="14" x2="7" y2="14"></line>
+              <line x1="9" y1="8" x2="15" y2="8"></line>
+              <line x1="17" y1="16" x2="23" y2="16"></line>
+            </svg>
+            <span>Reproductor</span>
           </button>
           <button
             type="button"
             className="ios-icon-btn"
             onMouseEnter={() => sfx.hover()}
             onClick={handleToggleMute}
+            aria-label={muted ? "Activar sonido" : "Silenciar"}
           >
-            {muted ? "🔇" : "🔊"}
+            {muted ? (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <line x1="23" y1="9" x2="17" y2="15"></line>
+                <line x1="17" y1="9" x2="23" y2="15"></line>
+              </svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+              </svg>
+            )}
           </button>
         </div>
       </header>
@@ -1119,6 +1173,7 @@ export default function App() {
                     onDeleteProject={handleDeleteProject}
                     onUploadProjectVideo={handleUploadProjectVideo}
                     onRemoveProjectVideo={handleRemoveProjectVideo}
+                    onUploadProjectTrack={handleUploadProjectTrack}
                   />
                 )}
 
@@ -1560,6 +1615,7 @@ export default function App() {
                   onOpenCreateProject={() => navigate("crear-proyecto")}
                   onDeleteProject={handleDeleteProject}
                   onUploadProjectVideo={handleUploadProjectVideo}
+                  onUploadProjectTrack={handleUploadProjectTrack}
                 />
               </section>
             </div>
@@ -1592,7 +1648,15 @@ export default function App() {
                     background: `linear-gradient(135deg, ${currentTrack.c1}, ${currentTrack.c2})`,
                   }}
                 >
-                  <span className={isPlaying ? "spin-slow" : ""}>{currentTrack.glyph}</span>
+                  {currentProject?.coverUrl ? (
+                    <img
+                      src={currentProject.coverUrl}
+                      alt={currentTrack.title}
+                      style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "inherit" }}
+                    />
+                  ) : (
+                    <span className={isPlaying ? "spin-slow" : ""}>{currentTrack.glyph}</span>
+                  )}
                 </div>
 
                 <div className="mini-meta">
@@ -1609,7 +1673,10 @@ export default function App() {
                   onClick={() => stepTrack(-1)}
                   aria-label="Anterior"
                 >
-                  ⏮
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                    <polygon points="19 20 9 12 19 4 19 20"></polygon>
+                    <line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" strokeWidth="3" strokeLinecap="round"></line>
+                  </svg>
                 </button>
                 <button
                   type="button"
@@ -1617,7 +1684,16 @@ export default function App() {
                   onClick={togglePlay}
                   aria-label="Reproducir o pausar"
                 >
-                  {isPlaying ? "❚❚" : "▶"}
+                  {isPlaying ? (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                      <rect x="6" y="4" width="4" height="16" rx="1.5"></rect>
+                      <rect x="14" y="4" width="4" height="16" rx="1.5"></rect>
+                    </svg>
+                  ) : (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: 2 }}>
+                      <polygon points="6 4 20 12 6 20 6 4"></polygon>
+                    </svg>
+                  )}
                 </button>
                 <button
                   type="button"
@@ -1625,7 +1701,10 @@ export default function App() {
                   onClick={() => stepTrack(1)}
                   aria-label="Siguiente"
                 >
-                  ⏭
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                    <polygon points="5 4 15 12 5 20 5 4"></polygon>
+                    <line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" strokeWidth="3" strokeLinecap="round"></line>
+                  </svg>
                 </button>
               </div>
 
@@ -1637,7 +1716,23 @@ export default function App() {
                   onClick={handleToggleMute}
                   aria-label={muted ? "Activar sonido" : "Silenciar"}
                 >
-                  {muted || volume === 0 ? "🔇" : volume < 0.5 ? "🔉" : "🔊"}
+                  {muted || volume === 0 ? (
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                      <line x1="23" y1="9" x2="17" y2="15"></line>
+                      <line x1="17" y1="9" x2="23" y2="15"></line>
+                    </svg>
+                  ) : volume < 0.5 ? (
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                      <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                    </svg>
+                  ) : (
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                      <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                    </svg>
+                  )}
                 </button>
                 <input
                   type="range"
@@ -1867,7 +1962,7 @@ function EditTrackModal({
             <span>REEMPLAZAR ARCHIVO DE AUDIO (WAV / MP3)</span>
             <input
               type="file"
-              accept="audio/*"
+              accept=".wav,.mp3,.m4a,.flac,.aac,.ogg,.aiff,.alac,.opus,audio/wav,audio/x-wav,audio/wave,audio/mpeg,audio/mp3,audio/mp4,audio/x-m4a,audio/aac,audio/flac,application/octet-stream"
               onChange={(e) => {
                 const f = e.target.files?.[0];
                 if (f) setCustomAudioUrl(URL.createObjectURL(f));
