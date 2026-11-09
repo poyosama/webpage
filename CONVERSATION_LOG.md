@@ -191,4 +191,16 @@
 **Implementación:**
 - Guía explicada con tono directo, argentino y paso a paso para el usuario Juani (requerimientos de Apple Developer, Xcode en Mac, compilación estática de Next.js, sincronización de Capacitor con `npm run cap:sync && npm run cap:ios`, firmado con certificados de distribución, y subida a TestFlight / App Store Connect).
 
+---
+
+### Turno 11 — Método Gratuito: PWA ("Agregar a Inicio") y Sideloading con Personal Team
+**Prompt del usuario:**
+- *"y como era la forma de hacerlo gratis ? jajajaj"*
+
+**Implementación:**
+- Explicación de las 2 alternativas gratuitas (sin pagar los \$99 USD anuales de Apple):
+  1. **PWA Standalone (100% gratis, sin Mac y sin Apple Developer):** Desde Safari en iPhone, tocar compartir y "Agregar a pantalla de inicio". Corre en pantalla completa nativa sin marcos de navegador, con soporte offline, WebGL 3D y Web Audio. Se creó `src/app/manifest.ts` para habilitar formalmente el Web App Manifest en Next.js.
+  2. **Personal Team en Xcode (gratis con cable USB):** Usar un Apple ID gratuito para instalar el build nativo de Capacitor directo en el iPhone físico por 7 días de validez por build.
+
+
 
