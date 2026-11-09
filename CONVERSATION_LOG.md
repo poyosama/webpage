@@ -358,6 +358,17 @@
    - Al crear un proyecto en la Biblioteca 3D (`onCreateProject`), se inserta/actualiza en las tablas `projects` y `tracks` de Supabase si el usuario está autenticado.
    - Al borrar un proyecto o track individual (`handleDeleteProject` / `handleDeleteTrack`), se eliminan las filas correspondientes de la base de datos en la nube.
 
+---
+
+### Turno 24 — Vinculación del Dominio Custom `eltablero.blog` (Hostinger -> Vercel & Supabase)
+**Prompt del usuario:**
+- *"ahi compre el dominio eltablero.blogen hostinger"*
+
+**Implementación y Guía:**
+- Instrucciones DNS exactas para apuntar `eltablero.blog` de Hostinger a los servidores de Vercel (registro A `@ -> 76.76.21.21` y CNAME `www -> cname.vercel-dns.com`).
+- Actualización de Site URL y Redirect URLs en Supabase Auth y Google Cloud Console para que el flujo de autenticación use directamente el nuevo dominio oficial.
+
+
 
 
 
