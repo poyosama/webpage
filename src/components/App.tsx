@@ -1418,7 +1418,7 @@ export default function App() {
                             setInsideCubeOpen(false);
                           }}
                         >
-                          ← Salir del cubo · Volver a Mis Proyectos
+                          ← Volver a Mis proyectos
                         </button>
 
                         <div className="manifold-quick-pills">
@@ -1475,7 +1475,7 @@ export default function App() {
 
                     <div className="inspector-header">
                       <div className="inspector-meta-builder">
-                        {/* Metadata completable por el usuario: Tipo de Proyecto, Cantidad de Canciones, Estado y Atributos */}
+                        {/* Metadata del proyecto: Tipo de Proyecto, tracks y Atributos */}
                         <div className="project-editable-meta-bar">
                           <label className="meta-pill-select">
                             <span>TIPO</span>
@@ -1497,28 +1497,8 @@ export default function App() {
                           </label>
 
                           <div className="meta-pill-static">
-                            <span>CANCIONES</span>
                             <b>{activeProject.tracks.length} tracks</b>
                           </div>
-
-                          <label className="meta-pill-select">
-                            <span>ESTADO</span>
-                            <select
-                              value={activeProject.status}
-                              onChange={(e) => {
-                                sfx.tick();
-                                updateProjectMeta(activeProject.id, {
-                                  status: e.target.value as Project["status"],
-                                });
-                              }}
-                            >
-                              <option value="Publicado">Publicado</option>
-                              <option value="En mezcla">En mezcla</option>
-                              <option value="Master">Master</option>
-                              <option value="WIP">WIP</option>
-                              <option value="Privado">Privado</option>
-                            </select>
-                          </label>
 
                           {activeAttributes.map((attr) => (
                             <span key={attr} className="meta-user-attr-pill">
@@ -1568,14 +1548,14 @@ export default function App() {
                             setEditingProject(activeProject);
                           }}
                         >
-                          Editar Proyecto &amp; Tapa
+                          Editar
                         </button>
                         <button
                           type="button"
                           className="apple-btn ghost"
                           onClick={() => navigate("subir")}
                         >
-                          + Subir track al proyecto
+                          + Agregar canciones
                         </button>
                         <button
                           type="button"
@@ -1585,7 +1565,7 @@ export default function App() {
                             playTrack(activeProject.tracks[0], activeProject, true)
                           }
                         >
-                          ▶ Abrir en Reproductor 3D
+                          ▶ Abrir en reproductor
                         </button>
                         <button
                           type="button"
@@ -1600,12 +1580,11 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* ==================== CANVAS VISUAL DEL PROYECTO (VIDEO 3-5S O GIF) ==================== */}
+                    {/* ==================== CANVAS VISUAL DEL PROYECTO ==================== */}
                     <div className="inspector-canvas-section">
                       <div className="inspector-canvas-header">
                         <div>
-                          <span className="mono-tag">VISUAL CANVAS // VIDEO 3-5S O GIF EN LOOP</span>
-                          <h3 style={{ margin: "2px 0 0 0", fontSize: "1rem" }}>Canvas de {activeProject.title}</h3>
+                          <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 600 }}>Canvas</h3>
                         </div>
                         <div className="row-actions">
                           <label className="apple-btn ghost" style={{ cursor: "pointer" }}>
@@ -1649,13 +1628,11 @@ export default function App() {
                                 loop
                                 muted
                                 playsInline
+                                disablePictureInPicture
+                                controlsList="nodownload noplaybackrate nofullscreen"
                                 className="canvas-active-video-elem"
                               />
                             )}
-                            <div className="canvas-live-chip">
-                              <span className="live-pulse-dot" />
-                              <span>CANVAS LOOP ACTIVO · {activeProject.videos[0].label}</span>
-                            </div>
                           </div>
                         ) : (
                           <div className="canvas-empty-state">
@@ -1707,7 +1684,12 @@ export default function App() {
                               onMouseEnter={() => sfx.hover()}
                               onClick={() => playTrack(t, activeProject, false)}
                             >
-                              <div className="track-row-art-wrap">
+                              <label
+                                className="track-row-art-wrap"
+                                title="Cambiar tapa de la canción"
+                                style={{ cursor: "pointer" }}
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 {t.coverUrl || activeProject.coverUrl ? (
                                   <img
                                     src={t.coverUrl || activeProject.coverUrl}
@@ -1717,7 +1699,19 @@ export default function App() {
                                 ) : (
                                   <span className="track-row-art-fallback">{String(idx + 1).padStart(2, "0")}</span>
                                 )}
-                              </div>
+                                <input
+                                  type="file"
+                                  accept="image/*,.png,.jpg,.jpeg,.webp,.gif"
+                                  hidden
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      const coverUrl = URL.createObjectURL(file);
+                                      handleSaveEditedTrack({ ...t, coverUrl });
+                                    }
+                                  }}
+                                />
+                              </label>
                               <div className="row-main">
                                 <b>{t.title}</b>
                                 <span>
@@ -1730,26 +1724,6 @@ export default function App() {
                                 <span className="meta-chip">v{t.version}</span>
                               </div>
                               <div className="row-inline-actions">
-                                <label
-                                  className="row-snippet-btn"
-                                  title="Subir imagen / portada a este track"
-                                  style={{ cursor: "pointer" }}
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <span>Tapa</span>
-                                  <input
-                                    type="file"
-                                    accept="image/*,.png,.jpg,.jpeg,.webp,.gif"
-                                    hidden
-                                    onChange={(e) => {
-                                      const file = e.target.files?.[0];
-                                      if (file) {
-                                        const coverUrl = URL.createObjectURL(file);
-                                        handleSaveEditedTrack({ ...t, coverUrl });
-                                      }
-                                    }}
-                                  />
-                                </label>
                                 <button
                                   type="button"
                                   className="row-snippet-btn"

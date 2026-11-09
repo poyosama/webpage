@@ -415,6 +415,48 @@
 4. **Ciclo de Vida y Login:**
    - Al logearse un usuario con Google, se crea su perfil real en `profiles`, se refresca la lista de la comunidad inmediatamente y su tarjeta aparece en `Artistas en El Tablero`.
 
+---
+
+### Turno 29 — Compactación de Hero Editorial, Flex de Canvas, Portadas 1:1 con Partículas en Spinner 3D, Textos del Inspector, Supresión de PiP e Icono PWA/iOS
+**Prompts del usuario:**
+1. *"de paso tambien quiero que acomodes para que ni bien entras se vea asi, tendrias que mover el flex para arriba me parece o la parte que dice el tablero // ug board mas abajo asi se llega a ver todo el tablero y donde dice 'El tablero'"*
+2. *"tambien esto de aca que el canvas este detrás del widget de reproduccion de los temas tambien podria ser.. lo que dice tapa sacaselo, los discos en circulo ponelos para que sea solo la tapa con unas particulitas. donde dice subir track al proyecto que diga 'Agregar canciones' 'Editar Proyecto y Tapa' que sea 'Editar'"*
+3. *" 'Estado: ' saca por completo todo ese seleccionador"*
+4. *" 'canciones (x) tracks ' que diga '(x) tracks'"*
+5. *"Entre cada uno de los nombres de los proyectos tiene que haber un pequeño padding entre los dias que pasaron de publicacion porque estan muy pegados"*
+6. *"en 'salir del cubo volver a mis proyectos ' q diga solo 'Volver a Mis proyectos'"*
+7. *" 'Abrir en reporudctor 3d' qu ediga 'Abrir en reproductor'"*
+8. *" 'visual canvas // videos no se que' qu diga 'Canvas'"*
+9. *"el texto del canvas 'canvas loop activo' ese sacalo y hace que el flex del canvas se ajuste a la resolucion del video subido sin modificar el resto de la pagina"*
+10. *"tam,bien en el reproductor sale para pojner picture in picture eso no me gusta"*
+11. *"como hago para cambiarle la imagen del widget del iphone ? quiero otro icono"*
+
+**Implementación:**
+1. **Compactación del Hero Editorial en `Inicio` (`globals.css`):**
+   - Reducido el padding de `.secondstory-strip-card` a `clamp(12px, 1.8vw, 20px)`.
+   - Compactada la altura del escenario `.corecore-stage` a `min-height: 200px; padding: 14px 10px;`.
+   - Compactado el footer editorial `.secondstory-mega-footer` a `padding: 10px 0 6px;` y `.mega-display-title` ajustado a `clamp(2.4rem, 6.8vw, 5.4rem)` para que tanto el collage central como el título gigante `El tablero` entren en la pantalla inicial de un solo golpe visual sin obligar a scrollear hacia abajo.
+2. **Padding y Espaciado en Píldoras de Proyectos (`globals.css`):**
+   - Agregado `gap: 8px` en `.quick-proj-pill` y espaciado de badge `.quick-proj-pill small` (`margin-left: 6px; padding: 2px 7px; border-radius: 999px;`) para despegar el nombre del proyecto de los días pasados de publicación.
+3. **Inspector de Proyecto (`App.tsx`):**
+   - Botón de retorno cambiado a `"← Volver a Mis proyectos"`.
+   - Eliminado el selector completo de `"Estado: "`.
+   - Metadatos de tracks simplificados a `<b>{activeProject.tracks.length} tracks</b>`.
+   - Botones renombrados a `"Editar"`, `"+ Agregar canciones"` y `"▶ Abrir en reproductor"`.
+4. **Canvas del Proyecto (`App.tsx` + `globals.css`):**
+   - Título simplificado a `"Canvas"`.
+   - Eliminado el chip `"CANVAS LOOP ACTIVO · ..."`.
+   - `.canvas-video-wrapper` y `.canvas-active-video-elem` actualizados para flexear dinámicamente y respetar la resolución y aspecto nativo del video subido (hasta 480px) sin estirar ni deformar la página.
+   - Eliminado el botón molesto de Picture-in-Picture nativo del navegador con `disablePictureInPicture`, `controlsList="nodownload noplaybackrate nofullscreen"` y reglas CSS `video::-webkit-media-controls-picture-in-picture-button { display: none !important; }`.
+5. **Filas de Tracks en Inspector (`App.tsx`):**
+   - Removido el botón de texto `"Tapa"`. La subida de portada para tracks individuales se integró directamente en el thumbnail cuadrado de la canción.
+6. **Spinner 3D (`DiscSpinner3D.tsx`):**
+   - Eliminadas las rayas y surcos de vinilo en las placas: ahora muestran la portada de la canción o proyecto 1:1 limpia y nítida (`boxGeometry [2.0, 2.0, 0.04]`).
+   - Creado `SpinnerParticles` (300 micro-partículas flotantes con adición aditiva y movimiento oscilatorio suave) que rodean la curva del spinner.
+7. **Icono de iOS / iPhone / Web App (`public/apple-touch-icon.png` + `public/icon.png` + `src/app/layout.tsx`):**
+   - Creado icono nítido de 512x512 en fondo oscuro con el bloque 3D de El tablero.
+   - Configurados `icons: { apple: "/apple-touch-icon.png", icon: "/icon.png" }` en `metadata` de Next.js para que Safari y el Home Screen de iOS tomen el nuevo icono en lugar de una captura genérica.
+
 
 
 

@@ -20,10 +20,10 @@ function useDiscPlateTexture(track: Track, projectCoverUrl?: string, index: numb
   const [texture, setTexture] = useState<THREE.Texture>(() => {
     const c = document.createElement("canvas");
     c.width = 512;
-    c.height = 620;
+    c.height = 512;
     const g = c.getContext("2d")!;
-    g.fillStyle = "#0d0e12";
-    g.fillRect(0, 0, 512, 620);
+    g.fillStyle = "#0c0d12";
+    g.fillRect(0, 0, 512, 512);
     const tex = new THREE.CanvasTexture(c);
     tex.colorSpace = THREE.SRGBColorSpace;
     return tex;
@@ -33,7 +33,7 @@ function useDiscPlateTexture(track: Track, projectCoverUrl?: string, index: numb
     let active = true;
     const c = document.createElement("canvas");
     c.width = 512;
-    c.height = 620;
+    c.height = 512;
     const g = c.getContext("2d")!;
     const tex = new THREE.CanvasTexture(c);
     tex.colorSpace = THREE.SRGBColorSpace;
@@ -43,79 +43,48 @@ function useDiscPlateTexture(track: Track, projectCoverUrl?: string, index: numb
 
     const draw = (img?: HTMLImageElement) => {
       if (!active) return;
-      // Fondo oscuro elegante
       g.fillStyle = "#0c0d12";
-      g.fillRect(0, 0, 512, 620);
+      g.fillRect(0, 0, 512, 512);
 
       if (img) {
-        // Tapa real del track / proyecto
-        g.drawImage(img, 0, 0, 512, 420);
+        // Tapa real de la canción / proyecto 1:1 limpia
+        g.drawImage(img, 0, 0, 512, 512);
 
-        // Degradado suave hacia el pie de metadata
-        const grad = g.createLinearGradient(0, 220, 0, 420);
-        grad.addColorStop(0, "rgba(12,13,18,0)");
-        grad.addColorStop(0.7, "rgba(12,13,18,0.85)");
-        grad.addColorStop(1, "#0c0d12");
-        g.fillStyle = grad;
-        g.fillRect(0, 220, 512, 200);
+        // Borde fino de acabado vinilo/sleeve
+        g.strokeStyle = "rgba(255,255,255,0.18)";
+        g.lineWidth = 3;
+        g.strokeRect(3, 3, 506, 506);
       } else {
-        // Placeholder estilizado con la estética del track
-        const grad = g.createLinearGradient(0, 0, 512, 420);
+        // Placeholder estilizado limpio con gradiente del track
+        const grad = g.createLinearGradient(0, 0, 512, 512);
         grad.addColorStop(0, track.c1 || "#161720");
         grad.addColorStop(1, track.c2 || "#282a36");
         g.fillStyle = grad;
-        g.fillRect(0, 0, 512, 420);
+        g.fillRect(0, 0, 512, 512);
 
-        // Surcos de vinilo concéntricos
-        g.strokeStyle = "rgba(255,255,255,0.14)";
-        g.lineWidth = 2;
-        g.beginPath();
-        g.arc(256, 210, 140, 0, Math.PI * 2);
-        g.stroke();
-        g.beginPath();
-        g.arc(256, 210, 80, 0, Math.PI * 2);
-        g.stroke();
+        // Borde fino
+        g.strokeStyle = "rgba(255,255,255,0.18)";
+        g.lineWidth = 3;
+        g.strokeRect(3, 3, 506, 506);
+
+        // Número de track sutil
+        g.fillStyle = "rgba(255,255,255,0.18)";
+        g.font = "800 120px Inter, -apple-system, sans-serif";
+        g.textAlign = "center";
+        g.fillText(String(index + 1).padStart(2, "0"), 256, 280);
+
+        // Título del Track
+        g.fillStyle = "#ffffff";
+        g.font = "700 28px Inter, -apple-system, sans-serif";
+        const cleanTitle = (track.title || "Track").slice(0, 22);
+        g.fillText(cleanTitle, 256, 360);
+
+        // Artista
+        g.fillStyle = "rgba(255,255,255,0.65)";
+        g.font = "500 18px Inter, -apple-system, sans-serif";
+        const cleanArtist = (track.artist || "").slice(0, 26);
+        g.fillText(cleanArtist, 256, 400);
       }
-
-      // Micro-surcos de vinilo
-      g.fillStyle = "rgba(255,255,255,0.025)";
-      for (let y = 0; y < 420; y += 4) {
-        g.fillRect(0, y, 512, 1);
-      }
-
-      // Borde de cristal biselado
-      g.strokeStyle = "rgba(255,255,255,0.18)";
-      g.lineWidth = 3;
-      g.strokeRect(6, 6, 500, 608);
-
-      // Badge superior BPM & Key
-      g.fillStyle = "rgba(0,0,0,0.72)";
-      g.fillRect(20, 20, 190, 36);
-      g.fillStyle = "#ffffff";
-      g.font = "600 16px monospace";
-      g.fillText(`${track.bpm} BPM · ${track.key}`, 32, 44);
-
-      // Número de track gigante
-      g.fillStyle = "rgba(255,255,255,0.24)";
-      g.font = "800 78px Inter, -apple-system, sans-serif";
-      g.fillText(String(index + 1).padStart(2, "0"), 390, 85);
-
-      // Título del Track
-      g.fillStyle = "#ffffff";
-      g.font = "700 32px Inter, -apple-system, sans-serif";
-      const cleanTitle = (track.title || "Track").slice(0, 20);
-      g.fillText(cleanTitle, 26, 470);
-
-      // Artista
-      g.fillStyle = "rgba(255,255,255,0.72)";
-      g.font = "500 20px Inter, -apple-system, sans-serif";
-      const cleanArtist = (track.artist || "").slice(0, 26);
-      g.fillText(cleanArtist, 26, 510);
-
-      // Versión y duración
-      g.fillStyle = track.c2 || "#ffffff";
-      g.font = "600 16px monospace";
-      g.fillText(`V${track.version} · ${track.duration || "2:30"} · WAV MASTER`, 26, 555);
 
       tex.needsUpdate = true;
       setTexture(tex);
@@ -135,7 +104,7 @@ function useDiscPlateTexture(track: Track, projectCoverUrl?: string, index: numb
       active = false;
       tex.dispose();
     };
-  }, [track.id, track.coverUrl, track.title, track.artist, track.bpm, track.key, track.version, projectCoverUrl, index, total]);
+  }, [track.id, track.coverUrl, track.title, track.artist, projectCoverUrl, index, total]);
 
   return texture;
 }
@@ -230,10 +199,59 @@ function DiscPlate({
           }
         }}
       >
-        <boxGeometry args={[1.95, 2.35, 0.035]} />
+        <boxGeometry args={[2.0, 2.0, 0.04]} />
         <meshBasicMaterial map={tex} />
       </mesh>
     </group>
+  );
+}
+
+function SpinnerParticles() {
+  const pointsRef = useRef<THREE.Points>(null!);
+  const count = 300;
+  const [positions, phases] = useMemo(() => {
+    const pos = new Float32Array(count * 3);
+    const ph = new Float32Array(count);
+    for (let i = 0; i < count; i++) {
+      const angle = (Math.random() - 0.5) * Math.PI * 1.5;
+      const r = 1.2 + Math.random() * 1.6;
+      pos[i * 3] = Math.sin(angle) * r + (Math.random() - 0.5) * 0.4;
+      pos[i * 3 + 1] = (Math.random() - 0.5) * 1.6;
+      pos[i * 3 + 2] = Math.cos(angle) * r * 0.6 + (Math.random() - 0.5) * 0.8;
+      ph[i] = Math.random() * Math.PI * 2;
+    }
+    return [pos, ph];
+  }, [count]);
+
+  useFrame(({ clock }) => {
+    const t = clock.getElapsedTime();
+    if (!pointsRef.current) return;
+    const posAttr = pointsRef.current.geometry.attributes.position as THREE.BufferAttribute;
+    const arr = posAttr.array as Float32Array;
+    for (let i = 0; i < count; i++) {
+      const idx = i * 3;
+      arr[idx + 1] += Math.sin(t * 1.3 + phases[i]) * 0.0016;
+    }
+    posAttr.needsUpdate = true;
+  });
+
+  return (
+    <points ref={pointsRef}>
+      <bufferGeometry>
+        <bufferAttribute
+          attach="attributes-position"
+          args={[positions, 3]}
+        />
+      </bufferGeometry>
+      <pointsMaterial
+        size={0.04}
+        color="#ffffff"
+        transparent
+        opacity={0.8}
+        blending={THREE.AdditiveBlending}
+        depthWrite={false}
+      />
+    </points>
   );
 }
 
@@ -365,6 +383,7 @@ export default function DiscSpinner3D({
                 }}
               />
             ))}
+            <SpinnerParticles />
           </ResponsiveSpinnerGroup>
           <SpinnerPhysics
             total={tracks.length}
