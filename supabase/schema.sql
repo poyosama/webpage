@@ -80,17 +80,31 @@ alter table public.tracks enable row level security;
 alter table public.project_videos enable row level security;
 
 -- Políticas de lectura pública (todo el mundo puede escuchar y ver en El Tablero)
+drop policy if exists "Perfiles visibles por todos" on public.profiles;
 create policy "Perfiles visibles por todos" on public.profiles for select using (true);
+
+drop policy if exists "Proyectos visibles por todos" on public.projects;
 create policy "Proyectos visibles por todos" on public.projects for select using (true);
+
+drop policy if exists "Tracks visibles por todos" on public.tracks;
 create policy "Tracks visibles por todos" on public.tracks for select using (true);
+
+drop policy if exists "Videos visibles por todos" on public.project_videos;
 create policy "Videos visibles por todos" on public.project_videos for select using (true);
 
 -- Políticas de modificación (solo el creador autenticado puede editar/borrar lo suyo)
+drop policy if exists "Usuarios editan su propio perfil" on public.profiles;
 create policy "Usuarios editan su propio perfil" on public.profiles for all using (auth.uid() = id);
+
+drop policy if exists "Usuarios gestionan sus proyectos" on public.projects;
 create policy "Usuarios gestionan sus proyectos" on public.projects for all using (auth.uid() = user_id);
+
+drop policy if exists "Usuarios gestionan tracks de sus proyectos" on public.tracks;
 create policy "Usuarios gestionan tracks de sus proyectos" on public.tracks for all using (
   exists (select 1 from public.projects where projects.id = tracks.project_id and projects.user_id = auth.uid())
 );
+
+drop policy if exists "Usuarios gestionan videos de sus proyectos" on public.project_videos;
 create policy "Usuarios gestionan videos de sus proyectos" on public.project_videos for all using (
   exists (select 1 from public.projects where projects.id = project_videos.project_id and projects.user_id = auth.uid())
 );
@@ -100,6 +114,12 @@ insert into storage.buckets (id, name, public)
 values ('el-tablero-media', 'el-tablero-media', true)
 on conflict (id) do nothing;
 
+drop policy if exists "Media publica legible por todos" on storage.objects;
 create policy "Media publica legible por todos" on storage.objects for select using (bucket_id = 'el-tablero-media');
+
+drop policy if exists "Usuarios autenticados suben media" on storage.objects;
 create policy "Usuarios autenticados suben media" on storage.objects for insert with check (bucket_id = 'el-tablero-media' and auth.role() = 'authenticated');
+
+drop policy if exists "Usuarios editan y borran su media" on storage.objects;
 create policy "Usuarios editan y borran su media" on storage.objects for all using (bucket_id = 'el-tablero-media' and auth.uid() = owner);
+

@@ -321,4 +321,15 @@
 **Respuesta y Guía:**
 - Se le confirmó al usuario que sí, que borre cualquier texto de ejemplo o plantilla que venga por defecto en el SQL Editor (o cree una pestaña nueva vacía con `+ New query`), pegue el contenido completo de `supabase/schema.sql` y le dé a `Run`.
 
+---
+
+### Turno 20 — Fix de Error 42710 ("policy already exists") en Supabase SQL Editor
+**Prompt del usuario:**
+- *"pq me tiro esto"* (adjunta captura mostrando `ERROR: 42710: policy "Perfiles visibles por todos" for table "profiles" already exists`).
+
+**Causa y Solución:**
+- En PostgreSQL, cuando una política de seguridad RLS ya fue creada (por una ejecución previa parcial del script), `CREATE POLICY` arroja error 42710 porque no existe sintaxis `IF NOT EXISTS` para políticas.
+- Se actualizó `supabase/schema.sql` agregando `DROP POLICY IF EXISTS` antes de cada `CREATE POLICY` (para `profiles`, `projects`, `tracks`, `project_videos` y `storage.objects`). De esta manera el script es 100% idempotente y se puede ejecutar tantas veces como sea necesario sin ningún error.
+
+
 
