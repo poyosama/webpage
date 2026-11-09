@@ -1,0 +1,16 @@
+{
+  "appId": "com.quetablero.app",
+  "appName": "El tablero",
+  "webDir": "out",
+  "ios": {
+    "contentInset": "automatic",
+    "allowsLinkPreview": false,
+    "scrollEnabled": true,
+    "backgroundColor": "#f6f6f4",
+    "preferredContentMode": "mobile"
+  },
+  "server": {
+    "androidScheme": "https",
+    "iosScheme": "capacitor"
+  }
+}

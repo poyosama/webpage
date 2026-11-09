@@ -142,5 +142,17 @@
 - **Animación Inmaculada al Entrar al Cubo (`VoxelDivePortal`) + `"Por defecto"`:**
   - Cambiado `"🎯 Adentro del Cubo"` por **`"Por defecto"`**.
   - Rediseñado `VoxelDivePortal`: al clickear el cubo activo se oculta el cubo sólido y sus 6 caras se convierten en **864 micro-vóxeles volumétricos** que se encienden en blanco puro (`#ffffff`), abren un túnel radial en espiral sincronizado con el vector de la cámara hacia el núcleo del cubo y funden con un *bloom* blanco sedoso (`.cube-dive-bloom-overlay`) hacia el interior del proyecto.
-- **Configuración Nativa iOS con Capacitor (`capacitor.config.ts`, `next.config.ts`, `package.json`, `src/app/layout.tsx`):**
-  - Creado `capacitor.config.ts` (`appId: "com.quetablero.app"`, `appName: "El tablero"`, `webDir: "out"`), scripts `npm run build:capacitor`, `npm run cap:sync`, `npm run cap:ios` y soporte de `safe-area-inset` para iPhone.
+- **Configuración Nativa iOS con Capacitor (`capacitor.config.json`, `next.config.ts`, `package.json`, `src/app/layout.tsx`):**
+  - Creado `capacitor.config.json` (`appId: "com.quetablero.app"`, `appName: "El tablero"`, `webDir: "out"`), scripts `npm run build:capacitor`, `npm run cap:sync`, `npm run cap:ios` y soporte de `safe-area-inset` para iPhone.
+
+---
+
+### Turno 7 — Fix del Build de Producción en Vercel (`DEMO_PROJECTS` import + `capacitor.config.json`)
+**Prompt del usuario:**
+- Adjuntó captura (`IMG_3876.png`) del correo de Vercel: `Production deployment failed on branch main at commit ec11480 (Command "npm run build" exited with 1)`.
+
+**Implementación:**
+- Agregado `DEMO_PROJECTS` al import de `@/lib/mock` en `src/components/App.tsx` (faltaba en la lista de imports de la cabecera aunque se usaba en `handleRestoreDemoProjects`, `findProjectById`, `.filmstrip-row`, `producerDrops` y `Proyectos fijados`).
+- Reemplazado `capacitor.config.ts` por `capacitor.config.json` y mantenido `package.json` sincronizado con `package-lock.json` para que `next build` en Vercel no intente compilar tipos de `@capacitor/cli` ni falle por diferencias de lockfile.
+- Tipado limpio de `nextConfig` en `next.config.ts`.
+

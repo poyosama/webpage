@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import {
+  DEMO_PROJECTS,
   INITIAL_ME_PROFILE,
   INITIAL_PRODUCER_DROPS,
   INITIAL_PROJECTS,
