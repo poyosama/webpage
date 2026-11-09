@@ -520,11 +520,12 @@ export default function App() {
       key: "F#m",
       duration: "2:34",
       durationSec: 154,
-      version: "WAV Master",
+      version: 1,
       note: "Subido desde iPhone / Archivos",
       glyph: "01",
       c1: "#ffffff",
       c2: "#888888",
+      accent: "#ffffff",
       audioFreq: 80,
       customAudioUrl: objectUrl,
     };
