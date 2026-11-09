@@ -527,6 +527,9 @@ export default function App() {
   };
 
   const handleDeleteProject = (projectId: string) => {
+    if (googleConnected) {
+      supabase.from("projects").delete().eq("id", projectId).then();
+    }
     setProjects((prev) => {
       const next = prev.filter((p) => p.id !== projectId);
       if (next.length === 0) {
@@ -574,6 +577,9 @@ export default function App() {
   };
 
   const handleDeleteTrack = (projectId: string, trackId: string) => {
+    if (googleConnected) {
+      supabase.from("tracks").delete().eq("id", trackId).then();
+    }
     setProjects((prev) =>
       prev.map((p) => {
         if (p.id !== projectId) return p;
@@ -1713,11 +1719,48 @@ export default function App() {
               meProfile={meProfile}
               existingCount={projects.length}
               onCancel={() => navigate("biblioteca")}
-              onCreateProject={(newProj) => {
+              onCreateProject={async (newProj) => {
                 setProjects((prev) => [newProj, ...prev]);
                 setSelectedProjectId(newProj.id);
                 setInsideCubeOpen(false);
                 navigate("biblioteca");
+                if (googleConnected && meProfile.id) {
+                  try {
+                    await supabase.from("projects").upsert({
+                      id: newProj.id,
+                      user_id: meProfile.id,
+                      title: newProj.title,
+                      artist: newProj.artist,
+                      type: newProj.type,
+                      year: newProj.year,
+                      status: newProj.status,
+                      zone: newProj.zone,
+                      description: newProj.description,
+                      cover_url: newProj.coverUrl || null,
+                      order_index: 0,
+                    });
+                    for (let i = 0; i < newProj.tracks.length; i++) {
+                      const tr = newProj.tracks[i];
+                      await supabase.from("tracks").upsert({
+                        id: tr.id,
+                        project_id: newProj.id,
+                        title: tr.title,
+                        artist: tr.artist,
+                        feat: tr.feat || null,
+                        prod: tr.prod || null,
+                        bpm: tr.bpm,
+                        musical_key: tr.key,
+                        duration: tr.duration,
+                        duration_sec: tr.durationSec,
+                        version: tr.version,
+                        glyph: tr.glyph,
+                        order_index: i,
+                      });
+                    }
+                  } catch (e) {
+                    console.warn("Supabase project sync error:", e);
+                  }
+                }
               }}
             />
           )}

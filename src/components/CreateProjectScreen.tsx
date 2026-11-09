@@ -513,7 +513,7 @@ export default function CreateProjectScreen({
         ? uploadedTracks
         : [
             {
-              id: `tr-${Date.now()}-1`,
+              id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `tr-${Date.now()}-1`,
               title: `${title.trim() || "Track"} 01`,
               artist: meProfile.name,
               prod: meProfile.name,
@@ -535,7 +535,7 @@ export default function CreateProjectScreen({
         ? uploadedClips
         : [
             {
-              id: `v-${Date.now()}-1`,
+              id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `v-${Date.now()}-1`,
               label: `${finalTitle.toLowerCase().replace(/\s+/g, "_")}_canvas.mp4 (4s)`,
               kind: "procedural",
               stylePreset: "kinetic-type",
@@ -545,7 +545,7 @@ export default function CreateProjectScreen({
           ];
 
     const newProject: Project = {
-      id: `proj-${Date.now()}`,
+      id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `proj-${Date.now()}`,
       title: finalTitle,
       artist: meProfile.name,
       artistId: meProfile.id,

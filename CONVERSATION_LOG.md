@@ -343,6 +343,22 @@
   1. Login / Auth: probar ingresar desde el modal de Cuenta en `@poyo` o la barra superior.
   2. Sincronización automática de proyectos y subidas en la nube al crear proyectos o subir canciones.
 
+---
+
+### Turno 23 — Configuración de Google OAuth y Sincronización Bidireccional en Supabase
+**Prompt del usuario:**
+- *"vamos con google es mucho mucho mas comodo y facil y son 6 clicks mas"*
+
+**Implementación:**
+1. **Guía paso a paso de Google OAuth:**
+   - Instrucciones directas de 6 pasos para obtener `Client ID` y `Client Secret` en Google Cloud Console vinculando el Callback URL de Supabase (`https://txhrbfgejcwmmurriccw.supabase.co/auth/v1/callback`).
+2. **Generación de UUIDs estándar (`CreateProjectScreen.tsx`):**
+   - Nuevos proyectos y tracks ahora se inicializan con `crypto.randomUUID()` para ser 100% compatibles con las columnas `uuid` de PostgreSQL.
+3. **Persistencia en tiempo real (`App.tsx`):**
+   - Al crear un proyecto en la Biblioteca 3D (`onCreateProject`), se inserta/actualiza en las tablas `projects` y `tracks` de Supabase si el usuario está autenticado.
+   - Al borrar un proyecto o track individual (`handleDeleteProject` / `handleDeleteTrack`), se eliminan las filas correspondientes de la base de datos en la nube.
+
+
 
 
 
