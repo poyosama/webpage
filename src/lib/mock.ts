@@ -137,7 +137,7 @@ export const INITIAL_ME_PROFILE: ArtistProfile = {
   friendsCount: 31,
   followersCount: 1420,
   playsTotal: "28.4K",
-  stickers: ["🍗", "🎤", "💿", "🔥"],
+  stickers: ["RAW", "MIC", "VINYL", "808"],
 };
 
 export const STANDBY_TRACK: Track = {
@@ -200,7 +200,7 @@ export const SCENE_ARTISTS: ArtistProfile[] = [
     friendsCount: 24,
     followersCount: 1540,
     playsTotal: "33.8K",
-    stickers: ["💬", "⏳", "🎙️"],
+    stickers: ["PERDON", "DEMORA", "8TRACKS"],
   },
   {
     id: "ma7imza",
@@ -217,7 +217,7 @@ export const SCENE_ARTISTS: ArtistProfile[] = [
     friendsCount: 45,
     followersCount: 1920,
     playsTotal: "38.7K",
-    stickers: ["🟢", "🚗", "🎤"],
+    stickers: ["MA7IAS", "BG", "LP"],
   },
   {
     id: "v4lentin0",
@@ -234,7 +234,7 @@ export const SCENE_ARTISTS: ArtistProfile[] = [
     friendsCount: 39,
     followersCount: 2110,
     playsTotal: "52.0K",
-    stickers: ["☔", "🔴", "🎙️"],
+    stickers: ["SONIDO", "5056", "LP"],
   },
   {
     id: "icylucki",
@@ -251,7 +251,7 @@ export const SCENE_ARTISTS: ArtistProfile[] = [
     friendsCount: 32,
     followersCount: 1750,
     playsTotal: "34.2K",
-    stickers: ["✝️", "🩸", "🎹"],
+    stickers: ["LOVE2HATE", "PROD", "EP"],
   },
   {
     id: "eyebags",
@@ -268,7 +268,7 @@ export const SCENE_ARTISTS: ArtistProfile[] = [
     friendsCount: 28,
     followersCount: 1690,
     playsTotal: "31.2K",
-    stickers: ["👁️", "🕷️", "🎤"],
+    stickers: ["PLAGA", "MIXTAPE", "RAW"],
   },
   {
     id: "maximo",
@@ -285,7 +285,7 @@ export const SCENE_ARTISTS: ArtistProfile[] = [
     friendsCount: 33,
     followersCount: 1680,
     playsTotal: "29.5K",
-    stickers: ["💜", "🥂", "🎤"],
+    stickers: ["AMORIO", "CLUB", "EP"],
   },
   {
     id: "nvcho",
@@ -295,14 +295,14 @@ export const SCENE_ARTISTS: ArtistProfile[] = [
     category: "rapero",
     zone: "Mendoza",
     crew: "UG BOARD",
-    bio: "Rapero de la escena 0261. Versos directos y colaboraciones en el tablero.",
+    bio: "Rapero de la escena underground. Versos directos y colaboraciones en el tablero.",
     color: "#ea580c",
     tracksCount: 19,
     projectsCount: 2,
     friendsCount: 37,
     followersCount: 1190,
     playsTotal: "21.1K",
-    stickers: ["🔥", "🎙️", "⚡"],
+    stickers: ["BARS", "FLOW", "UG"],
   },
   {
     id: "alvamusicc",
@@ -311,7 +311,7 @@ export const SCENE_ARTISTS: ArtistProfile[] = [
     role: "Rapero · Artista",
     category: "rapero",
     zone: "Mendoza",
-    crew: "0261",
+    crew: "UG BOARD",
     bio: "Rapero y vocalista en rotación del tablero.",
     color: "#0d9488",
     tracksCount: 18,
@@ -319,7 +319,7 @@ export const SCENE_ARTISTS: ArtistProfile[] = [
     friendsCount: 29,
     followersCount: 980,
     playsTotal: "18.6K",
-    stickers: ["🌊", "🎤", "💎"],
+    stickers: ["WAVE", "MIC", "RAW"],
   },
 
   // PRODUCTORES
@@ -338,7 +338,7 @@ export const SCENE_ARTISTS: ArtistProfile[] = [
     friendsCount: 42,
     followersCount: 1650,
     playsTotal: "44.3K",
-    stickers: ["🎛️", "👾", "🔋"],
+    stickers: ["808", "DESIGN", "DRUMS"],
   },
   {
     id: "gonza2k",
@@ -355,7 +355,7 @@ export const SCENE_ARTISTS: ArtistProfile[] = [
     friendsCount: 38,
     followersCount: 1410,
     playsTotal: "35.8K",
-    stickers: ["🎹", "💿", "⚡"],
+    stickers: ["LOOPKIT", "KEYS", "2K"],
   },
   {
     id: "2ounces",
@@ -372,7 +372,7 @@ export const SCENE_ARTISTS: ArtistProfile[] = [
     friendsCount: 35,
     followersCount: 1290,
     playsTotal: "28.9K",
-    stickers: ["🥁", "🧪", "🔥"],
+    stickers: ["DRUMS", "808", "LAB"],
   },
   {
     id: "bemowav",
@@ -389,7 +389,7 @@ export const SCENE_ARTISTS: ArtistProfile[] = [
     friendsCount: 31,
     followersCount: 1180,
     playsTotal: "24.4K",
-    stickers: ["🎚️", "🌊", "📦"],
+    stickers: ["WAV", "ANALOG", "KIT"],
   },
   {
     id: "andoflp",
@@ -406,7 +406,7 @@ export const SCENE_ARTISTS: ArtistProfile[] = [
     friendsCount: 40,
     followersCount: 1360,
     playsTotal: "31.0K",
-    stickers: ["🍊", "🎹", "⚡"],
+    stickers: ["FLP", "KEYS", "SYNTH"],
   },
   {
     id: "erreorocko",
@@ -423,7 +423,7 @@ export const SCENE_ARTISTS: ArtistProfile[] = [
     friendsCount: 29,
     followersCount: 1090,
     playsTotal: "22.7K",
-    stickers: ["🪨", "🥁", "🔊"],
+    stickers: ["RAW", "DRUMS", "BEATS"],
   },
   {
     id: "nutsvk",
@@ -440,7 +440,7 @@ export const SCENE_ARTISTS: ArtistProfile[] = [
     friendsCount: 33,
     followersCount: 1210,
     playsTotal: "26.1K",
-    stickers: ["🔩", "🎛️", "🩸"],
+    stickers: ["VK", "DARK", "808"],
   },
 ];
 

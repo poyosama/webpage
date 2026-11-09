@@ -185,7 +185,7 @@ export default function MacInstallerUpload({
 
         <div className="dmg-inspector">
           <label className="dmg-file-btn" onMouseEnter={() => sfx.hover()}>
-            <span>📎 Elegir WAV / MP3 ({fileName})</span>
+            <span>Elegir WAV / MP3 ({fileName})</span>
             <input
               type="file"
               accept=".wav,.mp3,.m4a,.flac,.aac,.ogg,.aiff,.alac,.opus,audio/wav,audio/x-wav,audio/wave,audio/mpeg,audio/mp3,audio/mp4,audio/x-m4a,audio/aac,audio/flac,application/octet-stream"
@@ -295,7 +295,7 @@ export default function MacInstallerUpload({
                   }}
                 >
                   <div className="socket-avatar">
-                    <span>{meProfile.stickers[0] || "🍇"}</span>
+                    <span>{meProfile.name.charAt(0).toUpperCase()}</span>
                   </div>
                   <b>{meProfile.handle}</b>
                   <small>Soltá acá para hacer Zoom a tu Biblioteca 3D</small>
@@ -446,7 +446,7 @@ export default function MacInstallerUpload({
                       className="apple-btn primary"
                       onClick={commitInstall}
                     >
-                      ✓ Confirmar en posición #{wheelSlot + 1}
+                      Confirmar en posición #{wheelSlot + 1}
                     </button>
                   )}
                 </div>
@@ -468,7 +468,7 @@ export default function MacInstallerUpload({
                       <span>POSICIÓN #{idx + 1}</span>
                       <b>
                         {idx === wheelSlot
-                          ? `★ ${title} (NUEVO)`
+                          ? `[NUEVO] ${title}`
                           : targetProject.tracks[idx]?.title || "Final del proyecto"}
                       </b>
                     </button>

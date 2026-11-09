@@ -58,6 +58,24 @@ const STORAGE_PROJECTS_KEY = "eltablero_clean_projects_v3";
 const STORAGE_PROFILE_KEY = "eltablero_clean_profile_v3";
 const STORAGE_DROPS_KEY = "eltablero_clean_drops_v3";
 
+function TrashIcon({ size = 13 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    </svg>
+  );
+}
+
+function DiscIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="10" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
 export default function App() {
   const [tab, setTab] = useState<ScreenTab>("inicio");
   const [meProfile, setMeProfile] = useState<ArtistProfile>(INITIAL_ME_PROFILE);
@@ -586,7 +604,6 @@ export default function App() {
         >
           <span className="brand-dot" />
           <strong>El tablero</strong>
-          <small>0261</small>
         </button>
 
         <nav className="ios-seg-control" aria-label="Navegación principal">
@@ -634,7 +651,7 @@ export default function App() {
               setAuthModalOpen(true);
             }}
           >
-            {googleConnected ? `🟢 ${meProfile.handle}` : "🔑 Iniciar con Google"}
+            {googleConnected ? meProfile.handle : "Iniciar con Google"}
           </button>
           <button
             type="button"
@@ -725,7 +742,7 @@ export default function App() {
                         LA PLAGA
                         <sup className="sup-tag">mixtape · eyebags</sup>
                       </button>
-                      <span className="cutout-pill">📌 Mendoza</span>
+                      <span className="cutout-pill">Mendoza</span>
                     </div>
 
                     {/* Fila 2: PERDÓN LA DEMORA (Tizianolased) — sin etiqueta chickenNugget */}
@@ -845,7 +862,7 @@ export default function App() {
                           setPlayerExpanded(true);
                         }}
                       >
-                        🎥 Abrir Reproductor 3D →
+                        Abrir Reproductor 3D →
                       </button>
                     </div>
                   </div>
@@ -955,7 +972,7 @@ export default function App() {
                               );
                             }}
                           >
-                            🗑️
+                            <TrashIcon />
                           </button>
                         </div>
 
@@ -1041,7 +1058,7 @@ export default function App() {
                                   setEditingTrack(track);
                                 }}
                               >
-                                ✎ Editar
+                                Editar
                               </button>
                               <button
                                 type="button"
@@ -1052,7 +1069,7 @@ export default function App() {
                                   handleDeleteTrack(proj.id, track.id);
                                 }}
                               >
-                                🗑️
+                                <TrashIcon />
                               </button>
                             </div>
                           </div>
@@ -1119,9 +1136,9 @@ export default function App() {
                       type="button"
                       className="apple-btn ghost danger-trash-btn"
                       onClick={handleWipeAllProjects}
-                      title="Dejar la biblioteca en 0 proyectos (0 cubos) para arrancar en limpio"
+                      title="Dejar la biblioteca en 0 proyectos para arrancar en limpio"
                     >
-                      🧹 Wipear ejemplos (0 cubos)
+                      Wipear ejemplos (0 proyectos)
                     </button>
                   ) : (
                     <button
@@ -1129,7 +1146,7 @@ export default function App() {
                       className="apple-btn ghost"
                       onClick={handleRestoreDemoProjects}
                     >
-                      🔄 Restaurar proyectos de la escena
+                      Restaurar proyectos de la escena
                     </button>
                   )}
 
@@ -1248,7 +1265,7 @@ export default function App() {
                                     handleDeleteProject(p.id);
                                   }}
                                 >
-                                  🗑️
+                                  <TrashIcon />
                                 </button>
                               </div>
                             );
@@ -1363,7 +1380,7 @@ export default function App() {
                             setEditingProject(activeProject);
                           }}
                         >
-                          ✎ Editar Proyecto &amp; Tapa
+                          Editar Proyecto &amp; Tapa
                         </button>
                         <button
                           type="button"
@@ -1388,7 +1405,9 @@ export default function App() {
                           title={`Eliminar proyecto ${activeProject.title}`}
                           onClick={() => handleDeleteProject(activeProject.id)}
                         >
-                          🗑️ Eliminar proyecto
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                            <TrashIcon /> Eliminar proyecto
+                          </span>
                         </button>
                       </div>
                     </div>
@@ -1402,7 +1421,7 @@ export default function App() {
                         </div>
                         <div className="row-actions">
                           <label className="apple-btn ghost" style={{ cursor: "pointer" }}>
-                            <span>{activeProject.videos.length > 0 ? "🔄 Cambiar Canvas" : "+ Subir Video / GIF al Canvas"}</span>
+                            <span>{activeProject.videos.length > 0 ? "Cambiar Canvas" : "+ Subir Video / GIF al Canvas"}</span>
                             <input
                               type="file"
                               accept="video/mp4,video/webm,image/gif,image/*,video/*"
@@ -1420,7 +1439,7 @@ export default function App() {
                               title="Quitar video del Canvas"
                               onClick={() => handleRemoveProjectVideo(activeProject.id, activeProject.videos[0].id)}
                             >
-                              ✕ Quitar
+                              Quitar
                             </button>
                           )}
                         </div>
@@ -1452,7 +1471,7 @@ export default function App() {
                           </div>
                         ) : (
                           <div className="canvas-empty-state">
-                            <span style={{ fontSize: 32 }}>🎞️</span>
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></svg>
                             <div style={{ textAlign: "center" }}>
                               <b style={{ display: "block", marginBottom: 3, fontSize: "0.95rem" }}>Sin video de Canvas subido</b>
                               <small style={{ color: "var(--ink-secondary)", fontSize: "0.78rem" }}>
@@ -1489,7 +1508,7 @@ export default function App() {
                           <span className="mono-tag">
                             {activeProject.tracks.length} CANCIONES EN ESTE PROYECTO
                           </span>
-                          <h3>Tracks del proyecto (✎ editar · 🖼️ imagen · 🗑️ eliminar)</h3>
+                          <h3>Tracks del proyecto (editar · cambiar tapa · eliminar)</h3>
                         </div>
                         {activeProject.tracks.map((t, idx) => {
                           const isCurrent = currentTrack.id === t.id;
@@ -1529,7 +1548,7 @@ export default function App() {
                                   style={{ cursor: "pointer" }}
                                   onClick={(e) => e.stopPropagation()}
                                 >
-                                  <span>🖼️ Tapa</span>
+                                  <span>Tapa</span>
                                   <input
                                     type="file"
                                     accept="image/*,.png,.jpg,.jpeg,.webp,.gif"
@@ -1551,7 +1570,7 @@ export default function App() {
                                     setEditingTrack(t);
                                   }}
                                 >
-                                  ✎ Editar
+                                  Editar
                                 </button>
                                 {activeProject.tracks.length > 1 && (
                                   <button
@@ -1563,7 +1582,7 @@ export default function App() {
                                       handleDeleteTrack(activeProject.id, t.id);
                                     }}
                                   >
-                                    🗑️
+                                    <TrashIcon />
                                   </button>
                                 )}
                               </div>
@@ -1613,7 +1632,7 @@ export default function App() {
                     className="profile-avatar-large"
                     style={{ background: meProfile.color }}
                   >
-                    <span>{meProfile.stickers[0] || "🍗"}</span>
+                    <span>{meProfile.name.charAt(0).toUpperCase()}</span>
                   </div>
                   <div className="profile-main-copy">
                     <div className="profile-badges">
@@ -1621,7 +1640,7 @@ export default function App() {
                       <span className="mono-tag">{meProfile.zone}</span>
                       {googleConnected && (
                         <span className="mono-tag google-verified">
-                          ✓ Google: {meProfile.email}
+                          Google: {meProfile.email}
                         </span>
                       )}
                     </div>
@@ -1646,7 +1665,7 @@ export default function App() {
                         setEditProfileOpen(true);
                       }}
                     >
-                      ✎ Editar Perfil &amp; Identidad
+                      Editar Perfil &amp; Identidad
                     </button>
                     <button
                       type="button"
@@ -1656,7 +1675,7 @@ export default function App() {
                         setAuthModalOpen(true);
                       }}
                     >
-                      🔑 Cuenta / Google Sign-In
+                      Cuenta / Google Sign-In
                     </button>
                   </div>
                 </div>
@@ -1714,7 +1733,7 @@ export default function App() {
                         className="apple-btn ghost danger-trash-btn"
                         onClick={handleWipeAllProjects}
                       >
-                        🧹 Wipear ejemplos (0 cubos)
+                        Wipear ejemplos (0 proyectos)
                       </button>
                     ) : (
                       <button
@@ -1722,7 +1741,7 @@ export default function App() {
                         className="apple-btn ghost"
                         onClick={handleRestoreDemoProjects}
                       >
-                        🔄 Restaurar ejemplos
+                        Restaurar ejemplos
                       </button>
                     )}
                     <button
@@ -2055,7 +2074,7 @@ function EditTrackModal({
             <h3>Editar metadata y versión del track</h3>
           </div>
           <button type="button" className="apple-btn ghost" onClick={onClose}>
-            ✕ Cerrar
+            Cerrar
           </button>
         </div>
 
@@ -2113,8 +2132,8 @@ function EditTrackModal({
                   style={{ width: 56, height: 56, borderRadius: 8, objectFit: "cover", border: "1px solid rgba(255,255,255,0.2)" }}
                 />
               ) : (
-                <div style={{ width: 56, height: 56, borderRadius: 8, background: "#1c1d24", display: "grid", placeItems: "center", fontSize: 24 }}>
-                  💿
+                <div style={{ width: 56, height: 56, borderRadius: 8, background: "#1c1d24", display: "grid", placeItems: "center" }}>
+                  <DiscIcon size={24} />
                 </div>
               )}
               <div style={{ flex: 1 }}>
@@ -2160,7 +2179,9 @@ function EditTrackModal({
             className="apple-btn ghost danger-trash-btn"
             onClick={onDelete}
           >
-            🗑️ Eliminar track
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <TrashIcon /> Eliminar track
+            </span>
           </button>
           <div className="row-actions">
             <button type="button" className="apple-btn ghost" onClick={onClose}>
@@ -2187,7 +2208,7 @@ function EditTrackModal({
                 })
               }
             >
-              ✓ Guardar cambios en el track
+              Guardar cambios en el track
             </button>
           </div>
         </div>
@@ -2238,7 +2259,7 @@ function EditProjectModal({
             <h3>Editar datos y portada del vinilo</h3>
           </div>
           <button type="button" className="apple-btn ghost" onClick={onClose}>
-            ✕ Cerrar
+            Cerrar
           </button>
         </div>
 
@@ -2298,8 +2319,8 @@ function EditProjectModal({
                   style={{ width: 64, height: 64, borderRadius: 8, objectFit: "cover", border: "1px solid rgba(255,255,255,0.2)" }}
                 />
               ) : (
-                <div style={{ width: 64, height: 64, borderRadius: 8, background: "#1c1d24", display: "grid", placeItems: "center", fontSize: 28 }}>
-                  💿
+                <div style={{ width: 64, height: 64, borderRadius: 8, background: "#1c1d24", display: "grid", placeItems: "center" }}>
+                  <DiscIcon size={28} />
                 </div>
               )}
               <div style={{ flex: 1 }}>
@@ -2331,7 +2352,9 @@ function EditProjectModal({
 
         <div className="modal-foot">
           <button type="button" className="apple-btn ghost danger-trash-btn" onClick={onDelete}>
-            🗑️ Eliminar proyecto
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <TrashIcon /> Eliminar proyecto
+            </span>
           </button>
           <div className="row-actions">
             <button type="button" className="apple-btn ghost" onClick={onClose}>
@@ -2354,7 +2377,7 @@ function EditProjectModal({
                 });
               }}
             >
-              ✓ Guardar Cambios
+              Guardar Cambios
             </button>
           </div>
         </div>
@@ -2403,7 +2426,7 @@ function EditProfileModal({
             <h3>Editar identidad del artista</h3>
           </div>
           <button type="button" className="apple-btn ghost" onClick={onClose}>
-            ✕ Cerrar
+            Cerrar
           </button>
         </div>
 
@@ -2476,7 +2499,7 @@ function EditProfileModal({
               })
             }
           >
-            ✓ Guardar Perfil
+            Guardar Perfil
           </button>
         </div>
       </motion.div>
@@ -2523,7 +2546,7 @@ function GoogleAuthModal({
             <h3>Iniciar sesión o registrarse con Google</h3>
           </div>
           <button type="button" className="apple-btn ghost" onClick={onClose}>
-            ✕
+            Cerrar
           </button>
         </div>
 

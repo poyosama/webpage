@@ -815,7 +815,7 @@ export default function PerformativePlayer({
               onOpenEditTrack();
             }}
           >
-            ✎ Editar track ({track.bpm} BPM · {track.key} · v{track.version})
+            Editar track ({track.bpm} BPM · {track.key} · v{track.version})
           </button>
 
           <button

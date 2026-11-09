@@ -291,7 +291,9 @@ export default function UntitledImporter({
     <section className="untitled-importer-card">
       <div className="untitled-importer-head">
         <div className="untitled-brand-badge">
-          <span className="untitled-disc-icon">💿</span>
+          <span className="untitled-disc-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+          </span>
           <div>
             <span className="mono-tag">PUENTE DIRECTO // [untitled] → EL TABLERO</span>
             <h2>Importar proyecto desde [untitled]</h2>
@@ -302,7 +304,7 @@ export default function UntitledImporter({
         </div>
 
         <label className="apple-btn ghost untitled-wav-btn">
-          <span>📂 Subir carpeta WAV / MP3 de [untitled]</span>
+          <span>Subir carpeta WAV / MP3 de [untitled]</span>
           <input
             type="file"
             accept=".wav,.mp3,.m4a,.flac,.aac,.ogg,.aiff,.alac,.opus,audio/wav,audio/x-wav,audio/wave,audio/mpeg,audio/mp3,audio/mp4,audio/x-m4a,audio/aac,audio/flac,application/octet-stream"
@@ -332,11 +334,11 @@ export default function UntitledImporter({
           disabled={loading}
           onClick={() => fetchFromUntitled()}
         >
-          {loading ? "Leyendo [untitled]..." : "⚡ Extraer de [untitled]"}
+          {loading ? "Leyendo [untitled]..." : "Extraer de [untitled]"}
         </button>
       </div>
 
-      {errorMsg && <div className="untitled-error-banner">⚠️ {errorMsg}</div>}
+      {errorMsg && <div className="untitled-error-banner">{errorMsg}</div>}
 
       {previewReady && (
         <div className="untitled-preview-drawer">
@@ -388,7 +390,7 @@ export default function UntitledImporter({
           <div className="untitled-tracks-editor">
             <div className="card-head">
               <span className="mono-tag">
-                {draftTracks.length} TRACKS DETECTADOS EN [untitled] (TOCÁ 🗑️ PARA QUITAR CUALQUIERA)
+                {draftTracks.length} TRACKS DETECTADOS EN [untitled] (TOCÁ EL TACHO PARA QUITAR CUALQUIERA)
               </span>
             </div>
 
@@ -416,7 +418,7 @@ export default function UntitledImporter({
                     onClick={() => handleDeleteDraftTrack(tr.id)}
                     title="Eliminar track"
                   >
-                    🗑️
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                   </button>
                 </div>
               ))}
@@ -457,7 +459,7 @@ export default function UntitledImporter({
               className="apple-btn primary"
               onClick={handleCommitImport}
             >
-              ✓ Importar &ldquo;{projTitle || "Proyecto"}&rdquo; a mi Biblioteca 3D →
+              Importar &ldquo;{projTitle || "Proyecto"}&rdquo; a mi Biblioteca 3D →
             </button>
           </div>
         </div>

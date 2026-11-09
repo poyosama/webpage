@@ -589,7 +589,7 @@ export default function CreateProjectScreen({
               setBehavior("auto");
             }}
           >
-            🔮 Sentiente Auto
+            Sentiente Auto
           </button>
           <button
             type="button"
@@ -599,7 +599,7 @@ export default function CreateProjectScreen({
               setBehavior("logo");
             }}
           >
-            🏷️ Modelo 3D &ldquo;El tablero&rdquo;
+            Modelo 3D &ldquo;El tablero&rdquo;
           </button>
           <button
             type="button"
@@ -609,7 +609,7 @@ export default function CreateProjectScreen({
               setBehavior("clusters");
             }}
           >
-            🐦 Grupos
+            Grupos
           </button>
           <button
             type="button"
@@ -619,7 +619,7 @@ export default function CreateProjectScreen({
               setBehavior("shapes");
             }}
           >
-            🧬 Formas
+            Formas
           </button>
           <button type="button" className="apple-btn ghost" onClick={onCancel}>
             ← Volver
@@ -776,7 +776,7 @@ export default function CreateProjectScreen({
               <span>CANCIONES INICIALES (WAV / MP3 OPCIONAL)</span>
               <label className="apple-btn ghost" style={{ justifyContent: "center" }}>
                 <span>
-                  🎵 {uploadedTracks.length > 0 ? `${uploadedTracks.length} tracks listos` : "+ Subir tracks (WAV / MP3)"}
+                  {uploadedTracks.length > 0 ? `${uploadedTracks.length} tracks listos` : "+ Subir tracks (WAV / MP3)"}
                 </span>
                 <input
                   type="file"
@@ -792,7 +792,7 @@ export default function CreateProjectScreen({
               <span>CANVAS (VIDEOS 3-5S / GIFS OPCIONALES)</span>
               <label className="apple-btn ghost" style={{ justifyContent: "center" }}>
                 <span>
-                  🎞️ {uploadedClips.length > 0 ? `${uploadedClips.length} clips listos` : "+ Subir videos 3-5s"}
+                  {uploadedClips.length > 0 ? `${uploadedClips.length} clips listos` : "+ Subir videos 3-5s"}
                 </span>
                 <input
                   type="file"
@@ -810,7 +810,7 @@ export default function CreateProjectScreen({
               Cancelar
             </button>
             <button type="submit" className="apple-btn primary">
-              ✓ Crear Proyecto en Biblioteca 3D
+              Crear Proyecto en Biblioteca 3D
             </button>
           </div>
         </form>

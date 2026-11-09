@@ -243,6 +243,22 @@
    - Permite editar en tiempo real: Título, Artista / Colaboradores, Formato / Tipo (`Mixtape`, `EP`, `LP`, `Single`, `Beatpost`), Año, Zona, Estado (`Privado`, `Borrador`, `Publicado`), Descripción / Notas de Producción y cargar una nueva imagen de portada (`coverUrl`).
    - Al guardar, la portada se propaga inmediatamente a la funda del vinilo en 3D, al sello central del disco y a las placas del spinner.
 4. **Reproductor de Canvas de Video Visible en Inspector (`App.tsx` + `globals.css`):**
-   - Se creó la sección `.inspector-canvas-section` ubicada en el inspector, que reproduce el primer video clip del proyecto (o GIF) en un elemento `<video>` nativo en loop, con muteo automático y bordes redondeados pulidos.
-   - Se incluyó un indicador en vivo `● LIVE CANVAS` con pulso dinámico y el botón para cambiar o subir nuevos videos verticales (3-5s) o GIFs.
+---
 
+### Turno 15 — Ajuste de Dynamic Island en iPhone, Eliminación de 0261 y Purga Total de Emojis de la UI
+**Prompt del usuario:**
+- *"podes correr la parte de arriba (lo que dice el tablero y eso) mas abajo? cosa de que la parte de arriba arranque justo debajo del dynamic island de mi iphone / y sacale el 0261 no me gusta / tambien sacá los emojis de la ui / como encaramos el almacenamiento de los perfiles y todo eso? quiero que ya sea una webapp funcional, quiero logearme y empezar a crear mi perfil y biblioteca, cual es el siguiente paso en el desarrollo??"*
+
+**Implementación:**
+1. **Ajuste de Dynamic Island & Safe-Area en iPhone (`globals.css`):**
+   - Se ajustó la posición de `.ios-navbar` en pantallas móviles a `top: calc(max(env(safe-area-inset-top, 0px), 54px) + 8px);` para que quede despegada y comience exactamente por debajo de la Dynamic Island y notch del iPhone sin colisionar con la barra de estado de iOS.
+   - Se actualizó el `padding-top` de `.apple-shell` a `calc(max(env(safe-area-inset-top, 0px), 54px) + 106px)` para que el contenido editorial y los collages arranquen con aire limpio debajo del menú sin quedar tapados.
+2. **Eliminación Total de "0261":**
+   - Removido el `<small>0261</small>` del header de marca `El tablero`.
+   - Limpiadas las menciones residuales de `0261` en biografías y crews en `src/lib/mock.ts`.
+3. **Purga Completa de Emojis en Toda la UI:**
+   - Se eliminaron todos los emojis de la interfaz (`App.tsx`, `DiscSpinner3D.tsx`, `ManifoldLibrary3D.tsx`, `MacInstallerUpload.tsx`, `CreateProjectScreen.tsx`, `UntitledImporter.tsx`, `PerformativePlayer.tsx`, `mock.ts`).
+   - Los emojis de tachos (`🗑️`), discos (`💿`), lápices (`✎`), cámaras, escobas, checks y llaves se reemplazaron por componentes SVG minimalistas de precisión vectorial (`TrashIcon`, `DiscIcon`, etc.) o tipografía editorial limpia.
+   - En perfiles y stickers se reemplazaron los emojis por tags e iniciales en mayúsculas (`RAW`, `MIC`, `808`, `VINYL`).
+4. **Propuesta de Arquitectura Backend & Storage para WebApp Funcional:**
+   - Plan detallado para autenticación (Supabase Auth / Google OAuth), base de datos relacional Postgres (perfiles, proyectos, tracks, videos), y Cloudflare R2 / S3 para streaming de audio sin costo de transferencia.
