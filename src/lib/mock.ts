@@ -107,6 +107,7 @@ export type ArtistProfile = {
   handle: string;
   name: string;
   email?: string;
+  avatarUrl?: string;
   role: string;
   category?: "rapero" | "productor" | "ambos";
   zone: string;

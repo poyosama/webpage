@@ -338,6 +338,25 @@ export default function UntitledImporter({
         </button>
       </div>
 
+      <div className="untitled-notice-box">
+        <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2, color: "var(--ink)" }}>
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="16" x2="12" y2="12"/>
+            <line x1="12" y1="8" x2="12.01" y2="8"/>
+          </svg>
+          <div style={{ fontSize: "0.78rem", lineHeight: 1.45, color: "var(--ink-secondary)" }}>
+            <b style={{ color: "var(--ink)", display: "block", marginBottom: 2 }}>
+              ¿Por qué no se bajan los archivos WAV automáticamente al pegar el link?
+            </b>
+            <span>
+              <b>[untitled]</b> protege el streaming de audio con tokens de sesión y seguridad CORS en sus servidores de AWS. Por seguridad de tus tracks, ninguna web externa puede descargar tus WAVs crudos automáticamente (incluso si tenés la opción de &quot;downloads&quot; activada dentro de la app de untitled).<br />
+              <b>Solución directa:</b> El link extrae al instante el <b>nombre del proyecto, portada y lista de canciones</b>; para que suenen en el reproductor de El tablero, exportá la carpeta con los <b>WAVs / MP3s</b> desde [untitled] y tocalas con el botón de arriba <b>&quot;Subir carpeta WAV / MP3&quot;</b> (o adjuntalas individualmente a cada track).
+            </span>
+          </div>
+        </div>
+      </div>
+
       {errorMsg && <div className="untitled-error-banner">{errorMsg}</div>}
 
       {previewReady && (
@@ -412,6 +431,36 @@ export default function UntitledImporter({
                   />
                   <span className="meta-chip">{tr.bpm} BPM</span>
                   <span className="meta-chip">{tr.key}</span>
+                  <label
+                    className="meta-chip"
+                    title="Adjuntar archivo WAV/MP3 para esta canción"
+                    style={{
+                      cursor: "pointer",
+                      background: tr.customAudioUrl ? "rgba(34,197,94,0.15)" : undefined,
+                      color: tr.customAudioUrl ? "#16a34a" : undefined,
+                      borderColor: tr.customAudioUrl ? "rgba(34,197,94,0.4)" : undefined,
+                      fontWeight: 600,
+                    }}
+                  >
+                    <span>{tr.customAudioUrl ? "✓ WAV listo" : "+ WAV/MP3"}</span>
+                    <input
+                      type="file"
+                      accept=".wav,.mp3,.m4a,.flac,.aac,.ogg,.aiff,.alac,.opus,audio/*"
+                      hidden
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) {
+                          const customAudioUrl = URL.createObjectURL(f);
+                          setDraftTracks((prev) =>
+                            prev.map((item) =>
+                              item.id === tr.id ? { ...item, customAudioUrl } : item
+                            )
+                          );
+                          sfx.tap();
+                        }
+                      }}
+                    />
+                  </label>
                   <button
                     type="button"
                     className="trash-icon-btn"

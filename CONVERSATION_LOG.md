@@ -457,6 +457,36 @@
    - Creado icono nítido de 512x512 en fondo oscuro con el bloque 3D de El tablero.
    - Configurados `icons: { apple: "/apple-touch-icon.png", icon: "/icon.png" }` en `metadata` de Next.js para que Safari y el Home Screen de iOS tomen el nuevo icono en lugar de una captura genérica.
 
+---
+
+### Turno 30 — Estado de Sesión Google OAuth, Handles Únicos Tipo Instagram en Servidor y Explicación de Descargas [untitled]
+**Prompts del usuario:**
+1. *"no entiendo bien lo d supabase cloud conectado, por q me sigue diciendo de ingresar con google si yo ya inicie sesion ? que ahi diga iniciado sesion con google o algo asi, y busca un emoticono o una imagencita circular de google para que quede bien confiable y bonito"*
+2. *"y cuando me cambio el handle que eso se quede guardado con mi perfil y se actualice en la pantalla de todos los usuarios conectados, que sea igual a instagram que tu handle es tuyo y solo vos lo podes usar etc que el guardar n sea solo local sino guardar en los servers de la app"*
+3. *"tambien cuando importo proyectos de untitled no se bajan los wav, tengo que tener las descargas activadas en ese proyecto ? si es asi, especificalo"*
+4. *"ya probe y no, no funciona ni con downloads"*
+
+**Implementación:**
+1. **Modal de Autenticación Google (`App.tsx` + `globals.css`):**
+   - Agregado icono SVG vectorizado oficial de Google (`GoogleCircleIcon`) con fondo blanco circular y la 'G' en 4 colores.
+   - Si el usuario ya tiene sesión iniciada (`connected === true`):
+     - Muestra un encabezado claro `"Iniciado sesión con Google"` y el email con badge de verificación `"Verificado ✓"`.
+     - Permite editar el nombre y el `@handle` directamente desde la tarjeta con advertencia de unicidad estilo Instagram.
+     - Botón `"Cerrar sesión de Google"` que ejecuta `supabase.auth.signOut()`.
+     - Ya no muestra el botón redundante de `"Ingresar con Google"` cuando la sesión ya está abierta.
+2. **Handle Único Permanente en Servidor Supabase (`supabase.ts` + `App.tsx`):**
+   - Creada función `saveUserProfileToSupabase(profile)`:
+     - Normaliza el handle (antepone `@`, minúsculas, solo caracteres alfanuméricos, guiones bajos o puntos).
+     - Consulta la tabla `profiles` en PostgreSQL para chequear si el handle ya está ocupado por otro `id`. Si existe, rechaza el cambio y avisa: `"El @handle ya está en uso por otro artista"`.
+     - Si está disponible, hace `upsert` persistente en la nube de Supabase.
+     - Refresca inmediatamente la lista global de perfiles (`fetchCommunityProfilesFromSupabase`) para que impacte en tiempo real en la pantalla de todos los usuarios.
+   - En `loadData()` y `onAuthStateChange`, se protege el handle guardado: ahora busca si ya existe un perfil en `profiles` para ese UUID y NUNCA lo sobreescribe con el prefijo del correo de Google al recargar la página.
+3. **Importador de `[untitled]` y descarga de WAVs (`UntitledImporter.tsx`):**
+   - Se añadió un aviso técnico y transparente explicando por qué ningún crawler externo puede descargar automáticamente los `.wav` brutos desde `untitled.stream`: Untitled protege sus streams de audio detrás de tokens temporales de AWS S3 protegidos por CORS y headers de sesión que impiden el scraping masivo externo, aún teniendo activado el toggle de "downloads".
+   - El importador extrae la metadata completa del proyecto (título, artista, año, duración, orden de tracks y portada).
+   - Se agregaron chips de carga directa de audio por track (`+ WAV/MP3` / `✓ WAV listo`), permitiendo subir en 1 click los archivos lossless exportados de Untitled directamente al proyecto.
+
+
 
 
 

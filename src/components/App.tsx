@@ -28,6 +28,7 @@ import {
   isSupabaseConfigured,
   fetchUserProjectsFromSupabase,
   fetchCommunityProfilesFromSupabase,
+  saveUserProfileToSupabase,
   uploadMediaToSupabase,
 } from "@/lib/supabase";
 
@@ -64,6 +65,18 @@ const PRODUCER_DROP_KINDS: ("Todos" | ProducerDropKind)[] = [
 const STORAGE_PROJECTS_KEY = "eltablero_real_projects_v1";
 const STORAGE_PROFILE_KEY = "eltablero_real_profile_v1";
 const STORAGE_DROPS_KEY = "eltablero_real_drops_v1";
+
+function GoogleCircleIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden="true" style={{ flexShrink: 0 }}>
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+      <path fill="none" d="M0 0h48v48H0z"/>
+    </svg>
+  );
+}
 
 function TrashIcon({ size = 13 }: { size?: number }) {
   return (
@@ -209,42 +222,70 @@ export default function App() {
         console.warn("Error cargando proyectos de Supabase:", err);
       }
 
+      // Helper para sincronizar el perfil con Supabase preservando el handle único
+      const syncUserProfileWithSession = async (u: any) => {
+        if (!u || !mounted) return;
+        setGoogleConnected(true);
+        const meta = u.user_metadata || {};
+        const defaultName = meta.full_name || meta.name || u.email?.split("@")[0] || "Artista";
+        const rawH = (meta.user_name || u.email?.split("@")[0] || "artista").replace(/[^a-zA-Z0-9_]/g, "");
+        const defaultHandle = `@${rawH}`;
+
+        try {
+          // Revisar si ya existe un perfil en la tabla 'profiles' para este user id
+          const { data: existing } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", u.id)
+            .maybeSingle();
+
+          if (existing) {
+            // RESPETAR EL HANDLE Y NOMBRE QUE EL USUARIO YA ELIGIÓ Y GUARDÓ
+            const loadedHandle = existing.handle?.startsWith("@") ? existing.handle : `@${existing.handle}`;
+            setMeProfile((prev) => ({
+              ...prev,
+              id: u.id,
+              email: u.email,
+              name: existing.name || defaultName,
+              handle: loadedHandle,
+              role: existing.role || prev.role,
+              zone: existing.zone || prev.zone,
+              crew: existing.crew || prev.crew,
+              bio: existing.bio || prev.bio,
+              color: existing.color || prev.color,
+              avatarUrl: existing.avatar_url || meta.avatar_url || prev.avatarUrl,
+            }));
+          } else {
+            // Primera vez: crear perfil inicial sin pisar handles tomados
+            await saveUserProfileToSupabase({
+              id: u.id,
+              handle: defaultHandle,
+              name: defaultName,
+              avatarUrl: meta.avatar_url,
+            });
+            setMeProfile((prev) => ({
+              ...prev,
+              id: u.id,
+              email: u.email,
+              name: defaultName,
+              handle: defaultHandle,
+            }));
+          }
+
+          const updatedProfiles = await fetchCommunityProfilesFromSupabase();
+          if (mounted) setCommunityArtists(updatedProfiles);
+        } catch (e) {
+          console.warn("Fallo sincronizar perfil con Supabase:", e);
+        }
+      };
+
       // 3. Revisar sesión de auth
       try {
         const {
           data: { session },
         } = await supabase.auth.getSession();
         if (session?.user && mounted) {
-          setGoogleConnected(true);
-          const u = session.user;
-          const meta = u.user_metadata || {};
-          const displayName =
-            meta.full_name || meta.name || u.email?.split("@")[0] || "Artista";
-          const cleanHandle = `@${(meta.user_name || u.email?.split("@")[0] || "artista").replace(/[^a-zA-Z0-9_]/g, "")}`;
-
-          setMeProfile((prev) => ({
-            ...prev,
-            id: u.id,
-            email: u.email,
-            name: displayName,
-            handle: cleanHandle,
-          }));
-
-          try {
-            await supabase.from("profiles").upsert(
-              {
-                id: u.id,
-                handle: cleanHandle,
-                name: displayName,
-                role: "Rapero · Artista",
-                zone: "Mendoza",
-                crew: "UG BOARD",
-              },
-              { onConflict: "id" }
-            );
-            const updatedProfiles = await fetchCommunityProfilesFromSupabase();
-            if (mounted) setCommunityArtists(updatedProfiles);
-          } catch {}
+          await syncUserProfileWithSession(session.user);
         } else if (mounted) {
           setGoogleConnected(false);
         }
@@ -262,30 +303,32 @@ export default function App() {
         setGoogleConnected(true);
         const u = session.user;
         const meta = u.user_metadata || {};
-        const displayName =
-          meta.full_name || meta.name || u.email?.split("@")[0] || "Artista";
-        const cleanHandle = `@${(meta.user_name || u.email?.split("@")[0] || "artista").replace(/[^a-zA-Z0-9_]/g, "")}`;
-
-        setMeProfile((prev) => ({
-          ...prev,
-          id: u.id,
-          email: u.email,
-          name: displayName,
-          handle: cleanHandle,
-        }));
+        const defaultName = meta.full_name || meta.name || u.email?.split("@")[0] || "Artista";
 
         try {
-          await supabase.from("profiles").upsert(
-            {
+          const { data: existing } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", u.id)
+            .maybeSingle();
+
+          if (existing) {
+            const loadedHandle = existing.handle?.startsWith("@") ? existing.handle : `@${existing.handle}`;
+            setMeProfile((prev) => ({
+              ...prev,
               id: u.id,
-              handle: cleanHandle,
-              name: displayName,
-              role: "Rapero · Artista",
-              zone: "Mendoza",
-              crew: "UG BOARD",
-            },
-            { onConflict: "id" }
-          );
+              email: u.email,
+              name: existing.name || defaultName,
+              handle: loadedHandle,
+              role: existing.role || prev.role,
+              zone: existing.zone || prev.zone,
+              crew: existing.crew || prev.crew,
+              bio: existing.bio || prev.bio,
+              color: existing.color || prev.color,
+              avatarUrl: existing.avatar_url || meta.avatar_url || prev.avatarUrl,
+            }));
+          }
+
           const updatedProfiles = await fetchCommunityProfilesFromSupabase();
           if (mounted) setCommunityArtists(updatedProfiles);
         } catch {}
@@ -706,6 +749,59 @@ export default function App() {
     }
     setEditingProject(null);
     sfx.drop();
+  };
+
+  const handleSaveProfileAndHandle = async (
+    updated: Partial<ArtistProfile> & { name: string; handle: string; email?: string }
+  ): Promise<{ success: boolean; error?: string }> => {
+    let userId = meProfile.id;
+    if (!userId) {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session?.user) userId = session.user.id;
+    }
+
+    if (!userId) {
+      const rawH = updated.handle
+        .replace(/^@+/, "")
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9._]/g, "");
+      const cleanHandle = `@${rawH || "artista"}`;
+      setMeProfile((prev) => ({
+        ...prev,
+        ...updated,
+        handle: cleanHandle,
+      }));
+      return { success: true };
+    }
+
+    const res = await saveUserProfileToSupabase({
+      id: userId,
+      handle: updated.handle,
+      name: updated.name,
+      role: updated.role || meProfile.role,
+      zone: updated.zone || meProfile.zone,
+      crew: updated.crew || meProfile.crew,
+      bio: updated.bio || meProfile.bio,
+      color: updated.color || meProfile.color,
+      stickers: updated.stickers || meProfile.stickers,
+      avatarUrl: updated.avatarUrl || meProfile.avatarUrl,
+    });
+
+    if (res.success && res.cleanHandle) {
+      setMeProfile((prev) => ({
+        ...prev,
+        ...updated,
+        handle: res.cleanHandle!,
+      }));
+      const fresh = await fetchCommunityProfilesFromSupabase();
+      setCommunityArtists(fresh);
+      return { success: true };
+    }
+
+    return { success: false, error: res.error || "No se pudo guardar el perfil." };
   };
 
   const navigate = (nextTab: ScreenTab) => {
@@ -2190,10 +2286,13 @@ export default function App() {
           <EditProfileModal
             profile={meProfile}
             onClose={() => setEditProfileOpen(false)}
-            onSave={(updated) => {
-              setMeProfile(updated);
-              setEditProfileOpen(false);
-              sfx.drop();
+            onSave={async (updated) => {
+              const res = await handleSaveProfileAndHandle(updated);
+              if (res.success) {
+                setEditProfileOpen(false);
+                sfx.drop();
+              }
+              return res;
             }}
           />
         )}
@@ -2206,20 +2305,14 @@ export default function App() {
             profile={meProfile}
             connected={googleConnected}
             onClose={() => setAuthModalOpen(false)}
-            onSignInGoogle={(email, name, handle) => {
-              setGoogleConnected(true);
-              setMeProfile((prev) => ({
-                ...prev,
-                email,
-                name: name || prev.name,
-                handle: handle.startsWith("@") ? handle : `@${handle}`,
-              }));
-              setAuthModalOpen(false);
-              sfx.drop();
-            }}
-            onSignOut={() => {
+            onSaveProfile={handleSaveProfileAndHandle}
+            onSignOut={async () => {
+              try {
+                await supabase.auth.signOut();
+              } catch {}
               setGoogleConnected(false);
               setAuthModalOpen(false);
+              sfx.drop();
             }}
           />
         )}
@@ -2593,7 +2686,7 @@ function EditProfileModal({
 }: {
   profile: ArtistProfile;
   onClose: () => void;
-  onSave: (p: ArtistProfile) => void;
+  onSave: (p: ArtistProfile) => Promise<{ success: boolean; error?: string }>;
 }) {
   const [name, setName] = useState(profile.name);
   const [handle, setHandle] = useState(profile.handle);
@@ -2603,6 +2696,31 @@ function EditProfileModal({
   const [bio, setBio] = useState(profile.bio);
   const [color, setColor] = useState(profile.color);
   const [stickersText, setStickersText] = useState(profile.stickers.join(" "));
+  const [saving, setSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const handleSave = async () => {
+    setSaving(true);
+    setErrorMsg("");
+    const res = await onSave({
+      ...profile,
+      name,
+      handle: handle.startsWith("@") ? handle : `@${handle}`,
+      role,
+      zone,
+      crew,
+      bio,
+      color,
+      stickers: stickersText
+        .split(/\s+/)
+        .map((s) => s.trim())
+        .filter(Boolean),
+    });
+    setSaving(false);
+    if (!res.success && res.error) {
+      setErrorMsg(res.error);
+    }
+  };
 
   return (
     <motion.div
@@ -2629,14 +2747,23 @@ function EditProfileModal({
           </button>
         </div>
 
+        {errorMsg && (
+          <div style={{ padding: "8px 12px", background: "rgba(225,29,72,0.14)", color: "#f43f5e", border: "1px solid rgba(225,29,72,0.3)", borderRadius: 8, fontSize: "0.82rem", marginBottom: 14 }}>
+            {errorMsg}
+          </div>
+        )}
+
         <div className="modal-form-grid">
           <label className="modal-field">
             <span>NOMBRE ARTÍSTICO</span>
             <input value={name} onChange={(e) => setName(e.target.value)} />
           </label>
           <label className="modal-field">
-            <span>USUARIO (@HANDLE)</span>
-            <input value={handle} onChange={(e) => setHandle(e.target.value)} />
+            <span>USUARIO (@HANDLE ÚNICO)</span>
+            <input value={handle} onChange={(e) => setHandle(e.target.value)} placeholder="@tu_handle" />
+            <small style={{ color: "var(--ink-secondary)", fontSize: "0.68rem", marginTop: 3 }}>
+              Único estilo Instagram: solo vos podés usarlo en El tablero.
+            </small>
           </label>
           <label className="modal-field">
             <span>ROL EN LA ESCENA</span>
@@ -2675,30 +2802,16 @@ function EditProfileModal({
         </div>
 
         <div className="modal-foot">
-          <button type="button" className="apple-btn ghost" onClick={onClose}>
+          <button type="button" className="apple-btn ghost" onClick={onClose} disabled={saving}>
             Cancelar
           </button>
           <button
             type="button"
             className="apple-btn primary"
-            onClick={() =>
-              onSave({
-                ...profile,
-                name,
-                handle: handle.startsWith("@") ? handle : `@${handle}`,
-                role,
-                zone,
-                crew,
-                bio,
-                color,
-                stickers: stickersText
-                  .split(/\s+/)
-                  .map((s) => s.trim())
-                  .filter(Boolean),
-              })
-            }
+            disabled={saving}
+            onClick={handleSave}
           >
-            Guardar Perfil
+            {saving ? "Guardando en servidor..." : "Guardar Perfil"}
           </button>
         </div>
       </motion.div>
@@ -2711,24 +2824,26 @@ function GoogleAuthModal({
   profile,
   connected,
   onClose,
-  onSignInGoogle,
+  onSaveProfile,
   onSignOut,
 }: {
   profile: ArtistProfile;
   connected: boolean;
   onClose: () => void;
-  onSignInGoogle: (email: string, name: string, handle: string) => void;
+  onSaveProfile: (updated: { name: string; handle: string; email?: string }) => Promise<{ success: boolean; error?: string }>;
   onSignOut: () => void;
 }) {
-  const [email, setEmail] = useState(profile.email || "juani@gmail.com");
+  const [email, setEmail] = useState(profile.email || "");
   const [name, setName] = useState(profile.name);
   const [handle, setHandle] = useState(profile.handle);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
+  const [msgType, setMsgType] = useState<"info" | "error" | "success">("info");
 
   const handleOAuthGoogle = async () => {
     setLoading(true);
     setMsg("Conectando con Google...");
+    setMsgType("info");
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
@@ -2737,13 +2852,29 @@ function GoogleAuthModal({
         },
       });
       if (error) {
-        setMsg("Ingresando con perfil...");
-        onSignInGoogle(email, name, handle);
+        setMsg(`Error de Google: ${error.message}`);
+        setMsgType("error");
       }
-    } catch {
-      onSignInGoogle(email, name, handle);
+    } catch (err: any) {
+      setMsg(`Fallo de conexión: ${err?.message || err}`);
+      setMsgType("error");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveAccount = async () => {
+    setLoading(true);
+    setMsg("");
+    const res = await onSaveProfile({ name, handle, email });
+    setLoading(false);
+    if (res.success) {
+      setMsg("¡Perfil y @handle guardados en El tablero con éxito!");
+      setMsgType("success");
+      sfx.drop();
+    } else {
+      setMsg(res.error || "No se pudo guardar el handle.");
+      setMsgType("error");
     }
   };
 
@@ -2764,72 +2895,112 @@ function GoogleAuthModal({
       >
         <div className="modal-head">
           <div>
-            <span className="mono-tag">AUTENTICACIÓN // EL TABLERO ID</span>
-            <h3>Iniciar sesión o registrarse con Google</h3>
+            <span className="mono-tag">
+              {connected ? "CUENTA DE GOOGLE // SESIÓN ACTIVA" : "AUTENTICACIÓN // EL TABLERO ID"}
+            </span>
+            <h3 style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <GoogleCircleIcon size={22} />
+              {connected ? "Iniciado sesión con Google" : "Iniciar sesión con Google"}
+            </h3>
           </div>
           <button type="button" className="apple-btn ghost" onClick={onClose}>
             Cerrar
           </button>
         </div>
 
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: 6, fontSize: "0.72rem", color: "#4ade80", marginBottom: 12 }}>
-          <span className="live-pulse-dot" />
-          <span>SUPABASE CLOUD CONECTADO // txhrbfgejcwmmurriccw</span>
-        </div>
+        {connected ? (
+          <div className="google-session-card">
+            <div className="google-session-head">
+              <GoogleCircleIcon size={30} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                  <b style={{ fontSize: "0.92rem", wordBreak: "break-all" }}>{profile.email || email}</b>
+                  <span className="google-verified-tag">Verificado ✓</span>
+                </div>
+                <small style={{ color: "var(--ink-secondary)", fontSize: "0.75rem", display: "block", marginTop: 2 }}>
+                  Sincronizado en tiempo real con Supabase Cloud
+                </small>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: 6, fontSize: "0.72rem", color: "#16a34a", marginBottom: 12 }}>
+            <span className="live-pulse-dot" />
+            <span>SUPABASE CLOUD CONECTADO // txhrbfgejcwmmurriccw</span>
+          </div>
+        )}
 
         <p className="modal-subcopy">
-          Con tu cuenta de Google o tu email sincronizás tus proyectos en la base de datos PostgreSQL de Supabase y subís audios y tapas a la nube.
+          {connected
+            ? "Tu cuenta de Google está vinculada. Tu @handle es único e irrepetible estilo Instagram: solo vos podés usarlo en El tablero."
+            : "Con tu cuenta de Google sincronizás tus proyectos en los servidores de El tablero y asegurás tu @handle único para la escena."}
         </p>
 
         {msg && (
-          <div style={{ padding: "8px 12px", background: "rgba(255,255,255,0.06)", borderRadius: 8, fontSize: "0.8rem", marginBottom: 12, border: "1px solid rgba(255,255,255,0.15)" }}>
+          <div
+            style={{
+              padding: "9px 13px",
+              borderRadius: 8,
+              fontSize: "0.82rem",
+              marginBottom: 14,
+              border: "1px solid",
+              background: msgType === "error" ? "rgba(225,29,72,0.1)" : msgType === "success" ? "rgba(34,197,94,0.1)" : "rgba(255,255,255,0.06)",
+              color: msgType === "error" ? "#e11d48" : msgType === "success" ? "#16a34a" : "var(--ink)",
+              borderColor: msgType === "error" ? "rgba(225,29,72,0.3)" : msgType === "success" ? "rgba(34,197,94,0.3)" : "var(--line)",
+            }}
+          >
             {msg}
           </div>
         )}
 
         <div className="modal-form-grid single-col">
           <label className="modal-field">
-            <span>CORREO ELECTRÓNICO (GOOGLE O PRIVADO)</span>
-            <input value={email} onChange={(e) => setEmail(e.target.value)} />
-          </label>
-          <label className="modal-field">
             <span>NOMBRE DE ARTISTA</span>
             <input value={name} onChange={(e) => setName(e.target.value)} />
           </label>
           <label className="modal-field">
-            <span>@HANDLE EN EL TABLERO</span>
-            <input value={handle} onChange={(e) => setHandle(e.target.value)} />
+            <span>@HANDLE ÚNICO EN EL TABLERO (INSTAGRAM STYLE)</span>
+            <input
+              value={handle}
+              onChange={(e) => setHandle(e.target.value)}
+              placeholder="@tu_handle"
+            />
+            <small style={{ color: "var(--ink-secondary)", fontSize: "0.68rem", marginTop: 3 }}>
+              Identificador público reservado en PostgreSQL. Nadie más puede registrar tu mismo handle.
+            </small>
           </label>
         </div>
 
         <div className="google-auth-actions" style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
-          <button
-            type="button"
-            className="google-oauth-btn"
-            disabled={loading}
-            onClick={handleOAuthGoogle}
-          >
-            <span className="g-badge">G</span>
-            <span>{loading ? "Conectando..." : `Ingresar con Google (${email})`}</span>
-          </button>
-
-          <button
-            type="button"
-            className="apple-btn ghost"
-            onClick={() => onSignInGoogle(email, name, handle)}
-            style={{ justifyContent: "center" }}
-          >
-            Guardar y usar perfil local
-          </button>
-
-          {connected && (
+          {connected ? (
+            <>
+              <button
+                type="button"
+                className="apple-btn primary"
+                disabled={loading}
+                onClick={handleSaveAccount}
+                style={{ justifyContent: "center" }}
+              >
+                {loading ? "Guardando en servidor..." : "Guardar @handle y nombre"}
+              </button>
+              <button
+                type="button"
+                className="apple-btn ghost danger-trash-btn"
+                onClick={onSignOut}
+                style={{ justifyContent: "center", marginTop: 4 }}
+              >
+                Cerrar sesión de Google
+              </button>
+            </>
+          ) : (
             <button
               type="button"
-              className="apple-btn ghost danger-trash-btn"
-              onClick={onSignOut}
-              style={{ justifyContent: "center", marginTop: 4 }}
+              className="google-oauth-btn"
+              disabled={loading}
+              onClick={handleOAuthGoogle}
             >
-              Cerrar sesión actual
+              <GoogleCircleIcon size={20} />
+              <span>{loading ? "Conectando..." : "Ingresar con Google"}</span>
             </button>
           )}
         </div>

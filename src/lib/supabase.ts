@@ -195,3 +195,53 @@ export async function fetchCommunityProfilesFromSupabase(): Promise<ArtistProfil
   }
 }
 
+// ==================== DB: GUARDAR / ACTUALIZAR PERFIL Y VALIDAR HANDLE ÚNICO ====================
+export async function saveUserProfileToSupabase(profile: Partial<ArtistProfile> & { id: string; handle: string; name: string }): Promise<{ success: boolean; error?: string; cleanHandle?: string }> {
+  try {
+    const rawHandle = profile.handle.replace(/^@+/, "").toLowerCase().trim().replace(/[^a-z0-9._]/g, "");
+    if (!rawHandle) {
+      return { success: false, error: "El handle no puede estar vacío." };
+    }
+    const cleanHandle = `@${rawHandle}`;
+
+    // Validar si el handle ya pertenece a otro usuario registrado
+    const { data: conflict } = await supabase
+      .from("profiles")
+      .select("id, handle")
+      .eq("handle", cleanHandle)
+      .neq("id", profile.id)
+      .maybeSingle();
+
+    if (conflict) {
+      return {
+        success: false,
+        error: `El usuario ${cleanHandle} ya está en uso por otro artista en El tablero. Por favor elegí otro.`,
+      };
+    }
+
+    const { error: upsertErr } = await supabase
+      .from("profiles")
+      .upsert({
+        id: profile.id,
+        handle: cleanHandle,
+        name: profile.name.trim() || cleanHandle,
+        role: profile.role || "Rapero · Artista",
+        zone: profile.zone || "Mendoza",
+        crew: profile.crew || "UG BOARD",
+        bio: profile.bio || "",
+        color: profile.color || "#111111",
+        stickers: profile.stickers || ["RAW", "MIC", "808"],
+        avatar_url: profile.avatarUrl || null,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "id" });
+
+    if (upsertErr) {
+      return { success: false, error: `Error en base de datos: ${upsertErr.message}` };
+    }
+
+    return { success: true, cleanHandle };
+  } catch (err: any) {
+    return { success: false, error: err?.message || "Error al conectar con los servidores de El tablero." };
+  }
+}
+
