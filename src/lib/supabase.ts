@@ -159,3 +159,39 @@ export async function fetchUserProjectsFromSupabase(userId?: string): Promise<Pr
     return null;
   }
 }
+
+// ==================== DB: FETCH DE PERFILES DE LA COMUNIDAD ====================
+export async function fetchCommunityProfilesFromSupabase(): Promise<ArtistProfile[]> {
+  try {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, name, handle, role, zone, crew, bio, color, stickers, avatar_url")
+      .order("created_at", { ascending: false });
+
+    if (error || !data) {
+      return [];
+    }
+
+    return data.map((row: any): ArtistProfile => ({
+      id: row.id,
+      name: row.name,
+      handle: row.handle?.startsWith("@") ? row.handle : `@${row.handle || "artista"}`,
+      role: row.role || "Rapero · Artista",
+      category: "rapero",
+      zone: row.zone || "Mendoza",
+      crew: row.crew || "UG BOARD",
+      bio: row.bio || "",
+      color: row.color || "#111111",
+      stickers: row.stickers || ["RAW", "MIC", "808"],
+      tracksCount: 0,
+      projectsCount: 0,
+      friendsCount: 0,
+      followersCount: 0,
+      playsTotal: "0",
+    }));
+  } catch (err) {
+    console.warn("Fallo fetchCommunityProfilesFromSupabase:", err);
+    return [];
+  }
+}
+

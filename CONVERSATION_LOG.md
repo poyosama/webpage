@@ -397,6 +397,25 @@
 - Hostinger ya crea por defecto un registro para `www` (sea CNAME o A) en la tabla inferior de registros existentes.
 - Solución explicada: buscar `www` en el buscador inferior de la tabla, eliminar o editar el registro preexistente para apuntarlo a `cname.vercel-dns.com`, o borrar la fila CNAME del formulario superior y agregar solo el registro A (`@ -> 76.76.21.21`), editando luego el `www` abajo.
 
+---
+
+### Turno 28 — Cero Mockups: Base de Datos 100% Funcional y Atada a Usuarios Reales
+**Prompt del usuario:**
+- *"listo pero por que siguen apareciendo todos los artistas ?? no tiene que salir nada aca si no hay cuentas primero, quiero que le saques todos los mockups y le dejes todo funcional que esté atado a usuarios, o todavia decis que no ?"*
+
+**Implementación:**
+1. **Eliminación de Artistas Falsos / Mockups:**
+   - La sección `Artistas en El Tablero` ahora se alimenta exclusivamente de la tabla `profiles` de Supabase (`fetchCommunityProfilesFromSupabase`).
+   - Si no hay usuarios registrados, muestra un empty state editorial: `0 ARTISTAS REGISTRADOS` con botón para iniciar sesión con Google.
+2. **Proyectos Fijados atados a la base de datos:**
+   - Se eliminó el fallback a proyectos demo. La sección `Proyectos fijados` ahora renderiza únicamente los proyectos reales traídos de Supabase.
+   - Si la base de datos tiene 0 proyectos, muestra un empty state limpio con botón `+ Crear Primer Proyecto`.
+3. **Novedades de Productores:**
+   - Se limpió el array de drops mockeados por defecto; si no hay publicaciones en la base de datos, muestra `0 NOVEDADES DE PRODUCTORES`.
+4. **Ciclo de Vida y Login:**
+   - Al logearse un usuario con Google, se crea su perfil real en `profiles`, se refresca la lista de la comunidad inmediatamente y su tarjeta aparece en `Artistas en El Tablero`.
+
+
 
 
 

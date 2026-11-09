@@ -27,6 +27,7 @@ import {
   supabase,
   isSupabaseConfigured,
   fetchUserProjectsFromSupabase,
+  fetchCommunityProfilesFromSupabase,
   uploadMediaToSupabase,
 } from "@/lib/supabase";
 
@@ -60,9 +61,9 @@ const PRODUCER_DROP_KINDS: ("Todos" | ProducerDropKind)[] = [
   "Catálogo de Beats",
 ];
 
-const STORAGE_PROJECTS_KEY = "eltablero_clean_projects_v3";
-const STORAGE_PROFILE_KEY = "eltablero_clean_profile_v3";
-const STORAGE_DROPS_KEY = "eltablero_clean_drops_v3";
+const STORAGE_PROJECTS_KEY = "eltablero_real_projects_v1";
+const STORAGE_PROFILE_KEY = "eltablero_real_profile_v1";
+const STORAGE_DROPS_KEY = "eltablero_real_drops_v1";
 
 function TrashIcon({ size = 13 }: { size?: number }) {
   return (
@@ -85,21 +86,16 @@ function DiscIcon({ size = 18 }: { size?: number }) {
 export default function App() {
   const [tab, setTab] = useState<ScreenTab>("inicio");
   const [meProfile, setMeProfile] = useState<ArtistProfile>(INITIAL_ME_PROFILE);
-  const [projects, setProjects] = useState<Project[]>(INITIAL_PROJECTS);
-  const [selectedProjectId, setSelectedProjectId] = useState<string>(
-    INITIAL_PROJECTS[0]?.id || ""
-  );
-  const [producerDrops, setProducerDrops] = useState<ProducerDropItem[]>(INITIAL_PRODUCER_DROPS);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [communityArtists, setCommunityArtists] = useState<ArtistProfile[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
+  const [producerDrops, setProducerDrops] = useState<ProducerDropItem[]>([]);
   const [producerFilter, setProducerFilter] = useState<"Todos" | ProducerDropKind>("Todos");
   const [hydrated, setHydrated] = useState<boolean>(false);
 
   // Estado del reproductor persistente + pantalla completa (con funciones completas de Spotify)
-  const [currentTrack, setCurrentTrack] = useState<Track>(
-    INITIAL_PROJECTS[0]?.tracks[0] || STANDBY_TRACK
-  );
-  const [currentProject, setCurrentProject] = useState<Project>(
-    INITIAL_PROJECTS[0] || STANDBY_PROJECT
-  );
+  const [currentTrack, setCurrentTrack] = useState<Track>(STANDBY_TRACK);
+  const [currentProject, setCurrentProject] = useState<Project>(STANDBY_PROJECT);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [playerExpanded, setPlayerExpanded] = useState<boolean>(false);
   const [muted, setMuted] = useState<boolean>(false);
@@ -124,7 +120,7 @@ export default function App() {
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [editProfileOpen, setEditProfileOpen] = useState<boolean>(false);
   const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
-  const [googleConnected, setGoogleConnected] = useState<boolean>(true);
+  const [googleConnected, setGoogleConnected] = useState<boolean>(false);
 
   // Hidratar proyectos y perfil guardados por el usuario en su dispositivo (Web / Capacitor iOS)
   useEffect(() => {
@@ -189,7 +185,31 @@ export default function App() {
   useEffect(() => {
     let mounted = true;
 
-    async function initSupabaseSession() {
+    async function loadData() {
+      // 1. Cargar perfiles reales de Supabase
+      try {
+        const realProfiles = await fetchCommunityProfilesFromSupabase();
+        if (mounted) setCommunityArtists(realProfiles);
+      } catch (err) {
+        console.warn("Error cargando perfiles de comunidad:", err);
+      }
+
+      // 2. Cargar todos los proyectos reales de Supabase
+      try {
+        const allProjs = await fetchUserProjectsFromSupabase();
+        if (allProjs && mounted) {
+          setProjects(allProjs);
+          if (allProjs.length > 0) {
+            setSelectedProjectId(allProjs[0].id);
+            setCurrentProject(allProjs[0]);
+            if (allProjs[0].tracks[0]) setCurrentTrack(allProjs[0].tracks[0]);
+          }
+        }
+      } catch (err) {
+        console.warn("Error cargando proyectos de Supabase:", err);
+      }
+
+      // 3. Revisar sesión de auth
       try {
         const {
           data: { session },
@@ -200,7 +220,7 @@ export default function App() {
           const meta = u.user_metadata || {};
           const displayName =
             meta.full_name || meta.name || u.email?.split("@")[0] || "Artista";
-          const cleanHandle = `@${(meta.user_name || u.email?.split("@")[0] || "poyo").replace(/[^a-zA-Z0-9_]/g, "")}`;
+          const cleanHandle = `@${(meta.user_name || u.email?.split("@")[0] || "artista").replace(/[^a-zA-Z0-9_]/g, "")}`;
 
           setMeProfile((prev) => ({
             ...prev,
@@ -210,20 +230,30 @@ export default function App() {
             handle: cleanHandle,
           }));
 
-          const cloudProjs = await fetchUserProjectsFromSupabase(u.id);
-          if (cloudProjs && cloudProjs.length > 0 && mounted) {
-            setProjects(cloudProjs);
-            setSelectedProjectId(cloudProjs[0].id);
-            setCurrentProject(cloudProjs[0]);
-            if (cloudProjs[0].tracks[0]) setCurrentTrack(cloudProjs[0].tracks[0]);
-          }
+          try {
+            await supabase.from("profiles").upsert(
+              {
+                id: u.id,
+                handle: cleanHandle,
+                name: displayName,
+                role: "Rapero · Artista",
+                zone: "Mendoza",
+                crew: "UG BOARD",
+              },
+              { onConflict: "id" }
+            );
+            const updatedProfiles = await fetchCommunityProfilesFromSupabase();
+            if (mounted) setCommunityArtists(updatedProfiles);
+          } catch {}
+        } else if (mounted) {
+          setGoogleConnected(false);
         }
       } catch (err) {
         console.warn("Supabase session check:", err);
       }
     }
 
-    initSupabaseSession();
+    loadData();
 
     const {
       data: { subscription },
@@ -234,7 +264,7 @@ export default function App() {
         const meta = u.user_metadata || {};
         const displayName =
           meta.full_name || meta.name || u.email?.split("@")[0] || "Artista";
-        const cleanHandle = `@${(meta.user_name || u.email?.split("@")[0] || "poyo").replace(/[^a-zA-Z0-9_]/g, "")}`;
+        const cleanHandle = `@${(meta.user_name || u.email?.split("@")[0] || "artista").replace(/[^a-zA-Z0-9_]/g, "")}`;
 
         setMeProfile((prev) => ({
           ...prev,
@@ -256,16 +286,18 @@ export default function App() {
             },
             { onConflict: "id" }
           );
-        } catch {
-          // ignore si la tabla no está creada
-        }
+          const updatedProfiles = await fetchCommunityProfilesFromSupabase();
+          if (mounted) setCommunityArtists(updatedProfiles);
+        } catch {}
 
-        const cloudProjs = await fetchUserProjectsFromSupabase(u.id);
-        if (cloudProjs && cloudProjs.length > 0 && mounted) {
-          setProjects(cloudProjs);
-          setSelectedProjectId(cloudProjs[0].id);
-          setCurrentProject(cloudProjs[0]);
-          if (cloudProjs[0].tracks[0]) setCurrentTrack(cloudProjs[0].tracks[0]);
+        const allProjs = await fetchUserProjectsFromSupabase();
+        if (allProjs && mounted) {
+          setProjects(allProjs);
+          if (allProjs.length > 0) {
+            setSelectedProjectId(allProjs[0].id);
+            setCurrentProject(allProjs[0]);
+            if (allProjs[0].tracks[0]) setCurrentTrack(allProjs[0].tracks[0]);
+          }
         }
       } else if (event === "SIGNED_OUT" && mounted) {
         setGoogleConnected(false);
@@ -1044,72 +1076,82 @@ export default function App() {
                 </div>
 
                 <div className="producer-drops-grid">
-                  {filteredProducerDrops.map((drop) => {
-                    const isPlayingDrop =
-                      currentTrack.id === drop.previewTrack.id && isPlaying;
-                    const linkedProj =
-                      projects.find((p) => p.id === drop.projectId) ||
-                      DEMO_PROJECTS.find((p) => p.id === drop.projectId) ||
-                      STANDBY_PROJECT;
-                    return (
-                      <div
-                        key={drop.id}
-                        className={`producer-drop-card ${isPlayingDrop ? "is-playing" : ""}`}
-                        onClick={() => playTrack(drop.previewTrack, linkedProj, false)}
-                      >
-                        <div className="producer-drop-top">
-                          <span
-                            className="producer-kind-badge"
-                            style={{ background: drop.accent }}
-                          >
-                            {drop.kind}
-                          </span>
-                          <span className="mono-tag">{drop.itemsCountLabel}</span>
-                          <button
-                            type="button"
-                            className="trash-icon-btn"
-                            title="Eliminar publicación"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              sfx.tap();
-                              setProducerDrops((prev) =>
-                                prev.filter((item) => item.id !== drop.id)
-                              );
-                            }}
-                          >
-                            <TrashIcon />
-                          </button>
-                        </div>
-
-                        <div className="producer-drop-main">
-                          <div
-                            className="producer-drop-swatch"
-                            style={{
-                              background: `linear-gradient(135deg, ${drop.c1}, ${drop.c2})`,
-                            }}
-                          >
-                            <span>{isPlayingDrop ? "❚❚" : "▶"}</span>
+                  {filteredProducerDrops.length > 0 ? (
+                    filteredProducerDrops.map((drop) => {
+                      const isPlayingDrop =
+                        currentTrack.id === drop.previewTrack.id && isPlaying;
+                      const linkedProj =
+                        projects.find((p) => p.id === drop.projectId) ||
+                        STANDBY_PROJECT;
+                      return (
+                        <div
+                          key={drop.id}
+                          className={`producer-drop-card ${isPlayingDrop ? "is-playing" : ""}`}
+                          onClick={() => playTrack(drop.previewTrack, linkedProj, false)}
+                        >
+                          <div className="producer-drop-top">
+                            <span
+                              className="producer-kind-badge"
+                              style={{ background: drop.accent }}
+                            >
+                              {drop.kind}
+                            </span>
+                            <span className="mono-tag">{drop.itemsCountLabel}</span>
+                            <button
+                              type="button"
+                              className="trash-icon-btn"
+                              title="Eliminar publicación"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                sfx.tap();
+                                setProducerDrops((prev) =>
+                                  prev.filter((item) => item.id !== drop.id)
+                                );
+                              }}
+                            >
+                              <TrashIcon />
+                            </button>
                           </div>
-                          <div>
-                            <h4>{drop.title}</h4>
-                            <span className="producer-byline">
-                              por <b>{drop.producer}</b> ({drop.producerHandle})
+
+                          <div className="producer-drop-main">
+                            <div
+                              className="producer-drop-swatch"
+                              style={{
+                                background: `linear-gradient(135deg, ${drop.c1}, ${drop.c2})`,
+                              }}
+                            >
+                              <span>{isPlayingDrop ? "❚❚" : "▶"}</span>
+                            </div>
+                            <div>
+                              <h4>{drop.title}</h4>
+                              <span className="producer-byline">
+                                por <b>{drop.producer}</b> ({drop.producerHandle})
+                              </span>
+                            </div>
+                          </div>
+
+                          <p className="producer-drop-desc">{drop.description}</p>
+
+                          <div className="producer-drop-foot">
+                            <span className="meta-chip">{drop.bpmLabel}</span>
+                            <span className="meta-chip">{drop.keyLabel}</span>
+                            <span className="producer-listen-cta">
+                              {isPlayingDrop ? "Sonando demo..." : "▶ Escuchar preview"}
                             </span>
                           </div>
                         </div>
-
-                        <p className="producer-drop-desc">{drop.description}</p>
-
-                        <div className="producer-drop-foot">
-                          <span className="meta-chip">{drop.bpmLabel}</span>
-                          <span className="meta-chip">{drop.keyLabel}</span>
-                          <span className="producer-listen-cta">
-                            {isPlayingDrop ? "Sonando demo..." : "▶ Escuchar preview"}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  ) : (
+                    <div style={{ gridColumn: "1 / -1", padding: "36px 20px", textAlign: "center", border: "1px dashed rgba(255,255,255,0.12)", borderRadius: 12 }}>
+                      <span className="mono-tag" style={{ display: "inline-block", marginBottom: 6 }}>
+                        0 NOVEDADES DE PRODUCTORES
+                      </span>
+                      <p style={{ color: "var(--ink-secondary)", fontSize: "0.85rem", margin: "4px 0 0" }}>
+                        Los beatmakers registrados publicarán sus beatposts, drumkits y soundkits en esta sección.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </section>
 
@@ -1121,65 +1163,83 @@ export default function App() {
                     <h3>Proyectos fijados</h3>
                   </div>
                   <div className="track-list-clean">
-                    {(projects.length > 0 ? projects : DEMO_PROJECTS)
-                      .flatMap((p) => p.tracks.slice(0, 2).map((t) => ({ track: t, proj: p })))
-                      .slice(0, 7)
-                      .map(({ track, proj }, i) => {
-                        const active = currentTrack.id === track.id;
-                        return (
-                          <div
-                            key={track.id}
-                            className={`clean-track-row ${active ? "is-playing" : ""}`}
-                            onMouseEnter={() => sfx.hover()}
-                            onClick={() => playTrack(track, proj, false)}
-                          >
-                            <span className="row-num">{String(i + 1).padStart(2, "0")}</span>
+                    {projects.length > 0 ? (
+                      projects
+                        .flatMap((p) => p.tracks.slice(0, 2).map((t) => ({ track: t, proj: p })))
+                        .slice(0, 7)
+                        .map(({ track, proj }, i) => {
+                          const active = currentTrack.id === track.id;
+                          return (
                             <div
-                              className="row-swatch"
-                              style={{
-                                background: proj.coverUrl
-                                  ? `linear-gradient(rgba(0,0,0,0.28), rgba(0,0,0,0.28)), url(${proj.coverUrl}) center / cover no-repeat`
-                                  : `linear-gradient(135deg, ${track.c1}, ${track.c2})`,
-                              }}
+                              key={track.id}
+                              className={`clean-track-row ${active ? "is-playing" : ""}`}
+                              onMouseEnter={() => sfx.hover()}
+                              onClick={() => playTrack(track, proj, false)}
                             >
-                              {active && isPlaying ? "❚❚" : "▶"}
-                            </div>
-                            <div className="row-main">
-                              <b>{track.title}</b>
-                              <span>
-                                {track.artist} {track.feat ? `feat. ${track.feat}` : ""} · {proj.title}
-                              </span>
-                            </div>
-                            <div className="row-pills">
-                              <span className="meta-chip">{track.bpm} BPM</span>
-                              <span className="meta-chip">{track.key}</span>
-                            </div>
-                            <div className="row-inline-actions">
-                              <button
-                                type="button"
-                                className="row-snippet-btn"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditingTrack(track);
+                              <span className="row-num">{String(i + 1).padStart(2, "0")}</span>
+                              <div
+                                className="row-swatch"
+                                style={{
+                                  background: proj.coverUrl
+                                    ? `linear-gradient(rgba(0,0,0,0.28), rgba(0,0,0,0.28)), url(${proj.coverUrl}) center / cover no-repeat`
+                                    : `linear-gradient(135deg, ${track.c1}, ${track.c2})`,
                                 }}
                               >
-                                Editar
-                              </button>
-                              <button
-                                type="button"
-                                className="trash-icon-btn"
-                                title={`Eliminar track ${track.title}`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteTrack(proj.id, track.id);
-                                }}
-                              >
-                                <TrashIcon />
-                              </button>
+                                {active && isPlaying ? "❚❚" : "▶"}
+                              </div>
+                              <div className="row-main">
+                                <b>{track.title}</b>
+                                <span>
+                                  {track.artist} {track.feat ? `feat. ${track.feat}` : ""} · {proj.title}
+                                </span>
+                              </div>
+                              <div className="row-pills">
+                                <span className="meta-chip">{track.bpm} BPM</span>
+                                <span className="meta-chip">{track.key}</span>
+                              </div>
+                              <div className="row-inline-actions">
+                                <button
+                                  type="button"
+                                  className="row-snippet-btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingTrack(track);
+                                  }}
+                                >
+                                  Editar
+                                </button>
+                                <button
+                                  type="button"
+                                  className="trash-icon-btn"
+                                  title={`Eliminar track ${track.title}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteTrack(proj.id, track.id);
+                                  }}
+                                >
+                                  <TrashIcon />
+                                </button>
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })
+                    ) : (
+                      <div style={{ padding: "40px 16px", textAlign: "center" }}>
+                        <span className="mono-tag" style={{ display: "inline-block", marginBottom: 6 }}>
+                          0 PROYECTOS EN ROTACIÓN
+                        </span>
+                        <p style={{ color: "var(--ink-secondary)", fontSize: "0.86rem", margin: "4px 0 14px" }}>
+                          No hay proyectos publicados todavía. Creá uno en la biblioteca para que aparezca acá.
+                        </p>
+                        <button
+                          type="button"
+                          className="apple-btn primary"
+                          onClick={() => navigate("crear-proyecto")}
+                        >
+                          + Crear Primer Proyecto
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1189,36 +1249,59 @@ export default function App() {
                     <h3>Artistas en El Tablero</h3>
                   </div>
                   <div className="artist-directory-list">
-                    {SCENE_ARTISTS.map((a) => (
-                      <div
-                        key={a.id}
-                        className="artist-dir-item"
-                        onMouseEnter={() => sfx.hover()}
-                        onClick={() => {
-                          const found = projects.find((p) => p.artistId === a.id);
-                          if (found) {
-                            setSelectedProjectId(found.id);
-                            navigate("biblioteca");
-                          }
-                        }}
-                      >
-                        <div className="artist-dir-avatar" style={{ background: a.color }}>
-                          {a.stickers[0]}
-                        </div>
-                        <div className="artist-dir-info">
-                          <b>
-                            {a.name} <em>{a.handle}</em>
-                          </b>
-                          <span>
-                            {a.role} · {a.zone}
-                          </span>
-                        </div>
-                        <div className="artist-dir-stats">
-                          <b>{a.tracksCount}</b>
-                          <small>tracks</small>
-                        </div>
+                    {communityArtists.length > 0 ? (
+                      communityArtists.map((a) => {
+                        const artistTrackCount = projects
+                          .filter((p) => p.artistId === a.id || p.artist.toLowerCase() === a.name.toLowerCase())
+                          .reduce((acc, p) => acc + p.tracks.length, 0);
+                        return (
+                          <div
+                            key={a.id}
+                            className="artist-dir-item"
+                            onMouseEnter={() => sfx.hover()}
+                            onClick={() => {
+                              const found = projects.find((p) => p.artistId === a.id || p.artist.toLowerCase() === a.name.toLowerCase());
+                              if (found) {
+                                setSelectedProjectId(found.id);
+                                navigate("biblioteca");
+                              }
+                            }}
+                          >
+                            <div className="artist-dir-avatar" style={{ background: a.color }}>
+                              {a.stickers[0] || a.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="artist-dir-info">
+                              <b>
+                                {a.name} <em>{a.handle}</em>
+                              </b>
+                              <span>
+                                {a.role} · {a.zone}
+                              </span>
+                            </div>
+                            <div className="artist-dir-stats">
+                              <b>{artistTrackCount}</b>
+                              <small>tracks</small>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div style={{ padding: "40px 16px", textAlign: "center" }}>
+                        <span className="mono-tag" style={{ display: "inline-block", marginBottom: 6 }}>
+                          0 ARTISTAS REGISTRADOS
+                        </span>
+                        <p style={{ color: "var(--ink-secondary)", fontSize: "0.86rem", margin: "4px 0 14px" }}>
+                          No hay cuentas creadas todavía. Conectate con Google para registrar tu perfil.
+                        </p>
+                        <button
+                          type="button"
+                          className="apple-btn primary"
+                          onClick={() => setAuthModalOpen(true)}
+                        >
+                          Iniciar Sesión con Google
+                        </button>
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
               </section>
