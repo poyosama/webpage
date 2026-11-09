@@ -368,6 +368,17 @@
 - Instrucciones DNS exactas para apuntar `eltablero.blog` de Hostinger a los servidores de Vercel (registro A `@ -> 76.76.21.21` y CNAME `www -> cname.vercel-dns.com`).
 - Actualización de Site URL y Redirect URLs en Supabase Auth y Google Cloud Console para que el flujo de autenticación use directamente el nuevo dominio oficial.
 
+---
+
+### Turno 25 — Fix de Redirección OAuth a `localhost:3000` en Supabase Auth
+**Prompt del usuario:**
+- *"me conecte con google para iniciar sesion y paso esto"* (adjunta captura mostrando `http://localhost:3000/#access_token=...` con error de conexión).
+
+**Diagnóstico y Solución:**
+- El login con Google fue 100% exitoso (el token de acceso JWT vino generado en la URL). Sin embargo, Supabase redirigió por defecto a `http://localhost:3000` porque en **Authentication -> URL Configuration** la opción **Site URL** viene configurada en localhost por defecto.
+- Se le indicó al usuario cambiar **Site URL** en Supabase a `https://eltablero.blog` (o la URL de Vercel) y agregar en **Redirect URLs** `https://eltablero.blog/**` y `https://*.vercel.app/**`.
+
+
 
 
 
