@@ -3010,3 +3010,329 @@ button {
   }
 }
 
+/* ==================== BIBLIOTECA: MODOS ADENTRO DEL CUBO / LADO A LADO & SWITCH INLINE ==================== */
+.manifold-title-and-switch {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 3px;
+}
+
+.inline-view-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(15, 15, 17, 0.08);
+  border: 1px solid rgba(15, 15, 17, 0.12);
+}
+
+.inline-view-switch button {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--ink-secondary);
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.inline-view-switch button.on {
+  background: #09090b;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.16);
+}
+
+.quick-proj-pill.add-project-plus-pill {
+  background: #09090b;
+  color: #ffffff;
+  border-color: #09090b;
+  padding: 6px 13px;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.quick-proj-pill.add-project-plus-pill b {
+  color: #ffffff;
+  font-size: 0.96rem;
+  line-height: 1;
+}
+
+.quick-proj-pill.add-project-plus-pill:hover {
+  background: #e11d48;
+  border-color: #e11d48;
+  transform: translateY(-1px) scale(1.04);
+}
+
+.library-inside-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.library-side-by-side-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.04fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.library-side-by-side-grid > * {
+  min-width: 0;
+}
+
+.library-side-by-side-grid .inspector-split {
+  grid-template-columns: 1fr;
+}
+
+.cube-interior-back-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding-bottom: 16px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+/* ==================== PANTALLA CREAR PROYECTO (PARTÍCULAS SENTIENTES + LOGO 3D "El tablero") ==================== */
+.create-project-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.sentient-stage-card {
+  position: relative;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  background: #070709;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: var(--shadow-card);
+}
+
+.sentient-canvas-box {
+  width: 100%;
+  height: 410px;
+  cursor: grab;
+}
+
+.sentient-canvas-box:active {
+  cursor: grabbing;
+}
+
+.sentient-stage-hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.sentient-hud-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sentient-hud-left .mono-tag {
+  color: rgba(255, 255, 255, 0.66);
+}
+
+.sentient-hud-left strong {
+  color: #ffffff;
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.7);
+}
+
+.sentient-phase-pills {
+  pointer-events: auto;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.sentient-phase-pills button {
+  padding: 7px 13px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(12px);
+  font-size: 0.74rem;
+  font-weight: 600;
+  transition: background 0.15s, color 0.15s, transform 0.15s;
+}
+
+.sentient-phase-pills button:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.sentient-phase-pills button.on {
+  background: #ffffff;
+  color: #09090b;
+  border-color: #ffffff;
+  box-shadow: 0 4px 16px rgba(255, 255, 255, 0.25);
+}
+
+.create-project-form {
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  padding: 26px;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.create-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.create-form-grid > * {
+  min-width: 0;
+}
+
+.create-form-col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.create-type-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.create-type-pills button {
+  padding: 7px 13px;
+  border-radius: 999px;
+  background: rgba(15, 15, 17, 0.05);
+  border: 1px solid var(--line);
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--ink-secondary);
+}
+
+.create-type-pills button.on {
+  background: var(--ink);
+  color: #ffffff;
+  border-color: var(--ink);
+}
+
+.create-attrs-box {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(15, 15, 17, 0.03);
+  border: 1px solid var(--line);
+}
+
+.create-attr-input-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 160px;
+}
+
+.create-attr-input-row input {
+  flex: 1;
+  border: none !important;
+  background: transparent !important;
+  padding: 4px 6px !important;
+  font-size: 0.8rem !important;
+  outline: none;
+}
+
+.create-upload-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.create-clips-count {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.72rem;
+  color: var(--ink-secondary);
+}
+
+.create-form-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.create-preview-pill {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.create-preview-swatch {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.16);
+}
+
+.create-preview-pill b {
+  display: block;
+  font-size: 0.94rem;
+}
+
+.create-preview-pill span {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+}
+
+.create-submit-btn {
+  padding: 12px 22px !important;
+  font-size: 0.88rem !important;
+}
+
+@media (max-width: 1080px) {
+  .library-side-by-side-grid,
+  .create-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .sentient-canvas-box {
+    height: 300px;
+  }
+
+  .sentient-stage-hud {
+    padding: 12px 14px;
+  }
+
+  .sentient-phase-pills button {
+    padding: 5px 10px;
+    font-size: 0.68rem;
+  }
+
+  .create-project-form {
+    padding: 16px 14px;
+  }
+}
+
+

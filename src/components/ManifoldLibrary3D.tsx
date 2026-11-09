@@ -408,12 +408,129 @@ function DiagonalRowPhysics({
   return null;
 }
 
+// Efecto 3D: la cámara hace zoom hacia la cara del cubo mientras la cara se vuelve vóxeles blancos que se desintegran
+function VoxelDivePortal({
+  project,
+  onComplete,
+}: {
+  project: Project;
+  onComplete: (p: Project) => void;
+}) {
+  const meshRef = useRef<THREE.InstancedMesh>(null!);
+  const progressRef = useRef(0);
+  const doneRef = useRef(false);
+  const { camera } = useThree();
+  const startCamPos = useMemo(() => camera.position.clone(), [camera]);
+
+  const gridN = 13;
+  const totalVoxels = gridN * gridN;
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+  const colorObj = useMemo(() => new THREE.Color(), []);
+
+  const voxelMeta = useMemo(() => {
+    const [w, h, d] = project.blockSize;
+    const cellW = w / gridN;
+    const cellH = h / gridN;
+    return Array.from({ length: totalVoxels }, (_, idx) => {
+      const gx = (idx % gridN) - (gridN - 1) / 2;
+      const gy = Math.floor(idx / gridN) - (gridN - 1) / 2;
+      const lx = gx * cellW;
+      const ly = gy * cellH;
+      const lz = d * 0.5 + 0.04;
+      const distFromCenter = Math.hypot(gx, gy) / (gridN * 0.7);
+      const delay = distFromCenter * 0.28 + Math.random() * 0.14;
+      const vel = new THREE.Vector3(
+        gx * 0.22 + (Math.random() - 0.5) * 1.4,
+        gy * 0.22 + (Math.random() - 0.5) * 1.4,
+        1.15 + Math.random() * 1.85
+      );
+      return { lx, ly, lz, cellW, cellH, delay, vel };
+    });
+  }, [project.blockSize, totalVoxels]);
+
+  useFrame((_, dt) => {
+    if (doneRef.current) return;
+    progressRef.current += Math.min(0.04, dt) * 1.22;
+    const p = Math.min(1, progressRef.current);
+
+    // Zoom de la cámara directo hacia adentro del cubo seleccionado
+    const popDir = new THREE.Vector3(
+      project.blockPos[0],
+      project.blockPos[1] + 0.5,
+      project.blockPos[2]
+    ).normalize();
+    const cubeCenter = new THREE.Vector3(
+      project.blockPos[0] + popDir.x * 0.45,
+      project.blockPos[1] + popDir.y * 0.45 + 0.15,
+      project.blockPos[2] + popDir.z * 0.45
+    );
+    const ease = 1 - Math.pow(1 - p, 3);
+    const targetCam = cubeCenter.clone().add(new THREE.Vector3(0.25, 0.2, 0.55));
+    camera.position.lerpVectors(startCamPos, targetCam, ease);
+    camera.lookAt(cubeCenter);
+
+    const baseCol = new THREE.Color(project.c2);
+    const whiteCol = new THREE.Color("#ffffff");
+
+    for (let i = 0; i < totalVoxels; i++) {
+      const v = voxelMeta[i];
+      const localT = Math.max(0, (p - v.delay) / (1 - v.delay));
+
+      // Primero se ponen bien blanquitos (0 -> 0.35) y después se desintegran flotando (0.35 -> 1.0)
+      const whiteMix = Math.min(1, localT * 3.2);
+      colorObj.copy(baseCol).lerp(whiteCol, whiteMix);
+      meshRef.current.setColorAt(i, colorObj);
+
+      const disintegrateT = Math.max(0, (localT - 0.22) / 0.78);
+      const shrink = Math.max(0.001, 1 - Math.pow(disintegrateT, 1.4));
+
+      dummy.position.set(
+        cubeCenter.x + v.lx + v.vel.x * disintegrateT * 0.85,
+        cubeCenter.y + v.ly + v.vel.y * disintegrateT * 0.85,
+        cubeCenter.z + v.lz + v.vel.z * disintegrateT * 0.85
+      );
+      dummy.rotation.set(
+        disintegrateT * 4.2,
+        disintegrateT * 5.1,
+        disintegrateT * 3.4
+      );
+      dummy.scale.set(
+        v.cellW * 0.92 * shrink,
+        v.cellH * 0.92 * shrink,
+        v.cellW * 0.92 * shrink
+      );
+      dummy.updateMatrix();
+      meshRef.current.setMatrixAt(i, dummy.matrix);
+    }
+
+    meshRef.current.instanceMatrix.needsUpdate = true;
+    if (meshRef.current.instanceColor) {
+      meshRef.current.instanceColor.needsUpdate = true;
+    }
+
+    if (p >= 1 && !doneRef.current) {
+      doneRef.current = true;
+      onComplete(project);
+    }
+  });
+
+  return (
+    <instancedMesh ref={meshRef} args={[undefined, undefined, totalVoxels]}>
+      <boxGeometry args={[1, 1, 1]} />
+      <meshBasicMaterial color="#ffffff" toneMapped={false} />
+    </instancedMesh>
+  );
+}
+
 export default function ManifoldLibrary3D({
   projects,
   selectedProjectId,
   poppedProjectId,
   viewMode = "manifold",
+  onChangeViewMode,
   onSelectProject,
+  onDiveIntoProject,
+  onOpenCreateProject,
   onUploadProjectVideo,
   onRemoveProjectVideo,
   compact = false,
@@ -422,7 +539,10 @@ export default function ManifoldLibrary3D({
   selectedProjectId: string;
   poppedProjectId?: string | null;
   viewMode?: "manifold" | "disc-row";
+  onChangeViewMode?: (mode: "manifold" | "disc-row") => void;
   onSelectProject: (p: Project) => void;
+  onDiveIntoProject?: (p: Project) => void;
+  onOpenCreateProject?: () => void;
   onUploadProjectVideo?: (projectId: string, file: File) => void;
   onRemoveProjectVideo?: (projectId: string, clipId: string) => void;
   compact?: boolean;
@@ -430,19 +550,62 @@ export default function ManifoldLibrary3D({
   const activeProject =
     projects.find((p) => p.id === selectedProjectId) || projects[0];
 
+  const [divingProject, setDivingProject] = useState<Project | null>(null);
+
   const rowDragRef = useRef({ off: 1.5, vel: 0, dragging: false });
   const movedRef = useRef(false);
   const startRef = useRef({ x: 0, off: 0, t: 0, lx: 0 });
+
+  const handleCubeOrPlateSelect = (proj: Project) => {
+    onSelectProject(proj);
+    if (onDiveIntoProject) {
+      sfx.open();
+      if (viewMode === "manifold") {
+        setDivingProject(proj);
+      } else {
+        onDiveIntoProject(proj);
+      }
+    }
+  };
 
   return (
     <div className={`manifold-3d-wrapper ${compact ? "is-compact" : ""}`}>
       {viewMode === "manifold" ? (
         <div className="manifold-3d-canvas-stage">
           <div className="manifold-stage-overlay-top">
-            <div className="manifold-overlay-titles">
-              <span className="mono-tag">MIS PROYECTOS // BLOQUES</span>
-              <h3>Arrastrá para mover · Seleccioná un proyecto</h3>
+            <div className="manifold-title-and-switch">
+              <div className="manifold-overlay-titles">
+                <span className="mono-tag">MIS PROYECTOS // BLOQUES</span>
+                <h3>Arrastrá para mover · Seleccioná un proyecto</h3>
+              </div>
+
+              {/* Switch Bloques / Vinilos justo a la derecha de "Arrastrá para mover" */}
+              {onChangeViewMode && (
+                <div className="seg-pills inline-view-switch">
+                  <button
+                    type="button"
+                    className={viewMode === "manifold" ? "on" : ""}
+                    onClick={() => {
+                      sfx.tap();
+                      onChangeViewMode("manifold");
+                    }}
+                  >
+                    🧊 Bloques
+                  </button>
+                  <button
+                    type="button"
+                    className={(viewMode as string) === "disc-row" ? "on" : ""}
+                    onClick={() => {
+                      sfx.tap();
+                      onChangeViewMode("disc-row");
+                    }}
+                  >
+                    💿 Vinilos
+                  </button>
+                </div>
+              )}
             </div>
+
             <div className="manifold-quick-pills">
               {projects.map((p) => (
                 <button
@@ -451,16 +614,29 @@ export default function ManifoldLibrary3D({
                   className={`quick-proj-pill ${p.id === selectedProjectId ? "on" : ""}`}
                   onClick={() => {
                     sfx.tap();
-                    onSelectProject(p);
+                    handleCubeOrPlateSelect(p);
                   }}
                 >
                   {p.title}
                 </button>
               ))}
+              {onOpenCreateProject && (
+                <button
+                  type="button"
+                  className="quick-proj-pill add-project-plus-pill"
+                  title="Crear nuevo proyecto"
+                  onClick={() => {
+                    sfx.open();
+                    onOpenCreateProject();
+                  }}
+                >
+                  +
+                </button>
+              )}
             </div>
           </div>
 
-          <div className="manifold-canvas-inner">
+          <div className={`manifold-canvas-inner ${divingProject ? "is-diving" : ""}`}>
             <Canvas
               camera={{ position: [6.8, 6.2, 7.2], fov: 32 }}
               dpr={[1, 1.5]}
@@ -477,20 +653,32 @@ export default function ManifoldLibrary3D({
                     project={p}
                     isSelected={p.id === selectedProjectId}
                     isPopped={p.id === poppedProjectId}
-                    onSelect={onSelectProject}
+                    onSelect={handleCubeOrPlateSelect}
                   />
                 ))}
+
+                {divingProject && (
+                  <VoxelDivePortal
+                    project={divingProject}
+                    onComplete={(proj) => {
+                      setDivingProject(null);
+                      onDiveIntoProject?.(proj);
+                    }}
+                  />
+                )}
               </ResponsiveSceneGroup>
 
-              <OrbitControls
-                enableZoom={true}
-                minDistance={5.5}
-                maxDistance={15}
-                enablePan={false}
-                rotateSpeed={0.7}
-                minPolarAngle={0.4}
-                maxPolarAngle={1.38}
-              />
+              {!divingProject && (
+                <OrbitControls
+                  enableZoom={true}
+                  minDistance={5.5}
+                  maxDistance={15}
+                  enablePan={false}
+                  rotateSpeed={0.7}
+                  minPolarAngle={0.4}
+                  maxPolarAngle={1.38}
+                />
+              )}
             </Canvas>
           </div>
         </div>
@@ -527,11 +715,66 @@ export default function ManifoldLibrary3D({
           }}
         >
           <div className="manifold-stage-overlay-top">
-            <div className="manifold-overlay-titles">
-              <span className="mono-tag">MIS PROYECTOS // VINILOS</span>
-              <h3>Arrastrá para mover · Seleccioná un proyecto</h3>
+            <div className="manifold-title-and-switch">
+              <div className="manifold-overlay-titles">
+                <span className="mono-tag">MIS PROYECTOS // VINILOS</span>
+                <h3>Arrastrá para mover · Seleccioná un proyecto</h3>
+              </div>
+
+              {onChangeViewMode && (
+                <div className="seg-pills inline-view-switch">
+                  <button
+                    type="button"
+                    className={(viewMode as string) === "manifold" ? "on" : ""}
+                    onClick={() => {
+                      sfx.tap();
+                      onChangeViewMode("manifold");
+                    }}
+                  >
+                    🧊 Bloques
+                  </button>
+                  <button
+                    type="button"
+                    className={viewMode === "disc-row" ? "on" : ""}
+                    onClick={() => {
+                      sfx.tap();
+                      onChangeViewMode("disc-row");
+                    }}
+                  >
+                    💿 Vinilos
+                  </button>
+                </div>
+              )}
             </div>
-            <span className="mono-tag">{projects.length} PROYECTOS</span>
+
+            <div className="manifold-quick-pills">
+              {projects.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  className={`quick-proj-pill ${p.id === selectedProjectId ? "on" : ""}`}
+                  onClick={() => {
+                    sfx.tap();
+                    handleCubeOrPlateSelect(p);
+                  }}
+                >
+                  {p.title}
+                </button>
+              ))}
+              {onOpenCreateProject && (
+                <button
+                  type="button"
+                  className="quick-proj-pill add-project-plus-pill"
+                  title="Crear nuevo proyecto"
+                  onClick={() => {
+                    sfx.open();
+                    onOpenCreateProject();
+                  }}
+                >
+                  +
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="manifold-canvas-inner">
@@ -552,7 +795,7 @@ export default function ManifoldLibrary3D({
                     index={i}
                     offsetRef={rowDragRef}
                     isSelected={p.id === selectedProjectId}
-                    onSelect={onSelectProject}
+                    onSelect={handleCubeOrPlateSelect}
                     movedRef={movedRef}
                   />
                 ))}
@@ -623,3 +866,4 @@ export default function ManifoldLibrary3D({
     </div>
   );
 }
+

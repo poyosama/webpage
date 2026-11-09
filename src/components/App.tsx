@@ -20,8 +20,9 @@ import type { QueueEntry, RepeatMode } from "./PerformativePlayer";
 const DiscSpinner3D = dynamic(() => import("./DiscSpinner3D"), { ssr: false });
 const PerformativePlayer = dynamic(() => import("./PerformativePlayer"), { ssr: false });
 const ManifoldLibrary3D = dynamic(() => import("./ManifoldLibrary3D"), { ssr: false });
+const CreateProjectScreen = dynamic(() => import("./CreateProjectScreen"), { ssr: false });
 
-type ScreenTab = "inicio" | "biblioteca" | "subir" | "perfil";
+type ScreenTab = "inicio" | "subir" | "biblioteca" | "perfil" | "crear-proyecto";
 
 const PROJECT_TYPES: ProjectType[] = [
   "Album",
@@ -55,8 +56,11 @@ export default function App() {
   // Input temporal para agregar atributos personalizados a un proyecto en Biblioteca
   const [newAttrInput, setNewAttrInput] = useState<string>("");
 
-  // Vista en Biblioteca: "manifold" (Bloques) o "disc-row" (Vinilos)
+  // Vista 3D interna en Mis Proyectos: "manifold" (Bloques) o "disc-row" (Vinilos)
   const [libraryViewMode, setLibraryViewMode] = useState<"manifold" | "disc-row">("manifold");
+  // Modo de display en Biblioteca: 1 (default) "inside" (una adentro de la otra con zoom voxel) o 2 "side-by-side" (uno al lado del otro)
+  const [libraryLayoutMode, setLibraryLayoutMode] = useState<"inside" | "side-by-side">("inside");
+  const [insideCubeOpen, setInsideCubeOpen] = useState<boolean>(false);
 
   // Modales: Editar Track, Editar Perfil y Login/Register con Google
   const [editingTrack, setEditingTrack] = useState<Track | null>(null);
@@ -373,28 +377,35 @@ export default function App() {
           {(
             [
               ["inicio", "Inicio"],
-              ["biblioteca", "Biblioteca"],
               ["subir", "Subir"],
+              ["biblioteca", "Biblioteca"],
               ["perfil", meProfile.handle],
             ] as [ScreenTab, string][]
-          ).map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              className={tab === id ? "active" : ""}
-              onMouseEnter={() => sfx.hover()}
-              onClick={() => navigate(id)}
-            >
-              {tab === id && (
-                <motion.span
-                  layoutId="iosSegPill"
-                  className="seg-pill-bg"
-                  transition={{ type: "spring", stiffness: 380, damping: 32 }}
-                />
-              )}
-              <span className="seg-label">{label}</span>
-            </button>
-          ))}
+          ).map(([id, label]) => {
+            const isActive =
+              tab === id || (id === "biblioteca" && tab === "crear-proyecto");
+            return (
+              <button
+                key={id}
+                type="button"
+                className={isActive ? "active" : ""}
+                onMouseEnter={() => sfx.hover()}
+                onClick={() => {
+                  if (id === "biblioteca") setInsideCubeOpen(false);
+                  navigate(id);
+                }}
+              >
+                {isActive && (
+                  <motion.span
+                    layoutId="iosSegPill"
+                    className="seg-pill-bg"
+                    transition={{ type: "spring", stiffness: 380, damping: 32 }}
+                  />
+                )}
+                <span className="seg-label">{label}</span>
+              </button>
+            );
+          })}
         </nav>
 
         <div className="ios-nav-right">
@@ -685,196 +696,284 @@ export default function App() {
                   <span className="mono-tag">BIBLIOTECA 3D // EL TABLERO</span>
                   <h1 className="editorial-h1">Mis Proyectos</h1>
                 </div>
+
+                {/* Switch superior en el lugar donde antes estaba Bloques / Vinilos:
+                    Modo 1 (default): Una adentro de la otra (Zoom Voxel al tocar el cubo)
+                    Modo 2: Uno al lado del otro (por comodidad) */}
                 <div className="seg-pills">
                   <button
                     type="button"
-                    className={libraryViewMode === "manifold" ? "on" : ""}
+                    className={libraryLayoutMode === "inside" ? "on" : ""}
                     onClick={() => {
                       sfx.tap();
-                      setLibraryViewMode("manifold");
+                      setLibraryLayoutMode("inside");
+                      setInsideCubeOpen(false);
                     }}
                   >
-                    🧊 Bloques
+                    🎯 Adentro del Cubo
                   </button>
                   <button
                     type="button"
-                    className={libraryViewMode === "disc-row" ? "on" : ""}
+                    className={libraryLayoutMode === "side-by-side" ? "on" : ""}
                     onClick={() => {
                       sfx.tap();
-                      setLibraryViewMode("disc-row");
+                      setLibraryLayoutMode("side-by-side");
                     }}
                   >
-                    💿 Vinilos
+                    ◫ Lado a Lado
                   </button>
                 </div>
               </div>
 
-              <ManifoldLibrary3D
-                projects={projects}
-                selectedProjectId={activeProject.id}
-                viewMode={libraryViewMode}
-                onSelectProject={(proj) => setSelectedProjectId(proj.id)}
-                onUploadProjectVideo={handleUploadProjectVideo}
-                onRemoveProjectVideo={handleRemoveProjectVideo}
-              />
-
-              {/* Inspector del proyecto seleccionado con Metadata completable por el usuario y Spinner 3D */}
-              <section className="project-inspector-sheet">
-                <div className="inspector-header">
-                  <div className="inspector-meta-builder">
-                    {/* Metadata completable por el usuario: Tipo de Proyecto, Cantidad de Canciones, Estado y Atributos */}
-                    <div className="project-editable-meta-bar">
-                      <label className="meta-pill-select">
-                        <span>TIPO</span>
-                        <select
-                          value={activeProject.type}
-                          onChange={(e) => {
-                            sfx.tick();
-                            updateProjectMeta(activeProject.id, {
-                              type: e.target.value as ProjectType,
-                            });
-                          }}
-                        >
-                          {PROJECT_TYPES.map((pt) => (
-                            <option key={pt} value={pt}>
-                              {pt}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-
-                      <div className="meta-pill-static">
-                        <span>CANCIONES</span>
-                        <b>{activeProject.tracks.length} tracks</b>
-                      </div>
-
-                      <label className="meta-pill-select">
-                        <span>ESTADO</span>
-                        <select
-                          value={activeProject.status}
-                          onChange={(e) => {
-                            sfx.tick();
-                            updateProjectMeta(activeProject.id, {
-                              status: e.target.value as Project["status"],
-                            });
-                          }}
-                        >
-                          <option value="Publicado">Publicado</option>
-                          <option value="En mezcla">En mezcla</option>
-                          <option value="Master">Master</option>
-                          <option value="WIP">WIP</option>
-                          <option value="Privado">Privado</option>
-                        </select>
-                      </label>
-
-                      {activeAttributes.map((attr) => (
-                        <span key={attr} className="meta-user-attr-pill">
-                          {attr}
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveAttribute(activeProject.id, attr)}
-                            title="Quitar atributo"
-                          >
-                            ✕
-                          </button>
-                        </span>
-                      ))}
-
-                      <form
-                        className="meta-add-attr-form"
-                        onSubmit={(e) => {
-                          e.preventDefault();
-                          handleAddAttribute(activeProject.id, newAttrInput);
-                        }}
-                      >
-                        <input
-                          value={newAttrInput}
-                          onChange={(e) => setNewAttrInput(e.target.value)}
-                          placeholder="+ Atributo (ej. Trap, 2026...)"
-                        />
-                        {newAttrInput.trim() && (
-                          <button type="submit" className="meta-attr-submit">
-                            +
-                          </button>
-                        )}
-                      </form>
-                    </div>
-
-                    <h2>
-                      {activeProject.title} — <em>{activeProject.artist}</em>
-                    </h2>
-                    <p>{activeProject.description}</p>
-                  </div>
-
-                  <div className="row-actions">
-                    <button
-                      type="button"
-                      className="apple-btn ghost"
-                      onClick={() => navigate("subir")}
-                    >
-                      + Subir track al proyecto
-                    </button>
-                    <button
-                      type="button"
-                      className="apple-btn primary"
-                      onClick={() => playTrack(activeProject.tracks[0], activeProject, true)}
-                    >
-                      ▶ Abrir en Reproductor 3D
-                    </button>
-                  </div>
-                </div>
-
-                <div className="inspector-split">
-                  <DiscSpinner3D
-                    project={activeProject}
-                    currentTrackId={currentTrack.id}
-                    onPlayTrack={(tr, pr) => playTrack(tr, pr, false)}
+              <div
+                className={
+                  libraryLayoutMode === "side-by-side"
+                    ? "library-side-by-side-grid"
+                    : "library-inside-stack"
+                }
+              >
+                {/* Escena 3D de Mis Proyectos (se muestra siempre en Lado a Lado, o cuando estás afuera del cubo en modo Adentro del Cubo) */}
+                {(libraryLayoutMode === "side-by-side" || !insideCubeOpen) && (
+                  <ManifoldLibrary3D
+                    projects={projects}
+                    selectedProjectId={activeProject.id}
+                    viewMode={libraryViewMode}
+                    onChangeViewMode={(m) => setLibraryViewMode(m)}
+                    onSelectProject={(proj) => setSelectedProjectId(proj.id)}
+                    onDiveIntoProject={
+                      libraryLayoutMode === "inside"
+                        ? (proj) => {
+                            setSelectedProjectId(proj.id);
+                            setInsideCubeOpen(true);
+                          }
+                        : undefined
+                    }
+                    onOpenCreateProject={() => navigate("crear-proyecto")}
+                    onUploadProjectVideo={handleUploadProjectVideo}
+                    onRemoveProjectVideo={handleRemoveProjectVideo}
                   />
+                )}
 
-                  <div className="inspector-tracklist">
-                    <div className="card-head">
-                      <span className="mono-tag">
-                        {activeProject.tracks.length} CANCIONES EN ESTE PROYECTO
-                      </span>
-                      <h3>Tracks del proyecto (tocá ✎ para editar track)</h3>
-                    </div>
-                    {activeProject.tracks.map((t, idx) => {
-                      const isCurrent = currentTrack.id === t.id;
-                      return (
-                        <div
-                          key={t.id}
-                          className={`clean-track-row ${isCurrent ? "is-playing" : ""}`}
-                          onMouseEnter={() => sfx.hover()}
-                          onClick={() => playTrack(t, activeProject, false)}
+                {/* Interior del Proyecto / Inspector con Spinner 3D (se muestra al entrar al cubo en Modo 1, o al lado en Modo 2) */}
+                {(libraryLayoutMode === "side-by-side" || insideCubeOpen) && (
+                  <motion.section
+                    key={`inspector-${libraryLayoutMode}-${activeProject.id}`}
+                    className="project-inspector-sheet"
+                    initial={
+                      libraryLayoutMode === "inside"
+                        ? { opacity: 0, scale: 0.94, filter: "blur(8px)" }
+                        : { opacity: 1, scale: 1 }
+                    }
+                    animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                    transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    {libraryLayoutMode === "inside" && (
+                      <div className="cube-interior-back-bar">
+                        <button
+                          type="button"
+                          className="apple-btn primary"
+                          onClick={() => {
+                            sfx.close();
+                            setInsideCubeOpen(false);
+                          }}
                         >
-                          <span className="row-num">{String(idx + 1).padStart(2, "0")}</span>
-                          <div className="row-main">
-                            <b>{t.title}</b>
-                            <span>
-                              {t.artist} {t.feat ? `feat. ${t.feat}` : ""} {t.note ? `· ${t.note}` : ""}
-                            </span>
-                          </div>
-                          <div className="row-pills">
-                            <span className="meta-chip">{t.bpm} BPM</span>
-                            <span className="meta-chip">{t.key}</span>
-                            <span className="meta-chip">v{t.version}</span>
-                          </div>
+                          ← Salir del cubo · Volver a Mis Proyectos
+                        </button>
+
+                        <div className="manifold-quick-pills">
+                          {projects.map((p) => {
+                            const active = p.id === activeProject.id;
+                            return (
+                              <button
+                                key={p.id}
+                                type="button"
+                                className={`quick-proj-pill ${active ? "on" : ""}`}
+                                onClick={() => {
+                                  sfx.tap();
+                                  setSelectedProjectId(p.id);
+                                }}
+                              >
+                                <span
+                                  className="pill-dot"
+                                  style={{ background: p.c2 }}
+                                />
+                                <b>{p.title}</b>
+                                <small>{p.tracks.length}d</small>
+                              </button>
+                            );
+                          })}
                           <button
                             type="button"
-                            className="row-snippet-btn"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditingTrack(t);
+                            className="quick-proj-pill add-project-plus-pill"
+                            onClick={() => {
+                              sfx.open();
+                              navigate("crear-proyecto");
                             }}
+                            title="Crear un nuevo proyecto"
                           >
-                            ✎ Editar track
+                            <b>+</b>
                           </button>
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </section>
+                      </div>
+                    )}
+
+                    <div className="inspector-header">
+                      <div className="inspector-meta-builder">
+                        {/* Metadata completable por el usuario: Tipo de Proyecto, Cantidad de Canciones, Estado y Atributos */}
+                        <div className="project-editable-meta-bar">
+                          <label className="meta-pill-select">
+                            <span>TIPO</span>
+                            <select
+                              value={activeProject.type}
+                              onChange={(e) => {
+                                sfx.tick();
+                                updateProjectMeta(activeProject.id, {
+                                  type: e.target.value as ProjectType,
+                                });
+                              }}
+                            >
+                              {PROJECT_TYPES.map((pt) => (
+                                <option key={pt} value={pt}>
+                                  {pt}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+
+                          <div className="meta-pill-static">
+                            <span>CANCIONES</span>
+                            <b>{activeProject.tracks.length} tracks</b>
+                          </div>
+
+                          <label className="meta-pill-select">
+                            <span>ESTADO</span>
+                            <select
+                              value={activeProject.status}
+                              onChange={(e) => {
+                                sfx.tick();
+                                updateProjectMeta(activeProject.id, {
+                                  status: e.target.value as Project["status"],
+                                });
+                              }}
+                            >
+                              <option value="Publicado">Publicado</option>
+                              <option value="En mezcla">En mezcla</option>
+                              <option value="Master">Master</option>
+                              <option value="WIP">WIP</option>
+                              <option value="Privado">Privado</option>
+                            </select>
+                          </label>
+
+                          {activeAttributes.map((attr) => (
+                            <span key={attr} className="meta-user-attr-pill">
+                              {attr}
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveAttribute(activeProject.id, attr)}
+                                title="Quitar atributo"
+                              >
+                                ✕
+                              </button>
+                            </span>
+                          ))}
+
+                          <form
+                            className="meta-add-attr-form"
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              handleAddAttribute(activeProject.id, newAttrInput);
+                            }}
+                          >
+                            <input
+                              value={newAttrInput}
+                              onChange={(e) => setNewAttrInput(e.target.value)}
+                              placeholder="+ Atributo (ej. Trap, 2026...)"
+                            />
+                            {newAttrInput.trim() && (
+                              <button type="submit" className="meta-attr-submit">
+                                +
+                              </button>
+                            )}
+                          </form>
+                        </div>
+
+                        <h2>
+                          {activeProject.title} — <em>{activeProject.artist}</em>
+                        </h2>
+                        <p>{activeProject.description}</p>
+                      </div>
+
+                      <div className="row-actions">
+                        <button
+                          type="button"
+                          className="apple-btn ghost"
+                          onClick={() => navigate("subir")}
+                        >
+                          + Subir track al proyecto
+                        </button>
+                        <button
+                          type="button"
+                          className="apple-btn primary"
+                          onClick={() => playTrack(activeProject.tracks[0], activeProject, true)}
+                        >
+                          ▶ Abrir en Reproductor 3D
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="inspector-split">
+                      <DiscSpinner3D
+                        project={activeProject}
+                        currentTrackId={currentTrack.id}
+                        onPlayTrack={(tr, pr) => playTrack(tr, pr, false)}
+                      />
+
+                      <div className="inspector-tracklist">
+                        <div className="card-head">
+                          <span className="mono-tag">
+                            {activeProject.tracks.length} CANCIONES EN ESTE PROYECTO
+                          </span>
+                          <h3>Tracks del proyecto (tocá ✎ para editar track)</h3>
+                        </div>
+                        {activeProject.tracks.map((t, idx) => {
+                          const isCurrent = currentTrack.id === t.id;
+                          return (
+                            <div
+                              key={t.id}
+                              className={`clean-track-row ${isCurrent ? "is-playing" : ""}`}
+                              onMouseEnter={() => sfx.hover()}
+                              onClick={() => playTrack(t, activeProject, false)}
+                            >
+                              <span className="row-num">{String(idx + 1).padStart(2, "0")}</span>
+                              <div className="row-main">
+                                <b>{t.title}</b>
+                                <span>
+                                  {t.artist} {t.feat ? `feat. ${t.feat}` : ""} {t.note ? `· ${t.note}` : ""}
+                                </span>
+                              </div>
+                              <div className="row-pills">
+                                <span className="meta-chip">{t.bpm} BPM</span>
+                                <span className="meta-chip">{t.key}</span>
+                                <span className="meta-chip">v{t.version}</span>
+                              </div>
+                              <button
+                                type="button"
+                                className="row-snippet-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingTrack(t);
+                                }}
+                              >
+                                ✎ Editar track
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </motion.section>
+                )}
+              </div>
             </div>
           )}
 
@@ -885,6 +984,22 @@ export default function App() {
               projects={projects}
               onAddTrackToProject={handleAddTrackToProject}
               onPlayTrack={(tr, pr) => playTrack(tr, pr, false)}
+              onOpenCreateProject={() => navigate("crear-proyecto")}
+            />
+          )}
+
+          {/* ==================== 3B. CREAR PROYECTO (PARTÍCULAS SENTIENTES + LOGO 3D "El tablero") ==================== */}
+          {tab === "crear-proyecto" && (
+            <CreateProjectScreen
+              meProfile={meProfile}
+              existingCount={projects.length}
+              onCancel={() => navigate("biblioteca")}
+              onCreateProject={(newProj) => {
+                setProjects((prev) => [newProj, ...prev]);
+                setSelectedProjectId(newProj.id);
+                setInsideCubeOpen(false);
+                navigate("biblioteca");
+              }}
             />
           )}
 
@@ -979,20 +1094,31 @@ export default function App() {
                       Mis Proyectos &amp; Canvas
                     </h2>
                   </div>
-                  <button
-                    type="button"
-                    className="apple-btn ghost"
-                    onClick={() => navigate("subir")}
-                  >
-                    + Subir con Prop
-                  </button>
+                  <div className="row-actions">
+                    <button
+                      type="button"
+                      className="apple-btn primary"
+                      onClick={() => navigate("crear-proyecto")}
+                    >
+                      + Crear Proyecto
+                    </button>
+                    <button
+                      type="button"
+                      className="apple-btn ghost"
+                      onClick={() => navigate("subir")}
+                    >
+                      + Subir con Prop
+                    </button>
+                  </div>
                 </div>
 
                 <ManifoldLibrary3D
                   projects={myProjects.length > 0 ? myProjects : projects}
                   selectedProjectId={selectedProjectId}
-                  viewMode="manifold"
+                  viewMode={libraryViewMode}
+                  onChangeViewMode={(m) => setLibraryViewMode(m)}
                   onSelectProject={(proj) => setSelectedProjectId(proj.id)}
+                  onOpenCreateProject={() => navigate("crear-proyecto")}
                   onUploadProjectVideo={handleUploadProjectVideo}
                 />
               </section>

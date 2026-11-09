@@ -14,6 +14,7 @@ export default function MacInstallerUpload({
   projects,
   onAddTrackToProject,
   onPlayTrack,
+  onOpenCreateProject,
 }: {
   meProfile: ArtistProfile;
   projects: Project[];
@@ -24,6 +25,7 @@ export default function MacInstallerUpload({
     customAudioUrl?: string
   ) => void;
   onPlayTrack: (track: Track, project: Project) => void;
+  onOpenCreateProject: () => void;
 }) {
   const [title, setTitle] = useState("mendoza_snippet_v1.wav");
   const [bpm, setBpm] = useState(138);
@@ -120,38 +122,50 @@ export default function MacInstallerUpload({
           <span className="mono-tag">SUBIR // EL TABLERO</span>
           <h1 className="editorial-h1">Subir a tu Biblioteca 3D</h1>
         </div>
-        <div className="dmg-steps-indicator">
+        <div className="row-actions">
+          <div className="dmg-steps-indicator">
+            <button
+              type="button"
+              className={step === "prop-ready" ? "on" : ""}
+              onClick={() => {
+                sfx.tap();
+                setStep("prop-ready");
+              }}
+            >
+              1. Prop → Perfil
+            </button>
+            <span>→</span>
+            <button
+              type="button"
+              className={step === "zoomed-library" ? "on" : ""}
+              onClick={() => {
+                sfx.tap();
+                setStep("zoomed-library");
+              }}
+            >
+              2. Mis Proyectos (Pop-out)
+            </button>
+            <span>→</span>
+            <button
+              type="button"
+              className={step === "wheel-place" || step === "installed" ? "on" : ""}
+              onClick={() => {
+                sfx.tap();
+                setStep("wheel-place");
+              }}
+            >
+              3. Spinner
+            </button>
+          </div>
           <button
             type="button"
-            className={step === "prop-ready" ? "on" : ""}
+            className="apple-btn primary"
             onClick={() => {
-              sfx.tap();
-              setStep("prop-ready");
+              sfx.open();
+              onOpenCreateProject();
             }}
           >
-            1. Prop → Perfil
-          </button>
-          <span>→</span>
-          <button
-            type="button"
-            className={step === "zoomed-library" ? "on" : ""}
-            onClick={() => {
-              sfx.tap();
-              setStep("zoomed-library");
-            }}
-          >
-            2. Mis Proyectos (Pop-out)
-          </button>
-          <span>→</span>
-          <button
-            type="button"
-            className={step === "wheel-place" || step === "installed" ? "on" : ""}
-            onClick={() => {
-              sfx.tap();
-              setStep("wheel-place");
-            }}
-          >
-            3. Spinner
+            + Crear Proyecto
           </button>
         </div>
       </div>
@@ -371,6 +385,7 @@ export default function MacInstallerUpload({
                     setSelectedProjectId(proj.id);
                     setPoppedProjectId(proj.id);
                   }}
+                  onOpenCreateProject={onOpenCreateProject}
                 />
               </div>
             </motion.div>
