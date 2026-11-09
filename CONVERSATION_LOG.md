@@ -91,3 +91,19 @@
    - Incluidos tanto en una sección dedicada en `Inicio` (`NOVEDADES DE PRODUCTORES // BEATPOST · SOUNDKIT · DRUMKIT · LOOPKIT · CATÁLOGO DE BEATS`) como en los tipos de proyecto al crear/editar proyectos.
 7. **Importador desde `[untitled]` (`untitled.stream`) en la página de Perfil:**
    - Creado endpoint `/api/import-untitled` (`src/app/api/import-untitled/route.ts`) + componente `src/components/UntitledImporter.tsx` integrado directamente en la página de `Perfil` (`@poyo`), permitiendo pegar cualquier link de `untitled.stream` o subir carpetas WAV/MP3 exportadas de `[untitled]`, previsualizar/editar tracks y convertirlo en un bloque 3D + vinilo en 1 click.
+
+---
+
+### Turno 5 — Partículas 100% Blancas en "Crear Proyecto" y Arreglo Total de Clicks/Interacción en Modo Vinilos
+**Prompt del usuario:**
+1. *"QUE LAS PARTICULAS DE CREACION DEL PROYECTO POR FAVOR SEAN BLANCAS !"*
+2. *"cuando cambio a vinilos todo queda inusable no puedo volver a bloques ni entrar a los proyectos ni cambiar el seleccionado, arregla todo lo de vinilos que anda medio mal, no se puede clickear para entrar a los proyectos tambpcoo"*
+
+**Implementación:**
+- **Partículas 100% blancas en `Crear Proyecto` (`src/components/CreateProjectScreen.tsx`):**
+  - Configurados los 28.000 vértices de color en blanco puro (`#ffffff`, `0.94–1.0` en RGB) sobre fondo `#070709` con `<pointsMaterial color="#ffffff" size={0.028} opacity={0.96} toneMapped={false} />`.
+- **Arreglo de interacción, clicks y z-index en `Vinilos` (`src/components/ManifoldLibrary3D.tsx` + `src/app/globals.css`):**
+  - Eliminado `setPointerCapture` del contenedor `.vinyl-arc-stage` que secuestraba los eventos `pointerup`/`click` e impedía clickear el switch `🧊 Bloques / 💿 Vinilos`, las píldoras de proyectos y los sobres de vinilo.
+  - Subido `.manifold-stage-overlay-top` a `z-index: 90; pointer-events: auto;` y aislado el stacking context de `.vinyl-fan-arc-viewport` (`z-index: 1; isolation: isolate;`) para que ningún vinilo (`z-index: 50`) ni tarjeta inspectora (`z-index: 60`) tape la barra superior.
+  - Agregados botones rápidos `▲` / `▼` para girar el abanico de vinilos, pills de tracks directos en la tarjeta derecha y soporte para que clickear cualquier sobre de vinilo lo seleccione y abra el proyecto (`onDiveIntoProject`).
+

@@ -168,11 +168,11 @@ function SentientTableroSwarm({
         shapes[ix + 2] = Math.cos(xHelix * 2.2 + strand) * 0.95 + (Math.random() - 0.5) * 0.12;
       }
 
-      const mix = (i % 100) / 100;
-      const chosen = i % 3 === 0 ? cInk : i % 3 === 1 ? cA.clone().lerp(cB, mix) : cB;
-      col[ix] = chosen.r;
-      col[ix + 1] = chosen.g;
-      col[ix + 2] = chosen.b;
+      // Todas las partículas de Crear Proyecto son 100% BLANCAS brillantes (#ffffff)
+      const brightness = 0.92 + (i % 9) * 0.01;
+      col[ix] = brightness;
+      col[ix + 1] = brightness;
+      col[ix + 2] = brightness;
     }
 
     return {
@@ -183,7 +183,7 @@ function SentientTableroSwarm({
       phases: ph,
       shapeTargets: shapes,
     };
-  }, [accent, c2, logoTargets]);
+  }, [logoTargets]);
 
   // Centros dinámicos de los 12 grupos sentientes
   const clusterCenters = useMemo(
@@ -350,11 +350,13 @@ function SentientTableroSwarm({
       </bufferGeometry>
       <pointsMaterial
         map={sprite}
-        size={0.026}
+        color="#ffffff"
+        size={0.028}
         vertexColors
         transparent
         alphaTest={0.04}
-        opacity={0.92}
+        opacity={0.96}
+        toneMapped={false}
         sizeAttenuation
         depthWrite={false}
       />
@@ -605,6 +607,7 @@ export default function CreateProjectScreen({
             dpr={[1, 1.35]}
             gl={{ antialias: false, powerPreference: "high-performance" }}
           >
+            <color attach="background" args={["#070709"]} />
             <SentientTableroSwarm
               accent={color}
               c2={color}

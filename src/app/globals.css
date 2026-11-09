@@ -839,20 +839,22 @@ button {
 
 .manifold-stage-overlay-top {
   position: relative;
-  z-index: 5;
+  z-index: 90;
+  pointer-events: auto;
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
   padding: 16px 22px 12px;
   border-bottom: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(14px);
   gap: 12px;
 }
 
 .manifold-overlay-titles {
   min-width: 0;
+  pointer-events: auto;
 }
 
 .manifold-stage-overlay-top h3 {
@@ -3337,20 +3339,73 @@ button {
 
 /* ==================== ABANICO CURVO FIJO DE VINILOS (ESTILO IMAGE.PNG, CERO ROTACIÓN 3D) ==================== */
 .vinyl-arc-stage {
+  position: relative;
   background: radial-gradient(circle at 22% 52%, rgba(0, 0, 0, 0.04) 0%, #ffffff 72%);
   user-select: none;
-  touch-action: pan-y;
+  cursor: default;
 }
 
 .vinyl-fan-arc-viewport {
   position: relative;
+  z-index: 1;
+  isolation: isolate;
   width: 100%;
-  height: 540px;
+  height: 480px;
   display: grid;
   grid-template-columns: minmax(320px, 1.15fr) minmax(260px, 0.85fr);
   align-items: center;
-  padding: 96px 28px 24px;
+  padding: 28px 28px 24px;
   overflow: hidden;
+  cursor: grab;
+  touch-action: pan-y;
+}
+
+.vinyl-fan-arc-viewport:active {
+  cursor: grabbing;
+}
+
+.vinyl-arc-step-controls {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 75;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-soft);
+  pointer-events: auto;
+}
+
+.vinyl-step-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #09090b;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform 0.14s, background 0.14s;
+}
+
+.vinyl-step-btn:hover {
+  background: #e11d48;
+  transform: scale(1.08);
+}
+
+.vinyl-step-counter {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.64rem;
+  font-weight: 700;
+  color: var(--ink-secondary);
 }
 
 .vinyl-fan-arc-wheel {
@@ -3359,14 +3414,15 @@ button {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  padding-left: clamp(24px, 7vw, 110px);
+  padding-left: clamp(54px, 8vw, 120px);
 }
 
 .vinyl-fan-sleeve-card {
   position: absolute;
-  width: 310px;
-  height: 196px;
+  width: 300px;
+  height: 190px;
   cursor: pointer;
+  pointer-events: auto;
   transform-origin: -180px 50%;
   transition:
     transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
@@ -3408,9 +3464,9 @@ button {
   position: absolute;
   top: 50%;
   right: -46px;
-  width: 172px;
-  height: 172px;
-  margin-top: -86px;
+  width: 168px;
+  height: 168px;
+  margin-top: -84px;
   border-radius: 50%;
   background:
     repeating-radial-gradient(
@@ -3437,8 +3493,8 @@ button {
 }
 
 .vinyl-fan-record-label {
-  width: 58px;
-  height: 58px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -3535,11 +3591,13 @@ button {
 .vinyl-fan-inspector-card {
   position: relative;
   z-index: 60;
-  background: rgba(255, 255, 255, 0.9);
+  pointer-events: auto;
+  cursor: default;
+  background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(20px);
   border: 1px solid var(--line-strong);
   border-radius: 22px;
-  padding: 22px 24px;
+  padding: 20px 22px;
   box-shadow: var(--shadow-card);
   display: flex;
   flex-direction: column;
@@ -3547,7 +3605,7 @@ button {
 }
 
 .vinyl-fan-inspector-card h2 {
-  font-size: clamp(1.35rem, 2.4vw, 2rem);
+  font-size: clamp(1.35rem, 2.4vw, 1.9rem);
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1.05;
@@ -3559,24 +3617,48 @@ button {
 }
 
 .vinyl-fan-desc {
-  font-size: 0.84rem;
+  font-size: 0.82rem;
   color: var(--ink-muted);
-  line-height: 1.45;
+  line-height: 1.42;
+}
+
+.vinyl-fan-quick-tracks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.vinyl-mini-track-pill {
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: rgba(15, 15, 17, 0.06);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  cursor: pointer;
+  transition: background 0.14s, color 0.14s;
+}
+
+.vinyl-mini-track-pill:hover {
+  background: #09090b;
+  color: #ffffff;
 }
 
 .vinyl-fan-actions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  margin-top: 6px;
+  margin-top: 4px;
 }
 
 /* ==================== BOTONES DE BASURITA (ELIMINAR PROYECTOS Y TRACKS) ==================== */
 .quick-proj-pill-group {
   display: inline-flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.88);
-  border: 1px solid rgba(15, 15, 17, 0.1);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(15, 15, 17, 0.14);
   border-radius: 999px;
   padding-right: 4px;
   transition: transform 0.15s, border-color 0.15s;
@@ -3591,6 +3673,10 @@ button {
   border: none !important;
   background: transparent !important;
   box-shadow: none !important;
+}
+
+.quick-proj-pill-group.on .quick-proj-pill {
+  color: #ffffff !important;
 }
 
 .pill-trash-btn {
@@ -3959,13 +4045,18 @@ button {
   .vinyl-fan-arc-viewport {
     grid-template-columns: 1fr;
     height: auto;
-    min-height: 620px;
-    padding: 130px 16px 20px;
+    min-height: 540px;
+    padding: 24px 16px 20px;
     gap: 24px;
   }
 
+  .vinyl-arc-step-controls {
+    top: 170px;
+    left: 10px;
+  }
+
   .vinyl-fan-arc-wheel {
-    height: 340px;
+    height: 320px;
     justify-content: center;
     padding-left: 0;
   }

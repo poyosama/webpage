@@ -593,6 +593,19 @@ export default function ManifoldLibrary3D({
     }
   };
 
+  const stepVinylArc = (dir: -1 | 1) => {
+    const nextIdx = Math.max(
+      0,
+      Math.min(projects.length - 1, Math.round(arcOffset) + dir)
+    );
+    sfx.tick();
+    setArcOffset(nextIdx);
+    const targetProj = projects[nextIdx];
+    if (targetProj) {
+      onSelectProject(targetProj);
+    }
+  };
+
   const renderQuickPills = () => (
     <div className="manifold-quick-pills">
       {projects.map((p) => (
@@ -603,9 +616,12 @@ export default function ManifoldLibrary3D({
           <button
             type="button"
             className={`quick-proj-pill ${p.id === selectedProjectId ? "on" : ""}`}
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               sfx.tap();
-              handleCubeOrPlateSelect(p);
+              const idx = projects.findIndex((item) => item.id === p.id);
+              if (idx >= 0) setArcOffset(idx);
+              onSelectProject(p);
             }}
           >
             <span className="pill-dot" style={{ background: p.c2 }} />
@@ -633,7 +649,8 @@ export default function ManifoldLibrary3D({
           type="button"
           className="quick-proj-pill add-project-plus-pill"
           title="Crear nuevo proyecto"
-          onClick={() => {
+          onClick={(e) => {
+            e.stopPropagation();
             sfx.open();
             onOpenCreateProject();
           }}
@@ -661,7 +678,8 @@ export default function ManifoldLibrary3D({
                   <button
                     type="button"
                     className={viewMode === "manifold" ? "on" : ""}
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       sfx.tap();
                       onChangeViewMode("manifold");
                     }}
@@ -671,7 +689,8 @@ export default function ManifoldLibrary3D({
                   <button
                     type="button"
                     className={(viewMode as string) === "disc-row" ? "on" : ""}
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       sfx.tap();
                       onChangeViewMode("disc-row");
                     }}
@@ -734,60 +753,7 @@ export default function ManifoldLibrary3D({
         </div>
       ) : (
         /* ==================== MODO VINILOS: ABANICO CURVO EN ARCO FIJO (ESTILO IMAGE.PNG, SIN ROTAR EN 3D) ==================== */
-        <div
-          className="manifold-3d-canvas-stage vinyl-arc-stage"
-          onPointerDown={(e) => {
-            if ((e.target as HTMLElement).closest("button")) return;
-            (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
-            arcDragRef.current = {
-              dragging: true,
-              startY: e.clientY,
-              startX: e.clientX,
-              startOff: arcOffset,
-              moved: false,
-            };
-          }}
-          onPointerMove={(e) => {
-            if (!arcDragRef.current.dragging) return;
-            const dy = e.clientY - arcDragRef.current.startY;
-            const dx = e.clientX - arcDragRef.current.startX;
-            const primaryDelta = Math.abs(dy) > Math.abs(dx) ? dy : dx;
-            if (Math.abs(primaryDelta) > 6) {
-              arcDragRef.current.moved = true;
-            }
-            const nextOff = Math.max(
-              0,
-              Math.min(
-                projects.length - 1,
-                arcDragRef.current.startOff - primaryDelta / 95
-              )
-            );
-            setArcOffset(nextOff);
-          }}
-          onPointerUp={() => {
-            if (!arcDragRef.current.dragging) return;
-            arcDragRef.current.dragging = false;
-            const snapped = Math.max(
-              0,
-              Math.min(projects.length - 1, Math.round(arcOffset))
-            );
-            setArcOffset(snapped);
-            const targetProj = projects[snapped];
-            if (targetProj && targetProj.id !== selectedProjectId) {
-              sfx.tick();
-              onSelectProject(targetProj);
-            }
-          }}
-          onPointerLeave={() => {
-            if (!arcDragRef.current.dragging) return;
-            arcDragRef.current.dragging = false;
-            const snapped = Math.max(
-              0,
-              Math.min(projects.length - 1, Math.round(arcOffset))
-            );
-            setArcOffset(snapped);
-          }}
-        >
+        <div className="manifold-3d-canvas-stage vinyl-arc-stage">
           <div className="manifold-stage-overlay-top">
             <div className="manifold-title-and-switch">
               <div className="manifold-overlay-titles">
@@ -800,7 +766,8 @@ export default function ManifoldLibrary3D({
                   <button
                     type="button"
                     className={(viewMode as string) === "manifold" ? "on" : ""}
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       sfx.tap();
                       onChangeViewMode("manifold");
                     }}
@@ -810,7 +777,8 @@ export default function ManifoldLibrary3D({
                   <button
                     type="button"
                     className={viewMode === "disc-row" ? "on" : ""}
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       sfx.tap();
                       onChangeViewMode("disc-row");
                     }}
@@ -825,7 +793,97 @@ export default function ManifoldLibrary3D({
           </div>
 
           {/* Abanico Curvo Fijo (idéntico a image.png: arco en C sobre la izquierda con inclinación tangencial y vinilo asomando) */}
-          <div className="vinyl-fan-arc-viewport">
+          <div
+            className="vinyl-fan-arc-viewport"
+            onPointerDown={(e) => {
+              if ((e.target as HTMLElement).closest(".vinyl-fan-inspector-card, .vinyl-arc-step-controls")) {
+                return;
+              }
+              arcDragRef.current = {
+                dragging: true,
+                startY: e.clientY,
+                startX: e.clientX,
+                startOff: arcOffset,
+                moved: false,
+              };
+            }}
+            onPointerMove={(e) => {
+              if (!arcDragRef.current.dragging) return;
+              const dy = e.clientY - arcDragRef.current.startY;
+              const dx = e.clientX - arcDragRef.current.startX;
+              const primaryDelta = Math.abs(dy) > Math.abs(dx) ? dy : dx;
+              if (Math.abs(primaryDelta) > 8) {
+                arcDragRef.current.moved = true;
+              }
+              if (arcDragRef.current.moved) {
+                const nextOff = Math.max(
+                  0,
+                  Math.min(
+                    projects.length - 1,
+                    arcDragRef.current.startOff - primaryDelta / 85
+                  )
+                );
+                setArcOffset(nextOff);
+              }
+            }}
+            onPointerUp={() => {
+              if (!arcDragRef.current.dragging) return;
+              const wasMoved = arcDragRef.current.moved;
+              arcDragRef.current.dragging = false;
+              if (wasMoved) {
+                const snapped = Math.max(
+                  0,
+                  Math.min(projects.length - 1, Math.round(arcOffset))
+                );
+                setArcOffset(snapped);
+                const targetProj = projects[snapped];
+                if (targetProj && targetProj.id !== selectedProjectId) {
+                  sfx.tick();
+                  onSelectProject(targetProj);
+                }
+              }
+            }}
+            onPointerLeave={() => {
+              if (!arcDragRef.current.dragging) return;
+              arcDragRef.current.dragging = false;
+              const snapped = Math.max(
+                0,
+                Math.min(projects.length - 1, Math.round(arcOffset))
+              );
+              setArcOffset(snapped);
+            }}
+          >
+            {/* Controles rápidos para girar el abanico de vinilos además del drag */}
+            <div className="vinyl-arc-step-controls">
+              <button
+                type="button"
+                className="vinyl-step-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  stepVinylArc(-1);
+                }}
+                disabled={Math.round(arcOffset) <= 0}
+                title="Vinilo anterior"
+              >
+                ▲
+              </button>
+              <span>
+                {Math.min(projects.length, Math.max(1, Math.round(arcOffset) + 1))}/{projects.length}
+              </span>
+              <button
+                type="button"
+                className="vinyl-step-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  stepVinylArc(1);
+                }}
+                disabled={Math.round(arcOffset) >= projects.length - 1}
+                title="Siguiente vinilo"
+              >
+                ▼
+              </button>
+            </div>
+
             <div className="vinyl-fan-arc-wheel">
               {projects.map((p, idx) => {
                 const delta = idx - arcOffset;
@@ -833,15 +891,15 @@ export default function ManifoldLibrary3D({
                 // Ángulo tangencial a lo largo del arco C (como en la imagen de referencia)
                 const angleDeg = delta * 17.5;
                 const angleRad = (angleDeg * Math.PI) / 180;
-                const radiusX = 290;
-                const radiusY = 305;
+                const radiusX = 270;
+                const radiusY = 275;
 
                 // En ángulo 0 está más a la derecha; hacia arriba y abajo se curva hacia la izquierda
-                const tx = (Math.cos(angleRad) - 1) * radiusX + (absDelta < 0.35 ? 24 : 0);
+                const tx = (Math.cos(angleRad) - 1) * radiusX + (absDelta < 0.35 ? 26 : 0);
                 const ty = Math.sin(angleRad) * radiusY;
                 const rotZ = angleDeg * 0.78;
                 const scale = Math.max(0.76, 1 - absDelta * 0.065);
-                const zIndex = Math.round(50 - absDelta * 10);
+                const zIndex = Math.round(30 - absDelta * 6);
                 const isFocused = p.id === selectedProjectId;
 
                 return (
@@ -854,12 +912,19 @@ export default function ManifoldLibrary3D({
                       transform: `translate3d(${tx.toFixed(1)}px, ${ty.toFixed(1)}px, 0px) rotate(${rotZ.toFixed(2)}deg) scale(${scale.toFixed(3)})`,
                       zIndex,
                       opacity: absDelta > 3.4 ? 0 : Math.max(0.35, 1 - absDelta * 0.16),
+                      pointerEvents: absDelta > 3.2 ? "none" : "auto",
                     }}
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       if (arcDragRef.current.moved) return;
                       sfx.tap();
                       setArcOffset(idx);
-                      handleCubeOrPlateSelect(p);
+                      onSelectProject(p);
+                      // Si ya estaba enfocado o si el usuario hace click para abrirlo, entramos al proyecto
+                      if (isFocused && onDiveIntoProject) {
+                        sfx.open();
+                        onDiveIntoProject(p);
+                      }
                     }}
                   >
                     {/* Disco de vinilo real asomando por el borde derecho del sobre */}
@@ -905,7 +970,7 @@ export default function ManifoldLibrary3D({
                       {/* Info inferior derecha */}
                       <div className="vinyl-fan-corner-badge">
                         <b>{p.artist}</b>
-                        <span>{p.year}</span>
+                        <span>{isFocused ? "TOCÁ P/ ABRIR →" : p.year}</span>
                       </div>
                     </div>
                   </div>
@@ -925,24 +990,37 @@ export default function ManifoldLibrary3D({
                 </p>
                 <p className="vinyl-fan-desc">{activeProject.description}</p>
 
+                {/* Lista rápida de canciones del vinilo para escuchar o entrar directo */}
+                <div className="vinyl-fan-quick-tracks">
+                  {activeProject.tracks.slice(0, 4).map((tr, i) => (
+                    <div key={tr.id} className="vinyl-mini-track-pill">
+                      <span>0{i + 1}</span>
+                      <b>{tr.title}</b>
+                      <small>{tr.duration}</small>
+                    </div>
+                  ))}
+                </div>
+
                 <div className="vinyl-fan-actions">
                   {onDiveIntoProject && (
                     <button
                       type="button"
                       className="apple-btn primary"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         sfx.open();
                         onDiveIntoProject(activeProject);
                       }}
                     >
-                      💿 Abrir Proyecto ({activeProject.tracks.length} tracks) →
+                      💿 Entrar al Proyecto ({activeProject.tracks.length} tracks) →
                     </button>
                   )}
                   {onDeleteProject && projects.length > 1 && (
                     <button
                       type="button"
                       className="apple-btn ghost danger-trash-btn"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         sfx.tap();
                         onDeleteProject(activeProject.id);
                       }}
