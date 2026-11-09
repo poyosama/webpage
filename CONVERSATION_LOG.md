@@ -107,3 +107,40 @@
   - Subido `.manifold-stage-overlay-top` a `z-index: 90; pointer-events: auto;` y aislado el stacking context de `.vinyl-fan-arc-viewport` (`z-index: 1; isolation: isolate;`) para que ningún vinilo (`z-index: 50`) ni tarjeta inspectora (`z-index: 60`) tape la barra superior.
   - Agregados botones rápidos `▲` / `▼` para girar el abanico de vinilos, pills de tracks directos en la tarjeta derecha y soporte para que clickear cualquier sobre de vinilo lo seleccione y abra el proyecto (`onDiveIntoProject`).
 
+---
+
+### Turno 6 — Partículas Abrazando el Cluster de Cubos (`0 proyectos = 0 cubos`), Animación Inmaculada del Cubo (`Por defecto`), Tapas y Tracklists Reales de Spotify, Separación Raperos vs Productores y Capacitor iOS
+**Prompts del usuario:**
+1. *"despues juga con las particulas en esta pantalla quiero que las particulas como que abracen el cluster de cubos (por cierto acordate que si hay 0 proyectos tieneque haber 0 cubos etc)"*
+2. *"la animacion de entrar al cubo esta fierita no me gusto, refinala que quede inmaculada y no cometas errores. (por cierto donde dice "adentro del cubo" cambialo por "Por defecto")"*
+3. *"y lo siguiente ya wipea todo de los ejemplos para mi y tratemos de ver como nos trata la app nativa en app store, con capacitor !"*
+4. *"bueno el La Plaga del tablero main esta feo no lo estilices asi trata de cambiar otras cosas no tanto la fuente. y sacale la etiqueta de chickennugget a la mixtape de tizianolased xq no tienen nada q ver"*
+5. *"de todos los artistas que te mencione el unico productor es dorkke los demas son todos raperos asi que a los raperos lo suyo al productor lo suyo. mas ejemplos de productores: 2ounces, gonza2k, bemo.wav, ando.flp, erreorocko, icylucki (tambien es prod), nutsvk"*
+6. *"te mando de paso screenshot de los proyectos mencionados asi tenes la tapa y los tracks"* (adjuntó 5 capturas de Spotify: `PERDÓN LA DEMORA` de `Tizianolased`, `chickenNugget` de `poyo · dorkke`, `#MA7IAS` de `Ma7imza`, `ESTO ES ESTAR EN SONIDO` de `V4lentin0` y `Love2Hate` de `Icylucki`).
+
+**Implementación:**
+- **Tapas reales y tracklists reales desde los 5 screenshots (`public/covers/*.png` + `src/lib/mock.ts`):**
+  - Recortadas y guardadas las 5 portadas oficiales en `public/covers/`: `perdon-la-demora.png`, `chickennugget.png`, `ma7ias.png`, `esto-es-estar-en-sonido.png` y `love2hate.png`.
+  - Cargados los proyectos reales con todos sus tracks, feats, productores y duraciones exactas:
+    - `PERDÓN LA DEMORA` (`Tizianolased` · 8 canciones: `fuma conmigo`, `peligrosita (recuerdos)`, `me sube`, `pronto es tarde`, `billetes azules` feat. blango, `antes que te vayas` feat. Elefego, `no da más`, `esta noche`).
+    - `chickenNugget` (`poyo · dorkke` · EP 6 canciones: `i am GOD`, `esta cumbia`, `uno más`, `florcita`, `ni plata ni Tiempo`, `recuerdos tuyos` con prods `dorkke`, `Gonza2k`, `2ounces` y feat `Ma7imza`).
+    - `#MA7IAS` (`Ma7imza` · LP 7 canciones: `SIN ANALITICO`, `AKAPITAL`, `GOLES DE CAÑO`, `HOES RETORNABLES` feat. Tizianolased, `PARA LA MAS ROCHA`, `FRANKLIN Y LAMAR`, `PIÑAZOS Y PATADAS`).
+    - `ESTO ES ESTAR EN SONIDO` (`V4lentin0` · LP 9 canciones: `ESTO ES ESTAR`, `PERRAS TUNEADAS`, `CHETA LA COREO`, `DEPENDE DE MÍ` feat. Tizianolased, `CUANDO ME LLEGUE (Interludio)`, `AY BADDIE`, `ME TIRAN` feat. Ma7imza, `BAJEN PA' ACÁ`, `DECLINE`).
+    - `Love2Hate` (`Icylucki` · EP 3 canciones: `Tengo tos` feat. nunoset, `3am`, `Fumo mari`).
+    - `LA PLAGA` (`eyebags`) y `AMORIO CLUB 2` (`Máximo`).
+- **Separación estricta Raperos vs Productores (`src/lib/mock.ts`):**
+  - Raperos: `poyo`, `Tizianolased`, `Ma7imza`, `V4lentin0`, `eyebags`, `Máximo`, `Nvcho`, `alva musicc`.
+  - Rapero & Productor: `Icylucki`.
+  - Productores (dueños exclusivos de los Beatposts, Soundkits, Drumkits, Loopkits y Catálogos de Beats): `dorkke`, `Gonza2k`, `2ounces`, `bemo.wav`, `ando.flp`, `erreorocko`, `Icylucki`, `nutsvk`.
+- **Collage Principal en `Inicio` (`src/components/App.tsx` + `src/app/globals.css`):**
+  - Quitado `.gothic-drop` y los `.inline-swatch` que deformaban la fuente de `LA PLAGA` y los demás títulos; ahora usan tipografía editorial limpia y unificada (`.clean-editorial-word`), acompañados de miniaturas de las tapas reales (`.collage-cover-thumb`) y badges limpios.
+  - Eliminada la etiqueta `🍗 chickenNugget` de la fila de `PERDÓN LA DEMORA` (`Tizianolased`).
+- **Partículas que abrazan el cluster de cubos + `0 proyectos = 0 cubos` + Wipe en 1 click (`src/components/ManifoldLibrary3D.tsx` + `src/components/App.tsx`):**
+  - Creado `ClusterEmbraceParticles` (16.000 partículas algorítmicas) que envuelven y abrazan las 6 caras/aristas de cada cubo del cluster y tejen filamentos orbitales entre cubos.
+  - Cuando `projects.length === 0`, hay **0 cubos** y **0 vinilos** en escena con estado limpio `0 PROYECTOS // 0 CUBOS EN ESCENA`.
+  - Agregado botón `"🧹 Wipear ejemplos (0 cubos)"` (y `"🔄 Restaurar proyectos"`) en `Biblioteca` y `Perfil`, además de permitir borrar todos los proyectos con `🗑️` hasta quedar en 0.
+- **Animación Inmaculada al Entrar al Cubo (`VoxelDivePortal`) + `"Por defecto"`:**
+  - Cambiado `"🎯 Adentro del Cubo"` por **`"Por defecto"`**.
+  - Rediseñado `VoxelDivePortal`: al clickear el cubo activo se oculta el cubo sólido y sus 6 caras se convierten en **864 micro-vóxeles volumétricos** que se encienden en blanco puro (`#ffffff`), abren un túnel radial en espiral sincronizado con el vector de la cámara hacia el núcleo del cubo y funden con un *bloom* blanco sedoso (`.cube-dive-bloom-overlay`) hacia el interior del proyecto.
+- **Configuración Nativa iOS con Capacitor (`capacitor.config.ts`, `next.config.ts`, `package.json`, `src/app/layout.tsx`):**
+  - Creado `capacitor.config.ts` (`appId: "com.quetablero.app"`, `appName: "El tablero"`, `webDir: "out"`), scripts `npm run build:capacitor`, `npm run cap:sync`, `npm run cap:ios` y soporte de `safe-area-inset` para iPhone.

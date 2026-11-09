@@ -300,7 +300,7 @@ export default function MacInstallerUpload({
           )}
 
           {/* PASO 2: Abre la Biblioteca 3D tal cual aparece; tocás un proyecto, popea de la unidad y le arrastrás el Prop */}
-          {step === "zoomed-library" && targetProject && (
+          {step === "zoomed-library" && (
             <motion.div
               key="step2"
               className="dmg-stage"
@@ -315,7 +315,9 @@ export default function MacInstallerUpload({
                     ZOOM EN {meProfile.handle.toUpperCase()} // BIBLIOTECA 3D MANIFOLD
                   </span>
                   <h3>
-                    Tocá un cubo en la Biblioteca 3D para que popee de la unidad y arrastrá el Prop al proyecto popeado
+                    {targetProject
+                      ? "Tocá un cubo en la Biblioteca 3D para que popee de la unidad y arrastrá el Prop al proyecto popeado"
+                      : "Todavía tenés 0 proyectos en tu Biblioteca 3D · Creá un proyecto primero para instalar este track"}
                   </h3>
                 </div>
                 <button
@@ -352,26 +354,40 @@ export default function MacInstallerUpload({
                     <small className="dmg-hint">↓ Arrastrá el Prop al proyecto popeado acá abajo</small>
                   </div>
 
-                  {/* Tarjeta del proyecto que acaba de popear del bloque 3D */}
-                  <div
-                    ref={poppedDropZoneRef}
-                    className="popped-project-dropzone"
-                    onClick={() => {
-                      sfx.drop();
-                      setWheelSlot(targetProject.tracks.length);
-                      setStep("wheel-place");
-                    }}
-                  >
-                    <span className="mono-tag">BLOQUE POPEADO EN 3D</span>
-                    <h4>{targetProject.title}</h4>
-                    <p>
-                      {targetProject.artist} · {targetProject.tracks.length} discos actuales ·{" "}
-                      {targetProject.videos.length} videos
-                    </p>
-                    <span className="popped-cta">
-                      Soltá el Prop acá o tocá para abrir la ruedita de temas →
-                    </span>
-                  </div>
+                  {targetProject ? (
+                    <div
+                      ref={poppedDropZoneRef}
+                      className="popped-project-dropzone"
+                      onClick={() => {
+                        sfx.drop();
+                        setWheelSlot(targetProject.tracks.length);
+                        setStep("wheel-place");
+                      }}
+                    >
+                      <span className="mono-tag">BLOQUE POPEADO EN 3D</span>
+                      <h4>{targetProject.title}</h4>
+                      <p>
+                        {targetProject.artist} · {targetProject.tracks.length} discos actuales ·{" "}
+                        {targetProject.videos.length} videos
+                      </p>
+                      <span className="popped-cta">
+                        Soltá el Prop acá o tocá para abrir el Spinner →
+                      </span>
+                    </div>
+                  ) : (
+                    <div
+                      className="popped-project-dropzone"
+                      onClick={() => {
+                        sfx.open();
+                        onOpenCreateProject();
+                      }}
+                    >
+                      <span className="mono-tag">0 PROYECTOS EN TU BIBLIOTECA</span>
+                      <h4>Creá tu primer proyecto</h4>
+                      <p>Necesitás crear un proyecto antes de ubicar este track en el Spinner.</p>
+                      <span className="popped-cta">+ Ir a Crear Proyecto →</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Derecha: La Biblioteca 3D tal cual aparece, con el bloque seleccionado popeando hacia afuera */}

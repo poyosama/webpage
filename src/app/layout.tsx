@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Instrument_Serif, JetBrains_Mono, UnifrakturMaguntia } from "next/font/google";
 import "./globals.css";
 
@@ -27,10 +27,24 @@ const gothic = UnifrakturMaguntia({
   weight: "400",
 });
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+  themeColor: "#f6f6f4",
+};
+
 export const metadata: Metadata = {
-  title: "El tablero — Mendoza Underground Archive & Studio",
+  title: "El tablero — UG Board (@quetablero)",
   description:
-    "El tablero: archivo vivo 3D, reproductor customizable para snippets y biblioteca con carpetas de video para la escena de Mendoza.",
+    "Tus proyectos. Tu identidad. Tu gente. Tu música. Entorno 3D Manifold y reproductor de partículas para la escena.",
+  appleWebApp: {
+    capable: true,
+    title: "El tablero",
+    statusBarStyle: "black-translucent",
+  },
 };
 
 export default function RootLayout({

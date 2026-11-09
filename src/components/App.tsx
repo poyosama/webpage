@@ -8,6 +8,8 @@ import {
   INITIAL_PRODUCER_DROPS,
   INITIAL_PROJECTS,
   SCENE_ARTISTS,
+  STANDBY_PROJECT,
+  STANDBY_TRACK,
   type ArtistProfile,
   type ProducerDropItem,
   type ProducerDropKind,
@@ -51,24 +53,35 @@ const PRODUCER_DROP_KINDS: ("Todos" | ProducerDropKind)[] = [
   "Catálogo de Beats",
 ];
 
+const STORAGE_PROJECTS_KEY = "eltablero_clean_projects_v2";
+const STORAGE_PROFILE_KEY = "eltablero_clean_profile_v2";
+const STORAGE_DROPS_KEY = "eltablero_clean_drops_v2";
+
 export default function App() {
   const [tab, setTab] = useState<ScreenTab>("inicio");
   const [meProfile, setMeProfile] = useState<ArtistProfile>(INITIAL_ME_PROFILE);
   const [projects, setProjects] = useState<Project[]>(INITIAL_PROJECTS);
-  const [selectedProjectId, setSelectedProjectId] = useState<string>(INITIAL_PROJECTS[0].id);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(
+    INITIAL_PROJECTS[0]?.id || ""
+  );
   const [producerDrops, setProducerDrops] = useState<ProducerDropItem[]>(INITIAL_PRODUCER_DROPS);
   const [producerFilter, setProducerFilter] = useState<"Todos" | ProducerDropKind>("Todos");
+  const [hydrated, setHydrated] = useState<boolean>(false);
 
   // Estado del reproductor persistente + pantalla completa (con funciones completas de Spotify)
-  const [currentTrack, setCurrentTrack] = useState<Track>(INITIAL_PROJECTS[0].tracks[1]);
-  const [currentProject, setCurrentProject] = useState<Project>(INITIAL_PROJECTS[0]);
+  const [currentTrack, setCurrentTrack] = useState<Track>(
+    INITIAL_PROJECTS[0]?.tracks[0] || STANDBY_TRACK
+  );
+  const [currentProject, setCurrentProject] = useState<Project>(
+    INITIAL_PROJECTS[0] || STANDBY_PROJECT
+  );
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [playerExpanded, setPlayerExpanded] = useState<boolean>(false);
   const [muted, setMuted] = useState<boolean>(false);
   const [volume, setVolume] = useState<number>(0.85);
   const [shuffle, setShuffle] = useState<boolean>(false);
   const [repeatMode, setRepeatMode] = useState<RepeatMode>("off");
-  const [likedTrackIds, setLikedTrackIds] = useState<string[]>(["lp-2", "cn-1"]);
+  const [likedTrackIds, setLikedTrackIds] = useState<string[]>([]);
   const [userQueue, setUserQueue] = useState<QueueEntry[]>([]);
   const [customAudioMap, setCustomAudioMap] = useState<Record<string, string>>({});
 
@@ -77,7 +90,7 @@ export default function App() {
 
   // Vista 3D interna en Mis Proyectos: "manifold" (Bloques) o "disc-row" (Vinilos)
   const [libraryViewMode, setLibraryViewMode] = useState<"manifold" | "disc-row">("manifold");
-  // Modo de display en Biblioteca: 1 (default) "inside" (una adentro de la otra con zoom voxel) o 2 "side-by-side" (uno al lado del otro)
+  // Modo de display en Biblioteca: 1 (default) "inside" (Por defecto) o 2 "side-by-side" (Lado a Lado)
   const [libraryLayoutMode, setLibraryLayoutMode] = useState<"inside" | "side-by-side">("inside");
   const [insideCubeOpen, setInsideCubeOpen] = useState<boolean>(false);
 
@@ -87,8 +100,67 @@ export default function App() {
   const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
   const [googleConnected, setGoogleConnected] = useState<boolean>(true);
 
-  const activeProject =
-    projects.find((p) => p.id === selectedProjectId) || projects[0];
+  // Hidratar proyectos y perfil guardados por el usuario en su dispositivo (Web / Capacitor iOS)
+  useEffect(() => {
+    try {
+      const savedProjs = localStorage.getItem(STORAGE_PROJECTS_KEY);
+      if (savedProjs) {
+        const parsed = JSON.parse(savedProjs) as Project[];
+        if (Array.isArray(parsed)) {
+          setProjects(parsed);
+          if (parsed[0]) {
+            setSelectedProjectId(parsed[0].id);
+            setCurrentProject(parsed[0]);
+            if (parsed[0].tracks[0]) setCurrentTrack(parsed[0].tracks[0]);
+          }
+        }
+      }
+      const savedProfile = localStorage.getItem(STORAGE_PROFILE_KEY);
+      if (savedProfile) {
+        const parsedProf = JSON.parse(savedProfile) as ArtistProfile;
+        if (parsedProf && parsedProf.id) setMeProfile(parsedProf);
+      }
+      const savedDrops = localStorage.getItem(STORAGE_DROPS_KEY);
+      if (savedDrops) {
+        const parsedDrops = JSON.parse(savedDrops) as ProducerDropItem[];
+        if (Array.isArray(parsedDrops)) setProducerDrops(parsedDrops);
+      }
+    } catch {
+      // ignore storage errors
+    } finally {
+      setHydrated(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      localStorage.setItem(STORAGE_PROJECTS_KEY, JSON.stringify(projects));
+    } catch {
+      // ignore quota errors
+    }
+  }, [projects, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      localStorage.setItem(STORAGE_PROFILE_KEY, JSON.stringify(meProfile));
+    } catch {
+      // ignore
+    }
+  }, [meProfile, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      localStorage.setItem(STORAGE_DROPS_KEY, JSON.stringify(producerDrops));
+    } catch {
+      // ignore
+    }
+  }, [producerDrops, hydrated]);
+
+  const activeProject: Project | null =
+    projects.find((p) => p.id === selectedProjectId) || projects[0] || null;
 
   const playTrack = (track: Track, project: Project, openFull = false) => {
     setCurrentTrack(track);
@@ -337,8 +409,16 @@ export default function App() {
 
   const handleDeleteProject = (projectId: string) => {
     setProjects((prev) => {
-      if (prev.length <= 1) return prev;
       const next = prev.filter((p) => p.id !== projectId);
+      if (next.length === 0) {
+        setSelectedProjectId("");
+        setInsideCubeOpen(false);
+        setCurrentProject(STANDBY_PROJECT);
+        setCurrentTrack(STANDBY_TRACK);
+        setIsPlaying(false);
+        sfx.stopGroove();
+        return [];
+      }
       if (selectedProjectId === projectId && next[0]) {
         setSelectedProjectId(next[0].id);
       }
@@ -349,6 +429,29 @@ export default function App() {
       return next;
     });
     sfx.close();
+  };
+
+  const handleWipeAllProjects = () => {
+    sfx.close();
+    setProjects([]);
+    setSelectedProjectId("");
+    setInsideCubeOpen(false);
+    setCurrentProject(STANDBY_PROJECT);
+    setCurrentTrack(STANDBY_TRACK);
+    setIsPlaying(false);
+    sfx.stopGroove();
+  };
+
+  const handleRestoreDemoProjects = () => {
+    sfx.open();
+    setProjects(DEMO_PROJECTS);
+    if (DEMO_PROJECTS[0]) {
+      setSelectedProjectId(DEMO_PROJECTS[0].id);
+      setCurrentProject(DEMO_PROJECTS[0]);
+      if (DEMO_PROJECTS[0].tracks[0]) {
+        setCurrentTrack(DEMO_PROJECTS[0].tracks[0]);
+      }
+    }
   };
 
   const handleDeleteTrack = (projectId: string, trackId: string) => {
@@ -413,14 +516,16 @@ export default function App() {
   };
 
   const myProjects = projects.filter((p) => p.artistId === meProfile.id);
-  const activeAttributes = activeProject.attributes || [
-    activeProject.zone,
-    activeProject.year,
-  ];
+  const activeAttributes = activeProject
+    ? activeProject.attributes || [activeProject.zone, activeProject.year]
+    : [];
   const filteredProducerDrops =
     producerFilter === "Todos"
       ? producerDrops
       : producerDrops.filter((d) => d.kind === producerFilter);
+
+  const findProjectById = (id: string) =>
+    projects.find((p) => p.id === id) || DEMO_PROJECTS.find((p) => p.id === id);
 
   return (
     <div className="apple-shell">
@@ -525,95 +630,144 @@ export default function App() {
                   <span>EL TABLERO // UG BOARD</span>
                 </div>
 
-                {/* 1º: EL RUIDO EN EL MEDIO DE LA PANTALLA (CON LOS PROYECTOS Y ARTISTAS REALES) */}
+                {/* 1º: EL RUIDO EN EL MEDIO DE LA PANTALLA (TIPOGRAFÍA LIMPIA Y UNIFICADA + TAPAS REALES) */}
                 <div className="corecore-stage">
                   <div className="neon-spine" aria-hidden>
                     <span className="spine-badge">@quetablero</span>
                   </div>
 
                   <div className="Roster-collage">
+                    {/* Fila 1: LA PLAGA (eyebags) — fuente unificada sin gothic-drop ni cortes */}
                     <div className="collage-line">
                       <span className="cluster-dots">
                         <i style={{ background: "#e11d48" }} />
                         <i style={{ background: "#0284c7" }} />
                         <i style={{ background: "#ca8a04" }} />
                       </span>
+                      <span className="pixel-tag coral-badge">MIXTAPE // 01</span>
                       <button
                         type="button"
-                        className="roster-word"
+                        className="roster-word clean-editorial-word"
                         onMouseEnter={() => sfx.hover()}
-                        onClick={() =>
-                          projects[0] && playTrack(projects[0].tracks[0], projects[0], false)
-                        }
+                        onClick={() => {
+                          const p = findProjectById("proj-la-plaga");
+                          if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
+                        }}
                       >
-                        <span className="gothic-drop">L</span>A{" "}
-                        <span className="inline-swatch coral">P</span>LAGA
+                        LA PLAGA
                         <sup className="sup-tag">mixtape · eyebags</sup>
                       </button>
                       <span className="cutout-pill">📌 Mendoza</span>
                     </div>
 
+                    {/* Fila 2: PERDÓN LA DEMORA (Tizianolased) — sin etiqueta chickenNugget */}
                     <div className="collage-line">
-                      <span className="floating-emoji" aria-hidden>⏳</span>
+                      <img
+                        src="/covers/perdon-la-demora.png"
+                        alt="PERDÓN LA DEMORA"
+                        className="collage-cover-thumb"
+                      />
                       <button
                         type="button"
-                        className="roster-word"
+                        className="roster-word clean-editorial-word"
                         onMouseEnter={() => sfx.hover()}
-                        onClick={() =>
-                          projects[1] && playTrack(projects[1].tracks[0], projects[1], false)
-                        }
+                        onClick={() => {
+                          const p = findProjectById("proj-perdon-demora");
+                          if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
+                        }}
                       >
-                        PERDÓN<span className="inline-swatch cyan">x</span>LA DEMORA
-                        <sup className="sup-tag">mixtape · tizianolased</sup>
+                        PERDÓN LA DEMORA
+                        <sup className="sup-tag">mixtape · Tizianolased</sup>
                       </button>
-                      <span className="cutout-pill dark">🍗 chickenNugget</span>
+                      <span className="cutout-pill dark">8 tracks · 23 min</span>
                     </div>
 
+                    {/* Fila 3: chickenNugget (poyo · dorkke) + ESTO ES ESTAR EN SONIDO (V4lentin0) */}
                     <div className="collage-line">
-                      <span className="pixel-tag">POYO // EP</span>
+                      <img
+                        src="/covers/chickennugget.png"
+                        alt="chickenNugget"
+                        className="collage-cover-thumb"
+                      />
                       <button
                         type="button"
-                        className="roster-word"
+                        className="roster-word clean-editorial-word"
                         onMouseEnter={() => sfx.hover()}
-                        onClick={() =>
-                          projects[2] && playTrack(projects[2].tracks[0], projects[2], false)
-                        }
+                        onClick={() => {
+                          const p = findProjectById("proj-chickennugget");
+                          if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
+                        }}
                       >
-                        chicken<span className="inline-swatch gold">Nugget</span>
-                        <sup className="sup-tag">ep · poyo</sup>
+                        chickenNugget
+                        <sup className="sup-tag">ep · poyo × dorkke</sup>
                       </button>
-                      <span className="floating-emoji" aria-hidden>🎛️</span>
+                      <img
+                        src="/covers/esto-es-estar-en-sonido.png"
+                        alt="ESTO ES ESTAR EN SONIDO"
+                        className="collage-cover-thumb"
+                      />
                       <button
                         type="button"
-                        className="roster-word"
+                        className="roster-word clean-editorial-word"
                         onMouseEnter={() => sfx.hover()}
-                        onClick={() =>
-                          projects[3] && playTrack(projects[3].tracks[0], projects[3], false)
-                        }
+                        onClick={() => {
+                          const p = findProjectById("proj-en-sonido");
+                          if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
+                        }}
                       >
-                        <span className="outline-letter">E</span>N{" "}
-                        <span className="inline-swatch blue">S</span>ONIDO
-                        <sup className="sup-tag">lp · v4lentin0</sup>
+                        ESTO ES ESTAR EN SONIDO
+                        <sup className="sup-tag">lp · V4lentin0</sup>
                       </button>
                     </div>
 
+                    {/* Fila 4: #MA7IAS (Ma7imza) + Love2Hate (Icylucki) + AMORIO CLUB 2 (Máximo) */}
                     <div className="collage-line">
+                      <img
+                        src="/covers/ma7ias.png"
+                        alt="#MA7IAS"
+                        className="collage-cover-thumb"
+                      />
                       <button
                         type="button"
-                        className="roster-word"
+                        className="roster-word clean-editorial-word"
                         onMouseEnter={() => sfx.hover()}
-                        onClick={() =>
-                          projects[4] && playTrack(projects[4].tracks[0], projects[4], false)
-                        }
+                        onClick={() => {
+                          const p = findProjectById("proj-ma7ias");
+                          if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
+                        }}
                       >
-                        AMORIO<span className="inline-swatch teal">CLUB 2</span>
-                        <sup className="sup-tag">ep · máximo</sup>
+                        #MA7IAS
+                        <sup className="sup-tag">lp · Ma7imza</sup>
                       </button>
-                      <span className="star-stickers" aria-hidden>
-                        <b className="star-blue">★</b>
-                        <b className="star-gold">⭐</b>
-                        <b className="star-black">★</b>
-                      </span>
+                      <img
+                        src="/covers/love2hate.png"
+                        alt="Love2Hate"
+                        className="collage-cover-thumb"
+                      />
+                      <button
+                        type="button"
+                        className="roster-word clean-editorial-word"
+                        onMouseEnter={() => sfx.hover()}
+                        onClick={() => {
+                          const p = findProjectById("proj-love2hate");
+                          if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
+                        }}
+                      >
+                        Love2Hate
+                        <sup className="sup-tag">ep · Icylucki</sup>
+                      </button>
+                      <button
+                        type="button"
+                        className="roster-word clean-editorial-word"
+                        onMouseEnter={() => sfx.hover()}
+                        onClick={() => {
+                          const p = findProjectById("proj-amorio-club-2");
+                          if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
+                        }}
+                      >
+                        AMORIO CLUB 2
+                        <sup className="sup-tag">ep · Máximo</sup>
+                      </button>
                       <button
                         type="button"
                         className="collage-cta-pill"
@@ -623,7 +777,7 @@ export default function App() {
                           setPlayerExpanded(true);
                         }}
                       >
-                        🎥 Abrir Snippet Studio →
+                        🎥 Abrir Reproductor 3D →
                       </button>
                     </div>
                   </div>
@@ -637,9 +791,9 @@ export default function App() {
                   <h1 className="mega-display-title">El tablero</h1>
                 </div>
 
-                {/* 3º: TIRA HORIZONTAL DE MINIPORTADAS (sin scrollbar fantasma) */}
+                {/* 3º: TIRA HORIZONTAL DE MINIPORTADAS (con tapas reales y sin scrollbar fantasma) */}
                 <div className="filmstrip-row">
-                  {projects.map((p, idx) => (
+                  {(projects.length > 0 ? projects : DEMO_PROJECTS).map((p, idx) => (
                     <motion.button
                       key={p.id}
                       type="button"
@@ -652,12 +806,16 @@ export default function App() {
                       <div
                         className="filmstrip-art"
                         style={{
-                          background: `linear-gradient(145deg, ${p.c1} 0%, ${p.c2} 100%)`,
+                          background: p.coverUrl
+                            ? `linear-gradient(180deg, rgba(10,10,14,0.45) 0%, rgba(10,10,14,0.12) 45%, rgba(10,10,14,0.75) 100%), url(${p.coverUrl}) center / cover no-repeat`
+                            : `linear-gradient(145deg, ${p.c1} 0%, ${p.c2} 100%)`,
                         }}
                       >
                         <span className="thumb-index">0{idx + 1}</span>
-                        <strong className="thumb-glyph">{p.tracks[0]?.glyph}</strong>
-                        <small>{p.type} · {p.videos.length} videos</small>
+                        {!p.coverUrl && (
+                          <strong className="thumb-glyph">{p.tracks[0]?.glyph}</strong>
+                        )}
+                        <small>{p.type} · {p.tracks.length} tracks</small>
                       </div>
                       <div className="filmstrip-caption">
                         <b>{p.title}</b>
@@ -675,7 +833,7 @@ export default function App() {
                     <span className="mono-tag">
                       NOVEDADES DE PRODUCTORES // BEATPOST · SOUNDKIT · DRUMKIT · LOOPKIT · CATÁLOGO DE BEATS
                     </span>
-                    <h3>Herramientas, Kits &amp; Beats de la Escena</h3>
+                    <h3>Herramientas, Kits &amp; Beats de los Productores</h3>
                   </div>
 
                   <div className="producer-filter-pills">
@@ -700,7 +858,9 @@ export default function App() {
                     const isPlayingDrop =
                       currentTrack.id === drop.previewTrack.id && isPlaying;
                     const linkedProj =
-                      projects.find((p) => p.id === drop.projectId) || projects[0];
+                      projects.find((p) => p.id === drop.projectId) ||
+                      DEMO_PROJECTS.find((p) => p.id === drop.projectId) ||
+                      STANDBY_PROJECT;
                     return (
                       <div
                         key={drop.id}
@@ -771,9 +931,9 @@ export default function App() {
                     <h3>Proyectos fijados</h3>
                   </div>
                   <div className="track-list-clean">
-                    {projects
+                    {(projects.length > 0 ? projects : DEMO_PROJECTS)
                       .flatMap((p) => p.tracks.slice(0, 2).map((t) => ({ track: t, proj: p })))
-                      .slice(0, 6)
+                      .slice(0, 7)
                       .map(({ track, proj }, i) => {
                         const active = currentTrack.id === track.id;
                         return (
@@ -786,7 +946,11 @@ export default function App() {
                             <span className="row-num">{String(i + 1).padStart(2, "0")}</span>
                             <div
                               className="row-swatch"
-                              style={{ background: `linear-gradient(135deg, ${track.c1}, ${track.c2})` }}
+                              style={{
+                                background: proj.coverUrl
+                                  ? `linear-gradient(rgba(0,0,0,0.28), rgba(0,0,0,0.28)), url(${proj.coverUrl}) center / cover no-repeat`
+                                  : `linear-gradient(135deg, ${track.c1}, ${track.c2})`,
+                              }}
                             >
                               {active && isPlaying ? "❚❚" : "▶"}
                             </div>
@@ -880,46 +1044,65 @@ export default function App() {
                   <h1 className="editorial-h1">Mis Proyectos</h1>
                 </div>
 
-                {/* Switch superior en el lugar donde antes estaba Bloques / Vinilos:
-                    Modo 1 (default): Una adentro de la otra (Zoom Voxel al tocar el cubo)
-                    Modo 2: Uno al lado del otro (por comodidad) */}
-                <div className="seg-pills">
-                  <button
-                    type="button"
-                    className={libraryLayoutMode === "inside" ? "on" : ""}
-                    onClick={() => {
-                      sfx.tap();
-                      setLibraryLayoutMode("inside");
-                      setInsideCubeOpen(false);
-                    }}
-                  >
-                    🎯 Adentro del Cubo
-                  </button>
-                  <button
-                    type="button"
-                    className={libraryLayoutMode === "side-by-side" ? "on" : ""}
-                    onClick={() => {
-                      sfx.tap();
-                      setLibraryLayoutMode("side-by-side");
-                    }}
-                  >
-                    ◫ Lado a Lado
-                  </button>
+                {/* Switch superior + botón de wipear/restaurar ejemplos */}
+                <div className="row-actions">
+                  {projects.length > 0 ? (
+                    <button
+                      type="button"
+                      className="apple-btn ghost danger-trash-btn"
+                      onClick={handleWipeAllProjects}
+                      title="Dejar la biblioteca en 0 proyectos (0 cubos) para arrancar en limpio"
+                    >
+                      🧹 Wipear ejemplos (0 cubos)
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="apple-btn ghost"
+                      onClick={handleRestoreDemoProjects}
+                    >
+                      🔄 Restaurar proyectos de la escena
+                    </button>
+                  )}
+
+                  <div className="seg-pills">
+                    <button
+                      type="button"
+                      className={libraryLayoutMode === "inside" ? "on" : ""}
+                      onClick={() => {
+                        sfx.tap();
+                        setLibraryLayoutMode("inside");
+                        setInsideCubeOpen(false);
+                      }}
+                    >
+                      Por defecto
+                    </button>
+                    <button
+                      type="button"
+                      className={libraryLayoutMode === "side-by-side" ? "on" : ""}
+                      onClick={() => {
+                        sfx.tap();
+                        setLibraryLayoutMode("side-by-side");
+                      }}
+                    >
+                      ◫ Lado a Lado
+                    </button>
+                  </div>
                 </div>
               </div>
 
               <div
                 className={
-                  libraryLayoutMode === "side-by-side"
+                  libraryLayoutMode === "side-by-side" && activeProject
                     ? "library-side-by-side-grid"
                     : "library-inside-stack"
                 }
               >
-                {/* Escena 3D de Mis Proyectos (se muestra siempre en Lado a Lado, o cuando estás afuera del cubo en modo Adentro del Cubo) */}
-                {(libraryLayoutMode === "side-by-side" || !insideCubeOpen) && (
+                {/* Escena 3D de Mis Proyectos (se muestra siempre en Lado a Lado, o cuando estás afuera del cubo en modo Por defecto) */}
+                {(libraryLayoutMode === "side-by-side" || !insideCubeOpen || !activeProject) && (
                   <ManifoldLibrary3D
                     projects={projects}
-                    selectedProjectId={activeProject.id}
+                    selectedProjectId={activeProject?.id || ""}
                     viewMode={libraryViewMode}
                     onChangeViewMode={(m) => setLibraryViewMode(m)}
                     onSelectProject={(proj) => setSelectedProjectId(proj.id)}
@@ -938,8 +1121,8 @@ export default function App() {
                   />
                 )}
 
-                {/* Interior del Proyecto / Inspector con Spinner 3D (se muestra al entrar al cubo en Modo 1, o al lado en Modo 2) */}
-                {(libraryLayoutMode === "side-by-side" || insideCubeOpen) && (
+                {/* Interior del Proyecto / Inspector con Spinner 3D (se muestra al entrar al cubo en Modo Por defecto, o al lado en Modo 2) */}
+                {activeProject && (libraryLayoutMode === "side-by-side" || insideCubeOpen) && (
                   <motion.section
                     key={`inspector-${libraryLayoutMode}-${activeProject.id}`}
                     className="project-inspector-sheet"
@@ -987,19 +1170,17 @@ export default function App() {
                                   <b>{p.title}</b>
                                   <small>{p.tracks.length}d</small>
                                 </button>
-                                {projects.length > 1 && (
-                                  <button
-                                    type="button"
-                                    className="pill-trash-btn"
-                                    title={`Eliminar proyecto ${p.title}`}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDeleteProject(p.id);
-                                    }}
-                                  >
-                                    🗑️
-                                  </button>
-                                )}
+                                <button
+                                  type="button"
+                                  className="pill-trash-btn"
+                                  title={`Eliminar proyecto ${p.title}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteProject(p.id);
+                                  }}
+                                >
+                                  🗑️
+                                </button>
                               </div>
                             );
                           })}
@@ -1122,16 +1303,14 @@ export default function App() {
                         >
                           ▶ Abrir en Reproductor 3D
                         </button>
-                        {projects.length > 1 && (
-                          <button
-                            type="button"
-                            className="apple-btn ghost danger-trash-btn"
-                            title={`Eliminar proyecto ${activeProject.title}`}
-                            onClick={() => handleDeleteProject(activeProject.id)}
-                          >
-                            🗑️ Eliminar proyecto
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          className="apple-btn ghost danger-trash-btn"
+                          title={`Eliminar proyecto ${activeProject.title}`}
+                          onClick={() => handleDeleteProject(activeProject.id)}
+                        >
+                          🗑️ Eliminar proyecto
+                        </button>
                       </div>
                     </div>
 
@@ -1163,7 +1342,7 @@ export default function App() {
                               <div className="row-main">
                                 <b>{t.title}</b>
                                 <span>
-                                  {t.artist} {t.feat ? `feat. ${t.feat}` : ""} {t.note ? `· ${t.note}` : ""}
+                                  {t.artist} {t.feat ? `feat. ${t.feat}` : ""} {t.prod ? `· prod. ${t.prod}` : ""}
                                 </span>
                               </div>
                               <div className="row-pills">
@@ -1337,6 +1516,23 @@ export default function App() {
                     </h2>
                   </div>
                   <div className="row-actions">
+                    {projects.length > 0 ? (
+                      <button
+                        type="button"
+                        className="apple-btn ghost danger-trash-btn"
+                        onClick={handleWipeAllProjects}
+                      >
+                        🧹 Wipear ejemplos (0 cubos)
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="apple-btn ghost"
+                        onClick={handleRestoreDemoProjects}
+                      >
+                        🔄 Restaurar ejemplos
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="apple-btn primary"
