@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import PullToRefresh from "./PullToRefresh";
+import AppIconPicker, { AppIconApplier } from "./AppIconPicker";
 import {
   DEMO_PROJECTS,
   EMPTY_ME_PROFILE,
@@ -1728,6 +1729,7 @@ export default function App() {
       </header>
 
       <PullToRefresh />
+      <AppIconApplier />
 
       <AnimatePresence mode="wait">
         <motion.main
@@ -4352,6 +4354,7 @@ function EditProfileModal({
         )}
 
         <div className="modal-form-grid">
+          <AppIconPicker />
           {/* FOTO DE PERFIL */}
           <div className="modal-field full profile-avatar-edit-field">
             <span>FOTO DE PERFIL</span>

@@ -1080,3 +1080,9 @@
 ### Turno 63 — Pull-to-refresh en el celu
 **Pedido (`juani`):** *"quiero tambien poder refrescar desde el celu haciendo scroll para arriba el tipico refresh"*.
 **Implementación (`PullToRefresh.tsx`, `App.tsx`):** gesto táctil de tirar hacia abajo desde el tope de la página con indicador circular y `location.reload()` al soltar. Se desactiva dentro de modales, hoja del proyecto, reproductor y rueda de vinilos.
+
+---
+
+### Turno 64 — Cambiar el ícono del acceso directo del iPhone
+**Pedido (`juani`):** *"quiero poder cambiar el icono del acceso directo en mi iphone"*.
+**Implementación (`AppIconPicker.tsx`, `App.tsx`):** en `Editar perfil` hay un selector de imagen que la recorta cuadrada (512px), la guarda en `localStorage` y reemplaza `<link rel="apple-touch-icon">` en cada carga. iOS lee ese ícono recién al "Agregar a inicio", así que hay que borrar el acceso viejo y volver a agregarlo. Incluye "Restaurar original".
