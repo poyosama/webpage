@@ -1659,67 +1659,151 @@ body.app-no-scroll .profile-page {
     padding: 2px 6px !important;
   }
 
+  .apple-popover-backdrop {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 110 !important;
+    background: transparent !important;
+  }
+
   .untitled-mobile-menu-sheet {
-    display: flex !important;
-    flex-direction: column !important;
-    background: #1c1c1e !important;
+    position: absolute !important;
+    top: calc(env(safe-area-inset-top, 0px) + 64px) !important;
+    right: 20px !important;
+    z-index: 120 !important;
+    width: min(280px, calc(100vw - 40px)) !important;
+    background: rgba(28, 28, 30, 0.94) !important;
+    backdrop-filter: blur(28px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 20px 48px -8px rgba(0, 0, 0, 0.72), 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
     border-radius: 16px !important;
     padding: 6px !important;
-    margin-bottom: 16px !important;
-    border: 1px solid rgba(255, 255, 255, 0.09) !important;
-    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    animation: appleMenuIn 0.18s cubic-bezier(0.2, 0.9, 0.3, 1) !important;
+  }
+
+  @keyframes appleMenuIn {
+    from {
+      opacity: 0;
+      transform: scale(0.94) translateY(-6px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
   }
 
   .untitled-menu-item {
     display: flex !important;
     align-items: center !important;
+    gap: 12px !important;
     width: 100% !important;
-    padding: 12px 14px !important;
+    padding: 10px 14px !important;
     border: none !important;
     background: transparent !important;
-    color: #ffffff !important;
-    font-size: 0.9rem !important;
-    font-weight: 600 !important;
+    color: #f5f5f7 !important;
+    font-size: 0.88rem !important;
+    font-weight: 500 !important;
     text-align: left !important;
     border-radius: 10px !important;
     cursor: pointer !important;
+    box-sizing: border-box !important;
+    transition: background 0.12s ease, color 0.12s ease !important;
   }
 
+  .untitled-menu-item svg {
+    flex-shrink: 0 !important;
+    color: rgba(255, 255, 255, 0.72) !important;
+  }
+
+  .untitled-menu-item:hover,
   .untitled-menu-item:active {
-    background: rgba(255, 255, 255, 0.08) !important;
+    background: rgba(255, 255, 255, 0.09) !important;
+    color: #ffffff !important;
+  }
+
+  .untitled-menu-item:hover svg,
+  .untitled-menu-item:active svg {
+    color: #ffffff !important;
   }
 
   .untitled-menu-item.danger {
     color: #ff453a !important;
   }
 
-  /* Portada cuadrada grande centrada como en IMG_3888.png */
-  .untitled-mobile-cover-wrap {
-    width: min(76vw, 296px) !important;
-    aspect-ratio: 1 / 1 !important;
-    border-radius: 18px !important;
-    overflow: hidden !important;
-    margin: 4px auto 26px !important;
-    background: #141416 !important;
-    box-shadow: 0 22px 54px rgba(0, 0, 0, 0.72) !important;
+  .untitled-menu-item.danger svg {
+    color: #ff453a !important;
+  }
+
+  .untitled-menu-item.danger:hover,
+  .untitled-menu-item.danger:active {
+    background: rgba(255, 69, 58, 0.15) !important;
+    color: #ff453a !important;
+  }
+
+  .untitled-menu-divider {
+    height: 1px !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    margin: 4px 6px !important;
+  }
+
+  /* Escenario de vinilo idéntico a la rueda de selección de proyectos */
+  .project-view-vinyl-stage {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    padding: 14px 0 24px !important;
+    position: relative !important;
+    perspective: 1000px !important;
+  }
+
+  .project-view-vinyl-stage .vinyl-fan-sleeve-card {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    margin: 0 !important;
+    transform: none !important;
+    width: min(246px, 64vw) !important;
+    height: min(156px, 40vw) !important;
+    border-radius: 12px !important;
     flex-shrink: 0 !important;
+    cursor: default !important;
   }
 
-  .untitled-mobile-cover-img {
+  .project-view-vinyl-stage .vinyl-fan-sleeve-body {
     width: 100% !important;
     height: 100% !important;
-    object-fit: cover !important;
-    display: block !important;
+    border-radius: 12px !important;
+    overflow: hidden !important;
+    box-shadow: 0 24px 50px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.12) !important;
+    position: relative !important;
+    z-index: 2 !important;
   }
 
-  .untitled-mobile-cover-fallback {
-    width: 100% !important;
-    height: 100% !important;
-    display: grid !important;
-    place-items: center !important;
-    font-size: 2.6rem !important;
-    font-weight: 800 !important;
-    color: #ffffff !important;
+  .project-view-vinyl-stage .vinyl-fan-record-disc {
+    position: absolute !important;
+    top: 50% !important;
+    right: -36px !important;
+    width: min(148px, 38vw) !important;
+    height: min(148px, 38vw) !important;
+    margin-top: calc(-1 * min(148px, 38vw) / 2) !important;
+    border-radius: 50% !important;
+    transform: translateX(38px) rotate(24deg) !important;
+    z-index: 1 !important;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.5) !important;
+  }
+
+  .project-view-vinyl-stage .vinyl-fan-record-label {
+    width: min(52px, 13vw) !important;
+    height: min(52px, 13vw) !important;
+  }
+
+  .project-view-vinyl-stage .vinyl-fan-record-hole {
+    width: min(11px, 3vw) !important;
+    height: min(11px, 3vw) !important;
   }
 
   /* Fila de Título + Subtítulo + Botón Play Blanco Squircle */
@@ -1891,33 +1975,69 @@ body.app-no-scroll .profile-page {
 
   .untitled-track-inline-menu {
     display: flex !important;
+    flex-direction: column !important;
+    gap: 3px !important;
+    padding: 6px !important;
+    margin: 4px 0 10px 34px !important;
+    background: rgba(28, 28, 30, 0.94) !important;
+    backdrop-filter: blur(24px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+    border-radius: 14px !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5) !important;
+    width: fit-content !important;
+    min-width: 190px !important;
+  }
+
+  .untitled-track-menu-btn {
+    display: flex !important;
     align-items: center !important;
-    gap: 8px !important;
-    padding: 8px 10px !important;
-    margin: 2px 0 8px 34px !important;
-    background: #1c1c1e !important;
-    border-radius: 12px !important;
-    border: 1px solid rgba(255, 255, 255, 0.08) !important;
-    flex-wrap: wrap !important;
-  }
-
-  .untitled-track-inline-menu button {
-    background: rgba(255, 255, 255, 0.08) !important;
+    gap: 10px !important;
+    width: 100% !important;
+    padding: 9px 12px !important;
     border: none !important;
-    color: #ffffff !important;
-    padding: 7px 11px !important;
+    background: transparent !important;
+    color: #f5f5f7 !important;
     border-radius: 9px !important;
-    font-size: 0.78rem !important;
-    font-weight: 600 !important;
+    font-size: 0.82rem !important;
+    font-weight: 500 !important;
     cursor: pointer !important;
+    box-sizing: border-box !important;
+    text-align: left !important;
+    transition: background 0.12s ease !important;
   }
 
-  .untitled-track-inline-menu button.danger {
+  .untitled-track-menu-btn svg {
+    color: rgba(255, 255, 255, 0.7) !important;
+    flex-shrink: 0 !important;
+  }
+
+  .untitled-track-menu-btn:hover,
+  .untitled-track-menu-btn:active {
+    background: rgba(255, 255, 255, 0.09) !important;
+    color: #ffffff !important;
+  }
+
+  .untitled-track-menu-btn.danger {
     color: #ff453a !important;
-    background: rgba(255, 69, 58, 0.14) !important;
+  }
+
+  .untitled-track-menu-btn.danger svg {
+    color: #ff453a !important;
+  }
+
+  .untitled-track-menu-btn.danger:hover,
+  .untitled-track-menu-btn.danger:active {
+    background: rgba(255, 69, 58, 0.15) !important;
+    color: #ff453a !important;
   }
 
   /* 5. Reproductor Fullscreen (PerformativePlayer) — Apple Music iOS Liquid Glass en celular */
+  .perf-modal-layer {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 800 !important;
+  }
   .perf-topbar {
     padding: calc(env(safe-area-inset-top, 0px) + 10px) 14px 8px !important;
     flex-wrap: nowrap !important;

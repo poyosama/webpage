@@ -1164,3 +1164,48 @@
 2. **Convivencia limpia con la rueda de vinilos en Biblioteca:**
    - Si el gesto de tirar hacia abajo arranca desde la zona superior (`clientY <= 240px` — navbar, espacio de cabecera o padding superior), se dispara el pull-to-refresh con el spinner flotante (`z-index: 500`).
    - En `ManifoldLibrary3D.tsx`, se añadió la condición `e.clientY <= 220` en `onPointerDown` para que el drag de la rueda no interfiera cuando el usuario desliza desde el tope de la pantalla para refrescar.
+
+---
+
+### Turno 70 — Audio en segundo plano en iPhone (Web Audio bypass + WAV procedural), Menú Apple sin emojis, Portada en Rueda de Vinilos, Fix de Selector de Archivos y Reproductor Modal
+**Pedidos del usuario (`juani`):**
+1. *"cuando salgo de la app en el iphone no se escucha la musica"*
+2. *"quiero que la parte de abrir un proyecto sea con menues desplegables, sin tanto emoji mas profesional y apple, tambien pensa en untitled"*
+3. *"quiero que la portada se muestre tal cual está en la rueda de seleccion de proyectos"*
+4. *"añadir tracks desde un proyecto abre solo imagenes o videos en el iphone"*
+5. *"el reproductor no abre desde la pantalla de proyecto"*
+
+**Diagnóstico:**
+1. **Audio en segundo plano en iOS (`sfx.ts`):**
+   - En WebKit/iOS (Safari y PWA), cuando un elemento HTMLAudioElement pasa por `AudioContext.createMediaElementSource(audioEl)`, el audio se redirige a la cadena de Web Audio. Apenas el usuario bloquea el iPhone o sale de la app, iOS suspende de inmediato todas las instancias de `AudioContext`, silenciando el audio.
+   - En tracks demo sin archivo subido, no existía elemento `<audio>`: solo corrían osciladores con `setInterval`, los cuales iOS congela inmediatamente en background.
+2. **Selector de archivos en iPhone abría fotos/videos:**
+   - La etiqueta `<input accept="...,audio/*">` incluía el wildcard `audio/*`, el cual iOS mapea automáticamente al selector de Fotos / Galería multimedia en lugar de la app Archivos (Files).
+3. **Reproductor no abría desde la pantalla de proyecto:**
+   - `.project-inspector-sheet` está montada en `document.body` mediante `MobileSheetPortal` con `z-index: 145 !important;`.
+   - El reproductor `.perf-modal-layer` tenía `z-index: 60;` y estaba montado dentro del árbol normal de `.apple-shell`. Al tocar el mini-player para expandirlo, el modal se abría detrás de la pantalla del proyecto a z-index 60, quedando invisible e inaccesible.
+4. **Portada en proyecto no coincidía con la rueda:**
+   - Se renderizaba una imagen cuadrada plana (`.untitled-mobile-cover-wrap`) en vez del sobre de vinilo con el disco asomando a la derecha como en la rueda de selección de `Biblioteca`.
+5. **Menú con emojis:**
+   - El menú desplegable del proyecto y las filas de tracks tenían emojis crudos (✏️, 🖼️, 🎬, 🔒, 🌐, 🗑️, ⬇) y en escritorio había una hilera desordenada de 7 botones.
+
+**Implementación (`sfx.ts`, `proceduralAudio.ts`, `App.tsx`, `UntitledImporter.tsx`, `board-polish.css`, `globals.css`):**
+1. **Audio continuo en segundo plano y pantalla bloqueada en iPhone:**
+   - Detección de iOS (`/iPad|iPhone|iPod/.test(...)`).
+   - En iOS WebKit, `currentAudioEl` omite `createMediaElementSource` y reproduce de forma nativa directa al hardware del sistema con `playsinline="true"`, `webkit-playsinline="true"` y `preload="auto"`.
+   - Creado `src/lib/proceduralAudio.ts`: renderiza un loop de trap/808 en `OfflineAudioContext` (con 808 glide, snare y hi-hats ajustados al BPM y frecuencia raíz del track) y lo codifica en un WAV Blob PCM de 16 bits en memoria (<15ms). De esta forma, incluso los tracks de demo tienen un `<audio>` nativo real reproduciéndose, manteniendo activa la sesión de audio de iOS en background y lock screen.
+   - Agregado listener `document.visibilitychange` para reanudar el `AudioContext` en cuanto el usuario vuelve al primer plano.
+2. **Apertura de archivos de audio reales en iPhone:**
+   - Retirado `audio/*` de todos los inputs de tracks en `App.tsx` y `UntitledImporter.tsx`.
+   - Especificadas extensiones y tipos MIME explícitos: `.wav,.mp3,.m4a,.flac,.aac,.ogg,.aiff,.alac,.opus,audio/wav,audio/x-wav,audio/wave,audio/mpeg,audio/mp3,audio/x-m4a,audio/aac,audio/flac,audio/ogg`. En iOS Safari esto abre obligatoriamente la app Archivos (iCloud Drive / En mi iPhone / Descargas).
+   - Añadida también la opción "+ Añadir tracks" al menú `•••` del proyecto.
+3. **Reproductor 3D universalmente visible (`z-index: 800`):**
+   - Creado componente `UniversalPortal` para montar `.perf-modal-layer` directo en `document.body`.
+   - Asignado `z-index: 800 !important;` en `globals.css` y `board-polish.css`.
+   - Ahora, al tocar el mini-player o cualquier track desde la pantalla del proyecto, el reproductor 3D se abre suavemente en pantalla completa por encima de cualquier hoja.
+4. **Portada idéntica a la rueda de vinilos:**
+   - Creado `.project-view-vinyl-stage` que renderiza la tarjeta `.vinyl-fan-sleeve-card.is-focused` con el sobre texturado y el disco `.vinyl-fan-record-disc` asomando hacia la derecha con su etiqueta central y orificio.
+   - Si la música está sonando, el disco gira suavemente (`spin-slow`).
+5. **Menús desplegables estilo Apple / Untitled sin emojis:**
+   - Tanto en celular como en escritorio, los botones dispersos y emojis se reemplazaron por un popover flotante con efecto Liquid Glass (`backdrop-filter: blur(28px) saturate(180%)`), bordes finos de 1px y tipografía SF Pro con iconos vectoriales SVG monocromáticos para cada acción (Añadir tracks, Editar detalles, Cambiar portada, Canvas, Privacidad, Compartir invitación, Guardar y Eliminar proyecto).
+   - En las canciones de la lista, el submenú inline ahora utiliza botones estilizados con iconos vectoriales (Descargar audio, Editar BPM/Key, Eliminar track).

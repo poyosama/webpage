@@ -445,7 +445,7 @@ export default function UntitledImporter({
                     <span>{tr.customAudioUrl ? "✓ WAV listo" : "+ WAV/MP3"}</span>
                     <input
                       type="file"
-                      accept=".wav,.mp3,.m4a,.flac,.aac,.ogg,.aiff,.alac,.opus,audio/*"
+                      accept=".wav,.mp3,.m4a,.flac,.aac,.ogg,.aiff,.alac,.opus,audio/wav,audio/x-wav,audio/wave,audio/mpeg,audio/mp3,audio/x-m4a,audio/aac,audio/flac,audio/ogg"
                       hidden
                       onChange={(e) => {
                         const f = e.target.files?.[0];

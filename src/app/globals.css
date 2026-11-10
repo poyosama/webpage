@@ -1987,9 +1987,9 @@ button {
 
 /* ==================== REPRODUCTOR PERFORMATIVO FULLSCREEN ==================== */
 .perf-modal-layer {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 800 !important;
 }
 
 .perf-player {

@@ -1,6 +1,23 @@
 "use client";
 
-// Micro-haptics táctiles estilo Taptic Engine de iPhone + Motor de Audio Reactivo (Detector 808 real)
+import { getProceduralTrackAudioUrl } from "./proceduralAudio";
+
+const isIOS =
+  typeof navigator !== "undefined" &&
+  (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && (navigator.maxTouchPoints || 0) > 1));
+
+if (typeof document !== "undefined") {
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      const c = ac();
+      if (c && c.state === "suspended" && virtualPlaying) {
+        c.resume().catch(() => {});
+      }
+    }
+  });
+}
+
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
 let noiseBuf: AudioBuffer | null = null;
@@ -326,9 +343,8 @@ export const sfx = {
 
     const c = ac();
 
-    if (customObjectUrl && typeof window !== "undefined") {
-      // Si ya existe el audio element con la misma URL, simplemente reproducir desde donde quedó
-      if (currentAudioEl && currentAudioEl.src === customObjectUrl) {
+    const playNativeAudio = (audioUrl: string) => {
+      if (currentAudioEl && currentAudioEl.src === audioUrl) {
         currentAudioEl.loop = false;
         currentAudioEl.muted = muted;
         currentAudioEl.volume = volume;
@@ -343,8 +359,11 @@ export const sfx = {
         if (currentAudioEl) {
           currentAudioEl.pause();
         }
-        currentAudioEl = new Audio(customObjectUrl);
+        currentAudioEl = new Audio(audioUrl);
         currentAudioEl.crossOrigin = "anonymous";
+        currentAudioEl.setAttribute("playsinline", "true");
+        currentAudioEl.setAttribute("webkit-playsinline", "true");
+        currentAudioEl.preload = "auto";
         currentAudioEl.loop = false;
         currentAudioEl.muted = muted;
         currentAudioEl.volume = volume;
@@ -352,7 +371,9 @@ export const sfx = {
         if (virtualCurrentSec > 0 && !resetTime) {
           currentAudioEl.currentTime = virtualCurrentSec;
         }
-        if (c && analyserNode && !connectedElements.has(currentAudioEl)) {
+        // En iOS WebKit: NO pasar por createMediaElementSource para evitar que iOS mutee el audio al bloquear pantalla.
+        // En desktop/Chrome: conectar para alimentar el analizador FFT de hardware.
+        if (!isIOS && c && analyserNode && !connectedElements.has(currentAudioEl)) {
           try {
             mediaSourceNode = c.createMediaElementSource(currentAudioEl);
             mediaSourceNode.connect(analyserNode);
@@ -367,11 +388,17 @@ export const sfx = {
         }
         currentAudioEl.play().catch(() => {});
       }
-    } else {
-      if (currentAudioEl) {
-        currentAudioEl.pause();
-        currentAudioEl = null;
-      }
+    };
+
+    if (customObjectUrl && typeof window !== "undefined") {
+      playNativeAudio(customObjectUrl);
+    } else if (typeof window !== "undefined") {
+      // Para tracks demo sin archivo de audio subido, generar y reproducir WAV nativo procedural
+      void getProceduralTrackAudioUrl(bpm, rootFreq).then((procUrl) => {
+        if (procUrl && virtualPlaying) {
+          playNativeAudio(procUrl);
+        }
+      });
     }
 
     const stepMs = (60 / Math.max(68, Math.min(165, bpm)) / 2) * 1000;
@@ -388,10 +415,8 @@ export const sfx = {
         const hitStrength = isHeavy808 ? (step % 16 === 0 ? 1.0 : 0.88) : 0.62;
         beatEnergy = hitStrength;
         subBassEnergy = hitStrength;
-        if (!customObjectUrl) {
-          eightOhEightEnergy = Math.max(eightOhEightEnergy, hitStrength);
-        }
-        if (!customObjectUrl && audioCtx && master && !muted) {
+        eightOhEightEnergy = Math.max(eightOhEightEnergy, hitStrength);
+        if (!currentAudioEl && !customObjectUrl && audioCtx && master && !muted) {
           const t = audioCtx.currentTime;
           const o = audioCtx.createOscillator();
           const g = audioCtx.createGain();
@@ -411,13 +436,13 @@ export const sfx = {
       }
       if (isSnare) {
         beatEnergy = Math.max(beatEnergy, 0.72);
-        if (!customObjectUrl) softBrush(1100, 0.045, 0.08);
+        if (!currentAudioEl && !customObjectUrl) softBrush(1100, 0.045, 0.08);
       }
       if (isHat) {
         highHatEnergy = 0.85;
-        if (!customObjectUrl) softBrush(4200, 0.015, 0.03);
+        if (!currentAudioEl && !customObjectUrl) softBrush(4200, 0.015, 0.03);
       }
-      if (!customObjectUrl && audioCtx && master && !muted && (step % 4 === 0 || step % 16 === 14)) {
+      if (!currentAudioEl && !customObjectUrl && audioCtx && master && !muted && (step % 4 === 0 || step % 16 === 14)) {
         const ratio = scale[(step / 2) % scale.length | 0];
         const t = audioCtx.currentTime;
         const o = audioCtx.createOscillator();

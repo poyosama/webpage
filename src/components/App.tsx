@@ -2615,157 +2615,240 @@ export default function App() {
                       )}
 
                       {projectMenuOpen && (
-                        <div className="untitled-mobile-menu-sheet">
-                          {canEditActive && (
-                            <>
+                        <>
+                          <div
+                            className="apple-popover-backdrop"
+                            onClick={() => setProjectMenuOpen(false)}
+                          />
+                          <div className="untitled-mobile-menu-sheet">
+                            {canEditActive && (
+                              <>
+                                <label className="untitled-menu-item">
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="12" y1="5" x2="12" y2="19" />
+                                    <line x1="5" y1="12" x2="19" y2="12" />
+                                  </svg>
+                                  <span>Añadir tracks</span>
+                                  <input
+                                    type="file"
+                                    multiple
+                                    accept=".wav,.mp3,.m4a,.flac,.aac,.ogg,.aiff,.alac,.opus,audio/wav,audio/x-wav,audio/wave,audio/mpeg,audio/mp3,audio/x-m4a,audio/aac,audio/flac,audio/ogg"
+                                    hidden
+                                    onChange={(e) => {
+                                      if (e.target.files && e.target.files.length > 0) {
+                                        void handleUploadMultipleProjectTracks(
+                                          activeProject.id,
+                                          e.target.files
+                                        );
+                                        setProjectMenuOpen(false);
+                                        e.target.value = "";
+                                      }
+                                    }}
+                                  />
+                                </label>
+                                <button
+                                  type="button"
+                                  className="untitled-menu-item"
+                                  onClick={() => {
+                                    setProjectMenuOpen(false);
+                                    setEditingProject(activeProject);
+                                  }}
+                                >
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M12 20h9" />
+                                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                                  </svg>
+                                  <span>Editar detalles</span>
+                                </button>
+                                <label className="untitled-menu-item">
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                    <circle cx="8.5" cy="8.5" r="1.5" />
+                                    <polyline points="21 15 16 10 5 21" />
+                                  </svg>
+                                  <span>Cambiar portada</span>
+                                  <input
+                                    type="file"
+                                    accept="image/*,image/gif"
+                                    hidden
+                                    onChange={(e) => {
+                                      const f = e.target.files?.[0];
+                                      if (f) {
+                                        handleUpdateProjectCover(
+                                          activeProject.id,
+                                          URL.createObjectURL(f)
+                                        );
+                                        setProjectMenuOpen(false);
+                                        e.target.value = "";
+                                      }
+                                    }}
+                                  />
+                                </label>
+                                <label className="untitled-menu-item">
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <polygon points="23 7 16 12 23 17 23 7" />
+                                    <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+                                  </svg>
+                                  <span>
+                                    {activeProject.videos.some((v) => Boolean(v.url))
+                                      ? "Cambiar Canvas"
+                                      : "Subir Canvas"}
+                                  </span>
+                                  <input
+                                    type="file"
+                                    accept="video/mp4,video/webm,image/gif,image/*,video/*"
+                                    hidden
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        handleUploadProjectVideo(activeProject.id, file);
+                                        setProjectMenuOpen(false);
+                                        e.target.value = "";
+                                      }
+                                    }}
+                                  />
+                                </label>
+                              </>
+                            )}
+                            {activeIsMine && (
                               <button
                                 type="button"
                                 className="untitled-menu-item"
                                 onClick={() => {
+                                  sfx.tick();
+                                  updateProjectMeta(activeProject.id, {
+                                    visibility:
+                                      activeProject.visibility === "public"
+                                        ? "private"
+                                        : "public",
+                                  });
                                   setProjectMenuOpen(false);
-                                  setEditingProject(activeProject);
                                 }}
                               >
-                                <span>✏️ Editar nombre y detalles</span>
+                                {activeProject.visibility === "public" ? (
+                                  <>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                                      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                                    </svg>
+                                    <span>Hacer privado</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <circle cx="12" cy="12" r="10" />
+                                      <line x1="2" y1="12" x2="22" y2="12" />
+                                      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z" />
+                                    </svg>
+                                    <span>Publicar en Inicio</span>
+                                  </>
+                                )}
                               </button>
-                              <label className="untitled-menu-item">
-                                <span>🖼️ Cambiar portada (Artwork)</span>
-                                <input
-                                  type="file"
-                                  accept="image/*,image/gif"
-                                  hidden
-                                  onChange={(e) => {
-                                    const f = e.target.files?.[0];
-                                    if (f) {
-                                      handleUpdateProjectCover(
-                                        activeProject.id,
-                                        URL.createObjectURL(f)
-                                      );
-                                      setProjectMenuOpen(false);
-                                      e.target.value = "";
-                                    }
-                                  }}
-                                />
-                              </label>
-                              <label className="untitled-menu-item">
+                            )}
+                            <button
+                              type="button"
+                              className="untitled-menu-item"
+                              onClick={() => {
+                                handleCopyProjectLink(activeProject.id);
+                                setProjectMenuOpen(false);
+                              }}
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                                <polyline points="16 6 12 2 8 6" />
+                                <line x1="12" y1="2" x2="12" y2="15" />
+                              </svg>
+                              <span>Compartir invitación</span>
+                            </button>
+                            {!activeIsMine && (
+                              <button
+                                type="button"
+                                className="untitled-menu-item"
+                                onClick={() => {
+                                  toggleSaveProject(activeProject.id);
+                                  setProjectMenuOpen(false);
+                                }}
+                              >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill={savedProjectIds.includes(activeProject.id) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                                </svg>
                                 <span>
-                                  🎬{" "}
-                                  {activeProject.videos.some((v) => Boolean(v.url))
-                                    ? "Cambiar Canvas (Video / GIF)"
-                                    : "Subir Canvas (Video / GIF)"}
+                                  {savedProjectIds.includes(activeProject.id)
+                                    ? "Quitar de Biblioteca"
+                                    : "Guardar en Biblioteca"}
                                 </span>
-                                <input
-                                  type="file"
-                                  accept="video/mp4,video/webm,image/gif,image/*,video/*"
-                                  hidden
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) {
-                                      handleUploadProjectVideo(activeProject.id, file);
-                                      setProjectMenuOpen(false);
-                                      e.target.value = "";
+                              </button>
+                            )}
+                            {activeIsMine && (
+                              <>
+                                <div className="untitled-menu-divider" />
+                                <button
+                                  type="button"
+                                  className="untitled-menu-item danger"
+                                  onClick={() => {
+                                    setProjectMenuOpen(false);
+                                    if (
+                                      window.confirm(
+                                        `¿Eliminar "${activeProject.title}"? No se puede deshacer.`
+                                      )
+                                    ) {
+                                      handleDeleteProject(activeProject.id);
                                     }
                                   }}
-                                />
-                              </label>
-                            </>
-                          )}
-                          {activeIsMine && (
-                            <button
-                              type="button"
-                              className="untitled-menu-item"
-                              onClick={() => {
-                                sfx.tick();
-                                updateProjectMeta(activeProject.id, {
-                                  visibility:
-                                    activeProject.visibility === "public"
-                                      ? "private"
-                                      : "public",
-                                });
-                                setProjectMenuOpen(false);
-                              }}
-                            >
-                              <span>
-                                {activeProject.visibility === "public"
-                                  ? "🔒 Pasar proyecto a Privado"
-                                  : "🌐 Publicar proyecto en Inicio"}
-                              </span>
-                            </button>
-                          )}
-                          {!activeIsMine && (
-                            <button
-                              type="button"
-                              className="untitled-menu-item"
-                              onClick={() => {
-                                toggleSaveProject(activeProject.id);
-                                setProjectMenuOpen(false);
-                              }}
-                            >
-                              <span>
-                                {savedProjectIds.includes(activeProject.id)
-                                  ? "★ Quitar de tu Biblioteca"
-                                  : "+ Guardar en tu Biblioteca"}
-                              </span>
-                            </button>
-                          )}
-                          {activeIsMine && (
-                            <button
-                              type="button"
-                              className="untitled-menu-item danger"
-                              onClick={() => {
-                                setProjectMenuOpen(false);
-                                if (
-                                  window.confirm(
-                                    `¿Eliminar "${activeProject.title}"? No se puede deshacer.`
-                                  )
-                                ) {
-                                  handleDeleteProject(activeProject.id);
-                                }
-                              }}
-                            >
-                              <span>🗑️ Eliminar proyecto</span>
-                            </button>
-                          )}
-                        </div>
+                                >
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="3 6 5 6 21 6" />
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                  </svg>
+                                  <span>Eliminar proyecto</span>
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </>
                       )}
 
-                      {/* Portada cuadrada grande centrada */}
-                      <div className="untitled-mobile-cover-wrap">
-                        {activeProject.coverUrl ? (
-                          <img
-                            src={activeProject.coverUrl}
-                            alt={activeProject.title}
-                            className="untitled-mobile-cover-img"
-                          />
-                        ) : activeProject.videos.length > 0 && activeProject.videos[0].url ? (
-                          activeProject.videos[0].mediaType === "image" ||
-                          /^data:image\//i.test(activeProject.videos[0].url) ||
-                          /\.(gif|png|jpe?g|webp|avif)(\?|$)/i.test(activeProject.videos[0].url) ? (
-                            <img
-                              src={activeProject.videos[0].url}
-                              alt={activeProject.title}
-                              className="untitled-mobile-cover-img"
-                            />
-                          ) : (
-                            <video
-                              src={activeProject.videos[0].url}
-                              autoPlay
-                              loop
-                              muted
-                              playsInline
-                              className="untitled-mobile-cover-img"
-                            />
-                          )
-                        ) : (
+                      {/* Portada en rueda de vinilo idéntica a la selección de proyectos */}
+                      <div className="project-view-vinyl-stage">
+                        <div className="vinyl-fan-sleeve-card is-focused">
                           <div
-                            className="untitled-mobile-cover-fallback"
+                            className={`vinyl-fan-record-disc ${
+                              isPlaying && currentProject.id === activeProject.id ? "spin-slow" : ""
+                            }`}
                             style={{
-                              background: `linear-gradient(145deg, ${activeProject.c1} 0%, ${activeProject.c2} 100%)`,
+                              borderColor: activeProject.c2 || "rgba(255, 255, 255, 0.2)",
                             }}
                           >
-                            <span>{activeProject.title.slice(0, 2).toUpperCase()}</span>
+                            <div
+                              className="vinyl-fan-record-label"
+                              style={{
+                                background: activeProject.coverUrl
+                                  ? `url(${activeProject.coverUrl}) center / cover no-repeat`
+                                  : `radial-gradient(circle, ${activeProject.c2 || "#fff"} 0%, ${activeProject.c1 || "#111"} 85%)`,
+                              }}
+                            >
+                              <span className="vinyl-fan-record-hole" />
+                            </div>
                           </div>
-                        )}
+
+                          <div
+                            className={`vinyl-fan-sleeve-body ${activeProject.coverUrl ? "has-cover-art" : ""}`}
+                            style={{
+                              background: activeProject.coverUrl
+                                ? `url(${activeProject.coverUrl}) center / cover no-repeat`
+                                : `linear-gradient(135deg, ${activeProject.c1 || "#1c1c1e"} 0%, ${activeProject.c2 || "#2c2c2e"} 135%)`,
+                            }}
+                          >
+                            {!activeProject.coverUrl && (
+                              <div className="vinyl-fan-center-crest">
+                                <div className="crest-ring">
+                                  <strong>{activeProject.tracks[0]?.glyph || "01"}</strong>
+                                  <small>{activeProject.type}</small>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
 
                       {/* Fila de Título + Subtítulo + Botón Play Blanco Squircle */}
@@ -2819,7 +2902,7 @@ export default function App() {
                           <input
                             type="file"
                             multiple
-                            accept=".wav,.mp3,.m4a,.flac,.aac,.ogg,.aiff,.alac,.opus,audio/*"
+                            accept=".wav,.mp3,.m4a,.flac,.aac,.ogg,.aiff,.alac,.opus,audio/wav,audio/x-wav,audio/wave,audio/mpeg,audio/mp3,audio/x-m4a,audio/aac,audio/flac,audio/ogg"
                             hidden
                             onChange={(e) => {
                               if (e.target.files && e.target.files.length > 0) {
@@ -2915,6 +2998,7 @@ export default function App() {
                                   >
                                     <button
                                       type="button"
+                                      className="untitled-track-menu-btn"
                                       onClick={async () => {
                                         sfx.tap();
                                         setMobileTrackMenuId(null);
@@ -2925,30 +3009,44 @@ export default function App() {
                                         await downloadTrackAudio(t.title, t.artist, url);
                                       }}
                                     >
-                                      ⬇ Descargar
+                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                        <polyline points="7 10 12 15 17 10" />
+                                        <line x1="12" y1="15" x2="12" y2="3" />
+                                      </svg>
+                                      <span>Descargar audio</span>
                                     </button>
                                     {canEditActive && (
                                       <>
                                         <button
                                           type="button"
+                                          className="untitled-track-menu-btn"
                                           onClick={() => {
                                             sfx.open();
                                             setMobileTrackMenuId(null);
                                             setEditingTrack(t);
                                           }}
                                         >
-                                          ✏️ Editar ({t.bpm} BPM · {t.key})
+                                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M12 20h9" />
+                                            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                                          </svg>
+                                          <span>Editar ({t.bpm} BPM · {t.key})</span>
                                         </button>
                                         <button
                                           type="button"
-                                          className="danger"
+                                          className="untitled-track-menu-btn danger"
                                           onClick={() => {
                                             sfx.tap();
                                             setMobileTrackMenuId(null);
                                             handleDeleteTrack(activeProject.id, t.id);
                                           }}
                                         >
-                                          🗑️ Eliminar
+                                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <polyline points="3 6 5 6 21 6" />
+                                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                                          </svg>
+                                          <span>Eliminar track</span>
                                         </button>
                                       </>
                                     )}
@@ -3128,41 +3226,62 @@ export default function App() {
                                         : "Solo lo ve quien tenga el link de invitación. Tocá para publicarlo."
                                     }
                                   >
-                                    {activeProject.visibility === "public" ? "🌐 Público" : "🔒 Privado"}
+                                    {activeProject.visibility === "public" ? (
+                                      <>
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 5 }}>
+                                          <circle cx="12" cy="12" r="10" />
+                                          <line x1="2" y1="12" x2="22" y2="12" />
+                                          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z" />
+                                        </svg>
+                                        <span>Público</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 5 }}>
+                                          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                                          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                                        </svg>
+                                        <span>Privado</span>
+                                      </>
+                                    )}
                                   </button>
                                 ) : (
                                   <>
                                     <div className="meta-pill-static">
-                                      <b>{activeProject.visibility === "public" ? "🌐 Público" : "🔒 Privado"}</b>
+                                      <b>{activeProject.visibility === "public" ? "Público" : "Privado"}</b>
                                     </div>
                                     {activeInviteRole === "edit" && (
                                       <div className="meta-pill-static invite-role-pill edit">
-                                        <b>✏️ Invitación · Podés editar</b>
+                                        <b>Invitación · Podés editar</b>
                                       </div>
                                     )}
                                     {activeInviteRole === "listen" && (
                                       <div className="meta-pill-static invite-role-pill listen">
-                                        <b>🎧 Invitación · Solo escuchar</b>
+                                        <b>Invitación · Solo escuchar</b>
                                       </div>
                                     )}
                                   </>
                                 )}
                               </div>
 
-                              <div className="inspector-compact-actions">
+                              <div className="inspector-compact-actions" style={{ position: "relative" }}>
                                 {canEditActive && (
-                                  <label className="apple-btn ghost compact-pill-btn" style={{ cursor: "pointer" }}>
-                                    <span>Artwork</span>
+                                  <label className="apple-btn primary compact-pill-btn" style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <line x1="12" y1="5" x2="12" y2="19" />
+                                      <line x1="5" y1="12" x2="19" y2="12" />
+                                    </svg>
+                                    <span>Añadir tracks</span>
                                     <input
                                       type="file"
-                                      accept="image/*,image/gif"
+                                      multiple
+                                      accept=".wav,.mp3,.m4a,.flac,.aac,.ogg,.aiff,.alac,.opus,audio/wav,audio/x-wav,audio/wave,audio/mpeg,audio/mp3,audio/x-m4a,audio/aac,audio/flac,audio/ogg"
                                       hidden
                                       onChange={(e) => {
-                                        const f = e.target.files?.[0];
-                                        if (f) {
-                                          handleUpdateProjectCover(
+                                        if (e.target.files && e.target.files.length > 0) {
+                                          void handleUploadMultipleProjectTracks(
                                             activeProject.id,
-                                            URL.createObjectURL(f)
+                                            e.target.files
                                           );
                                           e.target.value = "";
                                         }
@@ -3170,94 +3289,186 @@ export default function App() {
                                     />
                                   </label>
                                 )}
-                                {canEditActive && (
-                                  <label className="apple-btn ghost compact-pill-btn" style={{ cursor: "pointer" }}>
-                                    <span>
-                                      {activeProject.videos.some((v) => Boolean(v.url)) ? "Cambiar Canvas" : "+ Canvas"}
-                                    </span>
-                                    <input
-                                      type="file"
-                                      accept="video/mp4,video/webm,image/gif,image/*,video/*"
-                                      hidden
-                                      onChange={(e) => {
-                                        const file = e.target.files?.[0];
-                                        if (file) {
-                                          handleUploadProjectVideo(activeProject.id, file);
-                                          e.target.value = "";
-                                        }
-                                      }}
-                                    />
-                                  </label>
-                                )}
-                                {canEditActive && activeProject.videos.some((v) => Boolean(v.url)) && (
-                                  <button
-                                    type="button"
-                                    className="apple-btn ghost compact-pill-btn danger-trash-btn"
-                                    title="Quitar canvas"
-                                    aria-label="Quitar canvas"
-                                    onClick={() =>
-                                      handleRemoveProjectVideo(
-                                        activeProject.id,
-                                        activeProject.videos[0].id
-                                      )
-                                    }
-                                  >
-                                    ✕ Canvas
-                                  </button>
-                                )}
-                                {canEditActive && (
-                                  <button
-                                    type="button"
-                                    className="apple-btn ghost compact-pill-btn"
-                                    onClick={() => {
-                                      sfx.open();
-                                      setEditingProject(activeProject);
-                                    }}
-                                  >
-                                    Editar
-                                  </button>
-                                )}
                                 <button
                                   type="button"
                                   className={`apple-btn ghost compact-pill-btn ${
                                     shareCopiedId === activeProject.id ? "copied-ok" : ""
                                   }`}
+                                  style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
                                   onClick={() => handleCopyProjectLink(activeProject.id)}
-                                  title={`Generar link de Invitación al ${activeProject.type} (Solo escuchar o Permitir editar)`}
+                                  title={`Generar link de Invitación al ${activeProject.type}`}
                                 >
-                                  {shareCopiedId === activeProject.id
-                                    ? "✓ Link copiado"
-                                    : `🔗 Invitar al ${activeProject.type}`}
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                                    <polyline points="16 6 12 2 8 6" />
+                                    <line x1="12" y1="2" x2="12" y2="15" />
+                                  </svg>
+                                  <span>{shareCopiedId === activeProject.id ? "Link copiado" : "Invitar"}</span>
                                 </button>
-                                {!activeIsMine && (
-                                  <button
-                                    type="button"
-                                    className="apple-btn ghost compact-pill-btn"
-                                    onClick={() => toggleSaveProject(activeProject.id)}
-                                  >
-                                    {savedProjectIds.includes(activeProject.id)
-                                      ? "★ En tu Biblioteca"
-                                      : "+ Guardar en Biblioteca"}
-                                  </button>
-                                )}
-                                {activeIsMine && (
-                                  <button
-                                    type="button"
-                                    className="apple-btn ghost compact-pill-btn danger-trash-btn"
-                                    title={`Eliminar ${activeProject.title}`}
-                                    aria-label={`Eliminar ${activeProject.title}`}
-                                    onClick={() => {
-                                      if (
-                                        window.confirm(
-                                          `¿Eliminar "${activeProject.title}"? No se puede deshacer.`
-                                        )
-                                      ) {
-                                        handleDeleteProject(activeProject.id);
-                                      }
-                                    }}
-                                  >
-                                    <TrashIcon />
-                                  </button>
+                                <button
+                                  type="button"
+                                  className={`untitled-icon-squircle ${projectMenuOpen ? "is-active" : ""}`}
+                                  style={{ width: 34, height: 34, borderRadius: 10 }}
+                                  aria-label="Más opciones del proyecto"
+                                  onClick={() => {
+                                    sfx.tap();
+                                    setProjectMenuOpen((m) => !m);
+                                  }}
+                                >
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                    <circle cx="5" cy="12" r="2" />
+                                    <circle cx="12" cy="12" r="2" />
+                                    <circle cx="19" cy="12" r="2" />
+                                  </svg>
+                                </button>
+
+                                {projectMenuOpen && (
+                                  <>
+                                    <div
+                                      className="apple-popover-backdrop"
+                                      onClick={() => setProjectMenuOpen(false)}
+                                    />
+                                    <div
+                                      className="untitled-mobile-menu-sheet"
+                                      style={{
+                                        position: "absolute",
+                                        top: 42,
+                                        right: 0,
+                                        width: 240,
+                                        zIndex: 150,
+                                      }}
+                                    >
+                                      {canEditActive && (
+                                        <>
+                                          <button
+                                            type="button"
+                                            className="untitled-menu-item"
+                                            onClick={() => {
+                                              setProjectMenuOpen(false);
+                                              setEditingProject(activeProject);
+                                            }}
+                                          >
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                              <path d="M12 20h9" />
+                                              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                                            </svg>
+                                            <span>Editar detalles</span>
+                                          </button>
+                                          <label className="untitled-menu-item">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                              <circle cx="8.5" cy="8.5" r="1.5" />
+                                              <polyline points="21 15 16 10 5 21" />
+                                            </svg>
+                                            <span>Cambiar portada</span>
+                                            <input
+                                              type="file"
+                                              accept="image/*,image/gif"
+                                              hidden
+                                              onChange={(e) => {
+                                                const f = e.target.files?.[0];
+                                                if (f) {
+                                                  handleUpdateProjectCover(
+                                                    activeProject.id,
+                                                    URL.createObjectURL(f)
+                                                  );
+                                                  setProjectMenuOpen(false);
+                                                  e.target.value = "";
+                                                }
+                                              }}
+                                            />
+                                          </label>
+                                          <label className="untitled-menu-item">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                              <polygon points="23 7 16 12 23 17 23 7" />
+                                              <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+                                            </svg>
+                                            <span>
+                                              {activeProject.videos.some((v) => Boolean(v.url))
+                                                ? "Cambiar Canvas"
+                                                : "Subir Canvas"}
+                                            </span>
+                                            <input
+                                              type="file"
+                                              accept="video/mp4,video/webm,image/gif,image/*,video/*"
+                                              hidden
+                                              onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) {
+                                                  handleUploadProjectVideo(activeProject.id, file);
+                                                  setProjectMenuOpen(false);
+                                                  e.target.value = "";
+                                                }
+                                              }}
+                                            />
+                                          </label>
+                                          {activeProject.videos.some((v) => Boolean(v.url)) && (
+                                            <button
+                                              type="button"
+                                              className="untitled-menu-item danger"
+                                              onClick={() => {
+                                                handleRemoveProjectVideo(
+                                                  activeProject.id,
+                                                  activeProject.videos[0].id
+                                                );
+                                                setProjectMenuOpen(false);
+                                              }}
+                                            >
+                                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <line x1="18" y1="6" x2="6" y2="18" />
+                                                <line x1="6" y1="6" x2="18" y2="18" />
+                                              </svg>
+                                              <span>Quitar Canvas</span>
+                                            </button>
+                                          )}
+                                        </>
+                                      )}
+                                      {!activeIsMine && (
+                                        <button
+                                          type="button"
+                                          className="untitled-menu-item"
+                                          onClick={() => {
+                                            toggleSaveProject(activeProject.id);
+                                            setProjectMenuOpen(false);
+                                          }}
+                                        >
+                                          <svg width="15" height="15" viewBox="0 0 24 24" fill={savedProjectIds.includes(activeProject.id) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
+                                            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                                          </svg>
+                                          <span>
+                                            {savedProjectIds.includes(activeProject.id)
+                                              ? "Quitar de Biblioteca"
+                                              : "Guardar en Biblioteca"}
+                                          </span>
+                                        </button>
+                                      )}
+                                      {activeIsMine && (
+                                        <>
+                                          <div className="untitled-menu-divider" />
+                                          <button
+                                            type="button"
+                                            className="untitled-menu-item danger"
+                                            onClick={() => {
+                                              setProjectMenuOpen(false);
+                                              if (
+                                                window.confirm(
+                                                  `¿Eliminar "${activeProject.title}"? No se puede deshacer.`
+                                                )
+                                              ) {
+                                                handleDeleteProject(activeProject.id);
+                                              }
+                                            }}
+                                          >
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                              <polyline points="3 6 5 6 21 6" />
+                                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                            </svg>
+                                            <span>Eliminar proyecto</span>
+                                          </button>
+                                        </>
+                                      )}
+                                    </div>
+                                  </>
                                 )}
                               </div>
                             </div>
@@ -3407,7 +3618,7 @@ export default function App() {
                                 <input
                                   type="file"
                                   multiple
-                                  accept=".wav,.mp3,.m4a,.flac,.aac,.ogg,.aiff,.alac,.opus,audio/*"
+                                  accept=".wav,.mp3,.m4a,.flac,.aac,.ogg,.aiff,.alac,.opus,audio/wav,audio/x-wav,audio/wave,audio/mpeg,audio/mp3,audio/x-m4a,audio/aac,audio/flac,audio/ogg"
                                   hidden
                                   onChange={(e) => {
                                     if (e.target.files && e.target.files.length > 0) {
@@ -3774,58 +3985,60 @@ export default function App() {
       {/* ==================== PANTALLA REPRODUCTOR 3D COMPLETA ==================== */}
       <AnimatePresence>
         {playerExpanded && (
-          <motion.div
-            className="perf-modal-layer"
-            initial={{ opacity: 0, y: "100%" }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: "100%" }}
-            transition={{ type: "spring", stiffness: 280, damping: 30 }}
-          >
-            <PerformativePlayer
-              track={currentTrack}
-              project={
-                projects.find((p) => p.id === currentProject.id) ||
-                projects.find((p) => p.tracks.some((t) => t.id === currentTrack.id)) ||
-                activeProject ||
-                currentProject
-              }
-              allProjects={projects}
-              isPlaying={isPlaying}
-              volume={volume}
-              muted={muted}
-              shuffle={shuffle}
-              repeatMode={repeatMode}
-              likedTrackIds={likedTrackIds}
-              userQueue={userQueue}
-              onTogglePlay={togglePlay}
-              onNext={() => stepTrack(1)}
-              onPrev={() => stepTrack(-1)}
-              onSelectTrack={(t, p) => playTrack(t, p, true)}
-              onToggleShuffle={() => setShuffle((s) => !s)}
-              onCycleRepeat={() =>
-                setRepeatMode((m) => (m === "off" ? "all" : m === "all" ? "one" : "off"))
-              }
-              onToggleLike={(id) =>
-                setLikedTrackIds((prev) =>
-                  prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-                )
-              }
-              onAddToQueue={(t, p) => setUserQueue((prev) => [...prev, { track: t, project: p }])}
-              onRemoveFromQueue={(idx) =>
-                setUserQueue((prev) => prev.filter((_, i) => i !== idx))
-              }
-              onClearQueue={() => setUserQueue([])}
-              onVolumeChange={handleVolumeChange}
-              onToggleMute={handleToggleMute}
-              onClose={() => setPlayerExpanded(false)}
-              onJumpToProject={(projId) => {
-                setPlayerExpanded(false);
-                setSelectedProjectId(projId);
-                setTab("biblioteca");
-              }}
-              onOpenEditTrack={() => setEditingTrack(currentTrack)}
-            />
-          </motion.div>
+          <UniversalPortal>
+            <motion.div
+              className="perf-modal-layer"
+              initial={{ opacity: 0, y: "100%" }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: "100%" }}
+              transition={{ type: "spring", stiffness: 280, damping: 30 }}
+            >
+              <PerformativePlayer
+                track={currentTrack}
+                project={
+                  projects.find((p) => p.id === currentProject.id) ||
+                  projects.find((p) => p.tracks.some((t) => t.id === currentTrack.id)) ||
+                  activeProject ||
+                  currentProject
+                }
+                allProjects={projects}
+                isPlaying={isPlaying}
+                volume={volume}
+                muted={muted}
+                shuffle={shuffle}
+                repeatMode={repeatMode}
+                likedTrackIds={likedTrackIds}
+                userQueue={userQueue}
+                onTogglePlay={togglePlay}
+                onNext={() => stepTrack(1)}
+                onPrev={() => stepTrack(-1)}
+                onSelectTrack={(t, p) => playTrack(t, p, true)}
+                onToggleShuffle={() => setShuffle((s) => !s)}
+                onCycleRepeat={() =>
+                  setRepeatMode((m) => (m === "off" ? "all" : m === "all" ? "one" : "off"))
+                }
+                onToggleLike={(id) =>
+                  setLikedTrackIds((prev) =>
+                    prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+                  )
+                }
+                onAddToQueue={(t, p) => setUserQueue((prev) => [...prev, { track: t, project: p }])}
+                onRemoveFromQueue={(idx) =>
+                  setUserQueue((prev) => prev.filter((_, i) => i !== idx))
+                }
+                onClearQueue={() => setUserQueue([])}
+                onVolumeChange={handleVolumeChange}
+                onToggleMute={handleToggleMute}
+                onClose={() => setPlayerExpanded(false)}
+                onJumpToProject={(projId) => {
+                  setPlayerExpanded(false);
+                  setSelectedProjectId(projId);
+                  setTab("biblioteca");
+                }}
+                onOpenEditTrack={() => setEditingTrack(currentTrack)}
+              />
+            </motion.div>
+          </UniversalPortal>
         )}
       </AnimatePresence>
 
@@ -3938,6 +4151,13 @@ export default function App() {
 }
 
 /* ==================== COMPONENTE: PANTALLA EDITAR TRACK ==================== */
+function UniversalPortal({ children }: { children: ReactNode }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (mounted && typeof document !== "undefined") return createPortal(children, document.body);
+  return null;
+}
+
 /**
  * En celular la hoja del proyecto es `position: fixed` a pantalla completa. Si queda dentro de un
  * ancestro con transform/filter (animaciones de página), el navegador la recorta al alto del ancestro
