@@ -627,3 +627,13 @@
    - El enjambre de 18.000 micro-vinilos usa colores aleatorios de `VINYL_PALETTE` y periódicamente forma las letras 2D de `"EL TABLERO"` en el espacio antes de volver a orbitar suavemente.
 9. **Mobile / Safe-Area iOS:**
    - Agregado padding de área segura (`env(safe-area-inset-top)`) en `.perf-player` para que la Dynamic Island / notch no tape los controles en iPhone.
+
+
+---
+
+### Turno 34 — Consulta sobre Límites de Cuota y Estado de la Sesión
+**Prompt del usuario:**
+- *"no me quede sin limite aun ?"*
+
+**Respuesta y Estado:**
+- Se confirmó al usuario que la sesión sigue 100% activa sin bloqueos de cuota o rate-limit en el entorno. La app está desplegada y sincronizada en `main` con todos los cambios operativos.
