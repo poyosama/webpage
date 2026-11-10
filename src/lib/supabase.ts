@@ -45,10 +45,24 @@ export function toDbId(id: string): string {
 }
 
 export const isTransientUrl = (url?: string | null): boolean =>
-  !!url && (url.startsWith("blob:") || url.startsWith("data:"));
+  !!url && url.startsWith("blob:");
 
 const cleanUrl = (url?: string | null): string | undefined =>
   url && !url.startsWith("blob:") ? url : undefined;
+
+function blobToDataUrl(blob: Blob): Promise<string | null> {
+  return new Promise((resolve) => {
+    try {
+      const reader = new FileReader();
+      reader.onloadend = () =>
+        resolve(typeof reader.result === "string" ? reader.result : null);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    } catch {
+      resolve(null);
+    }
+  });
+}
 
 // ==================== STORAGE: SUBIR AUDIO / TAPAS / VIDEOS AL BUCKET ====================
 export async function uploadMediaToSupabase(
@@ -68,23 +82,21 @@ export async function uploadMediaToSupabase(
         contentType: file.type || undefined,
       });
 
-    if (error || !data) {
-      console.warn("Storage upload warn:", error?.message);
-      return null;
+    if (!error && data) {
+      const { data: publicUrlData } = supabase.storage
+        .from("el-tablero-media")
+        .getPublicUrl(data.path);
+      return publicUrlData.publicUrl;
     }
 
-    const { data: publicUrlData } = supabase.storage
-      .from("el-tablero-media")
-      .getPublicUrl(data.path);
-
-    return publicUrlData.publicUrl;
-  } catch (err) {
-    console.warn("Error en uploadMediaToSupabase:", err);
-    return null;
+    // Fallback directo a Data URL en PostgreSQL cuando el bucket aún no está creado o no tiene políticas
+    return await blobToDataUrl(file);
+  } catch {
+    return await blobToDataUrl(file);
   }
 }
 
-/** Si la URL es blob:/data: (temporal, se pierde con F5) la sube al bucket y devuelve la URL pública permanente. */
+/** Si la URL es blob: (temporal, se pierde con F5) la sube al bucket o la convierte a Data URL persistente. */
 export async function ensurePersistentUrl(
   url: string | undefined | null,
   folder: "covers" | "tracks" | "videos" | "avatars",

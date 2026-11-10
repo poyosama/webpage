@@ -1258,7 +1258,7 @@ export default function App() {
                   <div className="neon-spine" aria-hidden />
 
                   <div className="Roster-collage">
-                    {/* Fila 1: LA PLAGA (eyebags) + CASI ÁNGEL (brvno) */}
+                    {/* Fila 1: LA PLAGA (eyebags) + blablabla (bbbrvno) */}
                     <div className="collage-line">
                       <span className="cluster-dots">
                         <i style={{ background: "#e11d48" }} />
@@ -1278,17 +1278,22 @@ export default function App() {
                         LA <span className="inline-swatch coral">PLAGA</span>
                         <sup className="sup-tag">mixtape · eyebags</sup>
                       </button>
+                      <img
+                        src="/covers/blablabla.png"
+                        alt="blablabla"
+                        className="collage-cover-thumb"
+                      />
                       <button
                         type="button"
                         className="roster-word clean-editorial-word"
                         onMouseEnter={() => sfx.hover()}
                         onClick={() => {
-                          const p = findProjectById("casi-angel");
+                          const p = findProjectById("blablabla");
                           if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
                         }}
                       >
-                        CASI <span className="inline-swatch blue">ÁNGEL</span>
-                        <sup className="sup-tag">ep · brvno</sup>
+                        bla<span className="inline-swatch red">blabla</span>
+                        <sup className="sup-tag">ep · bbbrvno</sup>
                       </button>
                       <span className="cutout-pill">Mendoza</span>
                     </div>

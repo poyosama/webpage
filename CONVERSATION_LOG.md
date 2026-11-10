@@ -721,3 +721,30 @@
 3. **Consolidación de Proyectos y Artistas en el Tablero (`src/components/App.tsx`):**
    - `boardProjects` combina los proyectos del usuario con todos los proyectos emblemáticos de `DEMO_PROJECTS`, asegurando que `chickenNugget`, `PERDÓN LA DEMORA`, `#MA7IAS`, `ESTO ES ESTAR EN SONIDO`, `Love2Hate`, `LA PLAGA`, `AMORIO CLUB 2` y `CASI ÁNGEL` estén siempre presentes en la tira inferior y en `Proyectos fijados`.
    - `allArtists` fusiona los perfiles de la nube con `SCENE_ARTISTS` (sin duplicar handles), para que `brvno`, `Máximo`, `Tizianolased`, `poyo`, `eyebags`, etc., figuren siempre en `Artistas en El Tablero` y respondan a los filtros de más recientes o populares.
+
+
+---
+
+### Turno 40 — Fix Definitivo de Guardado en la Nube + Info Real de `bbbrvno` (`blablabla` EP)
+**Prompt del usuario:**
+- *"por que me dice que no se pudo guardar en la nube"*
+- *"noo para no lo pongaas a brvno asi ponelo con esta info (adjunta 2 capturas de Spotify de bbbrvno y su EP blablabla)"*
+
+**Causa y Solución del Error `"No se pudo guardar en la nube"` (`src/lib/supabase.ts`):**
+- **Por qué aparecía:** En el proyecto de Supabase (`txhrbfgejcwmmurriccw`) todavía no fue creado el bucket de Storage `el-tablero-media` (`[]` buckets vacíos). Entonces cuando `uploadMediaToSupabase` intentaba subir un archivo (`blob:`), el endpoint de Storage devolvía `404 Bucket not found`, `ensurePersistentUrl` retornaba `null`, la URL seguía siendo `blob:` y el sincronizador marcaba error (`syncStatus = "error"` -> `"No se pudo guardar en la nube"`).
+- **Solución:**
+  1. Se agregó `blobToDataUrl(blob)` como fallback automático en `uploadMediaToSupabase`: si el bucket `el-tablero-media` existe, sube al Storage; si el bucket no existe o falla por permisos, convierte automáticamente la portada/GIF/audio/video a `data:...;base64,...` y la guarda directamente en las columnas `text` (`cover_url`, `audio_url`, `url`) de PostgreSQL en Supabase.
+  2. Se actualizó `isTransientUrl` para considerar únicamente `blob:` como temporal (las `data:` URLs ya son 100% persistentes en la base de datos y sobreviven al F5 en cualquier dispositivo).
+
+**Actualización de `bbbrvno` con sus Datos Reales (`public/covers/blablabla.png`, `src/lib/mock.ts`, `src/components/App.tsx`):**
+- Extraída y recortada la portada oficial de `blablabla` desde la captura (`public/covers/blablabla.png`).
+- Actualizado el perfil en `SCENE_ARTISTS`:
+  - Nombre: `bbbrvno` (`@bbbrvno`)
+  - Crew/Sello: `6896798 Records DK` · `285` oyentes mensuales.
+- Actualizado el proyecto en `DEMO_PROJECTS` y en el collage de `Inicio`:
+  - Título: **`blablabla`** (EP · `bbbrvno` · 2025 · 4 tracks, 6 min 14 sec · `/covers/blablabla.png`)
+  - Tracklist real:
+    1. `without U` (`bbbrvno` · `1:18`)
+    2. `blablabla` (`bbbrvno, eyebags` · `1:36`)
+    3. `y festejar` (`bbbrvno` · `1:53`)
+    4. `hoy es un buen día, voy a fumarme dos` (`bbbrvno, Seguxx` · `1:27`)
