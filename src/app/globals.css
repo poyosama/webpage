@@ -1777,9 +1777,11 @@ button {
 }
 
 .ios-mini-player {
+  position: relative;
+  overflow: hidden;
   pointer-events: auto;
   width: min(690px, 100%);
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--surface);
   backdrop-filter: blur(26px) saturate(190%);
   -webkit-backdrop-filter: blur(26px) saturate(190%);
   border: 1px solid var(--line-strong);
@@ -1790,6 +1792,63 @@ button {
   align-items: center;
   gap: 14px;
   box-shadow: var(--shadow-float);
+  color: var(--ink);
+}
+
+:root[data-theme="dark"] .ios-mini-player {
+  background: rgba(14, 14, 18, 0.95);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.75);
+}
+
+:root[data-theme="dark"] .ios-mini-player .mini-meta b {
+  color: #ffffff;
+}
+
+:root[data-theme="dark"] .ios-mini-player .mini-meta span {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+:root[data-theme="dark"] .ios-mini-player .mini-btn {
+  color: #ffffff;
+}
+
+:root[data-theme="dark"] .ios-mini-player .mini-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+:root[data-theme="dark"] .ios-mini-player .mini-play-btn {
+  background: #ffffff;
+  color: #000000;
+}
+
+:root[data-theme="light"] .ios-mini-player {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(0, 0, 0, 0.12);
+  color: #000000;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
+}
+
+:root[data-theme="light"] .ios-mini-player .mini-meta b {
+  color: #000000;
+}
+
+:root[data-theme="light"] .ios-mini-player .mini-meta span {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+:root[data-theme="light"] .ios-mini-player .mini-btn {
+  color: #000000;
+}
+
+:root[data-theme="light"] .ios-mini-player .mini-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+:root[data-theme="light"] .ios-mini-player .mini-play-btn {
+  background: #000000;
+  color: #ffffff;
 }
 
 .mini-left {
@@ -2593,6 +2652,35 @@ button {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
+:root[data-theme="dark"] .google-session-card {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.spine-badge-static {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--surface);
+  letter-spacing: 0.04em;
+}
+
+:root[data-theme="dark"] .spine-badge-static {
+  background: #ffffff;
+  color: #000000;
+}
+
+:root[data-theme="light"] .spine-badge-static {
+  background: #000000;
+  color: #ffffff;
+}
+
 .google-session-head {
   display: flex;
   align-items: center;
@@ -3054,7 +3142,7 @@ button {
 
   /* Reproductor 3D Fullscreen estilo Spotify iOS en iPhone */
   .perf-player {
-    padding: 16px 12px 14px;
+    padding: calc(16px + env(safe-area-inset-top, 0px)) 12px calc(14px + env(safe-area-inset-bottom, 0px));
   }
 
   .perf-topbar {
@@ -3443,9 +3531,17 @@ button {
 /* ==================== ABANICO CURVO FIJO DE VINILOS (ESTILO IMAGE.PNG, CERO ROTACIÓN 3D) ==================== */
 .vinyl-arc-stage {
   position: relative;
-  background: radial-gradient(circle at 22% 52%, rgba(0, 0, 0, 0.04) 0%, #ffffff 72%);
+  background: radial-gradient(circle at 22% 52%, rgba(0, 0, 0, 0.05) 0%, var(--surface) 72%);
   user-select: none;
   cursor: default;
+}
+
+:root[data-theme="dark"] .vinyl-arc-stage {
+  background: radial-gradient(circle at 22% 52%, rgba(255, 255, 255, 0.05) 0%, #09090b 72%);
+}
+
+:root[data-theme="light"] .vinyl-arc-stage {
+  background: radial-gradient(circle at 22% 52%, rgba(0, 0, 0, 0.06) 0%, #f6f6f4 72%);
 }
 
 .vinyl-fan-arc-viewport {
@@ -3696,7 +3792,7 @@ button {
   z-index: 60;
   pointer-events: auto;
   cursor: default;
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--surface);
   backdrop-filter: blur(20px);
   border: 1px solid var(--line-strong);
   border-radius: 22px;
@@ -3705,6 +3801,43 @@ button {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  color: var(--ink);
+}
+
+:root[data-theme="dark"] .vinyl-fan-inspector-card {
+  background: rgba(20, 20, 24, 0.95);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+}
+
+:root[data-theme="dark"] .vinyl-fan-inspector-card h2 {
+  color: #ffffff;
+}
+
+:root[data-theme="dark"] .vinyl-fan-inspector-card .vinyl-fan-artist-line {
+  color: #a1a1aa;
+}
+
+:root[data-theme="dark"] .vinyl-fan-inspector-card .vinyl-fan-desc {
+  color: #71717a;
+}
+
+:root[data-theme="light"] .vinyl-fan-inspector-card {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(0, 0, 0, 0.12);
+  color: #000000;
+}
+
+:root[data-theme="light"] .vinyl-fan-inspector-card h2 {
+  color: #000000;
+}
+
+:root[data-theme="light"] .vinyl-fan-inspector-card .vinyl-fan-artist-line {
+  color: #52525b;
+}
+
+:root[data-theme="light"] .vinyl-fan-inspector-card .vinyl-fan-desc {
+  color: #71717a;
 }
 
 .vinyl-fan-inspector-card h2 {
@@ -3829,6 +3962,14 @@ button {
   background: #e11d48 !important;
   color: #ffffff !important;
   border-color: #e11d48 !important;
+}
+
+.trash-icon-btn.confirm-delete-active {
+  background: #e11d48 !important;
+  color: #ffffff !important;
+  border-color: #e11d48 !important;
+  transform: scale(1.1);
+  box-shadow: 0 0 10px rgba(225, 29, 72, 0.5);
 }
 
 /* ==================== NOVEDADES DE PRODUCTORES (BEATPOST, SOUNDKIT, DRUMKIT, LOOPKIT, CATÁLOGO) ==================== */
@@ -4478,11 +4619,11 @@ video::-webkit-media-controls-overlay-play-button {
 .mini-scrubber-track {
   position: absolute;
   top: 0;
-  left: 14px;
-  right: 14px;
-  height: 4px;
+  left: 0;
+  right: 0;
+  height: 3px;
   background: rgba(255, 255, 255, 0.15);
-  border-radius: 999px;
+  border-radius: 999px 999px 0 0;
   overflow: hidden;
   cursor: pointer;
   z-index: 10;

@@ -60,16 +60,89 @@ function buildDiscSprite(): THREE.CanvasTexture {
   return tex;
 }
 
+const VINYL_PALETTE = [
+  "#e11d48", // coral / red
+  "#0284c7", // electric cyan
+  "#ca8a04", // gold
+  "#65a30d", // neon lime
+  "#7e22ce", // purple
+  "#14b8a6", // teal
+];
+
+function buildLandingLogoTargets(count: number): Float32Array {
+  const targets = new Float32Array(count * 3);
+  if (typeof document === "undefined") return targets;
+
+  const text = "EL TABLERO";
+  const W = 880;
+  const H = 240;
+  const c = document.createElement("canvas");
+  c.width = W;
+  c.height = H;
+  const g = c.getContext("2d")!;
+
+  g.fillStyle = "#000000";
+  g.fillRect(0, 0, W, H);
+
+  g.fillStyle = "#ffffff";
+  g.font = `800 110px -apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, sans-serif`;
+  g.textAlign = "center";
+  g.textBaseline = "middle";
+
+  const chars = text.split("");
+  const tightFactor = 0.88;
+  const widths = chars.map((ch) => g.measureText(ch).width * tightFactor);
+  const totalW = widths.reduce((a, b) => a + b, 0);
+  let curX = (W - totalW) / 2;
+  const centerY = H * 0.52;
+
+  for (let i = 0; i < chars.length; i++) {
+    const ch = chars[i];
+    const cw = widths[i];
+    g.fillText(ch, curX + cw * 0.5, centerY);
+    curX += cw;
+  }
+
+  const img = g.getImageData(0, 0, W, H).data;
+  const validPixels: [number, number][] = [];
+  for (let y = 0; y < H; y += 2) {
+    for (let x = 0; x < W; x += 2) {
+      const lum = img[(y * W + x) * 4];
+      if (lum > 100) {
+        validPixels.push([(x / W - 0.5) * 6.2, (0.5 - y / H) * 1.8]);
+      }
+    }
+  }
+
+  if (validPixels.length === 0) {
+    validPixels.push([0, 0]);
+  }
+
+  for (let i = 0; i < count; i++) {
+    const ix = i * 3;
+    const [px, py] = validPixels[(i * 7) % validPixels.length];
+    const zDepth = ((i % 9) - 4) * 0.05 + (Math.random() - 0.5) * 0.04;
+    targets[ix] = px + (Math.random() - 0.5) * 0.025;
+    targets[ix + 1] = py + (Math.random() - 0.5) * 0.025;
+    targets[ix + 2] = zDepth;
+  }
+
+  return targets;
+}
+
 function MicroDiscsSwarm() {
   const pointsRef = useRef<THREE.Points>(null!);
   const count = 18000;
   const sprite = useMemo(() => buildDiscSprite(), []);
+  const logoTargets = useMemo(() => buildLandingLogoTargets(count), [count]);
 
-  const { positions, velocities, colors, phases } = useMemo(() => {
-    const pos = new Float32Array(count * 3);
-    const vel = new Float32Array(count * 3);
+  const { orbitPositions, currentPositions, colors, phases } = useMemo(() => {
+    const orbitPos = new Float32Array(count * 3);
+    const currPos = new Float32Array(count * 3);
     const col = new Float32Array(count * 3);
     const ph = new Float32Array(count);
+
+    const parsedColors = VINYL_PALETTE.map((hex) => new THREE.Color(hex));
 
     for (let i = 0; i < count; i++) {
       const ix = i * 3;
@@ -77,34 +150,28 @@ function MicroDiscsSwarm() {
       const r = 1.2 + (i / count) * 4.6;
       const angle = u + (i % 5) * 1.25;
 
-      pos[ix] = Math.cos(angle) * r + (Math.random() - 0.5) * 0.45;
-      pos[ix + 1] = Math.sin(angle * 1.3) * r * 0.55 + (Math.random() - 0.5) * 0.45;
-      pos[ix + 2] = Math.sin(angle * 0.7) * 2.2 + (Math.random() - 0.5) * 0.45;
+      const ox = Math.cos(angle) * r + (Math.random() - 0.5) * 0.45;
+      const oy = Math.sin(angle * 1.3) * r * 0.55 + (Math.random() - 0.5) * 0.45;
+      const oz = Math.sin(angle * 0.7) * 2.2 + (Math.random() - 0.5) * 0.45;
 
-      vel[ix] = 0;
-      vel[ix + 1] = 0;
-      vel[ix + 2] = 0;
+      orbitPos[ix] = ox;
+      orbitPos[ix + 1] = oy;
+      orbitPos[ix + 2] = oz;
+
+      currPos[ix] = ox;
+      currPos[ix + 1] = oy;
+      currPos[ix + 2] = oz;
 
       ph[i] = Math.random() * Math.PI * 2;
 
-      // Tintes sutiles entre blanco puro, plata y acentos de vinilo
-      const isCd = i % 3 === 0;
-      if (isCd) {
-        col[ix] = 0.94;
-        col[ix + 1] = 0.96;
-        col[ix + 2] = 1.0;
-      } else if (i % 3 === 1) {
-        col[ix] = 0.98;
-        col[ix + 1] = 0.4;
-        col[ix + 2] = 0.45;
-      } else {
-        col[ix] = 0.85;
-        col[ix + 1] = 0.85;
-        col[ix + 2] = 0.88;
-      }
+      // Colores random vibrantes de la paleta de vinilitos de El Tablero
+      const colorPick = parsedColors[i % parsedColors.length];
+      col[ix] = colorPick.r;
+      col[ix + 1] = colorPick.g;
+      col[ix + 2] = colorPick.b;
     }
 
-    return { positions: pos, velocities: vel, colors: col, phases: ph };
+    return { orbitPositions: orbitPos, currentPositions: currPos, colors: col, phases: ph };
   }, [count]);
 
   useFrame(({ clock, pointer }, dt) => {
@@ -112,46 +179,80 @@ function MicroDiscsSwarm() {
     const clampedDt = Math.min(0.033, dt);
     const arr = pointsRef.current.geometry.attributes.position.array as Float32Array;
 
-    // Rotación suave del enjambre + ondas
+    // Ciclo de 13s: 6s órbita libre, 1.5s morph a "EL TABLERO" en 2D, 4s hold de "EL TABLERO", 1.5s dispersión
+    const cycle = t % 13;
+    let morphFactor = 0;
+    if (cycle < 5.5) {
+      morphFactor = 0;
+    } else if (cycle < 7.0) {
+      morphFactor = (cycle - 5.5) / 1.5;
+    } else if (cycle < 11.0) {
+      morphFactor = 1;
+    } else if (cycle < 12.5) {
+      morphFactor = 1 - (cycle - 11.0) / 1.5;
+    } else {
+      morphFactor = 0;
+    }
+    const smoothMorph = 0.5 - 0.5 * Math.cos(morphFactor * Math.PI);
+
     const mx = pointer.x * 0.85;
     const my = pointer.y * 0.85;
 
-    for (let i = 0; i < count; i += 2) {
+    for (let i = 0; i < count; i++) {
       const ix = i * 3;
       const phi = phases[i];
-      // Flotación en espiral
-      arr[ix + 1] += Math.sin(t * 1.6 + phi) * 0.0035;
-      arr[ix] += Math.cos(t * 1.2 + phi) * 0.0028;
 
-      // Puntero genera suave repulsión curiosa
-      const dx = arr[ix] - mx * 3;
-      const dy = arr[ix + 1] - my * 2;
-      const d2 = dx * dx + dy * dy;
-      if (d2 < 1.2 && d2 > 0.001) {
-        const d = Math.sqrt(d2);
-        const force = ((1.2 - d) / 1.2) * 0.8 * clampedDt;
-        arr[ix] += (dx / d) * force;
-        arr[ix + 1] += (dy / d) * force;
+      // Posición de órbita base
+      const ox = orbitPositions[ix] + Math.cos(t * 1.1 + phi) * 0.08;
+      const oy = orbitPositions[ix + 1] + Math.sin(t * 1.4 + phi) * 0.08;
+      const oz = orbitPositions[ix + 2] + Math.sin(t * 0.9 + phi) * 0.06;
+
+      // Posición objetivo texto 2D "EL TABLERO"
+      const tx = logoTargets[ix];
+      const ty = logoTargets[ix + 1];
+      const tz = logoTargets[ix + 2];
+
+      // Interpolación entre órbita y texto 2D
+      const targetX = THREE.MathUtils.lerp(ox, tx, smoothMorph);
+      const targetY = THREE.MathUtils.lerp(oy, ty, smoothMorph);
+      const targetZ = THREE.MathUtils.lerp(oz, tz, smoothMorph);
+
+      arr[ix] += (targetX - arr[ix]) * (clampedDt * 4.5);
+      arr[ix + 1] += (targetY - arr[ix + 1]) * (clampedDt * 4.5);
+      arr[ix + 2] += (targetZ - arr[ix + 2]) * (clampedDt * 4.5);
+
+      // Leve interacción con el puntero cuando está disperso
+      if (smoothMorph < 0.3) {
+        const dx = arr[ix] - mx * 3;
+        const dy = arr[ix + 1] - my * 2;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < 1.0 && d2 > 0.001) {
+          const d = Math.sqrt(d2);
+          const force = ((1.0 - d) / 1.0) * 0.5 * clampedDt;
+          arr[ix] += (dx / d) * force;
+          arr[ix + 1] += (dy / d) * force;
+        }
       }
     }
 
-    pointsRef.current.rotation.y = t * 0.055;
+    // Leve rotación solo cuando no está en texto 2D para mantener legibilidad
+    pointsRef.current.rotation.y = t * 0.04 * (1 - smoothMorph);
     pointsRef.current.geometry.attributes.position.needsUpdate = true;
   });
 
   return (
     <points ref={pointsRef} frustumCulled={false}>
       <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+        <bufferAttribute attach="attributes-position" args={[currentPositions, 3]} />
         <bufferAttribute attach="attributes-color" args={[colors, 3]} />
       </bufferGeometry>
       <pointsMaterial
         map={sprite}
-        size={0.046}
+        size={0.048}
         vertexColors
         transparent
         alphaTest={0.03}
-        opacity={0.92}
+        opacity={0.94}
         depthWrite={false}
         sizeAttenuation
       />
@@ -175,7 +276,7 @@ export default function LandingScene({
   onOpenGoogleAuth,
   onSetAccountRole,
 }: {
-  onEnterAsGuest: () => void;
+  onEnterAsGuest?: () => void;
   onOpenGoogleAuth: () => void;
   onSetAccountRole?: (role: "artista" | "oyente") => void;
 }) {
@@ -242,22 +343,12 @@ export default function LandingScene({
           <span className="brand-dot" />
           <span>El tablero // @quetablero</span>
         </div>
-        <button
-          type="button"
-          className="apple-btn ghost landing-enter-guest-btn"
-          onClick={() => {
-            sfx.open();
-            onEnterAsGuest();
-          }}
-        >
-          Explorar como invitado →
-        </button>
       </header>
 
       {/* Centro de la landing: tipografía de El tablero + píldora Registrarme / Iniciar sesión */}
       <div className="landing-center-content">
         <span className="mono-tag" style={{ letterSpacing: "0.22em", marginBottom: 12 }}>
-          RED PRIVADA // ACCESO EXCLUSIVO POR REFERRAL
+          ACCESO ANTICIPADO
         </span>
 
         <h1 className="landing-display-title">El tablero</h1>
@@ -389,17 +480,6 @@ export default function LandingScene({
                   style={{ justifyContent: "center", padding: "12px 18px", fontSize: "0.95rem" }}
                 >
                   {loading ? "Verificando y conectando..." : "Validar y Conectar con Google →"}
-                </button>
-                <button
-                  type="button"
-                  className="apple-btn ghost"
-                  onClick={() => {
-                    setInviteModalOpen(false);
-                    onEnterAsGuest();
-                  }}
-                  style={{ justifyContent: "center" }}
-                >
-                  Continuar explorando como invitado
                 </button>
               </div>
             </form>

@@ -4,9 +4,11 @@ import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { type Project, type Track, type ArtistProfile } from "@/lib/mock";
 import { sfx } from "@/lib/sfx";
+import { uploadMediaToSupabase } from "@/lib/supabase";
 
 export type BatchTrackDraft = {
   id: string;
+  file?: File;
   fileName: string;
   title: string;
   prod: string;
@@ -27,6 +29,7 @@ export default function MacInstallerUpload({
   onAddTrackToProject,
   onPlayTrack,
   onOpenCreateProject,
+  onGoToProject,
 }: {
   meProfile: ArtistProfile;
   projects: Project[];
@@ -38,21 +41,11 @@ export default function MacInstallerUpload({
   ) => void;
   onPlayTrack: (track: Track, project: Project) => void;
   onOpenCreateProject: () => void;
+  onGoToProject?: (projectId: string) => void;
 }) {
   const [selectedProjectId, setSelectedProjectId] = useState<string>(projects[0]?.id || "");
-  const [batchItems, setBatchItems] = useState<BatchTrackDraft[]>([
-    {
-      id: "draft-1",
-      fileName: "mendoza_snippet_v1.wav",
-      title: "mendoza_snippet_v1",
-      prod: "",
-      bpm: 138,
-      musicalKey: "F#m",
-      color: "#e11d48",
-      durationSec: 134,
-      duration: "2:14",
-    },
-  ]);
+  const [batchItems, setBatchItems] = useState<BatchTrackDraft[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   const [activeVinilitoIdx, setActiveVinilitoIdx] = useState(0);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [installedCount, setInstalledCount] = useState<number | null>(null);
@@ -73,6 +66,7 @@ export default function MacInstallerUpload({
       const url = URL.createObjectURL(file);
       return {
         id: `batch-${Date.now()}-${i}`,
+        file,
         fileName: file.name,
         title: clean,
         prod: globalProd.trim() || "",
@@ -106,7 +100,7 @@ export default function MacInstallerUpload({
     });
   };
 
-  const handleInstallAll = () => {
+  const handleInstallAll = async () => {
     if (!targetProject) {
       onOpenCreateProject();
       return;
@@ -114,9 +108,21 @@ export default function MacInstallerUpload({
     if (batchItems.length === 0) return;
 
     sfx.drop();
+    setIsUploading(true);
     const startIdx = targetProject.tracks.length;
 
-    batchItems.forEach((item, idx) => {
+    for (let idx = 0; idx < batchItems.length; idx++) {
+      const item = batchItems[idx];
+      let finalAudioUrl = item.audioObjectUrl;
+      if (item.file) {
+        try {
+          const cloudUrl = await uploadMediaToSupabase(item.file, "tracks");
+          if (cloudUrl) finalAudioUrl = cloudUrl;
+        } catch (e) {
+          console.warn("Storage upload warn:", e);
+        }
+      }
+
       const newTrack: Track = {
         id: `custom-track-${Date.now()}-${idx}`,
         title: item.title.trim() || `Track #${startIdx + idx + 1}`,
@@ -133,19 +139,20 @@ export default function MacInstallerUpload({
         accent: item.color,
         glyph: String(startIdx + idx + 1).padStart(2, "0"),
         audioFreq: 120 + ((idx * 8) % 40),
-        customAudioUrl: item.audioObjectUrl,
+        customAudioUrl: finalAudioUrl,
       };
 
       onAddTrackToProject(
         targetProject.id,
         newTrack,
         startIdx + idx,
-        item.audioObjectUrl
+        finalAudioUrl
       );
-    });
+    }
 
     setInstalledCount(batchItems.length);
     setBatchItems([]);
+    setIsUploading(false);
   };
 
   return (
@@ -252,17 +259,28 @@ export default function MacInstallerUpload({
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            className="apple-btn primary"
-            onClick={() => {
-              if (targetProject && targetProject.tracks[0]) {
-                onPlayTrack(targetProject.tracks[targetProject.tracks.length - 1] || targetProject.tracks[0], targetProject);
-              }
-            }}
-          >
-            ▶ Escuchar en Reproductor
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="apple-btn primary"
+              onClick={() => {
+                if (targetProject && targetProject.tracks[0]) {
+                  onPlayTrack(targetProject.tracks[targetProject.tracks.length - 1] || targetProject.tracks[0], targetProject);
+                }
+              }}
+            >
+              ▶ Escuchar ahora
+            </button>
+            {onGoToProject && targetProject && (
+              <button
+                type="button"
+                className="apple-btn secondary"
+                onClick={() => onGoToProject(targetProject.id)}
+              >
+                Ir al proyecto →
+              </button>
+            )}
+          </div>
         </motion.div>
       )}
 

@@ -316,6 +316,60 @@ export async function updateProjectCoverInSupabase(projectId: string, coverUrl: 
   }
 }
 
+// ==================== DB: GUARDAR O ACTUALIZAR TRACK INDIVIDUAL ====================
+export async function saveTrackToSupabase(projectId: string, track: Track, orderIndex: number = 0): Promise<boolean> {
+  try {
+    const { error } = await supabase.from("tracks").upsert(
+      {
+        id: track.id,
+        project_id: projectId,
+        title: track.title,
+        artist: track.artist,
+        feat: track.feat || null,
+        prod: track.prod || null,
+        bpm: track.bpm,
+        musical_key: track.key,
+        duration: track.duration,
+        duration_sec: track.durationSec,
+        version: track.version,
+        note: track.note || null,
+        glyph: track.glyph,
+        c1: track.c1 || "#ffffff",
+        c2: track.c2 || "#888888",
+        accent: track.accent || "#ffffff",
+        audio_freq: track.audioFreq || 80,
+        audio_url: track.customAudioUrl || null,
+        cover_url: track.coverUrl || null,
+        order_index: orderIndex,
+      },
+      { onConflict: "id" }
+    );
+    if (error) {
+      console.warn("Error guardando track en Supabase:", error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn("Fallo saveTrackToSupabase:", err);
+    return false;
+  }
+}
+
+// ==================== DB: ELIMINAR TRACK ====================
+export async function deleteTrackFromSupabase(trackId: string): Promise<boolean> {
+  try {
+    const { error } = await supabase.from("tracks").delete().eq("id", trackId);
+    if (error) {
+      console.warn("Error eliminando track de Supabase:", error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn("Fallo deleteTrackFromSupabase:", err);
+    return false;
+  }
+}
+
 // ==================== DB: ELIMINAR PROYECTO ====================
 export async function deleteProjectFromSupabase(projectId: string): Promise<boolean> {
   try {

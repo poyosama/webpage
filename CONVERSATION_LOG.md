@@ -578,3 +578,52 @@
    - Se eliminan automáticamente los fragmentos `#access_token=...` de la URL tras el login de Google mediante `window.history.replaceState`.
    - Sincronización bidireccional limpia de rutas en el navegador: `/` (Inicio), `/library` (Biblioteca/Guardados), `/upload` (Subir), `/profile` (Perfil), `/create` (Crear Proyecto) y `/project/:id` (acceso directo a un proyecto).
    - Añadido botón `🔗 Copiar link` en el inspector para compartir proyectos con URL canónica `https://eltablero.blog/project/${projectId}`.
+
+
+---
+
+### Turno 33 — Corrección del Mini Player Scrubber, Contraste Estricto Black on White / White on Black, Subida Persistente de Canciones a Supabase, Reordenamiento de Inicio, Acceso Exclusivo Landing y Pulido de Biblioteca
+**Prompts del usuario:**
+1. *"en la barra del medio que se vea negra tambien en el modo oscuro, letras blancas fondo negro, fondo blanco letras blancas, se sabe... las canciones q subo no se estan guardando, se guardan los proyectos pero no se guardan las canciones dentro de ellos, que se guarden en el servidor de la pagina. acordate qye en la pildora del medio arriba si no estas logeado que diga iniciar sesion en vez de @poyo eso no tiene mucho sentido en @handle unico en el tablero esta bien, pero saca lo de (instagram style) Tu cuenta de google esta vinculada etc esta bien, sacale lo de estilo instagram de nuevo..."*
+2. *"inicio: el quetablero esta muy encima de todo lo que esta ahi. letras blancas en fondo negro al igual que estan las letras negras en fondo blanco ! novedades de productores bajalo abajo de la rotacion de proyectos y artistas ! y que se llame rotacion de productores. saca "BEATPOST · SOUNDKIT · DRUMKIT · LOOPKIT · CATÁLOGO DE BEATS". "Herramientas, Kits & Beats de los Produ" no se lee por la fuente en blanco, acordate negro sobre blanco y blanco sobre negro !"*
+3. *"subir: esta bien pero me triggerea que siempre te crea un archivo que se llama mendoza_snippet, nunca dejes un archivo asi por default deja que el usuario suba sus wavs y recien cuando los suba mostras las cnciones en sus vinilitos para revisar. Despues de subir un tema, el boton que dice escuchar en reproductor que solo diga Escuchar ahora y tenga otro boton al lado que diga ir al proyecto"*
+4. *"biblioteca: se ve bastante clean, lo de videos 3-5s sacale todo ese texto con lo de los clips activos y dejale solamente Canva. el eliminar proyecto que salga a la derecha de cambiar portada y sea solo el icono de la basurita, cuando hacs hover o tapeas se pone rojo y te pide confirmacion. me gusta la gradiente que le pusiste pero solo se ve en el modo oscuro. que se vea en las 2 y se inverta. mismo problema con el texto, black on white white on black !!"*
+5. *"ui: la pildora de arriba esta clavada, sacale lo que dice reproductor y landing. la landing page que sea solo accesible cuando cerras sesion. no quiero que nadie vea la pagina sin iniciar sesion con google !!"*
+6. *"landing page: esta muy bien, no pongas lo de explorar como invitado. cuando clickeas registrar o iniciar sesion ya te tira a la pagina.- hasta que no tenes sesion iniciada que te deje en la landing page ! si podes hacer que los vinilitos de fondo las particulas a veces creen un 2d de El tablero tal cual aparece ahi en el espacio, y que sean de colores random entre los que elegiste para poner en los vinilitos porfa ! red privada // acceso excusivo por referral que diga "ACCESO ANTICIPADO". y cuando entras a la app despues de iniciar sesion ysalis de la landing page que te deje siempre en el menu de inicio."*
+7. *"la barrita de progreso esta bugeada xd (adjunta captura mostrando el scrubber expandido a 100vw de la pantalla)"*
+
+**Implementación:**
+1. **Fix Barrita de Progreso en Mini Player (`globals.css`):**
+   - Corregido el bug donde la barra de progreso verde se estiraba de punta a punta de la pantalla (100vw): se agregó `position: relative; overflow: hidden;` a `.ios-mini-player`.
+   - Se ajustó `.mini-scrubber-track` a `position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: 999px 999px 0 0;`, quedando perfectamente incrustada en el borde superior redondeado de la píldora.
+2. **Regla Estricta de Contraste (Blanco sobre Negro / Negro sobre Blanco):**
+   - En Dark Mode: `.ios-mini-player` es negra sólida con textos y glifos en blanco puro (`#ffffff`), `.mini-play-btn` en blanco con icono negro.
+   - En Light Mode: `.ios-mini-player` es blanca sólida con textos y glifos en negro (`#000000`), `.mini-play-btn` en negro con icono blanco.
+   - En Biblioteca: el degradé radial de fondo (`.vinyl-arc-stage`) se adaptó a ambos temas (oscuro profundo en dark mode, blanco perlado suave en light mode).
+   - `.vinyl-fan-inspector-card` y `.google-session-card` actualizados con contraste estricto en ambos modos.
+3. **Persistencia Real de Canciones en Supabase (`supabase.ts`, `MacInstallerUpload.tsx`, `App.tsx`):**
+   - Añadidas funciones `saveTrackToSupabase(projectId, track, orderIndex)` y `deleteTrackFromSupabase(trackId)` en `src/lib/supabase.ts`.
+   - En `MacInstallerUpload.tsx`: las canciones subidas (WAV/MP3) se cargan a Supabase Storage mediante `uploadMediaToSupabase(file, "tracks")` y se guardan como filas en la tabla `tracks` de Supabase vinculadas al `project_id`.
+   - En `App.tsx`: `handleAddTrackToProject`, `handleUploadProjectTrack`, `handleSaveEditedTrack` y `handleDeleteTrack` sincronizan inmediatamente con Supabase en la nube.
+4. **Píldora Superior y Limpieza de Modales (`App.tsx`):**
+   - Si no hay sesión de Google activa (`!googleConnected`), la píldora superior muestra `"Iniciar sesión"` con ícono de login en lugar de `@poyo`.
+   - Eliminados por completo los botones `✦ Landing` y `Reproductor` de la derecha de la barra.
+   - Eliminadas todas las menciones a `"(INSTAGRAM STYLE)"` y `"estilo Instagram"` en `GoogleAuthModal` y `EditProfileModal`.
+5. **Inicio Reordenado y Sin Overlap (`App.tsx`):**
+   - `@quetablero` reubicado limpiamente dentro de `strip-top-meta` con clase `.spine-badge-static` para que no se superponga con el collage ni con los recortes.
+   - Invertido el orden de secciones: `Proyectos fijados` y `Artistas en El Tablero` van primero arriba, y la sección de productores va abajo renombrada como `"ROTACIÓN DE PRODUCTORES"`.
+   - Eliminada la frase `"BEATPOST · SOUNDKIT · DRUMKIT · LOOPKIT · CATÁLOGO DE BEATS"`.
+6. **Subir sin Snippet por Defecto y Nuevos Botones (`MacInstallerUpload.tsx`):**
+   - Eliminado el archivo `mendoza_snippet_v1.wav` precargado; `batchItems` inicia vacío esperando que el usuario arrastre sus propios WAVs.
+   - Tras instalar los tracks, los botones de acción ahora son `▶ Escuchar ahora` y `Ir al proyecto →` (que abre directamente el proyecto recién cargado).
+7. **Biblioteca: Canva Minimalista y Basurita con Confirmación (`ManifoldLibrary3D.tsx`, `globals.css`):**
+   - Barra de video simplificada a solo el título `Canva` junto con los clips y el selector, quitando textos de duración ("Videos 3-5s") y píldoras vacías.
+   - Botón de eliminar proyecto ubicado a la derecha de `Cambiar portada` con icono de papelera (`🗑️`), que se pone rojo con scale (`.confirm-delete-active`) y solicita confirmación antes de borrar.
+8. **Landing Page Exclusiva con Referral Gate y Partículas 2D (`LandingScene.tsx`, `App.tsx`):**
+   - La aplicación bloquea la navegación a invitados: si no hay sesión iniciada con Google, se muestra exclusivamente la Landing Page.
+   - Eliminados todos los accesos de "Explorar como invitado".
+   - Al loguearse exitosamente con Google tras validar el código de invitación referral, la aplicación siempre aterriza en `"inicio"`.
+   - Tag superior actualizado a `"ACCESO ANTICIPADO"`.
+   - El enjambre de 18.000 micro-vinilos usa colores aleatorios de `VINYL_PALETTE` y periódicamente forma las letras 2D de `"EL TABLERO"` en el espacio antes de volver a orbitar suavemente.
+9. **Mobile / Safe-Area iOS:**
+   - Agregado padding de área segura (`env(safe-area-inset-top)`) en `.perf-player` para que la Dynamic Island / notch no tape los controles en iPhone.
