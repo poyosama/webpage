@@ -373,19 +373,7 @@ export default function CreateProjectScreen({
             },
           ];
 
-    const videos: ProjectVideoClip[] =
-      uploadedClips.length > 0
-        ? uploadedClips
-        : [
-            {
-              id: uid("v"),
-              label: `${finalTitle.toLowerCase().replace(/\s+/g, "_")}_canvas.mp4 (4s)`,
-              kind: "procedural",
-              stylePreset: "kinetic-type",
-              c1: "#111111",
-              c2: color,
-            },
-          ];
+    const videos: ProjectVideoClip[] = uploadedClips;
 
     const newProject: Project = {
       id: uid("proj"),

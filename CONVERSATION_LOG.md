@@ -884,3 +884,16 @@
    - Unificadas las 4 consultas de `applySession` (`profiles`, `projects`, `communityProfiles`, `savedProjects`) en un único `Promise.all` paralelo (eliminando el waterfall secuencial).
    - Agregada compresión automática en cliente (`compressImageBlobToDataUrl` a WebP `720px`) cuando se suben portadas/avatares en modo fallback Data URL, reduciendo portadas de 4–5 MB a ~25 KB.
    - Convertido `MacInstallerUpload` a `next/dynamic` (`ssr: false`) para alivianar el bundle inicial en F5.
+
+---
+
+### Turno 50 — Explicación en Criollo de la Optimización del F5 + Limpieza de Botón `✕ Canvas` Fantasma y Mini-Player en Standby
+**Prompt del usuario:**
+- *"kjasdjfghajsdgjasd ??' no ebntnedi nada (adjunta captura de `Mis Proyectos -> ZPA VISUALS FUNA`)"*
+
+**Implementación (`src/components/App.tsx`, `src/components/CreateProjectScreen.tsx`):**
+1. **Limpieza del botón `✕ Canvas` fantasma (`src/components/App.tsx`, `src/components/CreateProjectScreen.tsx`):**
+   - En la captura de `ZPA VISUALS FUNA` aparecían juntos `[Canvas]` y `[✕ Canvas]` aunque el proyecto no tenía ningún Canvas subido, porque `CreateProjectScreen.tsx` metía un objeto dummy sin `url` en `videos`.
+   - Ahora `CreateProjectScreen.tsx` guarda `videos: uploadedClips` vacío si no subiste ningún video/GIF, y `App.tsx` chequea `activeProject.videos.some((v) => Boolean(v.url))` para mostrar únicamente `+ Canvas` cuando no hay Canvas subido, o `Cambiar Canvas` + `✕ Canvas` cuando sí hay uno real.
+2. **Mini-Player limpio en `"Sin track activo"` al recargar (`src/components/App.tsx`):**
+   - Además, con el commit anterior (`be3b3a3`), al apretar F5 ya no se autoselecciona ningún track viejo en la barra inferior (`callesita`), quedando en `"Sin track activo"` sin artista hasta que le des Play a un tema.

@@ -2269,7 +2269,7 @@ export default function App() {
                                 {activeIsMine && (
                                   <label className="apple-btn ghost compact-pill-btn" style={{ cursor: "pointer" }}>
                                     <span>
-                                      {activeProject.videos.length > 0 ? "Canvas" : "+ Canvas"}
+                                      {activeProject.videos.some((v) => Boolean(v.url)) ? "Cambiar Canvas" : "+ Canvas"}
                                     </span>
                                     <input
                                       type="file"
@@ -2285,7 +2285,7 @@ export default function App() {
                                     />
                                   </label>
                                 )}
-                                {activeIsMine && activeProject.videos.length > 0 && (
+                                {activeIsMine && activeProject.videos.some((v) => Boolean(v.url)) && (
                                   <button
                                     type="button"
                                     className="apple-btn ghost compact-pill-btn danger-trash-btn"
