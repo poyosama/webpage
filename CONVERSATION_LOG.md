@@ -897,3 +897,17 @@
    - Ahora `CreateProjectScreen.tsx` guarda `videos: uploadedClips` vacío si no subiste ningún video/GIF, y `App.tsx` chequea `activeProject.videos.some((v) => Boolean(v.url))` para mostrar únicamente `+ Canvas` cuando no hay Canvas subido, o `Cambiar Canvas` + `✕ Canvas` cuando sí hay uno real.
 2. **Mini-Player limpio en `"Sin track activo"` al recargar (`src/components/App.tsx`):**
    - Además, con el commit anterior (`be3b3a3`), al apretar F5 ya no se autoselecciona ningún track viejo en la barra inferior (`callesita`), quedando en `"Sin track activo"` sin artista hasta que le des Play a un tema.
+
+---
+
+### Turno 51 — Navegación Ergonómica para Volver de un Proyecto (`Click al Costado`, `Borde Izquierdo con Mouse`, `Escape / Backspace` y `Swipe en iPhone`)
+**Prompt del usuario:**
+- *"que en esta pantalla para volver pueda hacer solo click al costado o pasando el mouse haga para atras no se encontrale la vuelta que sea muy ergonomico (adjunta captura de `Mis Proyectos -> ZPA VISUALS FUNA`)"*
+
+**Implementación (`src/components/App.tsx`, `src/components/board-polish.css`):**
+1. **Click en cualquier espacio vacío al costado o abajo del proyecto (`.inspector-outside-dismiss-layer`):**
+   - Al estar adentro de un proyecto en `Biblioteca`, cualquier click en el fondo vacío a la izquierda, derecha o abajo de la tarjeta `.project-inspector-sheet` te devuelve de una a `Mis proyectos` sin tener que ir a buscar el botón `← Volver a Mis proyectos`.
+2. **Sensor ergonómico en el borde izquierdo al pasar el mouse (`.inspector-left-edge-sensor`):**
+   - Cuando pasás el mouse por los costados vacíos se asoma una píldora flotante `‹ Volver` sobre la izquierda, y si llevás el cursor hasta tocar el borde izquierdo de la pantalla (`clientX <= 12`), vuelve automáticamente para atrás (igual que el gesto del borde superior en el reproductor).
+3. **Teclado (`Escape` o `Backspace`) + Swipe lateral derecho en iPhone:**
+   - Tocando `Esc` o `Backspace` en PC, o deslizando el dedo hacia la derecha en iPhone (`onTouchStart`/`onTouchEnd`), también volvés directo a `Mis proyectos`.

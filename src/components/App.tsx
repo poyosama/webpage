@@ -710,6 +710,12 @@ export default function App() {
 
   const togglePlayRef = useRef(togglePlay);
   togglePlayRef.current = togglePlay;
+  const hasEnteredInspectorRef = useRef(false);
+  const inspectorTouchStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    hasEnteredInspectorRef.current = false;
+  }, [insideCubeOpen, selectedProjectId]);
 
   useEffect(() => {
     const INTERACTIVE_SELECTOR =
@@ -728,11 +734,12 @@ export default function App() {
         e.preventDefault();
         sfx.press();
         togglePlayRef.current();
-      } else if (e.key === "Escape") {
+      } else if (e.key === "Escape" || e.key === "Backspace") {
         sfx.close();
         setEditingTrack(null);
         setEditProfileOpen(false);
         setAuthModalOpen(false);
+        setInsideCubeOpen(false);
       }
     };
 
@@ -2041,6 +2048,16 @@ export default function App() {
                       ? "library-side-by-side-grid"
                       : "library-inside-stack"
                   }
+                  onPointerMove={(e) => {
+                    if (libraryLayoutMode !== "inside" || !insideCubeOpen) return;
+                    if (e.clientX > 110) {
+                      hasEnteredInspectorRef.current = true;
+                    } else if (hasEnteredInspectorRef.current && e.clientX <= 12) {
+                      hasEnteredInspectorRef.current = false;
+                      sfx.close();
+                      setInsideCubeOpen(false);
+                    }
+                  }}
                 >
                   {/* Escena 3D de Mis Proyectos (se muestra siempre en Lado a Lado, o cuando estás afuera del cubo en modo Por defecto) */}
                   {(libraryLayoutMode === "side-by-side" || !insideCubeOpen || !activeProject) && (
@@ -2067,11 +2084,54 @@ export default function App() {
                     />
                   )}
 
+                {/* Capa ergonómica para volver haciendo click en cualquier costado vacío o llevando el mouse al borde izquierdo */}
+                {activeProject && libraryLayoutMode === "inside" && insideCubeOpen && (
+                  <>
+                    <div
+                      className="inspector-outside-dismiss-layer"
+                      title="Click afuera para volver a Mis proyectos"
+                      onClick={() => {
+                        sfx.close();
+                        setInsideCubeOpen(false);
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="inspector-left-edge-sensor"
+                      title="Llevá el cursor al borde izquierdo o hacé click para volver"
+                      onClick={() => {
+                        sfx.close();
+                        setInsideCubeOpen(false);
+                      }}
+                    >
+                      <span className="edge-back-pill">‹ Volver</span>
+                    </button>
+                  </>
+                )}
+
                 {/* Interior del Proyecto / Inspector con Spinner 3D (se muestra al entrar al cubo en Modo Por defecto, o al lado en Modo 2) */}
                 {activeProject && (libraryLayoutMode === "side-by-side" || insideCubeOpen) && (
                   <motion.section
                     key={`inspector-${libraryLayoutMode}-${activeProject.id}`}
                     className="project-inspector-sheet"
+                    onClick={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => {
+                      const t = e.touches[0];
+                      if (t) inspectorTouchStartRef.current = { x: t.clientX, y: t.clientY };
+                    }}
+                    onTouchEnd={(e) => {
+                      if (libraryLayoutMode !== "inside" || !insideCubeOpen) return;
+                      const start = inspectorTouchStartRef.current;
+                      const end = e.changedTouches[0];
+                      inspectorTouchStartRef.current = null;
+                      if (!start || !end) return;
+                      const dx = end.clientX - start.x;
+                      const dy = end.clientY - start.y;
+                      if (dx > 75 && Math.abs(dy) < 55) {
+                        sfx.close();
+                        setInsideCubeOpen(false);
+                      }
+                    }}
                     initial={
                       libraryLayoutMode === "inside"
                         ? { opacity: 0, scale: 0.94, filter: "blur(8px)" }
