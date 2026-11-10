@@ -255,6 +255,7 @@ export default function CreateProjectScreen({
 }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [visibility, setVisibility] = useState<"private" | "public">("private");
   const [color, setColor] = useState("#e11d48");
   const [coverUrl, setCoverUrl] = useState("");
   const [uploadedClips, setUploadedClips] = useState<ProjectVideoClip[]>([]);
@@ -270,7 +271,7 @@ export default function CreateProjectScreen({
   useEffect(() => {
     let alive = true;
     document.fonts
-      .load(`800 100px ${fontFamily}`, "El tablero abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+      .load(`800 100px ${fontFamily}`, "board. abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
       .catch(() => undefined)
       .finally(() => alive && setFontReady(true));
     return () => {
@@ -371,6 +372,7 @@ export default function CreateProjectScreen({
       artistId: meProfile.id,
       type,
       status: "Publicado",
+      visibility,
       year: String(new Date().getFullYear()),
       dateLabel: "HOY",
       zone: "Mendoza",
@@ -422,7 +424,31 @@ export default function CreateProjectScreen({
           animate={{ opacity: 1, y: 0 }}
           transition={{ type: "spring", stiffness: 140, damping: 20 }}
         >
-          <h1 className="cp-title">Crear proyecto</h1>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+            <h1 className="cp-title" style={{ margin: 0 }}>Crear proyecto</h1>
+            <div className="seg-pills">
+              <button
+                type="button"
+                className={visibility === "private" ? "on" : ""}
+                onClick={() => {
+                  sfx.tap();
+                  setVisibility("private");
+                }}
+              >
+                🔒 Privado
+              </button>
+              <button
+                type="button"
+                className={visibility === "public" ? "on" : ""}
+                onClick={() => {
+                  sfx.tap();
+                  setVisibility("public");
+                }}
+              >
+                🌐 Público
+              </button>
+            </div>
+          </div>
 
           <input
             className="cp-input cp-input-lg"
@@ -430,7 +456,6 @@ export default function CreateProjectScreen({
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Nombre del proyecto"
             required
-            autoFocus
           />
           <input
             className="cp-input"

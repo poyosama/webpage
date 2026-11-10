@@ -785,6 +785,15 @@ export default function ManifoldLibrary3D({
   );
   const [arcOffset, setArcOffset] = useState<number>(selectedIndex);
   const [confirmDeleteProjectId, setConfirmDeleteProjectId] = useState<string | null>(null);
+  const [isMobileViewport, setIsMobileViewport] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const updateMobile = () => setIsMobileViewport(window.innerWidth <= 720);
+    updateMobile();
+    window.addEventListener("resize", updateMobile);
+    return () => window.removeEventListener("resize", updateMobile);
+  }, []);
 
   useEffect(() => {
     if (confirmDeleteProjectId) {
@@ -1056,13 +1065,14 @@ export default function ManifoldLibrary3D({
                 {projects.map((p, idx) => {
                   const delta = idx - arcOffset;
                   const absDelta = Math.abs(delta);
-                  const angleDeg = delta * 17.5;
+                  const angleDeg = delta * (isMobileViewport ? 13 : 17.5);
                   const angleRad = (angleDeg * Math.PI) / 180;
-                  const radiusX = 270;
-                  const radiusY = 275;
+                  const radiusX = isMobileViewport ? 105 : 270;
+                  const radiusY = isMobileViewport ? 128 : 275;
 
                   const tx =
-                    (Math.cos(angleRad) - 1) * radiusX + (absDelta < 0.35 ? 26 : 0);
+                    (Math.cos(angleRad) - 1) * radiusX +
+                    (absDelta < 0.35 ? (isMobileViewport ? 10 : 26) : 0);
                   const ty = Math.sin(angleRad) * radiusY;
                   const rotZ = angleDeg * 0.78;
                   const scale = Math.max(0.76, 1 - absDelta * 0.065);
@@ -1291,7 +1301,7 @@ export default function ManifoldLibrary3D({
 
           {onUploadProjectTrack && (
             <label className="apple-btn ghost upload-video-btn" onMouseEnter={() => sfx.hover()}>
-              <span>+ Subir WAV / MP3 al bloque</span>
+              <span>+ Subir track</span>
               <input
                 type="file"
                 accept=".wav,.mp3,.m4a,.flac,.aac,.ogg,.aiff,.alac,.opus,audio/wav,audio/x-wav,audio/wave,audio/mpeg,audio/mp3,audio/mp4,audio/x-m4a,audio/aac,audio/flac,application/octet-stream"
@@ -1309,7 +1319,7 @@ export default function ManifoldLibrary3D({
           )}
 
           <label className="apple-btn primary upload-video-btn" onMouseEnter={() => sfx.hover()}>
-            <span>+ Subir video 3–5s / GIF al bloque</span>
+            <span>+ Subir Canvas</span>
             <input
               type="file"
               accept="video/mp4,video/webm,image/gif,image/*,video/*"

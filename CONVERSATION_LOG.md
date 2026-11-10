@@ -973,3 +973,22 @@
      1. **`🎧 Solo escuchar` (`?invite=ls_...`):** Quien entra por este link puede ver y reproducir el proyecto privado, descargar los tracks (`⬇`) y guardarlo en su biblioteca (`+ Guardar en Biblioteca`), pero no puede editar ni borrar nada (muestra la insignia `🎧 Invitación · Solo escuchar`).
      2. **`✏️ Permitir editar el proyecto` (`?invite=ed_...`):** Quien entra por este link obtiene permisos de colaborador (`canEditActive = true`, insignia `✏️ Invitación · Podés editar`) para subir tracks nuevos, editar Key/BPM/metadata, cambiar el Artwork o el Canvas y editar la info del proyecto, sincronizando los cambios a Supabase sin alterar el `user_id` del dueño original.
 
+---
+
+### Turno 55 — Auditoría Completa de Bugs y Replanteo Funcional & Minimalista de la Interfaz en Celular
+**Pedidos del usuario (`juani`):**
+- *"revisa todo el codigo por bugs y revisa tambien toda la interfaz desde el celu, replanteala si es necesario desde un punto de vista orientado a lo funcional y minimalista !"*
+
+**Implementación (`src/components/PerformativePlayer.tsx`, `src/components/CreateProjectScreen.tsx`, `src/components/MacInstallerUpload.tsx`, `src/components/ManifoldLibrary3D.tsx`, `src/components/App.tsx`, `src/components/board-polish.css`):**
+1. **Auditoría y Corrección de Bugs en el Código:**
+   - **`PerformativePlayer.tsx`:** Corregido el bug donde `activeCanvasClip` caía siempre en el Canvas de otro proyecto ajeno cuando el proyecto activo tenía tapa pero no tenía video Canvas (lo cual impedía que se viera el fondo ambiente de `activeCoverUrl`). Ahora solo usa `fromAny` en modo standby y usa `activeCoverUrl` y `liveProject` en la portada central, el título superior y las notas.
+   - **`CreateProjectScreen.tsx`:** Corregida la precarga de fuente (`document.fonts.load` cargaba `"El tablero"` en vez de `"board."`), agregado selector `🔒 Privado / 🌐 Público` directo al crear un proyecto, y quitado el `autoFocus` del input de título para que en iOS/Android no salte el teclado virtual apenas entrás y tape el enjambre 3D de partículas.
+   - **`MacInstallerUpload.tsx`:** Agregada sincronización reactiva de `selectedProjectId` cuando los proyectos terminan de hidratarse desde Supabase/IndexedDB o se elimina un proyecto, y filtrado en `App.tsx` para mostrar solo proyectos propios o con invitación de edición.
+   - **`App.tsx`:** En `Inicio` (`Proyectos fijados`) y en las píldoras superiores del inspector (`cube-interior-back-bar`), los botones `Editar` y `🗑️` ahora solo aparecen cuando sos dueño del proyecto o tenés invitación de edición (`canEdit`), limpiando las filas públicas.
+2. **Replanteo Funcional y Minimalista en Celular (`<= 720px`):**
+   - **Barra superior (`.ios-navbar`) sin espacio muerto:** Eliminado el hueco artificial de `54px` arriba de todo en navegadores móviles (`top: calc(env(safe-area-inset-top, 0px) + 6px)`).
+   - **Dynamic Island Mini-Player (`.ios-mini-player`) 100% enfocado:** Ocultado el slider de volumen de escritorio en celular (ya que en el celu se usan los botones físicos de volumen), dejando un layout limpio de 2 columnas (`[Tapa + Título/Artista | Play/Skip]`) con el doble de espacio para leer el nombre del tema.
+   - **Abanico 3D de Vinilos calibrado para pantallas móviles (`ManifoldLibrary3D.tsx` + `board-polish.css`):** Radio del arco (`radiusX = 105`, `radiusY = 128`, `angleDeg = 13°`) adaptado al viewport móvil para que los sobres queden centrados en pantalla, tarjeta inferior compacta sin textos redundantes y botones de subida acortados (`+ Subir track` / `+ Subir Canvas`) lado a lado.
+   - **Interior del Proyecto en Celular sin scroll encerrado y con BPM/Key visibles:** Quitada la trampa de `max-height: 250px` en `.inspector-tracks-list-scroll` para que la lista de tracks scrollee natural con toda la página estilo `[untitled]`, vinilo superior compacto y píldoras de `BPM` y `Key` visibles como micro-badges debajo de cada track (antes estaban ocultas con `display: none`).
+   - **Reproductor Fullscreen (`PerformativePlayer`) minimalista en celular:** Barra superior en una sola línea limpia y dock inferior sin duplicar el bloque `now-playing` ni el slider de volumen físico, dejando barra de progreso + controles principales + Cola/Visualizador.
+

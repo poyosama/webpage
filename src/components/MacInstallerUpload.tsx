@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { type Project, type Track, type ArtistProfile } from "@/lib/mock";
 import { sfx } from "@/lib/sfx";
@@ -57,6 +57,12 @@ export default function MacInstallerUpload({
   const [cloudFailCount, setCloudFailCount] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (projects.length > 0 && (!selectedProjectId || !projects.some((p) => p.id === selectedProjectId))) {
+      setSelectedProjectId(projects[0].id);
+    }
+  }, [projects, selectedProjectId]);
 
   const targetProject =
     projects.find((p) => p.id === selectedProjectId) || projects[0] || null;

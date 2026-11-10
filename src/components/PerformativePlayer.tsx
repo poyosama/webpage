@@ -411,11 +411,14 @@ export default function PerformativePlayer({
     if (fromLive) return fromLive;
     const fromProp = project.videos?.find((v) => Boolean(v.url));
     if (fromProp) return fromProp;
-    const fromAny = allProjects
-      .find((p) => p.videos?.some((v) => Boolean(v.url)))
-      ?.videos?.find((v) => Boolean(v.url));
-    return fromAny || null;
-  }, [liveProject.videos, project.videos, allProjects]);
+    if (liveProject.id === "standby-project") {
+      const fromAny = allProjects
+        .find((p) => p.videos?.some((v) => Boolean(v.url)))
+        ?.videos?.find((v) => Boolean(v.url));
+      return fromAny || null;
+    }
+    return null;
+  }, [liveProject.id, liveProject.videos, project.videos, allProjects]);
 
   const activeCoverUrl = track.coverUrl || liveProject.coverUrl || project.coverUrl;
 
@@ -572,7 +575,7 @@ export default function PerformativePlayer({
         <div className="perf-badges">
           <button
             type="button"
-            className="mono-badge clickable-badge"
+            className="mono-badge clickable-badge perf-edit-track-badge"
             onMouseEnter={() => sfx.hover()}
             onClick={() => {
               sfx.open();
@@ -588,10 +591,10 @@ export default function PerformativePlayer({
             onMouseEnter={() => sfx.hover()}
             onClick={() => {
               sfx.nav();
-              onJumpToProject(project.id);
+              onJumpToProject(liveProject.id);
             }}
           >
-            {project.title} ↗
+            {liveProject.title} ↗
           </button>
         </div>
 
@@ -610,11 +613,11 @@ export default function PerformativePlayer({
               <rect x="2" y="4" width="20" height="16" rx="3" />
               <path d="M2 8h20M7 4v4M12 4v4M17 4v4" />
             </svg>
-            <span>{cinemaMode ? "Modo Cine ON" : "Modo Cine"}</span>
+            <span>{cinemaMode ? "Cine ON" : "Cine"}</span>
           </button>
           <button
             type="button"
-            className={`pill-control ${darkStage ? "active" : ""}`}
+            className={`pill-control perf-theme-pill ${darkStage ? "active" : ""}`}
             onMouseEnter={() => sfx.hover()}
             onClick={() => {
               sfx.tap();
@@ -651,7 +654,7 @@ export default function PerformativePlayer({
               <rect x="3" y="5" width="18" height="14" rx="3" />
               <circle cx="12" cy="12" r="3" />
             </svg>
-            <span>{snippetClean ? "Salir Snippet" : "Modo Snippet"}</span>
+            <span>{snippetClean ? "Salir" : "Snippet"}</span>
           </button>
         </div>
       </header>
@@ -661,13 +664,13 @@ export default function PerformativePlayer({
         <div
           className="perf-artwork-card"
           style={{
-            background: project.coverUrl
-              ? `url(${project.coverUrl}) center / cover no-repeat`
+            background: activeCoverUrl
+              ? `url(${activeCoverUrl}) center / cover no-repeat`
               : `linear-gradient(135deg, ${track.c1}, ${track.c2})`,
           }}
         >
-          {!project.coverUrl && <span>{track.glyph}</span>}
-          <small>{project.type}</small>
+          {!activeCoverUrl && <span>{track.glyph}</span>}
+          <small>{liveProject.type}</small>
         </div>
         <p className="perf-kicker">
           {track.artist} {track.feat ? `feat. ${track.feat}` : ""} — prod.{" "}
@@ -676,7 +679,7 @@ export default function PerformativePlayer({
         <h1 className="perf-title">{track.title}</h1>
         {notesOpen && (
           <span className="perf-note">
-            “{track.note || `Sesión de ${project.title} · ${track.bpm} BPM · Tonalidad ${track.key}`}”
+            “{track.note || `Sesión de ${liveProject.title} · ${track.bpm} BPM · Tonalidad ${track.key}`}”
           </span>
         )}
       </div>

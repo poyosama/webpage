@@ -1892,27 +1892,32 @@ export default function App() {
                                 >
                                   ⬇
                                 </button>
-                                <button
-                                  type="button"
-                                  className="row-snippet-btn"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditingTrack(track);
-                                  }}
-                                >
-                                  Editar
-                                </button>
-                                <button
-                                  type="button"
-                                  className="trash-icon-btn"
-                                  title={`Eliminar track ${track.title}`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteTrack(proj.id, track.id);
-                                  }}
-                                >
-                                  <TrashIcon />
-                                </button>
+                                {((meProfile.id && proj.artistId === meProfile.id) ||
+                                  projectInvites[proj.id] === "edit") && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      className="row-snippet-btn"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setEditingTrack(track);
+                                      }}
+                                    >
+                                      Editar
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="trash-icon-btn"
+                                      title={`Eliminar track ${track.title}`}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteTrack(proj.id, track.id);
+                                      }}
+                                    >
+                                      <TrashIcon />
+                                    </button>
+                                  </>
+                                )}
                               </div>
                             </div>
                           );
@@ -2413,17 +2418,19 @@ export default function App() {
                                   <b>{p.title}</b>
                                   <small>{p.tracks.length}d</small>
                                 </button>
-                                <button
-                                  type="button"
-                                  className="pill-trash-btn"
-                                  title={`Eliminar proyecto ${p.title}`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteProject(p.id);
-                                  }}
-                                >
-                                  <TrashIcon />
-                                </button>
+                                {meProfile.id && p.artistId === meProfile.id && (
+                                  <button
+                                    type="button"
+                                    className="pill-trash-btn"
+                                    title={`Eliminar proyecto ${p.title}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteProject(p.id);
+                                    }}
+                                  >
+                                    <TrashIcon />
+                                  </button>
+                                )}
                               </div>
                             );
                           })}
@@ -2851,7 +2858,13 @@ export default function App() {
           {tab === "subir" && (
             <MacInstallerUpload
               meProfile={meProfile}
-              projects={projects}
+              projects={myProjects.filter(
+                (p) =>
+                  !p.artistId ||
+                  (meProfile.id && p.artistId === meProfile.id) ||
+                  projectInvites[p.id] === "edit" ||
+                  p.artist.toLowerCase() === meProfile.name.toLowerCase()
+              )}
               onAddTrackToProject={handleAddTrackToProject}
               onPlayTrack={(tr, pr) => playTrack(tr, pr, false)}
               onOpenCreateProject={() => navigate("crear-proyecto")}
