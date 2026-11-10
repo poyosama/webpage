@@ -1885,20 +1885,39 @@ textarea,
     background: rgba(255, 69, 58, 0.14) !important;
   }
 
-  /* 5. Reproductor Fullscreen (PerformativePlayer) minimalista en celular */
+  /* 5. Reproductor Fullscreen (PerformativePlayer) — Apple Music iOS Liquid Glass en celular */
   .perf-topbar {
-    padding: calc(env(safe-area-inset-top, 0px) + 10px) 12px 8px !important;
+    padding: calc(env(safe-area-inset-top, 0px) + 10px) 14px 8px !important;
     flex-wrap: nowrap !important;
-    gap: 6px !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
   }
 
-  .perf-brand {
-    min-width: 0 !important;
+  .perf-minimize-btn {
+    width: 38px !important;
+    height: 38px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+  }
+
+  .perf-minimize-btn .perf-btn-label {
+    display: none !important;
+  }
+
+  .perf-badges {
     flex: 1 !important;
+    min-width: 0 !important;
+    justify-content: center !important;
     overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    white-space: nowrap !important;
-    font-size: 0.7rem !important;
+  }
+
+  .perf-project-pill {
+    max-width: 100% !important;
+    padding: 7px 12px !important;
+    font-size: 0.74rem !important;
   }
 
   .perf-edit-track-badge,
@@ -1907,51 +1926,59 @@ textarea,
   }
 
   .perf-top-actions {
-    gap: 5px !important;
+    gap: 6px !important;
     flex-shrink: 0 !important;
+    flex-wrap: nowrap !important;
   }
 
-  .perf-top-actions .perf-pill-btn {
-    padding: 6px 10px !important;
-    font-size: 0.72rem !important;
+  .perf-action-pill {
+    padding: 7px 11px !important;
+    font-size: 0.73rem !important;
+    gap: 5px !important;
+    white-space: nowrap !important;
   }
 
   .perf-center-typo {
-    padding: 0 16px !important;
+    inset: calc(env(safe-area-inset-top, 0px) + 64px) 0
+      calc(env(safe-area-inset-bottom, 0px) + 184px) 0 !important;
+    padding: 0 20px !important;
+    gap: 6px !important;
   }
 
-  .perf-cover-hero-card {
-    width: 112px !important;
-    height: 112px !important;
-    border-radius: 16px !important;
-    margin-bottom: 6px !important;
+  .perf-artwork-card {
+    width: clamp(132px, 36vw, 176px) !important;
+    height: clamp(132px, 36vw, 176px) !important;
+    border-radius: 22px !important;
+    margin-bottom: 8px !important;
   }
 
-  .perf-center-typo h1 {
-    font-size: clamp(1.35rem, 6.2vw, 2rem) !important;
+  .perf-title {
+    font-size: clamp(1.65rem, 6.8vw, 2.35rem) !important;
+    line-height: 1.08 !important;
   }
 
-  .perf-sub {
+  .perf-kicker {
+    font-size: clamp(0.82rem, 3.4vw, 0.94rem) !important;
+  }
+
+  .perf-note {
     font-size: 0.78rem !important;
-  }
-
-  .perf-notes {
-    display: none !important;
+    padding: 6px 12px !important;
+    max-width: 90vw !important;
   }
 
   .perf-dock.spotify-full-dock {
     width: calc(100vw - 20px) !important;
     bottom: calc(env(safe-area-inset-bottom, 0px) + 10px) !important;
-    padding: 12px 14px !important;
-    border-radius: 22px !important;
-    gap: 8px !important;
+    padding: 14px 16px !important;
+    border-radius: 26px !important;
   }
 
-  .spotify-transport-bar {
+  .spotify-dock-grid {
     display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    gap: 8px !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
   }
 
   /* Evitar duplicar título/artista y volumen físico en el dock móvil */
@@ -1960,14 +1987,45 @@ textarea,
     display: none !important;
   }
 
-  .spotify-main-controls {
-    flex: 1 !important;
-    justify-content: center !important;
-    gap: 12px !important;
+  .spotify-center-console {
+    width: 100% !important;
+    max-width: 100% !important;
+    gap: 10px !important;
   }
 
-  .spotify-right-controls {
-    flex-shrink: 0 !important;
+  /* En iOS Apple Music la barra de progreso va arriba de los botones Play/Skip */
+  .spotify-progress-row {
+    order: 1 !important;
+    gap: 8px !important;
+  }
+
+  .spotify-transport-buttons {
+    order: 2 !important;
+    justify-content: center !important;
+    gap: clamp(16px, 5.5vw, 26px) !important;
+  }
+
+  .spotify-right-utilities {
+    width: 100% !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    padding-top: 2px !important;
+  }
+
+  .spotify-right-utilities .compact-select {
+    flex: 1 !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .spotify-queue-drawer {
+    left: 10px !important;
+    right: 10px !important;
+    width: auto !important;
+    top: calc(env(safe-area-inset-top, 0px) + 64px) !important;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 190px) !important;
+    border-radius: 24px !important;
   }
 
   /* 6. Modal de Invitación al EP en celular */
@@ -1990,3 +2048,318 @@ textarea,
     justify-content: center !important;
   }
 }
+
+/* ==================== ESTÉTICA APPLE LIQUID GLASS (PERFORMATIVE PLAYER + ESCALABILIDAD MULTI-RESOLUCIÓN) ==================== */
+.perf-player {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", sans-serif !important;
+}
+
+.perf-topbar {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 20 !important;
+  padding: calc(env(safe-area-inset-top, 0px) + clamp(12px, 2vh, 22px))
+    clamp(14px, 2.6vw, 32px) 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: clamp(8px, 1.4vw, 14px) !important;
+  flex-wrap: nowrap !important;
+  background: linear-gradient(
+    180deg,
+    rgba(6, 6, 10, 0.62) 0%,
+    rgba(6, 6, 10, 0) 100%
+  ) !important;
+}
+
+.perf-topbar .pill-control,
+.perf-topbar .mono-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  white-space: nowrap !important;
+  border-radius: 999px !important;
+  padding: 8px 15px !important;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif !important;
+  font-size: clamp(0.74rem, 1.1vw, 0.82rem) !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em !important;
+  line-height: 1.1 !important;
+  background: rgba(28, 28, 36, 0.62) !important;
+  backdrop-filter: blur(28px) saturate(185%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(185%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: rgba(255, 255, 255, 0.94) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+  transition: transform 0.16s cubic-bezier(0.22, 1, 0.36, 1),
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease !important;
+}
+
+.perf-topbar .pill-control:hover,
+.perf-topbar .mono-badge.clickable-badge:hover {
+  background: rgba(44, 44, 54, 0.78) !important;
+  border-color: rgba(255, 255, 255, 0.28) !important;
+  color: #ffffff !important;
+  transform: translateY(-1px) !important;
+}
+
+.perf-topbar .pill-control:active,
+.perf-topbar .mono-badge.clickable-badge:active {
+  transform: scale(0.96) !important;
+}
+
+/* Estado activo Apple: blanco esmerilado elegante en lugar de rojo chillón */
+.perf-topbar .pill-control.active {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border-color: rgba(255, 255, 255, 0.98) !important;
+  color: #09090b !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.36) !important;
+}
+
+.perf-badges {
+  flex: 1 !important;
+  min-width: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  flex-wrap: nowrap !important;
+  overflow: hidden !important;
+}
+
+.perf-project-pill {
+  max-width: min(420px, 100%) !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+.perf-project-pill-text {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.perf-project-pill-arrow {
+  opacity: 0.72 !important;
+  font-size: 0.78em !important;
+  flex-shrink: 0 !important;
+}
+
+.perf-top-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex-wrap: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
+/* Centro tipográfico y portada estilo Apple Music Fullscreen */
+.perf-center-typo {
+  inset: clamp(74px, 11dvh, 106px) 0 clamp(142px, 22dvh, 188px) 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: clamp(6px, 1.2dvh, 12px) !important;
+  padding: 0 clamp(18px, 4vw, 48px) !important;
+}
+
+.perf-artwork-card {
+  width: clamp(120px, 21vmin, 196px) !important;
+  height: clamp(120px, 21vmin, 196px) !important;
+  border-radius: clamp(18px, 2.8vmin, 26px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  box-shadow: 0 28px 68px rgba(0, 0, 0, 0.62),
+    0 4px 16px rgba(0, 0, 0, 0.35) !important;
+  margin-bottom: clamp(4px, 1dvh, 10px) !important;
+}
+
+.perf-artwork-card small {
+  background: rgba(12, 12, 16, 0.72) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  padding: 3px 8px !important;
+  border-radius: 999px !important;
+  font-size: 0.56rem !important;
+  letter-spacing: 0.08em !important;
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+
+.perf-title {
+  margin: 0 !important;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif !important;
+  font-size: clamp(1.75rem, 5.2vmin, 4.1rem) !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.035em !important;
+  line-height: 1.04 !important;
+  color: #ffffff !important;
+  text-shadow: 0 8px 34px rgba(0, 0, 0, 0.68) !important;
+  max-width: min(92vw, 860px) !important;
+  text-wrap: balance !important;
+}
+
+.perf-kicker {
+  margin: 0 !important;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif !important;
+  font-size: clamp(0.84rem, 1.9vmin, 1.04rem) !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.01em !important;
+  text-transform: none !important;
+  color: rgba(255, 255, 255, 0.76) !important;
+  text-shadow: 0 4px 18px rgba(0, 0, 0, 0.68) !important;
+  max-width: min(88vw, 680px) !important;
+}
+
+.perf-note {
+  background: rgba(24, 24, 32, 0.72) !important;
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* Dock inferior en Liquid Glass Oscuro de alto contraste */
+.perf-dock.spotify-full-dock {
+  width: min(1040px, calc(100vw - clamp(20px, 4vw, 48px))) !important;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + clamp(10px, 2dvh, 22px)) !important;
+  padding: clamp(12px, 1.8dvh, 16px) clamp(14px, 2.2vw, 22px) !important;
+  border-radius: clamp(22px, 3vmin, 28px) !important;
+  background: rgba(22, 22, 28, 0.72) !important;
+  backdrop-filter: blur(40px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(40px) saturate(190%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 28px 72px rgba(0, 0, 0, 0.68),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
+.spotify-now-meta b {
+  color: #ffffff !important;
+}
+
+.spotify-now-meta span {
+  color: rgba(255, 255, 255, 0.64) !important;
+}
+
+.spotify-like-btn,
+.spotify-icon-btn {
+  color: rgba(255, 255, 255, 0.82) !important;
+}
+
+.spotify-like-btn:hover,
+.spotify-icon-btn:hover {
+  color: #ffffff !important;
+}
+
+.spotify-like-btn.liked,
+.spotify-icon-btn.active {
+  color: #4ade80 !important;
+}
+
+.spotify-active-dot {
+  background: #4ade80 !important;
+}
+
+.spotify-play-circle {
+  width: 42px !important;
+  height: 42px !important;
+  background: #ffffff !important;
+  color: #09090b !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.42) !important;
+}
+
+.spotify-time-label {
+  color: rgba(255, 255, 255, 0.62) !important;
+}
+
+.spotify-time-label.clickable:hover {
+  color: #ffffff !important;
+}
+
+.spotify-progress-bar-wrap {
+  height: 5px !important;
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+.spotify-progress-fill {
+  background: #ffffff !important;
+}
+
+.spotify-progress-bar-wrap:hover .spotify-progress-fill {
+  background: #4ade80 !important;
+}
+
+.perf-dock .apple-select.compact-select,
+.perf-dock .spotify-util-btn {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  color: rgba(255, 255, 255, 0.92) !important;
+  border-radius: 999px !important;
+  white-space: nowrap !important;
+}
+
+.perf-dock .apple-select.compact-select option {
+  background: #18181f !important;
+  color: #ffffff !important;
+}
+
+.perf-dock .spotify-util-btn:hover {
+  background: rgba(255, 255, 255, 0.16) !important;
+  color: #ffffff !important;
+}
+
+.perf-dock .spotify-util-btn.active {
+  background: #ffffff !important;
+  border-color: #ffffff !important;
+  color: #09090b !important;
+}
+
+.perf-dock .apple-volume-slider {
+  accent-color: #ffffff !important;
+}
+
+.spotify-queue-drawer {
+  background: rgba(20, 20, 26, 0.86) !important;
+  backdrop-filter: blur(36px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(36px) saturate(190%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: #ffffff !important;
+}
+
+.spotify-queue-drawer .queue-drawer-head h3,
+.spotify-queue-drawer .queue-item-meta b {
+  color: #ffffff !important;
+}
+
+.spotify-queue-drawer .queue-item-meta span,
+.spotify-queue-drawer .queue-item-dur,
+.spotify-queue-drawer .queue-sec-label {
+  color: rgba(255, 255, 255, 0.62) !important;
+}
+
+/* Escalabilidad fluida en tablets y laptops compactas (721px — 1040px) */
+@media (min-width: 721px) and (max-width: 1040px) {
+  .perf-edit-track-badge {
+    display: none !important;
+  }
+
+  .spotify-dock-grid {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: 12px !important;
+  }
+
+  .spotify-now-playing {
+    display: none !important;
+  }
+
+  .spotify-center-console {
+    max-width: 100% !important;
+  }
+}
+

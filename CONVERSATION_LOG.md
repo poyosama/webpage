@@ -1021,3 +1021,22 @@
    - **Fila de Título + Subtítulo + Botón Play Blanco Squircle (`52x52px`):** Título grande en blanco bold (`chickenNugget`), subtítulo en gris con duración total calculada (`poyoculiado · 6 tracks · 10m 33s`) y botón blanco squircle `▶` / `❚❚` a la derecha.
    - **Botón ancho `+ Add tracks` (`.untitled-mobile-add-btn`):** Barra oscura de ancho completo (`height: 48px`, `border-radius: 14px`) justo debajo del título para subir múltiples archivos WAV/MP3 con detección automática de Key y BPM.
    - **Lista de tracks limpia (`.untitled-mobile-tracklist`):** Numeración `1`, `2`, `3` a la izquierda, título en blanco + artista/BPM/Key en gris al centro, ícono de globo sutil si es público y botón `•••` a la derecha que despliega las acciones rápidas del track (`⬇ Descargar`, `✏️ Editar`, `🗑️ Eliminar`).
+
+---
+
+### Turno 58 — Reproductor Fullscreen (`PerformativePlayer`) en Apple Liquid Glass Oscuro + Sitio Escalable Multi-Resolución (`IMG_3889.png`)
+**Pedidos del usuario (`juani`):**
+- *"y esto se ve asqueroso aplica estetica apple con lo de arriba y eso, sitio escalable segun resolucion etc"* (adjunta captura `IMG_3889.png` del reproductor en celular con píldoras blancas/rojas partidas en 3 líneas y dock blanco lavado).
+
+**Implementación (`src/components/PerformativePlayer.tsx`, `src/components/board-polish.css`):**
+1. **Top HUD en Apple Liquid Glass Oscuro sin Texto Partido (`PerformativePlayer.tsx` + `board-polish.css`):**
+   - Eliminadas las píldoras blancas/rojas opacas que se deformaban en 2–3 líneas (`IMG_3889.png`).
+   - Ahora toda la barra superior (`.perf-topbar`) usa cristal esmerilado oscuro translúcido (`rgba(28, 28, 36, 0.62)`, `backdrop-filter: blur(28px) saturate(185%)`, borde sutil `rgba(255, 255, 255, 0.15)`) en una única fila perfecta (`flex-wrap: nowrap`):
+     - **Izquierda (`.perf-minimize-btn`):** Botón circular compacto `38x38px` con `⌄` en celular (y píldora `⌄ Minimizar` en escritorio).
+     - **Centro (`.perf-project-pill`):** Píldora del proyecto en una sola línea con truncado `ellipsis` (`SOY VICTIMA DE UN PSYOP ↗`) que te lleva directo al proyecto.
+     - **Derecha (`.perf-top-actions`):** Píldoras compactas de `Cine` y `Snippet` con estado activo en blanco esmerilado Apple (`rgba(255, 255, 255, 0.92)` con texto `#09090b`) en lugar del rojo chillón anterior.
+2. **Jerarquía Central Estilo Apple Music y Escalabilidad por Resolución (`.perf-center-typo`):**
+   - Reordenado el centro como en Apple Music: **Portada grande (`clamp(120px, 21vmin, 196px)`) -> Título en SF Pro Display (`clamp(1.75rem, 5.2vmin, 4.1rem)`) -> Artista y Productor (`clamp(0.84rem, 1.9vmin, 1.04rem)`)**.
+3. **Dock Inferior en Apple Dark Liquid Glass de Alto Contraste (`.perf-dock.spotify-full-dock`):**
+   - `darkStage` activado por defecto (`useState(true)`) y dock inferior rediseñado en cristal oscuro (`rgba(22, 22, 28, 0.72)`, `blur(40px)`) con controles blancos nítidos, barra de progreso blanca/verde esmeralda y layout móvil tipo iOS Apple Music (barra de progreso arriba -> controles de reproducción centrados al medio -> selector de motor visual, lyrics y cola abajo).
+

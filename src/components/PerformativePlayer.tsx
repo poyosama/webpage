@@ -555,24 +555,40 @@ export default function PerformativePlayer({
         </Canvas>
       </div>
 
-      {/* Top HUD */}
+      {/* Top HUD — Apple Music / iOS Liquid Glass */}
       <header className="perf-topbar">
         <button
           type="button"
-          className="pill-control"
+          className="pill-control perf-minimize-btn"
           onMouseEnter={() => sfx.hover()}
           onClick={() => {
             sfx.close();
             onClose();
           }}
+          aria-label="Minimizar reproductor"
+          title="Minimizar reproductor"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <path d="M6 9l6 6 6-6" />
           </svg>
-          <span>Minimizar</span>
+          <span className="perf-btn-label">Minimizar</span>
         </button>
 
         <div className="perf-badges">
+          <button
+            type="button"
+            className="mono-badge clickable-badge perf-project-pill"
+            onMouseEnter={() => sfx.hover()}
+            onClick={() => {
+              sfx.nav();
+              onJumpToProject(liveProject.id);
+            }}
+            title={`Abrir proyecto ${liveProject.title}`}
+          >
+            <span className="perf-project-pill-text">{liveProject.title}</span>
+            <span className="perf-project-pill-arrow" aria-hidden>↗</span>
+          </button>
+
           <button
             type="button"
             className="mono-badge clickable-badge perf-edit-track-badge"
@@ -581,27 +597,16 @@ export default function PerformativePlayer({
               sfx.open();
               onOpenEditTrack();
             }}
+            title="Editar metadata del track"
           >
-            Editar track ({track.bpm} BPM · {track.key} · v{track.version})
-          </button>
-
-          <button
-            type="button"
-            className="mono-badge clickable-badge"
-            onMouseEnter={() => sfx.hover()}
-            onClick={() => {
-              sfx.nav();
-              onJumpToProject(liveProject.id);
-            }}
-          >
-            {liveProject.title} ↗
+            <span>{track.bpm} BPM · {track.key} · Editar</span>
           </button>
         </div>
 
         <div className="perf-top-actions">
           <button
             type="button"
-            className={`pill-control ${cinemaMode ? "active" : ""}`}
+            className={`pill-control perf-action-pill ${cinemaMode ? "active" : ""}`}
             onMouseEnter={() => sfx.hover()}
             onClick={() => {
               sfx.tap();
@@ -613,11 +618,11 @@ export default function PerformativePlayer({
               <rect x="2" y="4" width="20" height="16" rx="3" />
               <path d="M2 8h20M7 4v4M12 4v4M17 4v4" />
             </svg>
-            <span>{cinemaMode ? "Cine ON" : "Cine"}</span>
+            <span>Cine</span>
           </button>
           <button
             type="button"
-            className={`pill-control perf-theme-pill ${darkStage ? "active" : ""}`}
+            className={`pill-control perf-action-pill perf-theme-pill ${darkStage ? "active" : ""}`}
             onMouseEnter={() => sfx.hover()}
             onClick={() => {
               sfx.tap();
@@ -643,7 +648,7 @@ export default function PerformativePlayer({
           </button>
           <button
             type="button"
-            className={`pill-control ${snippetClean ? "active" : ""}`}
+            className={`pill-control perf-action-pill ${snippetClean ? "active" : ""}`}
             onMouseEnter={() => sfx.hover()}
             onClick={() => {
               sfx.tap();
@@ -659,7 +664,7 @@ export default function PerformativePlayer({
         </div>
       </header>
 
-      {/* Overlay tipográfico central en SF Display */}
+      {/* Overlay tipográfico central en SF Display (Jerarquía Apple Music: Tapa -> Título -> Artista/Prod) */}
       <div className="perf-center-typo">
         <div
           className="perf-artwork-card"
@@ -672,11 +677,11 @@ export default function PerformativePlayer({
           {!activeCoverUrl && <span>{track.glyph}</span>}
           <small>{liveProject.type}</small>
         </div>
+        <h1 className="perf-title">{track.title}</h1>
         <p className="perf-kicker">
           {track.artist} {track.feat ? `feat. ${track.feat}` : ""} — prod.{" "}
           {track.prod || track.artist}
         </p>
-        <h1 className="perf-title">{track.title}</h1>
         {notesOpen && (
           <span className="perf-note">
             “{track.note || `Sesión de ${liveProject.title} · ${track.bpm} BPM · Tonalidad ${track.key}`}”
