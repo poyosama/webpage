@@ -38,7 +38,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "El tablero — UG Board (@quetablero)",
+  title: "board.",
   description:
     "Tus proyectos. Tu identidad. Tu gente. Tu música. Entorno 3D Manifold y reproductor de partículas para la escena.",
   icons: {
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    title: "El tablero",
+    title: "board.",
     statusBarStyle: "black-translucent",
   },
 };

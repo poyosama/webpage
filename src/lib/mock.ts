@@ -185,7 +185,7 @@ export const STANDBY_TRACK: Track = {
 
 export const STANDBY_PROJECT: Project = {
   id: "standby-project",
-  title: "EL TABLERO",
+  title: "board.",
   artist: "",
   artistId: "",
   type: "EP",

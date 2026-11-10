@@ -241,7 +241,7 @@ export default function NotFound() {
           opacity: 0.72,
         }}
       >
-        <span>@quetablero</span>
+        <span>board.</span>
         <span style={{ opacity: 0.4 }}>//</span>
         <span>404</span>
       </div>
@@ -296,7 +296,7 @@ export default function NotFound() {
               : "rgba(0,0,0,0.04)",
           }}
         >
-          404 · Fuera del tablero
+          404 · Fuera de board.
         </span>
 
         <h1
@@ -320,7 +320,7 @@ export default function NotFound() {
             margin: "0 0 0.65rem 0",
           }}
         >
-          La ruta que buscás no existe o fue movida a otra parte de El tablero.
+          La ruta que buscás no existe o fue movida a otra parte de board.
         </p>
 
         <Link

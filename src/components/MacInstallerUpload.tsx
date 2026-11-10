@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { type Project, type Track, type ArtistProfile } from "@/lib/mock";
 import { sfx } from "@/lib/sfx";
 import { uploadMediaToSupabase } from "@/lib/supabase";
+import { analyzeAudioFile } from "@/lib/audioAnalysis";
 
 export type BatchTrackDraft = {
   id: string;
@@ -21,7 +22,10 @@ export type BatchTrackDraft = {
 };
 
 const PALETTE = ["#e11d48", "#0284c7", "#ca8a04", "#65a30d", "#7e22ce", "#14b8a6", "#ec4899", "#f97316"];
-const KEYS = ["Am", "Cm", "F#m", "Em", "Dm", "Gm", "Bm", "C#m"];
+const KEYS = [
+  "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B",
+  "Cm", "C#m", "Dm", "D#m", "Em", "Fm", "F#m", "Gm", "G#m", "Am", "A#m", "Bm",
+];
 
 export default function MacInstallerUpload({
   meProfile,
@@ -57,26 +61,27 @@ export default function MacInstallerUpload({
   const targetProject =
     projects.find((p) => p.id === selectedProjectId) || projects[0] || null;
 
-  const handleFiles = (files: FileList | null) => {
+  const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     sfx.tap();
-    const newDrafts: BatchTrackDraft[] = Array.from(files).map((file, i) => {
-      const clean = file.name.replace(/\.[^/.]+$/, "");
+    const fileArr = Array.from(files);
+    const analyzed = await Promise.all(fileArr.map((f) => analyzeAudioFile(f)));
+    const newDrafts: BatchTrackDraft[] = fileArr.map((file, i) => {
+      const info = analyzed[i];
       const col = PALETTE[(batchItems.length + i) % PALETTE.length];
-      const k = KEYS[(batchItems.length + i) % KEYS.length];
       const url = URL.createObjectURL(file);
       return {
         id: `batch-${Date.now()}-${i}`,
         file,
         fileName: file.name,
-        title: clean,
+        title: info.cleanTitle,
         prod: globalProd.trim() || "",
-        bpm: 130 + ((i * 4) % 24),
-        musicalKey: k,
+        bpm: info.bpm,
+        musicalKey: info.key,
         color: col,
         audioObjectUrl: url,
-        durationSec: 145,
-        duration: "2:25",
+        durationSec: info.durationSec,
+        duration: info.duration,
       };
     });
 
@@ -168,7 +173,7 @@ export default function MacInstallerUpload({
     <section className="dmg-section">
       <div className="section-header-row">
         <div>
-          <span className="mono-tag">SUBIR BATCH // EL TABLERO</span>
+          <span className="mono-tag">SUBIR BATCH // BOARD.</span>
           <h1 className="editorial-h1">Subir Archivos WAV a tu Proyecto</h1>
           <p style={{ color: "var(--ink-secondary)", fontSize: "0.88rem", marginTop: 4 }}>
             Arrastrá uno o muchos archivos de audio. Se arman los vinilitos y los instalás con un solo gesto hacia arriba.

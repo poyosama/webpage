@@ -12,7 +12,7 @@ const VINYL_PALETTE = [
   "#e11d48", // Rojo carmesí
 ];
 
-function buildCaseSensitiveTextShape(count: number, text = "El tablero"): Float32Array {
+function buildCaseSensitiveTextShape(count: number, text = "board."): Float32Array {
   const out = new Float32Array(count * 3);
   if (typeof document === "undefined") return out;
 
@@ -29,7 +29,7 @@ function buildCaseSensitiveTextShape(count: number, text = "El tablero"): Float3
   ctx.fillStyle = "#ffffff";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  // Respeta mayúsculas y minúsculas exactas ("El tablero")
+  // Respeta mayúsculas y minúsculas exactas ("board.")
   ctx.font = '800 225px -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", sans-serif';
   ctx.fillText(text, W / 2, H / 2);
 
@@ -70,7 +70,7 @@ function buildCaseSensitiveTextShape(count: number, text = "El tablero"): Float3
 }
 
 function buildProceduralShapes(count: number): Float32Array[] {
-  const sText = buildCaseSensitiveTextShape(count, "El tablero"); // 0. "El tablero" (distinguiendo mayúsculas y minúsculas)
+  const sText = buildCaseSensitiveTextShape(count, "board."); // 0. "board." (distinguiendo minúsculas y punto)
   const s0 = new Float32Array(count * 3); // 1. Nudo Toroidal Trefoil (p=2, q=3)
   const s1 = new Float32Array(count * 3); // 2. Doble Hélice / Vórtice ADN Cósmico
   const s2 = new Float32Array(count * 3); // 3. Flor Cimática 3D / Armónicos Esféricos
@@ -440,7 +440,7 @@ export default function LandingScene({
       <header className="landing-top-bar">
         <div className="landing-brand-tag">
           <span className="brand-dot" />
-          <span>El tablero // @quetablero</span>
+          <span>board.</span>
         </div>
       </header>
 
@@ -449,7 +449,7 @@ export default function LandingScene({
           ACCESO ANTICIPADO
         </span>
 
-        <h1 className="landing-display-title">El tablero</h1>
+        <h1 className="landing-display-title">board.</h1>
 
         <p className="landing-manifesto-sub">
           Tus proyectos. Tu identidad. Tu gente. Tu música.
@@ -490,7 +490,7 @@ export default function LandingScene({
             <div className="modal-head">
               <div>
                 <span className="mono-tag">ACCESO ANTICIPADO</span>
-                <h3>Invitación a El tablero</h3>
+                <h3>Invitación a board.</h3>
               </div>
               <button
                 type="button"
@@ -523,7 +523,7 @@ export default function LandingScene({
                 <input
                   value={inviteCode}
                   onChange={(e) => setInviteCode(e.target.value)}
-                  placeholder="TABLERO-UG-2026"
+                  placeholder="BOARD-UG-2026"
                   required
                   autoFocus
                 />

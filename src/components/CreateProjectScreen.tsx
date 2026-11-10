@@ -13,12 +13,13 @@ import {
   type Track,
 } from "@/lib/mock";
 import { sfx } from "@/lib/sfx";
+import { analyzeAudioFile } from "@/lib/audioAnalysis";
 import "./create-project.css";
 
 const display = Unbounded({ subsets: ["latin"], weight: ["800"], display: "swap" });
 
 const AUDIO_RE = /\.(wav|mp3|m4a|flac|aac|ogg|aiff|alac|opus)$/i;
-const DEFAULT_TEXT = "El tablero";
+const DEFAULT_TEXT = "board.";
 
 function useIsMobile() {
   const [mobile, setMobile] = useState(false);
@@ -286,40 +287,49 @@ export default function CreateProjectScreen({
     setCoverUrl(URL.createObjectURL(file));
   };
 
-  const makeTracks = (files: File[]): Track[] =>
-    files.map((file, i) => ({
-      id: `tr-new-${Date.now()}-${i}`,
-      title: file.name.replace(/\.[^/.]+$/, ""),
-      artist: meProfile.name,
-      prod: meProfile.name,
-      bpm: 136,
-      key: "F#m",
-      duration: "2:30",
-      durationSec: 150,
-      version: 1,
-      c1: "#111111",
-      c2: color,
-      accent: color,
-      glyph: String(uploadedTracks.length + i + 1).padStart(2, "0"),
-      audioFreq: 130.8,
-      customAudioUrl: URL.createObjectURL(file),
-    }));
+  const makeTracks = async (files: File[], startIdx: number): Promise<Track[]> => {
+    const analyzed = await Promise.all(files.map((f) => analyzeAudioFile(f)));
+    return files.map((file, i) => {
+      const info = analyzed[i];
+      return {
+        id: `tr-new-${Date.now()}-${i}`,
+        title: info.cleanTitle,
+        artist: meProfile.name,
+        prod: meProfile.name,
+        bpm: info.bpm,
+        key: info.key,
+        duration: info.duration,
+        durationSec: info.durationSec,
+        version: 1,
+        c1: "#111111",
+        c2: color,
+        accent: color,
+        glyph: String(startIdx + i + 1).padStart(2, "0"),
+        audioFreq: 130.8,
+        customAudioUrl: URL.createObjectURL(file),
+      };
+    });
+  };
 
-  const handleTrackFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleTrackFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
     sfx.drop();
-    setUploadedTracks((prev) => [...prev, ...makeTracks(files)]);
+    const added = await makeTracks(files, uploadedTracks.length);
+    setUploadedTracks((prev) => [...prev, ...added]);
   };
 
-  const handleVideoFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleVideoFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawFiles = Array.from(e.target.files || []);
     if (rawFiles.length === 0) return;
     sfx.drop();
     const isAudio = (f: File) => f.type.startsWith("audio/") || AUDIO_RE.test(f.name);
     const audioFiles = rawFiles.filter(isAudio);
     const videoFiles = rawFiles.filter((f) => !isAudio(f));
-    if (audioFiles.length > 0) setUploadedTracks((prev) => [...prev, ...makeTracks(audioFiles)]);
+    if (audioFiles.length > 0) {
+      const addedTracks = await makeTracks(audioFiles, uploadedTracks.length);
+      setUploadedTracks((prev) => [...prev, ...addedTracks]);
+    }
     if (videoFiles.length > 0) {
       const added: ProjectVideoClip[] = videoFiles.map((file, i) => ({
         id: `clip-new-${Date.now()}-${i}`,
@@ -351,28 +361,7 @@ export default function CreateProjectScreen({
       Math.sin(angle) * 0.95,
     ];
 
-    const tracks: Track[] =
-      uploadedTracks.length > 0
-        ? uploadedTracks
-        : [
-            {
-              id: uid("tr"),
-              title: `${title.trim() || "Track"} 01`,
-              artist: meProfile.name,
-              prod: meProfile.name,
-              bpm: 138,
-              key: "F#m",
-              duration: "2:24",
-              durationSec: 144,
-              version: 1,
-              c1: "#111111",
-              c2: color,
-              accent: color,
-              glyph: "01",
-              audioFreq: 130.8,
-            },
-          ];
-
+    const tracks: Track[] = uploadedTracks;
     const videos: ProjectVideoClip[] = uploadedClips;
 
     const newProject: Project = {

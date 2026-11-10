@@ -418,7 +418,7 @@ export async function saveUserProfileToSupabase(profile: Partial<ArtistProfile> 
     if (conflict) {
       return {
         success: false,
-        error: `El usuario ${cleanHandle} ya está en uso por otro artista en El tablero. Por favor elegí otro.`,
+        error: `El usuario ${cleanHandle} ya está en uso por otro artista en board. Por favor elegí otro.`,
       };
     }
 
@@ -446,7 +446,7 @@ export async function saveUserProfileToSupabase(profile: Partial<ArtistProfile> 
 
     return { success: true, cleanHandle };
   } catch (err: any) {
-    return { success: false, error: err?.message || "Error al conectar con los servidores de El tablero." };
+    return { success: false, error: err?.message || "Error al conectar con los servidores de board." };
   }
 }
 

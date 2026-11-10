@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "El tablero — @quetablero",
-    short_name: "El tablero",
+    name: "board.",
+    short_name: "board.",
     description: "Tus proyectos. Tu identidad. Tu gente. Tu música.",
     start_url: "/",
     display: "standalone",

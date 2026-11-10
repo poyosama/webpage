@@ -39,6 +39,7 @@ import {
   resolveTrackAudioUrl,
   hydrateProjectsAudioInBackground,
 } from "@/lib/supabase";
+import { analyzeAudioFile, downloadTrackAudio } from "@/lib/audioAnalysis";
 import "./board-polish.css";
 
 const MacInstallerUpload = dynamic(() => import("./MacInstallerUpload"), { ssr: false });
@@ -212,6 +213,8 @@ export default function App() {
   // Proyectos guardados en la biblioteca ("Guardados") para oyentes y artistas
   const [savedProjectIds, setSavedProjectIds] = useState<string[]>([]);
   const [librarySubTab, setLibrarySubTab] = useState<"proyectos" | "guardados">("proyectos");
+  const [shareCopiedId, setShareCopiedId] = useState<string | null>(null);
+  const [uploadingTrackProjectId, setUploadingTrackProjectId] = useState<string | null>(null);
 
   // Limpiar tokens de OAuth (#access_token=...) y sincronizar URLs limpias (/library, /profile, /upload, /project/:id)
   useEffect(() => {
@@ -237,6 +240,7 @@ export default function App() {
       const pId = path.replace("/project/", "").trim();
       if (pId) {
         setSelectedProjectId(pId);
+        setLibrarySubTab("proyectos");
         setTab("biblioteca");
         setInsideCubeOpen(true);
       }
@@ -301,13 +305,19 @@ export default function App() {
   };
 
   const handleCopyProjectLink = (projectId: string) => {
+    const targetProj = projects.find((p) => p.id === projectId);
+    if (targetProj && targetProj.artistId === meProfile.id && targetProj.visibility !== "public") {
+      updateProjectMeta(projectId, { visibility: "public" });
+    }
     const origin = typeof window !== "undefined" ? window.location.origin : "https://eltablero.blog";
     const url = `${origin}/project/${projectId}`;
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(url).then(() => {
-        sfx.tick();
-        alert(`¡Link del proyecto copiado!: ${url}`);
-      });
+    sfx.tick();
+    setShareCopiedId(projectId);
+    window.setTimeout(() => {
+      setShareCopiedId((prev) => (prev === projectId ? null : prev));
+    }, 2600);
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(url).catch(() => {});
     }
   };
 
@@ -614,6 +624,7 @@ export default function App() {
 
   const activeProject: Project | null =
     projects.find((p) => p.id === selectedProjectId) ||
+    DEMO_PROJECTS.find((p) => p.id === selectedProjectId) ||
     projects.find((p) => p.artistId === meProfile.id) ||
     projects[0] ||
     null;
@@ -988,7 +999,6 @@ export default function App() {
     setProjects((prev) =>
       prev.map((p) => {
         if (p.id !== projectId) return p;
-        if (p.tracks.length <= 1) return p;
         const nextTracks = p.tracks.filter((t) => t.id !== trackId);
         const updated = { ...p, tracks: nextTracks };
         if (currentProject.id === p.id) {
@@ -1039,42 +1049,120 @@ export default function App() {
   };
 
   const handleUploadProjectTrack = async (projectId: string, file: File) => {
-    const objectUrl = URL.createObjectURL(file);
-    const cleanName = file.name.replace(/\.[^/.]+$/, "");
-    let cloudAudioUrl: string | null = null;
-    if (googleConnected) {
-      cloudAudioUrl = await uploadMediaToSupabase(file, "tracks");
+    setUploadingTrackProjectId(projectId);
+    try {
+      const objectUrl = URL.createObjectURL(file);
+      const cleanName = file.name.replace(/\.[^/.]+$/, "");
+      const [analysis, cloudAudioUrl] = await Promise.all([
+        analyzeAudioFile(file),
+        googleConnected ? uploadMediaToSupabase(file, "tracks") : Promise.resolve(null),
+      ]);
+      const finalAudioUrl = cloudAudioUrl || objectUrl;
+      const newTrack: Track = {
+        id: `tr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        title: cleanName,
+        artist: meProfile.name || meProfile.handle,
+        prod: meProfile.name || meProfile.handle,
+        bpm: analysis.bpm,
+        key: analysis.key,
+        duration: analysis.duration,
+        durationSec: analysis.durationSec,
+        version: 1,
+        glyph: "01",
+        c1: "#ffffff",
+        c2: "#888888",
+        accent: "#ffffff",
+        audioFreq: 80,
+        customAudioUrl: finalAudioUrl,
+      };
+      if (finalAudioUrl) {
+        setCustomAudioMap((prev) => ({ ...prev, [newTrack.id]: finalAudioUrl }));
+      }
+      setProjects((prev) =>
+        prev.map((p) => {
+          if (p.id !== projectId) return p;
+          const nextTracks = [
+            ...p.tracks,
+            {
+              ...newTrack,
+              glyph: String(p.tracks.length + 1).padStart(2, "0"),
+            },
+          ];
+          const nextProj = { ...p, tracks: nextTracks };
+          if (currentProject.id === p.id) setCurrentProject(nextProj);
+          return nextProj;
+        })
+      );
+      sfx.drop();
+    } finally {
+      setUploadingTrackProjectId((prev) => (prev === projectId ? null : prev));
     }
-    const finalAudioUrl = cloudAudioUrl || objectUrl;
-    const newTrack: Track = {
-      id: `tr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      title: cleanName,
-      artist: meProfile.handle,
-      bpm: 140,
-      key: "F#m",
-      duration: "2:34",
-      durationSec: 154,
-      version: 1,
-      glyph: "01",
-      c1: "#ffffff",
-      c2: "#888888",
-      accent: "#ffffff",
-      audioFreq: 80,
-      customAudioUrl: finalAudioUrl,
-    };
-    if (finalAudioUrl) {
-      setCustomAudioMap((prev) => ({ ...prev, [newTrack.id]: finalAudioUrl }));
+  };
+
+  const handleUploadMultipleProjectTracks = async (
+    projectId: string,
+    fileList: FileList | File[]
+  ) => {
+    const files = Array.from(fileList);
+    if (files.length === 0) return;
+    setUploadingTrackProjectId(projectId);
+    try {
+      const createdTracks: Track[] = [];
+      const newAudioEntries: Record<string, string> = {};
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const objectUrl = URL.createObjectURL(file);
+        const cleanName = file.name.replace(/\.[^/.]+$/, "");
+        const [analysis, cloudAudioUrl] = await Promise.all([
+          analyzeAudioFile(file),
+          googleConnected ? uploadMediaToSupabase(file, "tracks") : Promise.resolve(null),
+        ]);
+        const finalAudioUrl = cloudAudioUrl || objectUrl;
+        const tr: Track = {
+          id: `tr-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}`,
+          title: cleanName,
+          artist: meProfile.name || meProfile.handle,
+          prod: meProfile.name || meProfile.handle,
+          bpm: analysis.bpm,
+          key: analysis.key,
+          duration: analysis.duration,
+          durationSec: analysis.durationSec,
+          version: 1,
+          glyph: String(i + 1).padStart(2, "0"),
+          c1: "#ffffff",
+          c2: "#888888",
+          accent: "#ffffff",
+          audioFreq: 80,
+          customAudioUrl: finalAudioUrl,
+        };
+        createdTracks.push(tr);
+        if (finalAudioUrl) {
+          newAudioEntries[tr.id] = finalAudioUrl;
+        }
+      }
+      if (Object.keys(newAudioEntries).length > 0) {
+        setCustomAudioMap((prev) => ({ ...prev, ...newAudioEntries }));
+      }
+      setProjects((prev) =>
+        prev.map((p) => {
+          if (p.id !== projectId) return p;
+          const baseLen = p.tracks.length;
+          const nextTracks = [
+            ...p.tracks,
+            ...createdTracks.map((tr, idx) => ({
+              ...tr,
+              glyph: String(baseLen + idx + 1).padStart(2, "0"),
+            })),
+          ];
+          const nextProj = { ...p, tracks: nextTracks };
+          if (currentProject.id === p.id) setCurrentProject(nextProj);
+          return nextProj;
+        })
+      );
+      sfx.drop();
+    } finally {
+      setUploadingTrackProjectId((prev) => (prev === projectId ? null : prev));
     }
-    setProjects((prev) =>
-      prev.map((p) => {
-        if (p.id !== projectId) return p;
-        const nextTracks = [...p.tracks, newTrack];
-        const nextProj = { ...p, tracks: nextTracks };
-        if (currentProject.id === p.id) setCurrentProject(nextProj);
-        return nextProj;
-      })
-    );
-    sfx.drop();
   };
 
   const handleSaveEditedProject = (updatedProject: Project) => {
@@ -1162,7 +1250,7 @@ export default function App() {
 
   const activeIsMine = !!activeProject && activeProject.artistId === meProfile.id;
   const myProjects = projects.filter((p) => p.artistId === meProfile.id);
-  // El tablero combina los proyectos reales de la escena con los proyectos creados por el usuario
+  // board. combina los proyectos reales de la escena con los proyectos creados por el usuario
   const boardProjects: Project[] = [
     ...projects,
     ...DEMO_PROJECTS.filter(
@@ -1176,7 +1264,7 @@ export default function App() {
   ];
   const projectTypeByCount = (n: number): ProjectType => (n <= 1 ? "Single" : n <= 6 ? "EP" : "LP");
 
-  // Artistas en el tablero: combinación de perfiles registrados en la nube con los artistas de la escena
+  // Artistas en board.: combinación de perfiles registrados en la nube con los artistas de la escena
   const allArtists = [
     ...communityArtists,
     ...SCENE_ARTISTS.filter(
@@ -1204,7 +1292,7 @@ export default function App() {
         ? (y.trackCount + y.owned.length * 3) - (x.trackCount + x.owned.length * 3)
         : (y.artist.createdAt || "").localeCompare(x.artist.createdAt || "")
     );
-  const savedProjectsList = projects.filter((p) => savedProjectIds.includes(p.id));
+  const savedProjectsList = boardProjects.filter((p) => savedProjectIds.includes(p.id));
   const activeAttributes = activeProject
     ? activeProject.attributes || [activeProject.zone, activeProject.year]
     : [];
@@ -1273,7 +1361,7 @@ export default function App() {
           onClick={() => navigate("inicio")}
         >
           <span className="brand-dot" />
-          <strong>El tablero</strong>
+          <strong>board.</strong>
         </button>
 
         <nav className="ios-seg-control" aria-label="Navegación principal">
@@ -1417,8 +1505,8 @@ export default function App() {
             <div className="explore-page">
               <section className="secondstory-strip-card">
                 <div className="strip-top-meta">
-                  <span>EL TABLERO // UG BOARD</span>
-                  <span className="spine-badge-static">@quetablero</span>
+                  <span>BOARD. // UG SCENE</span>
+                  <span className="spine-badge-static">board.</span>
                 </div>
 
                 {/* 1º: EL RUIDO EN EL MEDIO DE LA PANTALLA (TIPOGRAFÍA LIMPIA Y UNIFICADA + TAPAS REALES) */}
@@ -1578,12 +1666,12 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* 2º: NOMBRE DE LA WEB ("El tablero") */}
+                {/* 2º: NOMBRE DE LA WEB ("board.") */}
                 <div className="secondstory-mega-footer">
                   <p className="micro-editorial-copy">
                     Tus proyectos. Tu identidad. Tu gente. Tu música.
                   </p>
-                  <h1 className="mega-display-title">El tablero</h1>
+                  <h1 className="mega-display-title">board.</h1>
                 </div>
 
                 {/* 3º: TIRA HORIZONTAL DE MINIPORTADAS (con tapas reales y sin scrollbar fantasma) */}
@@ -1597,13 +1685,10 @@ export default function App() {
                       className="filmstrip-thumb"
                       onMouseEnter={() => sfx.hover()}
                       onClick={() => {
-                        if (projects.some((x) => x.id === p.id)) {
-                          setSelectedProjectId(p.id);
-                          setInsideCubeOpen(true);
-                          navigate("biblioteca");
-                        } else if (p.tracks[0]) {
-                          playTrack(p.tracks[0], p, false);
-                        }
+                        setSelectedProjectId(p.id);
+                        setLibrarySubTab("proyectos");
+                        setInsideCubeOpen(true);
+                        navigate("biblioteca");
                       }}
                     >
                       <div
@@ -1633,7 +1718,7 @@ export default function App() {
               <section className="explore-bottom-grid">
                 <div className="apple-card">
                   <div className="card-head">
-                    <span className="mono-tag">PROYECTOS // ROTACIÓN DEL TABLERO</span>
+                    <span className="mono-tag">PROYECTOS // ROTACIÓN DE BOARD.</span>
                     <h3>Proyectos fijados</h3>
                   </div>
                   <div className="track-list-clean">
@@ -1673,6 +1758,22 @@ export default function App() {
                               <div className="row-inline-actions">
                                 <button
                                   type="button"
+                                  className="row-snippet-btn track-download-btn"
+                                  title={`Descargar ${track.title}`}
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    sfx.tap();
+                                    const url =
+                                      track.customAudioUrl ||
+                                      customAudioMap[track.id] ||
+                                      (await resolveTrackAudioUrl(track.id));
+                                    await downloadTrackAudio(track.title, track.artist, url);
+                                  }}
+                                >
+                                  ⬇
+                                </button>
+                                <button
+                                  type="button"
                                   className="row-snippet-btn"
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -1702,8 +1803,8 @@ export default function App() {
                 <div className="apple-card">
                   <div className="card-head card-head-with-filter">
                     <div>
-                      <span className="mono-tag">ARTISTAS // ROTACIÓN DEL TABLERO</span>
-                      <h3>Artistas en El Tablero</h3>
+                      <span className="mono-tag">ARTISTAS // ROTACIÓN DE BOARD.</span>
+                      <h3>Artistas en board.</h3>
                     </div>
                     <div className="seg-pills artist-sort-pills">
                       {(["recientes", "populares"] as const).map((k) => (
@@ -1896,7 +1997,7 @@ export default function App() {
                   <span className="mono-tag">
                     {meProfile.accountType === "oyente"
                       ? "COLECCIÓN PERSONAL // GUARDADOS"
-                      : "BIBLIOTECA 3D // EL TABLERO"}
+                      : "BIBLIOTECA 3D // BOARD."}
                   </span>
                   <h1 className="editorial-h1">
                     {meProfile.accountType === "oyente" ? "Guardados" : "Mis Proyectos"}
@@ -1977,7 +2078,7 @@ export default function App() {
                       <span className="mono-tag">0 PROYECTOS GUARDADOS // TU COLECCIÓN</span>
                       <h3 style={{ fontSize: "1.4rem", margin: "10px 0" }}>Todavía no guardaste ningún proyecto</h3>
                       <p style={{ maxWidth: 460, margin: "0 auto 20px", color: "var(--ink-secondary)", fontSize: "0.85rem" }}>
-                        Explorá el Inicio y tocá el botón &ldquo;+ Guardar&rdquo; en los proyectos de la escena para tenerlos siempre a mano en tu biblioteca.
+                        Abrí cualquier link compartido de un proyecto o explorá el Inicio y tocá &ldquo;+ Guardar en Biblioteca&rdquo; para tenerlo siempre en tu colección.
                       </p>
                       <button type="button" className="apple-btn primary" onClick={() => navigate("inicio")}>
                         Explorar música de la escena →
@@ -1987,15 +2088,19 @@ export default function App() {
                     <div className="saved-projects-grid">
                       {savedProjectsList.map((sp) => (
                         <div key={sp.id} className="saved-project-card">
-                          <div className="saved-card-header">
+                          <div
+                            className="saved-card-header"
+                            style={{ cursor: "pointer" }}
+                            onClick={() => {
+                              setSelectedProjectId(sp.id);
+                              setLibrarySubTab("proyectos");
+                              setInsideCubeOpen(true);
+                            }}
+                          >
                             <img
                               src={sp.coverUrl || "/covers/perdon-la-demora.png"}
                               alt={sp.title}
                               className="saved-card-thumb"
-                              onClick={() => {
-                                if (sp.tracks[0]) playTrack(sp.tracks[0], sp, false);
-                              }}
-                              style={{ cursor: "pointer" }}
                             />
                             <div className="saved-card-meta">
                               <span className="mono-tag" style={{ fontSize: "0.68rem" }}>
@@ -2021,6 +2126,18 @@ export default function App() {
                               type="button"
                               className="apple-btn ghost"
                               style={{ fontSize: "0.8rem", padding: "6px 12px" }}
+                              onClick={() => {
+                                setSelectedProjectId(sp.id);
+                                setLibrarySubTab("proyectos");
+                                setInsideCubeOpen(true);
+                              }}
+                            >
+                              Abrir
+                            </button>
+                            <button
+                              type="button"
+                              className="apple-btn ghost"
+                              style={{ fontSize: "0.8rem", padding: "6px 12px" }}
                               onClick={() => toggleSaveProject(sp.id)}
                               title="Quitar de Guardados"
                             >
@@ -2031,9 +2148,9 @@ export default function App() {
                               className="apple-btn ghost"
                               style={{ fontSize: "0.8rem", padding: "6px 10px" }}
                               onClick={() => handleCopyProjectLink(sp.id)}
-                              title="Copiar link"
+                              title="Copiar link para compartir"
                             >
-                              🔗
+                              {shareCopiedId === sp.id ? "✓" : "🔗"}
                             </button>
                           </div>
                         </div>
@@ -2365,15 +2482,6 @@ export default function App() {
                                   <button
                                     type="button"
                                     className="apple-btn ghost compact-pill-btn"
-                                    onClick={() => navigate("subir")}
-                                  >
-                                    + Tracks
-                                  </button>
-                                )}
-                                {activeIsMine && (
-                                  <button
-                                    type="button"
-                                    className="apple-btn ghost compact-pill-btn"
                                     onClick={() => {
                                       sfx.open();
                                       setEditingProject(activeProject);
@@ -2382,6 +2490,16 @@ export default function App() {
                                     Editar
                                   </button>
                                 )}
+                                <button
+                                  type="button"
+                                  className={`apple-btn ghost compact-pill-btn ${
+                                    shareCopiedId === activeProject.id ? "copied-ok" : ""
+                                  }`}
+                                  onClick={() => handleCopyProjectLink(activeProject.id)}
+                                  title="Generar y copiar link para compartir este proyecto"
+                                >
+                                  {shareCopiedId === activeProject.id ? "✓ Link copiado" : "🔗 Compartir"}
+                                </button>
                                 {!activeIsMine && (
                                   <button
                                     type="button"
@@ -2389,18 +2507,8 @@ export default function App() {
                                     onClick={() => toggleSaveProject(activeProject.id)}
                                   >
                                     {savedProjectIds.includes(activeProject.id)
-                                      ? "✓ Guardado"
-                                      : "Guardar"}
-                                  </button>
-                                )}
-                                {(activeIsMine ? activeProject.visibility === "public" : true) && (
-                                  <button
-                                    type="button"
-                                    className="apple-btn ghost compact-pill-btn"
-                                    onClick={() => handleCopyProjectLink(activeProject.id)}
-                                    title="Copiar link"
-                                  >
-                                    Link
+                                      ? "★ En tu Biblioteca"
+                                      : "+ Guardar en Biblioteca"}
                                   </button>
                                 )}
                                 {activeIsMine && (
@@ -2433,16 +2541,30 @@ export default function App() {
                                   {activeProject.description ? ` · ${activeProject.description}` : ""}
                                 </span>
                               </div>
-                              <button
-                                type="button"
-                                className="apple-btn primary"
-                                onClick={() =>
-                                  activeProject.tracks[0] &&
-                                  playTrack(activeProject.tracks[0], activeProject, true)
-                                }
-                              >
-                                ▶ Reproducir
-                              </button>
+                              <div className="inspector-title-ctas">
+                                {!activeIsMine && (
+                                  <button
+                                    type="button"
+                                    className="apple-btn ghost"
+                                    onClick={() => toggleSaveProject(activeProject.id)}
+                                    title="Guardar este proyecto en tu biblioteca"
+                                  >
+                                    {savedProjectIds.includes(activeProject.id)
+                                      ? "★ Guardado en Biblioteca"
+                                      : "+ Guardar en Biblioteca"}
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  className="apple-btn primary"
+                                  onClick={() =>
+                                    activeProject.tracks[0] &&
+                                    playTrack(activeProject.tracks[0], activeProject, true)
+                                  }
+                                >
+                                  ▶ Reproducir
+                                </button>
+                              </div>
                             </div>
                           </div>
 
@@ -2457,6 +2579,7 @@ export default function App() {
                                   onMouseEnter={() => sfx.hover()}
                                   onClick={() => playTrack(t, activeProject, false)}
                                 >
+                                  <span className="inspector-track-num">{idx + 1}</span>
                                   <div className="track-row-art-wrap">
                                     {art ? (
                                       <img
@@ -2466,7 +2589,7 @@ export default function App() {
                                       />
                                     ) : (
                                       <span className="track-row-art-fallback">
-                                        {String(idx + 1).padStart(2, "0")}
+                                        {idx + 1}
                                       </span>
                                     )}
                                   </div>
@@ -2478,24 +2601,98 @@ export default function App() {
                                       {t.prod ? ` · prod. ${t.prod}` : ""}
                                     </span>
                                   </div>
-                                  {activeIsMine && (
-                                    <div className="row-inline-actions">
-                                      <button
-                                        type="button"
-                                        className="row-snippet-btn"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setEditingTrack(t);
-                                        }}
-                                      >
-                                        Editar
-                                      </button>
-                                    </div>
-                                  )}
+                                  <div
+                                    className="row-pills"
+                                    title={activeIsMine ? "Tocá para editar Key y BPM" : undefined}
+                                    style={activeIsMine ? { cursor: "pointer" } : undefined}
+                                    onClick={(e) => {
+                                      if (!activeIsMine) return;
+                                      e.stopPropagation();
+                                      setEditingTrack(t);
+                                    }}
+                                  >
+                                    <span className="meta-chip">{t.bpm} BPM</span>
+                                    <span className="meta-chip">{t.key}</span>
+                                  </div>
+                                  <div className="row-inline-actions">
+                                    <button
+                                      type="button"
+                                      className="row-snippet-btn track-download-btn"
+                                      title={`Descargar ${t.title}`}
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        sfx.tap();
+                                        const url =
+                                          t.customAudioUrl ||
+                                          customAudioMap[t.id] ||
+                                          (await resolveTrackAudioUrl(t.id));
+                                        await downloadTrackAudio(t.title, t.artist, url);
+                                      }}
+                                    >
+                                      ⬇
+                                    </button>
+                                    {activeIsMine && (
+                                      <>
+                                        <button
+                                          type="button"
+                                          className="row-snippet-btn"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setEditingTrack(t);
+                                          }}
+                                        >
+                                          Editar
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className="trash-icon-btn"
+                                          title={`Eliminar ${t.title}`}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteTrack(activeProject.id, t.id);
+                                          }}
+                                        >
+                                          <TrashIcon />
+                                        </button>
+                                      </>
+                                    )}
+                                  </div>
                                 </div>
                               );
                             })}
                           </div>
+
+                          {/* Botón inferior siempre visible para agregar tracks al proyecto */}
+                          {activeIsMine && (
+                            <div className="inspector-bottom-add-bar">
+                              <label className="inspector-bottom-add-tracks-btn">
+                                <span className="add-plus-circle">+</span>
+                                <div className="add-tracks-copy">
+                                  <b>
+                                    {uploadingTrackProjectId === activeProject.id
+                                      ? "Analizando Key y BPM de los tracks..."
+                                      : "+ Agregar tracks al proyecto"}
+                                  </b>
+                                  <small>WAV · MP3 · Detecta Key y BPM automáticamente</small>
+                                </div>
+                                <input
+                                  type="file"
+                                  multiple
+                                  accept=".wav,.mp3,.m4a,.flac,.aac,.ogg,.aiff,.alac,.opus,audio/*"
+                                  hidden
+                                  onChange={(e) => {
+                                    if (e.target.files && e.target.files.length > 0) {
+                                      void handleUploadMultipleProjectTracks(
+                                        activeProject.id,
+                                        e.target.files
+                                      );
+                                      e.target.value = "";
+                                    }
+                                  }}
+                                />
+                              </label>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -2522,7 +2719,7 @@ export default function App() {
             />
           )}
 
-          {/* ==================== 3B. CREAR PROYECTO (PARTÍCULAS SENTIENTES + LOGO 3D "El tablero") ==================== */}
+          {/* ==================== 3B. CREAR PROYECTO (PARTÍCULAS SENTIENTES + LOGO 3D "board.") ==================== */}
           {tab === "crear-proyecto" && (
             <CreateProjectScreen
               meProfile={meProfile}
@@ -3102,13 +3299,18 @@ function EditTrackModal({
             />
           </label>
           <label className="modal-field full">
-            <span>REEMPLAZAR ARCHIVO DE AUDIO (WAV / MP3)</span>
+            <span>REEMPLAZAR ARCHIVO DE AUDIO (WAV / MP3 · DETECTA KEY Y BPM AUTOMÁTICO)</span>
             <input
               type="file"
               accept=".wav,.mp3,.m4a,.flac,.aac,.ogg,.aiff,.alac,.opus,audio/wav,audio/x-wav,audio/wave,audio/mpeg,audio/mp3,audio/mp4,audio/x-m4a,audio/aac,audio/flac,application/octet-stream"
-              onChange={(e) => {
+              onChange={async (e) => {
                 const f = e.target.files?.[0];
-                if (f) setCustomAudioUrl(URL.createObjectURL(f));
+                if (f) {
+                  setCustomAudioUrl(URL.createObjectURL(f));
+                  const res = await analyzeAudioFile(f);
+                  setBpm(res.bpm);
+                  setMusicalKey(res.key);
+                }
               }}
             />
           </label>
@@ -3362,7 +3564,7 @@ function EditProfileModal({
       >
         <div className="modal-head">
           <div>
-            <span className="mono-tag">PERFIL // EL TABLERO</span>
+            <span className="mono-tag">PERFIL // BOARD.</span>
             <h3>Editar identidad del artista</h3>
           </div>
           <button type="button" className="apple-btn ghost" onClick={onClose}>
@@ -3441,7 +3643,7 @@ function EditProfileModal({
 
           {/* TIPO DE CUENTA: ARTISTA / OYENTE */}
           <div className="modal-field full">
-            <span>TIPO DE CUENTA EN EL TABLERO</span>
+            <span>TIPO DE CUENTA EN BOARD.</span>
             <div className="seg-pills" style={{ marginTop: 6 }}>
               <button
                 type="button"
@@ -3473,7 +3675,7 @@ function EditProfileModal({
             <span>USUARIO (@HANDLE ÚNICO)</span>
             <input value={handle} onChange={(e) => setHandle(e.target.value)} placeholder="@tu_handle" />
             <small style={{ color: "var(--ink-secondary)", fontSize: "0.68rem", marginTop: 3 }}>
-              Único e irrepetible: solo vos podés usarlo en El tablero.
+              Único e irrepetible: solo vos podés usarlo en board.
             </small>
           </label>
           <label className="modal-field">
@@ -3580,7 +3782,7 @@ function GoogleAuthModal({
     const res = await onSaveProfile({ name, handle, email });
     setLoading(false);
     if (res.success) {
-      setMsg("¡Perfil y @handle guardados en El tablero con éxito!");
+      setMsg("¡Perfil y @handle guardados en board. con éxito!");
       setMsgType("success");
       sfx.drop();
     } else {
@@ -3656,7 +3858,7 @@ function GoogleAuthModal({
             <input value={name} onChange={(e) => setName(e.target.value)} />
           </label>
           <label className="modal-field">
-            <span>@HANDLE ÚNICO EN EL TABLERO</span>
+            <span>@HANDLE ÚNICO EN BOARD.</span>
             <input
               value={handle}
               onChange={(e) => setHandle(e.target.value)}

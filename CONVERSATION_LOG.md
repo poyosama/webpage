@@ -911,3 +911,30 @@
    - Cuando pasás el mouse por los costados vacíos se asoma una píldora flotante `‹ Volver` sobre la izquierda, y si llevás el cursor hasta tocar el borde izquierdo de la pantalla (`clientX <= 12`), vuelve automáticamente para atrás (igual que el gesto del borde superior en el reproductor).
 3. **Teclado (`Escape` o `Backspace`) + Swipe lateral derecho en iPhone:**
    - Tocando `Esc` o `Backspace` en PC, o deslizando el dedo hacia la derecha en iPhone (`onTouchStart`/`onTouchEnd`), también volvés directo a `Mis proyectos`.
+
+---
+
+### Turno 52 — Detección Automática de Key y BPM al Subir Temas, Numeración de Tracks (`1`, `2`, `3`), Descarga en 1 Click, Link de Compartir + Guardar en Biblioteca, Rebrand a `"board."` y Botón Inferior `+ Agregar tracks` Siempre Visible
+**Prompt del usuario:**
+- *"hace que cuando subo un tema se detecta la key y el bpm solos no se como pero hacelo y dejalo guardado en la metadata (editable)"*
+- *"en la biblioteca que diga en el track 1 que tenga un 1 al costado"*
+- *"que en la biblioteca se puedan descargar los temas con uno o 2 clicks"*
+- *"dame una manera de generar el link de compartir un proyecto para que otro lo abra y pueda guardar el proyecto en su biblioteca"*
+- *"el nombre de todo el proyecto que pase de ser el tablero a "board." por ahora no vamos a cambiar el dominio"*
+- *"despues en la imagen adjunta me gustaria que abajo del proyecto haya un boton para agregar tracks siempre, que no este tan escondido como lo esta ahora"*
+
+**Implementación (`src/lib/audioAnalysis.ts`, `src/components/App.tsx`, `src/components/CreateProjectScreen.tsx`, `src/components/MacInstallerUpload.tsx`, `src/components/LandingScene.tsx`, `src/app/layout.tsx`, `src/app/manifest.ts`, `src/app/not-found.tsx`, `src/lib/mock.ts`, `src/lib/supabase.ts`, `src/components/board-polish.css`):**
+1. **Detección Automática de Key, BPM y Duración al Subir un Tema (`src/lib/audioAnalysis.ts`):**
+   - Creado el motor WebAudio DSP `analyzeAudioFile(file)` que decodifica el archivo WAV/MP3 en el navegador, mide la duración real, calcula el **BPM** por autocorrelación de envolvente de transientes (`78–178 BPM`) y detecta la **Key musical** (`C`, `C#m`, `F#m`, etc.) usando un banco de filtros Goertzel de 12 clases tonales (Chroma) correlacionado con perfiles armónicos Krumhansl-Kessler (además de leer pistas en el nombre del archivo si las trae).
+   - Conectado en todos los puntos de subida (`CreateProjectScreen.tsx`, `MacInstallerUpload.tsx`, el botón `+ Agregar tracks al proyecto` en `Biblioteca` y el reemplazo de audio en `Editar Track`), guardando `bpm` y `key` en la metadata del track y mostrándolos en píldoras clickeables para editarlos cuando quieras.
+2. **Numeración `1`, `2`, `3` al Costado de Cada Track en `Biblioteca` (`.inspector-track-num`):**
+   - Agregada la columna `<span className="inspector-track-num">{idx + 1}</span>` a la izquierda de cada fila de track dentro del proyecto en `Biblioteca`, para que el track 1 tenga su `1` al costado (y `2`, `3`, etc.) sin ser reemplazado por la miniatura de portada.
+3. **Descarga de Temas en 1 Click (`downloadTrackAudio` + botón `⬇`):**
+   - Agregado el botón `⬇` directo en cada fila de track en `Biblioteca` (y en `Inicio`) que descarga el archivo de audio original en 1 solo click.
+4. **Link para Compartir Proyecto (`🔗 Compartir`) + Guardar en Biblioteca (`+ Guardar en Biblioteca`):**
+   - En cada proyecto hay un botón **`🔗 Compartir`** que publica automáticamente el proyecto si era privado y copia el link directo (`/project/:id`) al portapapeles con confirmación visual (`✓ Link copiado`).
+   - Cuando otra persona abre ese link, entra directo al proyecto y tiene el botón **`+ Guardar en Biblioteca`** al lado de `▶ Reproducir` para guardarlo en su colección (`Guardados`) en 1 click.
+5. **Rebrand Completo de `"El tablero"` a `"board."` (sin tocar el dominio):**
+   - Actualizado el nombre en toda la interfaz, barra superior, título gigante de `Inicio`, enjambres 3D de partículas en `LandingScene.tsx` y `CreateProjectScreen.tsx`, página 404, manifest PWA, títulos SEO y modales a **`board.`**.
+6. **Botón `+ Agregar tracks al proyecto` Siempre Visible Abajo del Proyecto (`.inspector-bottom-add-tracks-btn`):**
+   - Agregada una barra fija y bien visible justo debajo de la lista de tracks de tu proyecto en `Biblioteca` para subir uno o varios archivos WAV/MP3 directo ahí mismo sin tener que ir a buscar botones escondidos.
