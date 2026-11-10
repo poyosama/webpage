@@ -23,11 +23,13 @@ function HighResFlowParticles({
   c2,
   impulseSignal,
   isDarkStage,
+  seed,
 }: {
   accent: string;
   c2: string;
   impulseSignal: number;
   isDarkStage: boolean;
+  seed: number;
 }) {
   const pointsRef = useRef<THREE.Points>(null!);
   const matRef = useRef<THREE.PointsMaterial>(null!);
@@ -70,9 +72,36 @@ function HighResFlowParticles({
       const u = (i / count) * Math.PI * 28;
       const stream = i % 6;
       const r = 0.55 + (i / count) * 2.45;
-      const hx = Math.cos(u + stream) * r + (Math.random() - 0.5) * 0.24;
-      const hy = Math.sin(u * 1.5 - stream) * r * 0.65 + (Math.random() - 0.5) * 0.24;
-      const hz = Math.sin(u * 0.7 + stream) * 1.65 + (Math.random() - 0.5) * 0.24;
+      // Forma procedural según la seed (tocá el fondo para cambiarla, como en la landing)
+      const shape = ((seed % 4) + 4) % 4;
+      const f = i / count;
+      const jit = () => (Math.random() - 0.5) * 0.24;
+      let hx: number, hy: number, hz: number;
+      if (shape === 1) {
+        // Nudo toroidal trefoil
+        const tt = f * Math.PI * 2 * 6 + stream * 0.05;
+        hx = (Math.sin(tt) + 2 * Math.sin(2 * tt)) * 0.62 + jit();
+        hy = (Math.cos(tt) - 2 * Math.cos(2 * tt)) * 0.62 + jit();
+        hz = -Math.sin(3 * tt) * 1.1 + jit();
+      } else if (shape === 2) {
+        // Doble hélice ADN
+        const a = f * Math.PI * 2 * 7 + (i % 2) * Math.PI;
+        hx = Math.cos(a) * 1.35 + jit();
+        hz = Math.sin(a) * 1.35 + jit();
+        hy = (f * 2 - 1) * 2.5 + jit();
+      } else if (shape === 3) {
+        // Esfera armónica (Fibonacci)
+        const phi = Math.acos(1 - 2 * f);
+        const th = Math.PI * (1 + Math.sqrt(5)) * i;
+        const rr = 2 + Math.sin(phi * 6 + stream) * 0.18;
+        hx = Math.sin(phi) * Math.cos(th) * rr + jit();
+        hy = Math.cos(phi) * rr + jit();
+        hz = Math.sin(phi) * Math.sin(th) * rr + jit();
+      } else {
+        hx = Math.cos(u + stream) * r + jit();
+        hy = Math.sin(u * 1.5 - stream) * r * 0.65 + jit();
+        hz = Math.sin(u * 0.7 + stream) * 1.65 + jit();
+      }
 
       homePos[ix] = hx;
       homePos[ix + 1] = hy;
@@ -109,11 +138,13 @@ function HighResFlowParticles({
       colors: col,
       phases: ph,
     };
-  }, [accent, c2, isDarkStage]);
+  }, [accent, c2, isDarkStage, seed]);
 
   const targetRef = useRef(0);
 
-  useFrame(({ clock, pointer }, dt) => {
+  useFrame(({ clock, pointer, size }, dt) => {
+    // En celular el latido se atenúa (pantalla chica = todo se ve mucho más exagerado)
+    const mobileScale = size.width <= 720 ? 0.38 : 1;
     // Señal pura de 808 (< 90Hz filtrada por hardware low-pass + detector de golpe sub-grave)
     const { eightOhEight } = sfx.sampleReactiveLevels();
     const clampedDt = Math.min(0.033, dt);
@@ -122,11 +153,11 @@ function HighResFlowParticles({
     // Click del usuario: mini pulso manual
     if (impulseSignal !== lastImpulseRef.current) {
       lastImpulseRef.current = impulseSignal;
-      targetRef.current = Math.max(targetRef.current, 0.55);
+      targetRef.current = Math.max(targetRef.current, 0.55 * mobileScale);
     }
 
     // Alta sensibilidad exclusiva para los 808: salta fuerte en cada golpe y vuelve limpio al terminar
-    const MAX_DISP = 1.28;
+    const MAX_DISP = 1.28 * mobileScale;
     const hitTarget = Math.pow(eightOhEight, 0.82) * MAX_DISP;
     if (hitTarget > targetRef.current) targetRef.current = hitTarget;
     // Decay elástico entre golpes de 808
@@ -143,7 +174,7 @@ function HighResFlowParticles({
 
     const pulseDisp = dispRef.current;
     if (matRef.current) {
-      matRef.current.size = 0.025 * (1 + pulseDisp * 0.48);
+      matRef.current.size = 0.025 * (1 + pulseDisp * 0.48 * mobileScale);
     }
 
     const step = clampedDt * 0.95;
@@ -391,9 +422,10 @@ export default function PerformativePlayer({
   // Default en "boids" (36K Partículas con reacción 808) como pidió Juani
   const [mode, setMode] = useState<VisualMode>("boids");
   const [snippetClean, setSnippetClean] = useState(false);
-  const [darkStage, setDarkStage] = useState(false);
+  const [darkStage, setDarkStage] = useState(true);
   const [cinemaMode, setCinemaMode] = useState(true);
   const [impulseSignal, setImpulseSignal] = useState(0);
+  const [seed, setSeed] = useState(0);
   const [queueOpen, setQueueOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const [showRemaining, setShowRemaining] = useState(false);
@@ -442,6 +474,7 @@ export default function PerformativePlayer({
 
   const progressPct = durationSec > 0 ? Math.min(100, (currentSec / durationSec) * 100) : 0;
   const isLiked = likedTrackIds.includes(track.id);
+  const isStandby = track.id === "standby-track";
 
   // Siguientes del proyecto actual (como "Siguiente de: <Proyecto>" en Spotify)
   const projectNextTracks = useMemo(() => {
@@ -530,6 +563,7 @@ export default function PerformativePlayer({
         onClick={() => {
           if (mode === "boids") {
             setImpulseSignal((n) => n + 1);
+            setSeed((n) => n + 1);
             sfx.tap();
           }
         }}
@@ -548,6 +582,7 @@ export default function PerformativePlayer({
               accent={track.accent}
               c2={track.c2}
               impulseSignal={impulseSignal}
+              seed={seed}
               isDarkStage={darkStage || isCinemaActive}
             />
           )}
@@ -589,6 +624,7 @@ export default function PerformativePlayer({
             <span className="perf-project-pill-arrow" aria-hidden>↗</span>
           </button>
 
+          {!isStandby && (
           <button
             type="button"
             className="mono-badge clickable-badge perf-edit-track-badge"
@@ -601,6 +637,7 @@ export default function PerformativePlayer({
           >
             <span>{track.bpm} BPM · {track.key} · Editar</span>
           </button>
+          )}
         </div>
 
         <div className="perf-top-actions">
@@ -678,10 +715,13 @@ export default function PerformativePlayer({
           <small>{liveProject.type}</small>
         </div>
         <h1 className="perf-title">{track.title}</h1>
-        <p className="perf-kicker">
-          {track.artist} {track.feat ? `feat. ${track.feat}` : ""} — prod.{" "}
-          {track.prod || track.artist}
-        </p>
+        {!isStandby && (
+          <p className="perf-kicker">
+            {track.artist} {track.feat ? `feat. ${track.feat}` : ""} — prod.{" "}
+            {track.prod || track.artist}
+          </p>
+        )}
+        {isStandby && <p className="perf-kicker">Elegí un track de tu biblioteca para escucharlo acá</p>}
         {notesOpen && (
           <span className="perf-note">
             “{track.note || `Sesión de ${liveProject.title} · ${track.bpm} BPM · Tonalidad ${track.key}`}”

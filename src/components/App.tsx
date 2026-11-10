@@ -2,7 +2,8 @@
 
 import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import {
   DEMO_PROJECTS,
   EMPTY_ME_PROFILE,
@@ -2467,6 +2468,7 @@ export default function App() {
 
                 {/* Interior del Proyecto / Inspector con Spinner 3D (se muestra al entrar al cubo en Modo Por defecto, o al lado en Modo 2) */}
                 {activeProject && (libraryLayoutMode === "side-by-side" || insideCubeOpen) && (
+                  <MobileSheetPortal>
                   <motion.section
                     key={`inspector-${libraryLayoutMode}-${activeProject.id}`}
                     className="project-inspector-sheet"
@@ -3402,6 +3404,7 @@ export default function App() {
                       </div>
                     </div>
                   </motion.section>
+                  </MobileSheetPortal>
                 )}
               </div>
               )}
@@ -3913,6 +3916,24 @@ export default function App() {
 }
 
 /* ==================== COMPONENTE: PANTALLA EDITAR TRACK ==================== */
+/**
+ * En celular la hoja del proyecto es `position: fixed` a pantalla completa. Si queda dentro de un
+ * ancestro con transform/filter (animaciones de página), el navegador la recorta al alto del ancestro
+ * y se ve la pantalla vacía. Por eso en <= 720px se monta directo en <body>.
+ */
+function MobileSheetPortal({ children }: { children: ReactNode }) {
+  const [mobile, setMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 720px)");
+    const sync = () => setMobile(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+  if (mobile && typeof document !== "undefined") return createPortal(children, document.body);
+  return <>{children}</>;
+}
+
 function EditTrackModal({
   track,
   onClose,

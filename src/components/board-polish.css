@@ -2363,3 +2363,99 @@ textarea,
   }
 }
 
+
+/* ==================== FIXES DE CASOS DE USO ROTOS (capturas iPhone) ==================== */
+
+/* Modales: nunca más desbordan el ancho ni quedan cortados arriba/abajo (EditTrackModal etc.) */
+.apple-modal-backdrop {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch;
+  padding: calc(env(safe-area-inset-top, 0px) + 14px) 14px calc(env(safe-area-inset-bottom, 0px) + 14px) !important;
+  box-sizing: border-box !important;
+}
+
+.apple-modal-card {
+  margin: auto !important;
+  width: min(680px, 100%) !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  overflow-x: hidden !important;
+}
+
+.apple-modal-card * {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.apple-modal-card input[type="file"] {
+  width: 100% !important;
+  font-size: 0.8rem;
+}
+
+.apple-modal-card input,
+.apple-modal-card select,
+.apple-modal-card textarea {
+  width: 100%;
+  font-size: 16px; /* evita el zoom automático de iOS al enfocar */
+}
+
+.apple-modal-card .modal-form-grid {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+@media (min-width: 721px) {
+  .apple-modal-card .modal-form-grid:not(.single-col) {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .apple-modal-card {
+    padding: 18px 16px !important;
+    border-radius: 22px !important;
+  }
+
+  .apple-modal-card .mono-tag {
+    font-size: 0.62rem !important;
+    letter-spacing: 0.04em !important;
+  }
+
+  .apple-modal-card h3 {
+    font-size: 1.15rem !important;
+  }
+
+  /* Hoja del proyecto montada en <body>: pantalla completa real, con scroll propio */
+  .project-inspector-sheet {
+    height: 100dvh !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    overscroll-behavior: contain !important;
+  }
+
+  /* Rueda de vinilos: el contador +/- ya no tapa los sobres, va al borde derecho */
+  .vinyl-arc-step-controls {
+    left: auto !important;
+    right: 8px !important;
+    top: 34% !important;
+    padding: 6px 5px !important;
+  }
+
+  /* Reproductor: la barra superior nunca muestra badges de más ni se corta */
+  .perf-topbar .perf-edit-track-badge,
+  .perf-topbar .perf-theme-pill {
+    display: none !important;
+  }
+
+  .perf-topbar .perf-badges {
+    min-width: 0 !important;
+  }
+
+  .perf-topbar .perf-project-pill {
+    max-width: 100% !important;
+  }
+}

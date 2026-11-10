@@ -1049,3 +1049,16 @@
 
 **Implementación (`src/components/App.tsx`):**
 - Integrada la **Media Session API** (`navigator.mediaSession`): pantalla de bloqueo, Control Center y AirPods muestran título del track, artista + feat + productor, proyecto como álbum y la tapa (del track o del proyecto). Handlers de play/pause/anterior/siguiente/seek conectados al reproductor.
+
+---
+
+### Turno 60 — Arreglo de los casos de uso rotos de las capturas + 808 en celular + seed procedural
+**Pedidos del usuario (`juani`):** arreglar todo lo que está mal en las capturas (`IMG_3892/3893/3894/3895`), 808 muy exagerado en celular, y que tocar el fondo del reproductor cambie de seed procedural como la landing.
+
+**Implementación (`App.tsx`, `PerformativePlayer.tsx`, `board-polish.css`):**
+1. **Proyecto en celu vacío (`IMG_3894`):** la hoja fija quedaba recortada por un ancestro con transform/filter. Ahora `MobileSheetPortal` la monta en `<body>` en <=720px.
+2. **Modal Editar track cortado (`IMG_3892`):** backdrop con scroll, card `max-width: 100%`, inputs/file sin desborde, `font-size:16px` para evitar zoom iOS.
+3. **Rueda de vinilos (`IMG_3893`):** el contador +/- pasa al borde derecho y ya no tapa los sobres.
+4. **Reproductor (`IMG_3895`):** badges de edición/tema ocultos en celu (especificidad CSS), sin artista/BPM falsos en "Sin track activo", `darkStage` por defecto.
+5. **808 en celular:** latido atenuado (x0.38) en <=720px.
+6. **Seed procedural:** tocar el fondo cambia la forma de las 36K partículas (flujo, nudo trefoil, hélice ADN, esfera armónica).
