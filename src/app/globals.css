@@ -4461,15 +4461,19 @@ button {
 }
 
 .inspector-canvas-section {
-  background: #fafaf9;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   padding: 16px 18px;
   margin-top: 18px;
   margin-bottom: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .inspector-canvas-header {
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -4481,31 +4485,39 @@ button {
   position: relative;
   border-radius: 14px;
   overflow: hidden;
-  background: #090a0f;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  min-height: 200px;
-  display: flex;
+  background: transparent;
+  border: none;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 
 .canvas-video-wrapper {
   position: relative;
-  width: 100%;
-  display: flex;
+  width: fit-content;
+  max-width: 100%;
+  display: inline-flex;
   justify-content: center;
   align-items: center;
-  background: #000;
-  max-height: 480px;
+  background: transparent;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-soft);
+  line-height: 0;
 }
 
 .canvas-active-video-elem {
   max-width: 100%;
-  max-height: 480px;
+  max-height: 520px;
   width: auto;
   height: auto;
   object-fit: contain;
   display: block;
+  border-radius: 14px;
 }
 
 /* Ocultar botones de picture-in-picture nativos del navegador */

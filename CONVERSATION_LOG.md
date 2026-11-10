@@ -748,3 +748,14 @@
     2. `blablabla` (`bbbrvno, eyebags` · `1:36`)
     3. `y festejar` (`bbbrvno` · `1:53`)
     4. `hoy es un buen día, voy a fumarme dos` (`bbbrvno, Seguxx` · `1:27`)
+
+
+---
+
+### Turno 41 — Canvas Ajustado Exactamente a la Resolución del Video (Sin Barras Negras)
+**Prompt del usuario:**
+- *"quiero que el canvas se vea solo el video en su resolucion no con las barras negras hace algo para que esa parte del flex se acomode a la resolucion del video (adjunta captura)"*
+
+**Implementación (`src/app/globals.css`):**
+- Eliminados `background: #090a0f`, `background: #000` y `width: 100%` en `.inspector-canvas-viewer-card` y `.canvas-video-wrapper`.
+- Configurados ambos contenedores con `width: fit-content; max-width: 100%; display: inline-flex;` y centrados dentro de `.inspector-canvas-section`, aplicando el `border-radius: 14px` y sombra directamente al borde exacto del video/GIF para que se adapte a cualquier aspecto (4:3, 1:1, 9:16, 16:9) sin barras negras a los costados.
