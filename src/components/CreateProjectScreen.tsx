@@ -18,7 +18,7 @@ import "./create-project.css";
 const display = Unbounded({ subsets: ["latin"], weight: ["800"], display: "swap" });
 
 const AUDIO_RE = /\.(wav|mp3|m4a|flac|aac|ogg|aiff|alac|opus)$/i;
-const DEFAULT_TEXT = "EL TABLERO";
+const DEFAULT_TEXT = "El tablero";
 
 function useIsMobile() {
   const [mobile, setMobile] = useState(false);
@@ -45,13 +45,13 @@ function useTheme() {
 }
 
 /**
- * Muestrea el texto en un canvas 2D y devuelve una lista de puntos (x,y) en [-0.5, 0.5] x [-0.5, 0.5]
- * junto con la relación de aspecto del bloque de texto.
+ * Muestrea el texto respetando mayúsculas y minúsculas exactas en un canvas 2D
+ * y devuelve la lista de puntos junto con el centro y ancho real del bloque.
  */
 function sampleText(rawText: string, fontFamily: string) {
-  const text = (rawText.trim() || DEFAULT_TEXT).toUpperCase();
+  const text = rawText.trim() || DEFAULT_TEXT;
   const W = 1400;
-  const H = 360;
+  const H = 420;
   const c = document.createElement("canvas");
   c.width = W;
   c.height = H;
@@ -61,10 +61,10 @@ function sampleText(rawText: string, fontFamily: string) {
   g.fillStyle = "#fff";
   g.textAlign = "center";
   g.textBaseline = "middle";
-  let size = 250;
+  let size = 240;
   g.font = `800 ${size}px ${fontFamily}`;
   const w = g.measureText(text).width;
-  const maxW = W * 0.94;
+  const maxW = W * 0.92;
   if (w > maxW) {
     size = Math.max(40, size * (maxW / w));
     g.font = `800 ${size}px ${fontFamily}`;
@@ -269,7 +269,7 @@ export default function CreateProjectScreen({
   useEffect(() => {
     let alive = true;
     document.fonts
-      .load(`800 100px ${fontFamily}`, "ELTABLERO")
+      .load(`800 100px ${fontFamily}`, "El tablero abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
       .catch(() => undefined)
       .finally(() => alive && setFontReady(true));
     return () => {
@@ -343,7 +343,7 @@ export default function CreateProjectScreen({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const finalTitle = (title.trim() || `PROYECTO 0${existingCount + 1}`).toUpperCase();
+    const finalTitle = title.trim() || `Proyecto 0${existingCount + 1}`;
     const angle = (existingCount * 1.35) % (Math.PI * 2);
     const blockPos: [number, number, number] = [
       Math.cos(angle) * 1.25,

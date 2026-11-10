@@ -12,7 +12,65 @@ const VINYL_PALETTE = [
   "#e11d48", // Rojo carmesí
 ];
 
+function buildCaseSensitiveTextShape(count: number, text = "El tablero"): Float32Array {
+  const out = new Float32Array(count * 3);
+  if (typeof document === "undefined") return out;
+
+  const W = 1400;
+  const H = 420;
+  const c = document.createElement("canvas");
+  c.width = W;
+  c.height = H;
+  const ctx = c.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return out;
+
+  ctx.fillStyle = "#000000";
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = "#ffffff";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  // Respeta mayúsculas y minúsculas exactas ("El tablero")
+  ctx.font = '800 225px -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", sans-serif';
+  ctx.fillText(text, W / 2, H / 2);
+
+  const img = ctx.getImageData(0, 0, W, H).data;
+  const validPts: number[] = [];
+  let minX = W;
+  let maxX = 0;
+
+  for (let y = 0; y < H; y += 3) {
+    for (let x = 0; x < W; x += 3) {
+      if (img[(y * W + x) * 4] > 110) {
+        validPts.push(x, y);
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+      }
+    }
+  }
+
+  const numPts = validPts.length / 2;
+  if (numPts === 0) return out;
+
+  const bw = Math.max(1, maxX - minX);
+  const cx = (minX + maxX) / 2;
+  const scale = 5.4 / bw;
+
+  for (let i = 0; i < count; i++) {
+    const ix = i * 3;
+    const pick = Math.floor(((i * 2654435761) >>> 0) % numPts);
+    const px = validPts[pick * 2];
+    const py = validPts[pick * 2 + 1];
+    const waveZ = Math.sin((px - cx) * scale * 1.2) * 0.22 + (((i * 7919) % 100) / 100 - 0.5) * 0.34;
+    out[ix] = (px - cx) * scale;
+    out[ix + 1] = (H / 2 - py) * scale;
+    out[ix + 2] = waveZ;
+  }
+
+  return out;
+}
+
 function buildProceduralShapes(count: number): Float32Array[] {
+  const sText = buildCaseSensitiveTextShape(count, "El tablero"); // 0. "El tablero" (distinguiendo mayúsculas y minúsculas)
   const s0 = new Float32Array(count * 3); // 1. Nudo Toroidal Trefoil (p=2, q=3)
   const s1 = new Float32Array(count * 3); // 2. Doble Hélice / Vórtice ADN Cósmico
   const s2 = new Float32Array(count * 3); // 3. Flor Cimática 3D / Armónicos Esféricos
@@ -96,7 +154,7 @@ function buildProceduralShapes(count: number): Float32Array[] {
     }
   }
 
-  return [s0, s1, s2, s3];
+  return [sText, s0, s1, s2, s3];
 }
 
 const VERT_SHADER = /* glsl */ `
@@ -237,9 +295,16 @@ function MicroDiscsSwarm({ count }: { count: number }) {
       arr[ix + 2] += (tz - arr[ix + 2]) * step;
     }
 
-    pointsRef.current.rotation.y = t * 0.22 + pointer.x * 0.25;
-    pointsRef.current.rotation.x = Math.sin(t * 0.32) * 0.18 - pointer.y * 0.18;
-    pointsRef.current.rotation.z = Math.cos(t * 0.24) * 0.08;
+    const isTextStage = stageIdx === 0 ? 1 - smoothMorph : nextStageIdx === 0 ? smoothMorph : 0;
+    const targetRotY = THREE.MathUtils.lerp(
+      Math.sin(t * 0.42) * 0.68 + pointer.x * 0.28,
+      Math.sin(t * 0.45) * 0.16 + pointer.x * 0.22,
+      isTextStage
+    );
+    const targetRotZ = THREE.MathUtils.lerp(Math.cos(t * 0.24) * 0.09, 0, isTextStage);
+    pointsRef.current.rotation.y += (targetRotY - pointsRef.current.rotation.y) * 0.08;
+    pointsRef.current.rotation.x = Math.sin(t * 0.32) * 0.14 - pointer.y * 0.16;
+    pointsRef.current.rotation.z += (targetRotZ - pointsRef.current.rotation.z) * 0.08;
     pointsRef.current.geometry.attributes.position.needsUpdate = true;
   });
 

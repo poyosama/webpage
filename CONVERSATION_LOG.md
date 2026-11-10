@@ -851,3 +851,17 @@
    - Normalizada la lectura de pico y RMS por el volumen actual y conectada la señal `eightOhEight` directo a `HighResFlowParticles` (`MAX_DISP = 1.28`, ataque instantáneo `k = 38` y retorno elástico `k = 9.5`), logrando que las 36.000 partículas salten con mucha sensibilidad únicamente cuando pegan los 808 y vuelvan limpias a su posición original.
 5. **Freno Limpio Cuando Termina una Canción Sola (`src/lib/sfx.ts`, `src/components/App.tsx`, `src/components/PerformativePlayer.tsx`):**
    - Agregado cerrojo `endedConsumed` en `sfx.getPlaybackState()` y centralizado el manejo de fin de canción en `App.tsx` (`onTrackEndedRef`): cuando termina una canción sola (o termina el último track del proyecto con `repeatMode === "off"`), la reproducción se detiene ahí mismo (`setIsPlaying(false); sfx.stopGroove(false); sfx.seek(0);`) sin reiniciarse sola.
+
+---
+
+### Turno 48 — Enjambres 3D de `Crear Proyecto` y `Landing Page` con Discriminación Exacta de Mayúsculas y Minúsculas
+**Prompt del usuario:**
+- *"quiero que el enjambre de crear proyectos discrimine mayusculas y minusculas tambien entendes? q no sea todo mayusculas*
+  *lo mismo con el de la landing page jeje"*
+
+**Implementación (`src/components/CreateProjectScreen.tsx`, `src/components/LandingScene.tsx`):**
+1. **Enjambre de `Crear Proyecto` sensible a Mayúsculas y Minúsculas (`src/components/CreateProjectScreen.tsx`):**
+   - Cambiado `DEFAULT_TEXT` de `"EL TABLERO"` a **`"El tablero"`**.
+   - Eliminado el `.toUpperCase()` forzado tanto en `sampleText` como en `handleSubmit` (`finalTitle`), y ampliado el alto del canvas de muestreo (`H = 420`) y la precarga de glifos (`a-z`, `A-Z`, `0-9`) para que las ascendentes y descendentes de las minúsculas y mayúsculas se formen en tiempo real tal cual las escribe el usuario (ej. `"El tablero"`, `"chickenNugget"`, `"blablabla"`, `"Love2Hate"`).
+2. **Enjambre de la `Landing Page` sensible a Mayúsculas y Minúsculas (`src/components/LandingScene.tsx`):**
+   - Agregado `buildCaseSensitiveTextShape(count, "El tablero")` como primera escultura 3D del ciclo procedural en `LandingScene.tsx` (sin `.toUpperCase()`), formando **`"El tablero"`** con `E` mayúscula y `l tablero` en minúsculas antes de metamorfosearse hacia las esculturas procedurales 3D con vinilos blancos, verdes y rojos.
