@@ -7,75 +7,96 @@ import { sfx } from "@/lib/sfx";
 import { supabase } from "@/lib/supabase";
 
 const VINYL_PALETTE = [
-  "#e11d48", // coral
-  "#0284c7", // cyan
-  "#eab308", // gold
-  "#84cc16", // lime
-  "#a855f7", // purple
-  "#14b8a6", // teal
-  "#f97316", // orange
-  "#ec4899", // pink
+  "#ffffff", // Blanco puro
+  "#22c55e", // Verde esmeralda / neon
+  "#e11d48", // Rojo carmesí
 ];
 
-function buildLandingLogoTargets(count: number): Float32Array {
-  const targets = new Float32Array(count * 3);
-  if (typeof document === "undefined") return targets;
+function buildProceduralShapes(count: number): Float32Array[] {
+  const s0 = new Float32Array(count * 3); // 1. Nudo Toroidal Trefoil (p=2, q=3)
+  const s1 = new Float32Array(count * 3); // 2. Doble Hélice / Vórtice ADN Cósmico
+  const s2 = new Float32Array(count * 3); // 3. Flor Cimática 3D / Armónicos Esféricos
+  const s3 = new Float32Array(count * 3); // 4. Anillo de Acreción Hiperbólico + Jets Polares
 
-  const text = "EL TABLERO";
-  const W = 880;
-  const H = 240;
-  const c = document.createElement("canvas");
-  c.width = W;
-  c.height = H;
-  const g = c.getContext("2d")!;
+  for (let i = 0; i < count; i++) {
+    const ix = i * 3;
+    const u = (i / count) * Math.PI * 2;
+    const v = ((i * 7919) % count) / count * Math.PI * 2;
 
-  g.fillStyle = "#000000";
-  g.fillRect(0, 0, W, H);
+    // --- Forma 0: Nudo Toroidal (p=2, q=3) con espesor tubular ---
+    {
+      const t = u * 3;
+      const p = 2;
+      const q = 3;
+      const tubeR = 0.36 + 0.14 * Math.sin(v * 3);
+      const r = 1.65 + 0.68 * Math.cos(q * t);
+      const cx = r * Math.cos(p * t);
+      const cy = r * Math.sin(p * t);
+      const cz = -0.85 * Math.sin(q * t);
+      s0[ix] = cx + Math.cos(v) * tubeR;
+      s0[ix + 1] = cy * 0.78 + Math.sin(v) * tubeR;
+      s0[ix + 2] = cz + Math.sin(v * 2) * 0.25;
+    }
 
-  g.fillStyle = "#ffffff";
-  g.font = `800 110px -apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, sans-serif`;
-  g.textAlign = "center";
-  g.textBaseline = "middle";
+    // --- Forma 1: Doble Hélice / Galaxia Espiral Entrelazada ---
+    {
+      const strand = i % 2 === 0 ? 1 : -1;
+      const turns = 4.2;
+      const yNorm = (i / count) * 2 - 1; // -1 a 1
+      const theta = yNorm * Math.PI * turns + (strand === 1 ? 0 : Math.PI);
+      const radius = 1.55 * Math.sqrt(1 - yNorm * yNorm * 0.42);
+      const spread = (Math.sin(v * 5) * 0.24);
+      const isRung = i % 9 === 0;
+      if (isRung) {
+        const lerpS = ((i % 90) / 90) * 2 - 1;
+        s1[ix] = Math.cos(theta) * radius * lerpS;
+        s1[ix + 1] = yNorm * 2.15;
+        s1[ix + 2] = Math.sin(theta) * radius * lerpS;
+      } else {
+        s1[ix] = Math.cos(theta) * (radius + spread);
+        s1[ix + 1] = yNorm * 2.15 + Math.cos(v) * 0.12;
+        s1[ix + 2] = Math.sin(theta) * (radius + spread);
+      }
+    }
 
-  const chars = text.split("");
-  const tightFactor = 0.88;
-  const widths = chars.map((ch) => g.measureText(ch).width * tightFactor);
-  const totalW = widths.reduce((a, b) => a + b, 0);
-  let curX = (W - totalW) / 2;
-  const centerY = H * 0.52;
+    // --- Forma 2: Cimática 3D / Esfera de Lissajous Armónica ---
+    {
+      const phi = Math.acos(1 - 2 * ((i + 0.5) / count));
+      const theta = Math.PI * (1 + Math.sqrt(5)) * i;
+      const harmonic =
+        1.15 +
+        0.75 * Math.sin(3 * phi) * Math.cos(4 * theta) +
+        0.35 * Math.cos(5 * phi);
+      const rad = harmonic * 1.38;
+      s2[ix] = rad * Math.sin(phi) * Math.cos(theta);
+      s2[ix + 1] = rad * Math.sin(phi) * Math.sin(theta) * 0.85;
+      s2[ix + 2] = rad * Math.cos(phi);
+    }
 
-  for (let i = 0; i < chars.length; i++) {
-    const ch = chars[i];
-    const cw = widths[i];
-    g.fillText(ch, curX + cw * 0.5, centerY);
-    curX += cw;
-  }
-
-  const img = g.getImageData(0, 0, W, H).data;
-  const validPixels: [number, number][] = [];
-  for (let y = 0; y < H; y += 2) {
-    for (let x = 0; x < W; x += 2) {
-      const lum = img[(y * W + x) * 4];
-      if (lum > 100) {
-        validPixels.push([(x / W - 0.5) * 6.2, (0.5 - y / H) * 1.8]);
+    // --- Forma 3: Singularity Vortex (Disco de Acreción + Espirales Polares) ---
+    {
+      if (i < count * 0.74) {
+        const idxNorm = i / (count * 0.74);
+        const r = 0.65 + Math.pow(idxNorm, 0.72) * 3.1;
+        const spiralAngle = u * 18 + 3.2 / (r + 0.2);
+        const warpY = Math.sin(spiralAngle * 2) * (0.28 / (r * 0.7 + 0.4));
+        s3[ix] = Math.cos(spiralAngle) * r;
+        s3[ix + 1] = warpY + (Math.cos(v) * 0.08) * (r * 0.35);
+        s3[ix + 2] = Math.sin(spiralAngle) * r;
+      } else {
+        const jetNorm = (i - count * 0.74) / (count * 0.26); // 0..1
+        const sign = i % 2 === 0 ? 1 : -1;
+        const y = sign * (0.25 + jetNorm * 2.35);
+        const jetR = 0.14 + Math.pow(jetNorm, 1.5) * 0.65;
+        const jetAng = jetNorm * Math.PI * 14 + v;
+        s3[ix] = Math.cos(jetAng) * jetR;
+        s3[ix + 1] = y;
+        s3[ix + 2] = Math.sin(jetAng) * jetR;
       }
     }
   }
 
-  if (validPixels.length === 0) {
-    validPixels.push([0, 0]);
-  }
-
-  for (let i = 0; i < count; i++) {
-    const ix = i * 3;
-    const [px, py] = validPixels[(i * 7) % validPixels.length];
-    const zDepth = ((i % 9) - 4) * 0.05 + (Math.random() - 0.5) * 0.04;
-    targets[ix] = px + (Math.random() - 0.5) * 0.025;
-    targets[ix + 1] = py + (Math.random() - 0.5) * 0.025;
-    targets[ix + 2] = zDepth;
-  }
-
-  return targets;
+  return [s0, s1, s2, s3];
 }
 
 const VERT_SHADER = /* glsl */ `
@@ -90,7 +111,7 @@ const VERT_SHADER = /* glsl */ `
   }
 `;
 
-// Cuerpo del vinilo negro con surcos y reflejo; SOLO el sello central toma el color de cada partícula
+// Cuerpo del vinilo negro con surcos y reflejo; SOLO el sello central toma el color (blanco, verde o rojo)
 const FRAG_SHADER = /* glsl */ `
   varying vec3 vColor;
   void main() {
@@ -104,11 +125,11 @@ const FRAG_SHADER = /* glsl */ `
       return;
     }
 
-    // Sello central de colores distintos en cada vinilito
-    if (r < 0.19) {
-      float innerRim = smoothstep(0.19, 0.165, r);
-      vec3 labelCol = vColor * (0.92 + 0.14 * innerRim);
-      gl_FragColor = vec4(labelCol, 0.97);
+    // Sello central: blanco, verde o rojo
+    if (r < 0.20) {
+      float innerRim = smoothstep(0.20, 0.17, r);
+      vec3 labelCol = vColor * (0.94 + 0.12 * innerRim);
+      gl_FragColor = vec4(labelCol, 0.98);
       return;
     }
 
@@ -124,10 +145,9 @@ const FRAG_SHADER = /* glsl */ `
 function MicroDiscsSwarm({ count }: { count: number }) {
   const pointsRef = useRef<THREE.Points>(null!);
   const simTimeRef = useRef(0);
-  const logoTargets = useMemo(() => buildLandingLogoTargets(count), [count]);
+  const shapes = useMemo(() => buildProceduralShapes(count), [count]);
 
-  const { orbitPositions, currentPositions, colors, phases } = useMemo(() => {
-    const orbitPos = new Float32Array(count * 3);
+  const { currentPositions, colors, phases } = useMemo(() => {
     const currPos = new Float32Array(count * 3);
     const col = new Float32Array(count * 3);
     const ph = new Float32Array(count);
@@ -136,96 +156,90 @@ function MicroDiscsSwarm({ count }: { count: number }) {
 
     for (let i = 0; i < count; i++) {
       const ix = i * 3;
-      const u = (i / count) * Math.PI * 24;
-      const r = 1.2 + (i / count) * 4.6;
-      const angle = u + (i % 5) * 1.25;
-
-      const ox = Math.cos(angle) * r + (Math.random() - 0.5) * 0.45;
-      const oy = Math.sin(angle * 1.3) * r * 0.55 + (Math.random() - 0.5) * 0.45;
-      const oz = Math.sin(angle * 0.7) * 2.2 + (Math.random() - 0.5) * 0.45;
-
-      orbitPos[ix] = ox;
-      orbitPos[ix + 1] = oy;
-      orbitPos[ix + 2] = oz;
-
-      currPos[ix] = ox;
-      currPos[ix + 1] = oy;
-      currPos[ix + 2] = oz;
+      currPos[ix] = shapes[0][ix];
+      currPos[ix + 1] = shapes[0][ix + 1];
+      currPos[ix + 2] = shapes[0][ix + 2];
 
       ph[i] = Math.random() * Math.PI * 2;
 
-      const colorPick = parsedColors[(i * 5 + (i % 3)) % parsedColors.length];
+      const colorPick = parsedColors[i % parsedColors.length];
       col[ix] = colorPick.r;
       col[ix + 1] = colorPick.g;
       col[ix + 2] = colorPick.b;
     }
 
-    return { orbitPositions: orbitPos, currentPositions: currPos, colors: col, phases: ph };
-  }, [count]);
+    return { currentPositions: currPos, colors: col, phases: ph };
+  }, [count, shapes]);
 
-  const uniforms = useMemo(() => ({ uSize: { value: 0.055 } }), []);
+  const uniforms = useMemo(() => ({ uSize: { value: 0.056 } }), []);
 
   useFrame(({ pointer }, dt) => {
-    // Usar tiempo propio acotado para que al volver de segundo plano en iPhone no salte ni se reinicie el ciclo
     const clampedDt = Math.min(0.033, Math.max(0.001, dt));
     simTimeRef.current += clampedDt;
     const t = simTimeRef.current;
 
     const arr = pointsRef.current.geometry.attributes.position.array as Float32Array;
 
-    const cycle = t % 13;
-    let morphFactor = 0;
-    if (cycle < 5.5) {
-      morphFactor = 0;
-    } else if (cycle < 7.0) {
-      morphFactor = (cycle - 5.5) / 1.5;
-    } else if (cycle < 11.0) {
-      morphFactor = 1;
-    } else if (cycle < 12.5) {
-      morphFactor = 1 - (cycle - 11.0) / 1.5;
-    } else {
-      morphFactor = 0;
-    }
-    const smoothMorph = 0.5 - 0.5 * Math.cos(morphFactor * Math.PI);
+    // Cada 6.5 segundos transiciona suavemente a la siguiente escultura procedural 3D
+    const stageDuration = 6.5;
+    const totalStages = shapes.length;
+    const stageFloat = (t / stageDuration) % totalStages;
+    const stageIdx = Math.floor(stageFloat);
+    const nextStageIdx = (stageIdx + 1) % totalStages;
+    const localPhase = stageFloat - stageIdx;
 
-    const mx = pointer.x * 0.85;
-    const my = pointer.y * 0.85;
-    const step = Math.min(0.22, clampedDt * 4.5);
+    // Mantiene la forma 4.2s y hace morph suave durante 2.3s
+    const rawMorph = Math.max(0, Math.min(1, (localPhase - 0.58) / 0.42));
+    const smoothMorph = 0.5 - 0.5 * Math.cos(rawMorph * Math.PI);
+
+    const shapeA = shapes[stageIdx];
+    const shapeB = shapes[nextStageIdx];
+
+    const mx = pointer.x * 2.2;
+    const my = pointer.y * 1.6;
+    const step = Math.min(0.2, clampedDt * 4.8);
 
     for (let i = 0; i < count; i++) {
       const ix = i * 3;
       const phi = phases[i];
 
-      const ox = orbitPositions[ix] + Math.cos(t * 1.1 + phi) * 0.08;
-      const oy = orbitPositions[ix + 1] + Math.sin(t * 1.4 + phi) * 0.08;
-      const oz = orbitPositions[ix + 2] + Math.sin(t * 0.9 + phi) * 0.06;
+      const ax = shapeA[ix];
+      const ay = shapeA[ix + 1];
+      const az = shapeA[ix + 2];
 
-      const tx = logoTargets[ix];
-      const ty = logoTargets[ix + 1];
-      const tz = logoTargets[ix + 2];
+      const bx = shapeB[ix];
+      const by = shapeB[ix + 1];
+      const bz = shapeB[ix + 2];
 
-      const targetX = THREE.MathUtils.lerp(ox, tx, smoothMorph);
-      const targetY = THREE.MathUtils.lerp(oy, ty, smoothMorph);
-      const targetZ = THREE.MathUtils.lerp(oz, tz, smoothMorph);
+      // Onda orgánica procedural sobre la geometría
+      const waveX = Math.cos(t * 1.35 + phi) * 0.055;
+      const waveY = Math.sin(t * 1.15 + phi * 1.3) * 0.055;
+      const waveZ = Math.sin(t * 0.95 + phi * 0.7) * 0.055;
 
-      arr[ix] += (targetX - arr[ix]) * step;
-      arr[ix + 1] += (targetY - arr[ix + 1]) * step;
-      arr[ix + 2] += (targetZ - arr[ix + 2]) * step;
+      let tx = THREE.MathUtils.lerp(ax, bx, smoothMorph) + waveX;
+      let ty = THREE.MathUtils.lerp(ay, by, smoothMorph) + waveY;
+      let tz = THREE.MathUtils.lerp(az, bz, smoothMorph) + waveZ;
 
-      if (smoothMorph < 0.3) {
-        const dx = arr[ix] - mx * 3;
-        const dy = arr[ix + 1] - my * 2;
-        const d2 = dx * dx + dy * dy;
-        if (d2 < 1.0 && d2 > 0.001) {
-          const d = Math.sqrt(d2);
-          const force = ((1.0 - d) / 1.0) * 0.5 * clampedDt;
-          arr[ix] += (dx / d) * force;
-          arr[ix + 1] += (dy / d) * force;
-        }
+      // Interacción magnética suave con el puntero
+      const dx = tx - mx;
+      const dy = ty - my;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < 1.35 && d2 > 0.0001) {
+        const d = Math.sqrt(d2);
+        const push = ((1.16 - d) / 1.16) * 0.36;
+        tx += (dx / d) * push;
+        ty += (dy / d) * push;
+        tz += push * 0.25;
       }
+
+      arr[ix] += (tx - arr[ix]) * step;
+      arr[ix + 1] += (ty - arr[ix + 1]) * step;
+      arr[ix + 2] += (tz - arr[ix + 2]) * step;
     }
 
-    pointsRef.current.rotation.y = t * 0.04 * (1 - smoothMorph);
+    pointsRef.current.rotation.y = t * 0.22 + pointer.x * 0.25;
+    pointsRef.current.rotation.x = Math.sin(t * 0.32) * 0.18 - pointer.y * 0.18;
+    pointsRef.current.rotation.z = Math.cos(t * 0.24) * 0.08;
     pointsRef.current.geometry.attributes.position.needsUpdate = true;
   });
 

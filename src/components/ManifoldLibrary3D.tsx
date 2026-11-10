@@ -1143,49 +1143,54 @@ export default function ManifoldLibrary3D({
               </div>
 
               {activeProject && (
-                <div className="vinyl-fan-inspector-card">
+                <div
+                  className="vinyl-fan-inspector-card is-clickable-card"
+                  role="button"
+                  tabIndex={0}
+                  title={`Abrir ${activeProject.title}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onDiveIntoProject) {
+                      sfx.open();
+                      onDiveIntoProject(activeProject);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      if (onDiveIntoProject) {
+                        sfx.open();
+                        onDiveIntoProject(activeProject);
+                      }
+                    }
+                  }}
+                >
                   <span className="mono-tag">
-                    VINILO SELECCIONADO // {activeProject.type.toUpperCase()} · {activeProject.tracks.length} CANCIONES
+                    {activeProject.type.toUpperCase()} · {activeProject.tracks.length}{" "}
+                    {activeProject.tracks.length === 1 ? "TRACK" : "TRACKS"}
                   </span>
                   <h2>{activeProject.title}</h2>
                   <p className="vinyl-fan-artist-line">
-                    por <b>{activeProject.artist}</b> · {activeProject.zone}
+                    por <b>{activeProject.artist}</b>
+                    {activeProject.zone ? ` · ${activeProject.zone}` : ""}
                   </p>
-                  <p className="vinyl-fan-desc">{activeProject.description}</p>
+                  {activeProject.description && (
+                    <p className="vinyl-fan-desc">{activeProject.description}</p>
+                  )}
 
                   <div className="vinyl-fan-quick-tracks">
                     {activeProject.tracks.slice(0, 4).map((tr, i) => (
-                      <div
-                        key={tr.id}
-                        className="vinyl-mini-track-pill"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (onDiveIntoProject) {
-                            sfx.open();
-                            onDiveIntoProject(activeProject);
-                          }
-                        }}
-                      >
+                      <div key={tr.id} className="vinyl-mini-track-pill">
                         <span>0{i + 1} · </span>
                         <b>{tr.title}</b>
                       </div>
                     ))}
                   </div>
 
-                  <div className="vinyl-fan-actions">
-                    {onDiveIntoProject && (
-                      <button
-                        type="button"
-                        className="apple-btn primary"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          sfx.open();
-                          onDiveIntoProject(activeProject);
-                        }}
-                      >
-                        Entrar al Proyecto ({activeProject.tracks.length} tracks) →
-                      </button>
-                    )}
+                  <div
+                    className="vinyl-fan-actions"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {onUpdateProjectCover && (
                       <label
                         className="apple-btn ghost"

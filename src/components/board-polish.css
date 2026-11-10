@@ -638,4 +638,58 @@ textarea,
   pointer-events: auto !important;
 }
 
+/* ==================== WIDGET DE PROYECTO CLICKEABLE ENTERO (ESTILO APPLE) ==================== */
+.vinyl-fan-inspector-card.is-clickable-card {
+  cursor: pointer;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.22s ease;
+}
 
+.vinyl-fan-inspector-card.is-clickable-card:hover {
+  transform: translateY(-3px) scale(1.012);
+  box-shadow: 0 28px 60px rgba(0, 0, 0, 0.14), 0 4px 16px rgba(0, 0, 0, 0.06);
+  border-color: rgba(17, 17, 20, 0.22);
+}
+
+.vinyl-fan-inspector-card.is-clickable-card:active {
+  transform: translateY(0) scale(0.992);
+}
+
+/* ==================== REPRODUCTOR MODO CINE (CANVAS + PARTÍCULAS 808) ==================== */
+.perf-cinema-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: #07070a;
+}
+
+.perf-cinema-media {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.58;
+  filter: saturate(1.18) contrast(1.06);
+  transform: scale(1.02);
+}
+
+.perf-cinema-media.is-cover-ambient {
+  opacity: 0.38;
+  filter: blur(28px) saturate(1.35) brightness(0.75);
+  transform: scale(1.14);
+}
+
+.perf-cinema-vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 44%, rgba(8, 8, 12, 0.18) 0%, rgba(5, 5, 8, 0.74) 85%),
+    linear-gradient(180deg, rgba(6, 6, 10, 0.55) 0%, rgba(6, 6, 10, 0.18) 42%, rgba(6, 6, 10, 0.82) 100%);
+}
+
+.perf-player.has-cinema-canvas .perf-canvas-wrap {
+  z-index: 1;
+  mix-blend-mode: screen;
+}

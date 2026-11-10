@@ -22,10 +22,12 @@ function HighResFlowParticles({
   accent,
   c2,
   impulseSignal,
+  isDarkStage,
 }: {
   accent: string;
   c2: string;
   impulseSignal: number;
+  isDarkStage: boolean;
 }) {
   const pointsRef = useRef<THREE.Points>(null!);
   const matRef = useRef<THREE.PointsMaterial>(null!);
@@ -61,7 +63,7 @@ function HighResFlowParticles({
     const ph = new Float32Array(count);
     const cA = new THREE.Color(accent);
     const cB = new THREE.Color(c2);
-    const cInk = new THREE.Color("#18181b");
+    const cInk = new THREE.Color(isDarkStage ? "#ffffff" : "#18181b");
 
     for (let i = 0; i < count; i++) {
       const ix = i * 3;
@@ -107,40 +109,33 @@ function HighResFlowParticles({
       colors: col,
       phases: ph,
     };
-  }, [accent, c2]);
+  }, [accent, c2, isDarkStage]);
 
-  const slowAvgRef = useRef(0);
   const targetRef = useRef(0);
 
   useFrame(({ clock, pointer }, dt) => {
-    // Solo la banda sub-grave (30Hz–115Hz); medios/agudos (beat) NO mueven las partículas
-    const { bass } = sfx.sampleReactiveLevels();
+    // Señal pura de 808 (< 90Hz filtrada por hardware low-pass + detector de golpe sub-grave)
+    const { eightOhEight } = sfx.sampleReactiveLevels();
     const clampedDt = Math.min(0.033, dt);
     const t = clock.elapsedTime;
 
-    // Media móvil lenta (~1.2s) del nivel de sub-graves: el "piso" de la mezcla
-    slowAvgRef.current += (bass - slowAvgRef.current) * Math.min(1, clampedDt / 1.2);
-    // Golpe real = sub-grave muy por encima del piso lento + umbral alto
-    const transient = bass - slowAvgRef.current * 1.12 - 0.09;
-    const hit = Math.max(0, Math.min(1, transient / 0.22));
-
-    // Click del usuario: mini pulso sutil
+    // Click del usuario: mini pulso manual
     if (impulseSignal !== lastImpulseRef.current) {
       lastImpulseRef.current = impulseSignal;
-      targetRef.current = Math.max(targetRef.current, 0.3);
+      targetRef.current = Math.max(targetRef.current, 0.55);
     }
 
-    // Amplitud máxima sutil (~30% de la anterior)
-    const MAX_DISP = 0.42;
-    const hitTarget = Math.pow(hit, 1.4) * MAX_DISP;
+    // Alta sensibilidad exclusiva para los 808: salta fuerte en cada golpe y vuelve limpio al terminar
+    const MAX_DISP = 1.28;
+    const hitTarget = Math.pow(eightOhEight, 0.82) * MAX_DISP;
     if (hitTarget > targetRef.current) targetRef.current = hitTarget;
-    // Decay del objetivo hacia 0 entre golpes
-    targetRef.current *= Math.exp(-clampedDt * 9);
+    // Decay elástico entre golpes de 808
+    targetRef.current *= Math.exp(-clampedDt * 7.8);
     if (targetRef.current < 0.002) targetRef.current = 0;
 
-    // Suavizado attack rápido / decay más lento, sin overshoot: siempre vuelve a 0
+    // Suavizado attack ultra rápido (golpe de 808) / retorno elástico limpio a su lugar original (0)
     const cur = dispRef.current;
-    const k = targetRef.current > cur ? 28 : 10;
+    const k = targetRef.current > cur ? 38 : 9.5;
     let next = cur + (targetRef.current - cur) * Math.min(1, clampedDt * k);
     if (targetRef.current === 0 && next < 0.003) next = 0;
     dispRef.current = next;
@@ -148,7 +143,7 @@ function HighResFlowParticles({
 
     const pulseDisp = dispRef.current;
     if (matRef.current) {
-      matRef.current.size = 0.025 * (1 + pulseDisp * 0.2);
+      matRef.current.size = 0.025 * (1 + pulseDisp * 0.48);
     }
 
     const step = clampedDt * 0.95;
@@ -397,10 +392,16 @@ export default function PerformativePlayer({
   const [mode, setMode] = useState<VisualMode>("boids");
   const [snippetClean, setSnippetClean] = useState(false);
   const [darkStage, setDarkStage] = useState(false);
+  const [cinemaMode, setCinemaMode] = useState(true);
   const [impulseSignal, setImpulseSignal] = useState(0);
   const [queueOpen, setQueueOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const [showRemaining, setShowRemaining] = useState(false);
+
+  const activeCanvasClip = useMemo(
+    () => project.videos?.find((v) => Boolean(v.url)) || null,
+    [project.videos]
+  );
 
   const [currentSec, setCurrentSec] = useState(0);
   const [durationSec, setDurationSec] = useState(track.durationSec || 174);
@@ -416,16 +417,9 @@ export default function PerformativePlayer({
       const st = sfx.getPlaybackState();
       setCurrentSec(st.currentSec);
       setDurationSec(st.durationSec || track.durationSec || 174);
-      if (st.ended && isPlaying) {
-        if (repeatMode === "one") {
-          sfx.seek(0);
-        } else {
-          onNext();
-        }
-      }
     }, 120);
     return () => clearInterval(id);
-  }, [isPlaying, repeatMode, onNext, track.durationSec]);
+  }, [track.durationSec]);
 
   const progressPct = durationSec > 0 ? Math.min(100, (currentSec / durationSec) * 100) : 0;
   const isLiked = likedTrackIds.includes(track.id);
@@ -437,9 +431,13 @@ export default function PerformativePlayer({
     return [...project.tracks.slice(idx + 1), ...project.tracks.slice(0, idx)];
   }, [project.tracks, track.id]);
 
+  const isCinemaActive = cinemaMode && Boolean(activeCanvasClip?.url || project.coverUrl);
+
   return (
     <div
-      className={`perf-player font-skin-sf ${darkStage ? "stage-dark" : "stage-light"} ${
+      className={`perf-player font-skin-sf ${
+        darkStage || isCinemaActive ? "stage-dark" : "stage-light"
+      } ${isCinemaActive ? "has-cinema-canvas" : ""} ${
         snippetClean ? "snippet-clean" : ""
       }`}
       onPointerMove={(e) => {
@@ -464,6 +462,39 @@ export default function PerformativePlayer({
         <span className="perf-grabber-bar" />
       </div>
 
+      {/* Fondo Canvas en Modo Cine detrás de las 36.000 partículas */}
+      {isCinemaActive && (
+        <div className="perf-cinema-backdrop" aria-hidden>
+          {activeCanvasClip?.url ? (
+            activeCanvasClip.mediaType === "image" ||
+            /\.(gif|png|jpe?g|webp|avif)(\?|$)/i.test(activeCanvasClip.url) ? (
+              <img
+                src={activeCanvasClip.url}
+                alt=""
+                className="perf-cinema-media"
+              />
+            ) : (
+              <video
+                key={activeCanvasClip.url}
+                src={activeCanvasClip.url}
+                className="perf-cinema-media"
+                autoPlay
+                loop
+                muted
+                playsInline
+              />
+            )
+          ) : project.coverUrl ? (
+            <img
+              src={project.coverUrl}
+              alt=""
+              className="perf-cinema-media is-cover-ambient"
+            />
+          ) : null}
+          <div className="perf-cinema-vignette" />
+        </div>
+      )}
+
       {/* Canvas 3D performativo a pantalla completa (DPR optimizado a 1.25 en partículas para 60fps clavados con 36K partículas) */}
       <div
         className="perf-canvas-wrap"
@@ -477,9 +508,9 @@ export default function PerformativePlayer({
         <Canvas
           camera={{ position: [0, 0, 5.2], fov: 42 }}
           dpr={mode === "boids" ? [1, 1.25] : [1, 1.5]}
-          gl={{ antialias: mode !== "boids", powerPreference: "high-performance" }}
+          gl={{ alpha: true, antialias: mode !== "boids", powerPreference: "high-performance" }}
         >
-          <ambientLight intensity={darkStage ? 0.95 : 1.45} />
+          <ambientLight intensity={darkStage || isCinemaActive ? 1.15 : 1.45} />
           <directionalLight position={[4, 6, 5]} intensity={1.85} />
           <pointLight position={[-4, -3, 3]} color={track.c2} intensity={6} />
 
@@ -488,6 +519,7 @@ export default function PerformativePlayer({
               accent={track.accent}
               c2={track.c2}
               impulseSignal={impulseSignal}
+              isDarkStage={darkStage || isCinemaActive}
             />
           )}
           {mode === "ferro" && <SculptableFerrofluid accent={track.accent} c2={track.c2} />}
@@ -538,6 +570,22 @@ export default function PerformativePlayer({
         </div>
 
         <div className="perf-top-actions">
+          <button
+            type="button"
+            className={`pill-control ${cinemaMode ? "active" : ""}`}
+            onMouseEnter={() => sfx.hover()}
+            onClick={() => {
+              sfx.tap();
+              setCinemaMode((c) => !c);
+            }}
+            title="Integrar Canvas del proyecto de fondo con las partículas en Modo Cine"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <rect x="2" y="4" width="20" height="16" rx="3" />
+              <path d="M2 8h20M7 4v4M12 4v4M17 4v4" />
+            </svg>
+            <span>{cinemaMode ? "Modo Cine ON" : "Modo Cine"}</span>
+          </button>
           <button
             type="button"
             className={`pill-control ${darkStage ? "active" : ""}`}

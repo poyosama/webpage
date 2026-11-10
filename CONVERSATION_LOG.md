@@ -827,3 +827,27 @@
    - `.manifold-empty-cluster-overlay` tenía `pointer-events: none` heredado en `globals.css`, lo que bloqueaba los clicks al botón central cuando no había proyectos.
    - Se forzó `pointer-events: auto !important` en `.manifold-empty-cluster-overlay` y sus hijos, y se limpió la referencia a `[untitled]` del texto de estado vacío.
 
+
+---
+
+### Turno 47 — Widget de Proyecto Clickeable Entero (Apple UX), Landing Procedural 3D (Vinilos Blancos/Verdes/Rojos), Reproductor Modo Cine con Canvas + Partículas, Sensibilidad Pura 808 y Freno Limpio al Terminar Canción
+**Prompt del usuario:**
+- *"quiero clickear ahi el widget entero y poder entrar al proyecto sin tener que tocar 'Entrar al proyecto' acordate, appleeeee por favorrr eso lo pensaria asi apple*
+  *y ademas en el landing page esta fiero lo de el tablero ponelos a hacer formas mas flasheras ya fue lo que sea pero que sea bien procedural bonito y que sean los vinilos solo blancos, verdes y rojos*
+  *y en el reproductor tambien pone el canvas de fondo de alguna manera integralo con lo de las particulas no se, como ponerlo en modo cine*
+  *btw lo de los 808 con las particulas no funciona bien, arreglalo bien bien bien posta que sea solo con los 808 tiene muy poca sensibilidad ahora.*
+  *cuando la cancion sola termina que termine ahi no que se ponga de nuevo"*
+
+**Implementación (`src/components/ManifoldLibrary3D.tsx`, `src/components/LandingScene.tsx`, `src/lib/sfx.ts`, `src/components/PerformativePlayer.tsx`, `src/components/App.tsx`, `src/components/board-polish.css`):**
+1. **Widget de Proyecto 100% Clickeable Estilo Apple (`src/components/ManifoldLibrary3D.tsx`, `src/components/board-polish.css`):**
+   - Toda la tarjeta `.vinyl-fan-inspector-card` ahora es clickeable (`onClick` y soporte de teclado `Enter`/`Space` con feedback táctil `.is-clickable-card`) para entrar directo al proyecto sin tener que tocar el botón redundante `"Entrar al Proyecto →"` (que fue eliminado para dejar la tarjeta ultra limpia). Los botones internos (`Cambiar portada` y `🗑️`) usan `e.stopPropagation()`.
+2. **Landing Page con Formas 3D Procedurales y Micro-Vinilos Solo Blancos, Verdes y Rojos (`src/components/LandingScene.tsx`):**
+   - Paleta de etiquetas centrales restringida exclusivamente a **Blanco (`#ffffff`), Verde (`#22c55e`) y Rojo (`#e11d48`)**.
+   - Reemplazado el texto plano `"EL TABLERO"` por un generador matemático procedural (`buildProceduralShapes`) que metamorfosea suavemente los 520 micro-vinilos entre 4 esculturas 3D cada 6.5s: Nudo Toroidal Trefoil `(p=2, q=3)`, Doble Hélice / Vórtice ADN Cósmico, Esfera Armónica Cimática 3D y Anillo Hiperbólico de Acreción con Espirales Polares.
+3. **Reproductor en Modo Cine con Canvas de Fondo Integrado a las Partículas (`src/components/PerformativePlayer.tsx`, `src/components/board-polish.css`):**
+   - Agregado `.perf-cinema-backdrop` detrás del `<Canvas gl={{ alpha: true }}>` de las 36.000 partículas con fusión `mix-blend-mode: screen`, proyectando el video/GIF Canvas del proyecto (o portada ambiental si no tiene video) con viñeta cinematográfica y botón `"🎬 Modo Cine ON"` en la barra superior.
+4. **Sensibilidad Pura de 808 para las 36.000 Partículas (`src/lib/sfx.ts`, `src/components/PerformativePlayer.tsx`):**
+   - Incorporado un filtro pasa-bajos por hardware `BiquadFilterNode` a `88Hz` (`Q = 1.4`) conectado a un `subAnalyserNode` dedicado en `sfx.ts` que aísla físicamente los sub-graves puros de 808 (`< 90Hz`) de las voces, cajas y hi-hats.
+   - Normalizada la lectura de pico y RMS por el volumen actual y conectada la señal `eightOhEight` directo a `HighResFlowParticles` (`MAX_DISP = 1.28`, ataque instantáneo `k = 38` y retorno elástico `k = 9.5`), logrando que las 36.000 partículas salten con mucha sensibilidad únicamente cuando pegan los 808 y vuelvan limpias a su posición original.
+5. **Freno Limpio Cuando Termina una Canción Sola (`src/lib/sfx.ts`, `src/components/App.tsx`, `src/components/PerformativePlayer.tsx`):**
+   - Agregado cerrojo `endedConsumed` en `sfx.getPlaybackState()` y centralizado el manejo de fin de canción en `App.tsx` (`onTrackEndedRef`): cuando termina una canción sola (o termina el último track del proyecto con `repeatMode === "off"`), la reproducción se detiene ahí mismo (`setIsPlaying(false); sfx.stopGroove(false); sfx.seek(0);`) sin reiniciarse sola.

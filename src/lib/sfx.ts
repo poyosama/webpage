@@ -11,13 +11,18 @@ let beatTimer: number | null = null;
 let currentAudioEl: HTMLAudioElement | null = null;
 let mediaSourceNode: MediaElementAudioSourceNode | null = null;
 let analyserNode: AnalyserNode | null = null;
+let subFilterNode: BiquadFilterNode | null = null;
+let subAnalyserNode: AnalyserNode | null = null;
 let freqData: Uint8Array<ArrayBuffer> | null = null;
+let subTimeData: Float32Array<ArrayBuffer> | null = null;
 const connectedElements = new WeakSet<HTMLAudioElement>();
 
 let beatEnergy = 0;
 let subBassEnergy = 0;
 let highHatEnergy = 0;
 let eightOhEightEnergy = 0;
+let subFloor = 0.04;
+let endedConsumed = false;
 
 // Seguimiento de progreso para canciones con o sin audio subido
 let virtualCurrentSec = 0;
@@ -38,9 +43,22 @@ function ac(): AudioContext | null {
     master.connect(ctx.destination);
 
     analyserNode = ctx.createAnalyser();
-    analyserNode.fftSize = 1024;
-    analyserNode.smoothingTimeConstant = 0.65;
+    analyserNode.fftSize = 2048;
+    analyserNode.smoothingTimeConstant = 0.35;
     freqData = new Uint8Array(analyserNode.frequencyBinCount);
+
+    // Filtro pasa-bajos dedicado exclusivamente a la banda de 808 (30Hz – 92Hz)
+    subFilterNode = ctx.createBiquadFilter();
+    subFilterNode.type = "lowpass";
+    subFilterNode.frequency.value = 88;
+    subFilterNode.Q.value = 1.4;
+
+    subAnalyserNode = ctx.createAnalyser();
+    subAnalyserNode.fftSize = 1024;
+    subAnalyserNode.smoothingTimeConstant = 0.2;
+    subTimeData = new Float32Array(subAnalyserNode.fftSize);
+
+    subFilterNode.connect(subAnalyserNode);
 
     // Buffer corto de ruido rosa suave para textura táctil de papel/vidrio
     const len = Math.floor(ctx.sampleRate * 0.04);
@@ -214,6 +232,7 @@ export const sfx = {
   seek(sec: number) {
     const clamped = Math.max(0, Math.min(virtualDurationSec, sec));
     virtualCurrentSec = clamped;
+    endedConsumed = false;
     lastProgressTick = performance.now();
     if (currentAudioEl && !Number.isNaN(currentAudioEl.duration)) {
       currentAudioEl.currentTime = Math.min(currentAudioEl.duration, clamped);
@@ -225,10 +244,24 @@ export const sfx = {
   getPlaybackState() {
     const now = performance.now();
     if (currentAudioEl && !Number.isNaN(currentAudioEl.duration) && currentAudioEl.duration > 0) {
+      const rawEnded =
+        currentAudioEl.ended ||
+        (virtualPlaying &&
+          currentAudioEl.duration > 1 &&
+          currentAudioEl.currentTime >= currentAudioEl.duration - 0.08);
+      const fireEnded = rawEnded && !endedConsumed;
+      if (fireEnded) {
+        endedConsumed = true;
+        virtualPlaying = false;
+        if (beatTimer !== null) {
+          clearInterval(beatTimer);
+          beatTimer = null;
+        }
+      }
       return {
         currentSec: currentAudioEl.currentTime,
         durationSec: currentAudioEl.duration,
-        ended: currentAudioEl.ended,
+        ended: fireEnded,
       };
     }
     if (virtualPlaying && lastProgressTick > 0) {
@@ -236,14 +269,21 @@ export const sfx = {
       virtualCurrentSec += dt * playbackRate;
       lastProgressTick = now;
     }
-    const ended = virtualPlaying && virtualCurrentSec >= virtualDurationSec;
-    if (ended) {
+    const rawEnded = virtualPlaying && virtualCurrentSec >= virtualDurationSec;
+    const fireEnded = rawEnded && !endedConsumed;
+    if (fireEnded) {
+      endedConsumed = true;
+      virtualPlaying = false;
       virtualCurrentSec = 0;
+      if (beatTimer !== null) {
+        clearInterval(beatTimer);
+        beatTimer = null;
+      }
     }
     return {
       currentSec: Math.min(virtualDurationSec, virtualCurrentSec),
       durationSec: virtualDurationSec,
-      ended,
+      ended: fireEnded,
     };
   },
   pauseGroove() {
@@ -260,6 +300,7 @@ export const sfx = {
     return virtualCurrentSec;
   },
   resumeGroove(bpm: number, rootFreq: number, customObjectUrl?: string, durationSec = 174) {
+    endedConsumed = false;
     return this.startGroove(bpm, rootFreq, customObjectUrl, durationSec, false);
   },
   startGroove(
@@ -270,6 +311,7 @@ export const sfx = {
     resetTime = false
   ) {
     virtualDurationSec = Math.max(15, durationSec || 174);
+    endedConsumed = false;
     if (resetTime) {
       virtualCurrentSec = 0;
     }
@@ -287,10 +329,11 @@ export const sfx = {
     if (customObjectUrl && typeof window !== "undefined") {
       // Si ya existe el audio element con la misma URL, simplemente reproducir desde donde quedó
       if (currentAudioEl && currentAudioEl.src === customObjectUrl) {
+        currentAudioEl.loop = false;
         currentAudioEl.muted = muted;
         currentAudioEl.volume = volume;
         currentAudioEl.playbackRate = playbackRate;
-        if (resetTime) {
+        if (resetTime || currentAudioEl.ended) {
           currentAudioEl.currentTime = 0;
         } else if (virtualCurrentSec > 0 && !Number.isNaN(virtualCurrentSec)) {
           currentAudioEl.currentTime = virtualCurrentSec;
@@ -306,13 +349,16 @@ export const sfx = {
         currentAudioEl.muted = muted;
         currentAudioEl.volume = volume;
         currentAudioEl.playbackRate = playbackRate;
-        if (virtualCurrentSec > 0) {
+        if (virtualCurrentSec > 0 && !resetTime) {
           currentAudioEl.currentTime = virtualCurrentSec;
         }
         if (c && analyserNode && !connectedElements.has(currentAudioEl)) {
           try {
             mediaSourceNode = c.createMediaElementSource(currentAudioEl);
             mediaSourceNode.connect(analyserNode);
+            if (subFilterNode) {
+              mediaSourceNode.connect(subFilterNode);
+            }
             analyserNode.connect(c.destination);
             connectedElements.add(currentAudioEl);
           } catch {
@@ -333,14 +379,13 @@ export const sfx = {
     const scale = [1, 1.189, 1.335, 1.498, 1.782];
     const tickStep = () => {
       const audioCtx = ac();
-      // Patrón de 808 con distintas fuerzas para que se note el latido según la intensidad del 808
       const isHeavy808 = step % 16 === 0 || step % 16 === 6 || step % 16 === 10;
       const isGhost808 = step % 16 === 3 || step % 16 === 14;
       const isSnare = step % 8 === 4;
       const isHat = step % 2 === 0 || step % 4 === 3;
 
       if (isHeavy808 || isGhost808) {
-        const hitStrength = isHeavy808 ? (step % 16 === 0 ? 1.0 : 0.86) : 0.58;
+        const hitStrength = isHeavy808 ? (step % 16 === 0 ? 1.0 : 0.88) : 0.62;
         beatEnergy = hitStrength;
         subBassEnergy = hitStrength;
         if (!customObjectUrl) {
@@ -351,7 +396,6 @@ export const sfx = {
           const o = audioCtx.createOscillator();
           const g = audioCtx.createGain();
           o.type = "sine";
-          // 808 con pitch drop y sustain sub-grave
           const glideDur = isHeavy808 ? 0.34 : 0.2;
           o.frequency.setValueAtTime(rootFreq * (isHeavy808 ? 1.05 : 0.85), t);
           o.frequency.exponentialRampToValueAtTime(36, t + glideDur);
@@ -360,6 +404,7 @@ export const sfx = {
           g.gain.exponentialRampToValueAtTime(0.0001, t + glideDur + 0.04);
           o.connect(g).connect(master);
           if (analyserNode) g.connect(analyserNode);
+          if (subFilterNode) g.connect(subFilterNode);
           o.start(t);
           o.stop(t + glideDur + 0.05);
         }
@@ -412,25 +457,58 @@ export const sfx = {
     }
   },
   sampleReactiveLevels() {
-    // Si hay audio real o analyser activo, medimos la banda sub-grave del 808 (30Hz – 115Hz)
+    // Detección de 808 real aislada por filtro pasa-bajos de hardware (< 88Hz) + FFT sub-grave
     if (analyserNode && freqData && currentAudioEl && !currentAudioEl.paused) {
       analyserNode.getByteFrequencyData(freqData);
-      // Con sampleRate ~48000 y fftSize 1024, cada bin es ~46.8Hz -> bins 1, 2 y 3 cubren ~35Hz a ~140Hz (808 puro)
-      const subBin1 = freqData[1] || 0;
-      const subBin2 = freqData[2] || 0;
-      const subBin3 = freqData[3] || 0;
-      const midBin = (freqData[8] + freqData[12]) * 0.5;
-      const rawSub = (subBin1 * 1.25 + subBin2 * 1.15 + subBin3 * 0.7) / (3.1 * 255);
-      // Umbral para aislar el golpe real del 808 del piso de mezcla
-      const gated808 = Math.max(0, (rawSub - 0.36) / 0.52);
-      const shaped808 = Math.min(1.35, Math.pow(gated808, 1.35) * 1.45);
-      eightOhEightEnergy = Math.max(eightOhEightEnergy * 0.82, shaped808);
-      subBassEnergy = Math.max(subBassEnergy * 0.85, rawSub);
+      const volNorm = Math.max(0.22, muted ? 0.5 : volume);
+
+      // Con fftSize 2048 (~23.4Hz por bin): bins 1, 2, 3 y 4 cubren ~23Hz a ~94Hz (808 puro)
+      const b1 = freqData[1] || 0;
+      const b2 = freqData[2] || 0;
+      const b3 = freqData[3] || 0;
+      const b4 = freqData[4] || 0;
+      const fftSub = (b1 * 1.15 + b2 * 1.35 + b3 * 1.2 + b4 * 0.7) / (4.4 * 255);
+
+      // Medición de amplitud real en dominio del tiempo después del filtro pasa-bajos de 88Hz
+      let subPeak = 0;
+      let subRms = 0;
+      if (subAnalyserNode && subTimeData) {
+        subAnalyserNode.getFloatTimeDomainData(subTimeData);
+        let sumSq = 0;
+        for (let i = 0; i < subTimeData.length; i++) {
+          const s = Math.abs(subTimeData[i]) / volNorm;
+          if (s > subPeak) subPeak = s;
+          sumSq += s * s;
+        }
+        subRms = Math.sqrt(sumSq / subTimeData.length);
+      }
+
+      // Energía combinada del 808 (pico sub-grave filtrado + energía FFT < 94Hz)
+      const combinedSub = Math.max(subPeak * 1.45, subRms * 2.4, fftSub);
+
+      // Piso dinámico lento para detectar tanto el golpe (kick/attack del 808) como el sustain profundo del 808
+      subFloor = subFloor * 0.965 + combinedSub * 0.035;
+      const transientDelta = Math.max(0, combinedSub - subFloor * 1.04);
+      const absoluteBoom = Math.max(0, combinedSub - 0.22);
+
+      const raw808 = Math.min(
+        1.25,
+        transientDelta * 2.8 + Math.pow(absoluteBoom, 1.35) * 1.35
+      );
+
+      eightOhEightEnergy =
+        raw808 > eightOhEightEnergy
+          ? eightOhEightEnergy * 0.3 + raw808 * 0.7
+          : eightOhEightEnergy * 0.82;
+
+      subBassEnergy = Math.max(subBassEnergy * 0.84, Math.min(1, combinedSub));
+
+      const midBin = ((freqData[12] || 0) + (freqData[18] || 0)) * 0.5;
       beatEnergy = Math.max(beatEnergy * 0.86, midBin / 255);
     } else {
-      beatEnergy *= 0.9;
-      subBassEnergy *= 0.86;
-      eightOhEightEnergy *= 0.84;
+      beatEnergy *= 0.88;
+      subBassEnergy *= 0.84;
+      eightOhEightEnergy *= 0.82;
       highHatEnergy *= 0.85;
     }
 

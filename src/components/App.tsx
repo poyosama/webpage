@@ -170,6 +170,8 @@ export default function App() {
   const [userQueue, setUserQueue] = useState<QueueEntry[]>([]);
   const [customAudioMap, setCustomAudioMap] = useState<Record<string, string>>({});
 
+  const onTrackEndedRef = useRef<() => void>(() => {});
+
   useEffect(() => {
     const id = window.setInterval(() => {
       const st = sfx.getPlaybackState();
@@ -177,9 +179,12 @@ export default function App() {
         currentSec: st.currentSec,
         durationSec: st.durationSec || currentTrack.durationSec || 174,
       });
+      if (st.ended && isPlaying) {
+        onTrackEndedRef.current();
+      }
     }, 120);
     return () => clearInterval(id);
-  }, [currentTrack.durationSec]);
+  }, [currentTrack.durationSec, isPlaying]);
 
   // Input temporal para agregar atributos personalizados a un proyecto en Biblioteca
   const [newAttrInput, setNewAttrInput] = useState<string>("");
@@ -699,6 +704,47 @@ export default function App() {
     const nextIdx = (idx + dir + list.length) % list.length;
     const nextTrack = list[nextIdx] || list[0];
     playTrack(nextTrack, currentProject, playerExpanded);
+  };
+
+  onTrackEndedRef.current = () => {
+    if (repeatMode === "one") {
+      sfx.seek(0);
+      sfx.resumeGroove(
+        currentTrack.bpm,
+        currentTrack.audioFreq,
+        currentTrack.customAudioUrl || customAudioMap[currentTrack.id],
+        currentTrack.durationSec
+      );
+      return;
+    }
+
+    if (userQueue.length > 0) {
+      const [nextItem, ...rest] = userQueue;
+      setUserQueue(rest);
+      playTrack(nextItem.track, nextItem.project, playerExpanded);
+      return;
+    }
+
+    const list = currentProject.tracks;
+    const idx = list.findIndex((t) => t.id === currentTrack.id);
+
+    // Si el proyecto tiene más canciones después de la actual, pasa a la siguiente
+    if (list.length > 1 && idx >= 0 && idx < list.length - 1) {
+      playTrack(list[idx + 1], currentProject, playerExpanded);
+      return;
+    }
+
+    // Si tiene activado repetir todo el álbum y hay más de 1 track, vuelve al primero
+    if (repeatMode === "all" && list.length > 1) {
+      playTrack(list[0], currentProject, playerExpanded);
+      return;
+    }
+
+    // Cuando una canción sola termina (o termina el proyecto sin repeat), termina ahí y se frena limpio
+    setIsPlaying(false);
+    sfx.stopGroove(false);
+    sfx.seek(0);
+    setMiniPlayback((prev) => ({ ...prev, currentSec: 0 }));
   };
 
   // Actualizar metadata completable del proyecto (tipo, atributos, zona, año, estado, etc.)
