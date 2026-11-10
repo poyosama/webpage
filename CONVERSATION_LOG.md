@@ -992,3 +992,14 @@
    - **Interior del Proyecto en Celular sin scroll encerrado y con BPM/Key visibles:** Quitada la trampa de `max-height: 250px` en `.inspector-tracks-list-scroll` para que la lista de tracks scrollee natural con toda la página estilo `[untitled]`, vinilo superior compacto y píldoras de `BPM` y `Key` visibles como micro-badges debajo de cada track (antes estaban ocultas con `display: none`).
    - **Reproductor Fullscreen (`PerformativePlayer`) minimalista en celular:** Barra superior en una sola línea limpia y dock inferior sin duplicar el bloque `now-playing` ni el slider de volumen físico, dejando barra de progreso + controles principales + Cola/Visualizador.
 
+---
+
+### Turno 56 — Limpieza del Showcase en Perfil y Entrada Directa a Proyectos en Biblioteca al Clickearlos
+**Pedidos del usuario (`juani`):**
+- *"y estos en el perfil sacalos y dejame entrar a los proyectos en la biblioteca cuiando los clickeo en el perfil"*
+
+**Implementación (`src/components/App.tsx`, `src/components/ManifoldLibrary3D.tsx`):**
+1. **Quitada la barra inferior de subida (`+ Subir WAV / MP3 al bloque`, `+ Subir video 3–5s / GIF al bloque` y clips) en `Perfil` (`src/components/App.tsx`):**
+   - Removidos `onUploadProjectVideo` y `onUploadProjectTrack` del `<ManifoldLibrary3D />` dentro de `tab === "perfil"`, dejando el showcase de `Mis Proyectos & Canvas` limpio y sin esa barra abajo.
+2. **Clickear cualquier proyecto en `Perfil` te mete directo al proyecto en `Biblioteca` (`src/components/App.tsx` + `src/components/ManifoldLibrary3D.tsx`):**
+   - Conectado `onDiveIntoProject` en el `<ManifoldLibrary3D />` de `Perfil` (`setSelectedProjectId(proj.id); setLibrarySubTab("proyectos"); setInsideCubeOpen(true); navigate("biblioteca");`) y habilitado también en las píldoras superiores (`.quick-proj-pill`), para que al clickear cualquier sobre de vinilo, la tarjeta derecha del proyecto o las píldoras superiores en tu `Perfil` entres directo al interior de ese proyecto en `Biblioteca`.

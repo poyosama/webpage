@@ -3014,14 +3014,18 @@ export default function App() {
 
                 <ManifoldLibrary3D
                   projects={myProjects}
-                  selectedProjectId={selectedProjectId}
+                  selectedProjectId={activeProject?.id || selectedProjectId}
                   viewMode={libraryViewMode}
                   onChangeViewMode={(m) => setLibraryViewMode(m)}
                   onSelectProject={(proj) => setSelectedProjectId(proj.id)}
+                  onDiveIntoProject={(proj) => {
+                    setSelectedProjectId(proj.id);
+                    setLibrarySubTab("proyectos");
+                    setInsideCubeOpen(true);
+                    navigate("biblioteca");
+                  }}
                   onOpenCreateProject={() => navigate("crear-proyecto")}
                   onDeleteProject={handleDeleteProject}
-                  onUploadProjectVideo={handleUploadProjectVideo}
-                  onUploadProjectTrack={handleUploadProjectTrack}
                 />
               </section>
             </div>

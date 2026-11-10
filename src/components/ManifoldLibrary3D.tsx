@@ -866,6 +866,10 @@ export default function ManifoldLibrary3D({
               const idx = projects.findIndex((item) => item.id === p.id);
               if (idx >= 0) setArcOffset(idx);
               onSelectProject(p);
+              if (onDiveIntoProject) {
+                sfx.open();
+                onDiveIntoProject(p);
+              }
             }}
           >
             <span className="pill-dot" style={{ background: p.c2 }} />
