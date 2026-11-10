@@ -651,3 +651,15 @@
 - `AGENTS.md` contiene todas las reglas de negocio, tono, estructura de componentes y vocabulario prohibido ("corte/cortes").
 - `CONVERSATION_LOG.md` tiene el historial cronológico completo de los 35 turnos con decisiones de arquitectura, base de datos de Supabase, componentes 3D Three.js / R3F y Capacitor iOS.
 - Cualquier nuevo agente (Claude Sonnet 3.7 / Opus 3.5 / etc.) puede leer `AGENTS.md` y `CONVERSATION_LOG.md` para retomar de inmediato sin pérdida de contexto.
+
+
+---
+
+### Turno 36 — Sincronización y Onboarding de Contexto
+**Prompt del usuario:**
+- *"Leé AGENTS.md y las últimas entradas de CONVERSATION_LOG.md para tener todo el contexto de El tablero antes de arrancar"*
+
+**Resumen y Estado:**
+- Leído en su totalidad `AGENTS.md` (reglas de vocabulario prohibido "corte/cortes", estética Apple/Editorial + 3D Manifold, raperos y productores reales, orden de páginas en píldora, landing exclusiva con referral gate, sistema 3D de vinilos y cubos, Supabase y Capacitor iOS).
+- Revisados los últimos turnos de `CONVERSATION_LOG.md` (Turnos 33 al 35: correcciones del scrubber, contraste estricto black-on-white / white-on-black, persistencia en Supabase, remoción de clips innecesarios en biblioteca, partículas 2D en landing y estado de build limpio).
+- Repositorio limpio y sincronizado con `origin/main`. Listo para arrancar con las siguientes tareas.
