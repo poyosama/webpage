@@ -10,8 +10,23 @@ const nextConfig: NextConfig = isCapacitorBuild
   : {
       cacheComponents: true,
       partialPrefetching: true,
+      async rewrites() {
+        return [
+          { source: "/library", destination: "/" },
+          { source: "/guardados", destination: "/" },
+          { source: "/upload", destination: "/" },
+          { source: "/subir", destination: "/" },
+          { source: "/profile", destination: "/" },
+          { source: "/perfil", destination: "/" },
+          { source: "/create", destination: "/" },
+          { source: "/crear-proyecto", destination: "/" },
+          { source: "/landing", destination: "/" },
+          { source: "/project/:id*", destination: "/" },
+        ];
+      },
     };
 
 export default nextConfig;
+
 
 

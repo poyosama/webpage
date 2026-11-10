@@ -770,3 +770,18 @@
 **Implementación (`src/components/board-polish.css`):**
 - Aplicado globalmente `caret-color: transparent !important; user-select: none; outline: none !important;` a todos los elementos de la interfaz, incluidos `input[type="range"]` (sliders de volumen y scrubber), `button`, `label`, `select`, etc.
 - Habilitado exclusivamente `user-select: text; caret-color: var(--ink) !important; cursor: text;` para campos reales de escritura (`input` de texto, `textarea` y `[contenteditable="true"]`).
+
+
+---
+
+### Turno 43 — Pantalla 404 Personalizada con Enjambre de Partículas `?` + Rewrites de Rutas SPA (`/library`, `/upload`, `/profile`, `/create`, `/project/:id`)
+**Prompt del usuario:**
+- *"y esta pantalla tambien hace un boton que diga volver al inicio y que no sea tan brusco el 404.. pone como un enjambre de particulas haciendo un ? un texto de no encontramos esa pagina o algo asi y el boton de volver al inicio (adjunta captura de `eltablero.blog/library` mostrando el 404 por defecto de Next.js)"*
+
+**Implementación (`src/app/not-found.tsx`, `next.config.ts`):**
+1. **Pantalla 404 con Enjambre 3D de Partículas (`src/app/not-found.tsx`):**
+   - Creado componente `NotFound` con escena Three.js (`QuestionMarkSwarm`) de 11.000 partículas que convergen suavemente para formar un **`?`** volumétrico en el espacio con respiración orgánica, polvo orbital y repulsión magnética suave al puntero.
+   - Tipografía editorial minimalista respetando el tema activo (`dark` / `light`): etiqueta `404 · Fuera del tablero`, título **`No encontramos esa página`** y botón redondeado de alto contraste **`← Volver al inicio`** que lleva directo a `/`.
+2. **Rewrites para Rutas de la App (`next.config.ts`):**
+   - Configurados `rewrites()` en `next.config.ts` para `/library`, `/guardados`, `/upload`, `/subir`, `/profile`, `/perfil`, `/create`, `/crear-proyecto`, `/landing` y `/project/:id*` hacia `/`, evitando que tocar F5 o abrir un link directo en cualquiera de esas secciones tire 404.
+
