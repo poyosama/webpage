@@ -633,3 +633,9 @@ textarea,
   }
 }
 
+.manifold-empty-cluster-overlay,
+.manifold-empty-cluster-overlay * {
+  pointer-events: auto !important;
+}
+
+

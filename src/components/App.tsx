@@ -560,6 +560,15 @@ export default function App() {
       sfx.pause();
       sfx.pauseGroove();
     } else {
+      if (currentTrack.id === "standby-track") {
+        const firstProj =
+          projects.find((p) => p.tracks.length > 0) ||
+          DEMO_PROJECTS.find((p) => p.tracks.length > 0);
+        if (firstProj && firstProj.tracks[0]) {
+          playTrack(firstProj.tracks[0], firstProj, false);
+          return;
+        }
+      }
       setIsPlaying(true);
       sfx.play();
       sfx.resumeGroove(
@@ -2515,13 +2524,15 @@ export default function App() {
 
                 <div className="mini-meta">
                   <b>{currentTrack.title}</b>
-                  <span>
-                    {currentTrack.artist}
-                    {currentTrack.prod ? ` · prod. ${currentTrack.prod}` : ""}
-                    <small style={{ marginLeft: 6, opacity: 0.72, fontFamily: "monospace" }}>
-                      {formatTime(miniPlayback.currentSec)} / {formatTime(miniPlayback.durationSec)}
-                    </small>
-                  </span>
+                  {currentTrack.id !== "standby-track" && (
+                    <span>
+                      {currentTrack.artist}
+                      {currentTrack.prod ? ` · prod. ${currentTrack.prod}` : ""}
+                      <small style={{ marginLeft: 6, opacity: 0.72, fontFamily: "monospace" }}>
+                        {formatTime(miniPlayback.currentSec)} / {formatTime(miniPlayback.durationSec)}
+                      </small>
+                    </span>
+                  )}
                 </div>
               </div>
 

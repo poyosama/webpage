@@ -918,16 +918,28 @@ export default function ManifoldLibrary3D({
 
           {projects.length === 0 ? (
             <div className="vinyl-fan-arc-viewport">
-              <div className="manifold-empty-cluster-overlay" style={{ position: "relative", inset: "auto", transform: "none", margin: "0 auto", gridColumn: "1 / -1" }}>
+              <div
+                className="manifold-empty-cluster-overlay"
+                style={{
+                  position: "relative",
+                  inset: "auto",
+                  transform: "none",
+                  margin: "0 auto",
+                  gridColumn: "1 / -1",
+                  pointerEvents: "auto",
+                  zIndex: 20,
+                }}
+              >
                 <span className="mono-tag">0 PROYECTOS // 0 VINILOS</span>
                 <h4>Todavía no cargaste ningún vinilo</h4>
                 <p>
-                  Tocá el botón <b>+</b> para crear tu primer proyecto o importalo desde <code>[untitled]</code>.
+                  Tocá el botón <b>+</b> para crear tu primer proyecto.
                 </p>
                 {onOpenCreateProject && (
                   <button
                     type="button"
                     className="apple-btn primary"
+                    style={{ pointerEvents: "auto", cursor: "pointer" }}
                     onClick={(e) => {
                       e.stopPropagation();
                       sfx.open();

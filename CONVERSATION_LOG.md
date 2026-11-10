@@ -812,3 +812,18 @@
 - `[untitled]` (`untitled.stream`) no tiene API pública ni OAuth para terceros, y sirve los audios mediante URLs privadas firmadas en CloudFront/S3 detrás de tokens de sesión y bloqueo CORS. Por eso es imposible que una web externa importe automáticamente los archivos de audio, tracks y metadata reales solo con un link.
 - Siguiendo la instrucción del usuario (*"si no se puede ya sacalo y fue"*), se retiró por completo el bloque `UntitledImporter` de la página de Perfil en `src/components/App.tsx`, dejando el perfil mucho más limpio y directo (con `+ Crear Proyecto` y `+ Subir tracks`).
 
+
+---
+
+### Turno 46 — Limpieza de `"Sin track activo"` (Sin Artista ni Productor) y Fix del Botón Central `"+ Crear mi primer Proyecto →"`
+**Prompt del usuario:**
+- *"sin track activo entonces no tiene que mostrar ningun artista por favor y lo del medio no funciona elboton (adjunta captura de `/library` con 0 proyectos)"*
+
+**Implementación (`src/lib/mock.ts`, `src/components/App.tsx`, `src/components/ManifoldLibrary3D.tsx`, `src/components/board-polish.css`):**
+1. **`"Sin track activo"` sin artista ni productor (`src/lib/mock.ts`, `src/components/App.tsx`):**
+   - Limpiados `artist` y `prod` de `STANDBY_TRACK` y `STANDBY_PROJECT` en `src/lib/mock.ts` (antes tenían `@poyo` y `dorkke` hardcodeados).
+   - En el mini-player (`src/components/App.tsx`), cuando `currentTrack.id === "standby-track"`, se oculta toda la línea inferior de artista/productor/duración, mostrando únicamente **`Sin track activo`**. Además, si se toca el botón Play estando en standby, arranca directamente el primer track disponible.
+2. **Fix del botón central `"+ Crear mi primer Proyecto →"` (`src/components/ManifoldLibrary3D.tsx`, `src/components/board-polish.css`):**
+   - `.manifold-empty-cluster-overlay` tenía `pointer-events: none` heredado en `globals.css`, lo que bloqueaba los clicks al botón central cuando no había proyectos.
+   - Se forzó `pointer-events: auto !important` en `.manifold-empty-cluster-overlay` y sus hijos, y se limpió la referencia a `[untitled]` del texto de estado vacío.
+
