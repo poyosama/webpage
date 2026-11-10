@@ -2796,4 +2796,189 @@ body.app-no-scroll .profile-page {
   transform: scale(0.97) !important;
 }
 
+/* ==================== REPRODUCTOR PERFORMATIVO: MODO CLARO (STAGE-LIGHT APPLE LIQUID GLASS) ==================== */
+.perf-player.stage-light {
+  background: #f6f6f4 !important;
+  color: #09090b !important;
+}
+
+.perf-player.stage-light .perf-topbar {
+  background: linear-gradient(180deg, rgba(246, 246, 244, 0.88) 0%, rgba(246, 246, 244, 0) 100%) !important;
+}
+
+.perf-player.stage-light .pill-control,
+.perf-player.stage-light .mono-badge {
+  background: rgba(255, 255, 255, 0.92) !important;
+  color: #09090b !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05) !important;
+}
+
+.perf-player.stage-light .pill-control.active {
+  background: #09090b !important;
+  color: #ffffff !important;
+  border-color: #09090b !important;
+}
+
+.perf-player.stage-light .perf-grabber-bar {
+  background: rgba(0, 0, 0, 0.22) !important;
+}
+
+.perf-player.stage-light .perf-center-typo h2 {
+  color: rgba(9, 9, 11, 0.85) !important;
+  text-shadow: none !important;
+}
+
+.perf-player.stage-light .perf-note {
+  background: rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: blur(28px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  color: #09090b !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08) !important;
+}
+
+.perf-player.stage-light .perf-dock.spotify-full-dock {
+  background: rgba(255, 255, 255, 0.88) !important;
+  backdrop-filter: blur(40px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(40px) saturate(190%) !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95) !important;
+  color: #09090b !important;
+}
+
+.perf-player.stage-light .spotify-now-meta b {
+  color: #09090b !important;
+}
+
+.perf-player.stage-light .spotify-now-meta span {
+  color: #4b5563 !important;
+}
+
+.perf-player.stage-light .spotify-like-btn,
+.perf-player.stage-light .spotify-icon-btn {
+  color: #4b5563 !important;
+}
+
+.perf-player.stage-light .spotify-like-btn:hover,
+.perf-player.stage-light .spotify-icon-btn:hover {
+  color: #09090b !important;
+}
+
+.perf-player.stage-light .spotify-like-btn.liked,
+.perf-player.stage-light .spotify-icon-btn.active {
+  color: #16a34a !important;
+}
+
+.perf-player.stage-light .spotify-active-dot {
+  background: #16a34a !important;
+}
+
+.perf-player.stage-light .spotify-play-circle {
+  background: #09090b !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2) !important;
+}
+
+.perf-player.stage-light .spotify-time-label {
+  color: #6b7280 !important;
+}
+
+.perf-player.stage-light .spotify-time-label.clickable:hover {
+  color: #09090b !important;
+}
+
+.perf-player.stage-light .spotify-progress-bar-wrap {
+  background: rgba(0, 0, 0, 0.1) !important;
+}
+
+.perf-player.stage-light .spotify-progress-fill {
+  background: #09090b !important;
+}
+
+.perf-player.stage-light .spotify-progress-bar-wrap:hover .spotify-progress-fill {
+  background: #16a34a !important;
+}
+
+.perf-player.stage-light .perf-dock .apple-select.compact-select,
+.perf-player.stage-light .perf-dock .spotify-util-btn {
+  background: rgba(0, 0, 0, 0.05) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  color: #09090b !important;
+}
+
+.perf-player.stage-light .perf-dock .apple-select.compact-select option {
+  background: #ffffff !important;
+  color: #09090b !important;
+}
+
+.perf-player.stage-light .perf-dock .spotify-util-btn:hover {
+  background: rgba(0, 0, 0, 0.09) !important;
+  color: #09090b !important;
+}
+
+.perf-player.stage-light .perf-dock .spotify-util-btn.active {
+  background: #09090b !important;
+  border-color: #09090b !important;
+  color: #ffffff !important;
+}
+
+.perf-player.stage-light .perf-dock .apple-volume-slider {
+  background: rgba(0, 0, 0, 0.12) !important;
+  accent-color: #09090b !important;
+}
+
+.perf-player.stage-light .spotify-queue-drawer {
+  background: rgba(255, 255, 255, 0.94) !important;
+  backdrop-filter: blur(36px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(36px) saturate(190%) !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  color: #09090b !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.15) !important;
+}
+
+.perf-player.stage-light .spotify-queue-drawer h4 {
+  color: #09090b !important;
+}
+
+.perf-player.stage-light .spotify-queue-drawer .queue-clear-btn {
+  color: #6b7280 !important;
+}
+
+.perf-player.stage-light .spotify-queue-drawer .queue-clear-btn:hover {
+  color: #ef4444 !important;
+}
+
+.perf-player.stage-light .queue-track-item {
+  color: #09090b !important;
+}
+
+.perf-player.stage-light .queue-track-item:hover {
+  background: rgba(0, 0, 0, 0.04) !important;
+}
+
+.perf-player.stage-light .queue-track-item b {
+  color: #09090b !important;
+}
+
+.perf-player.stage-light .queue-track-item span {
+  color: #6b7280 !important;
+}
+
+.perf-player.stage-light .perf-cinema-backdrop {
+  background: #f6f6f4 !important;
+}
+
+.perf-player.stage-light .perf-cinema-media.is-cover-ambient {
+  opacity: 0.28 !important;
+  filter: blur(36px) saturate(1.2) brightness(1.05) !important;
+}
+
+.perf-player.stage-light .perf-cinema-vignette {
+  background:
+    radial-gradient(circle at 50% 44%, rgba(255, 255, 255, 0.15) 0%, rgba(246, 246, 244, 0.65) 88%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.1) 45%, rgba(246, 246, 244, 0.75) 100%) !important;
+}
+
 

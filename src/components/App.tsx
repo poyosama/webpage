@@ -725,28 +725,55 @@ export default function App() {
     );
     const pending = editable.filter((p) => syncedSigRef.current[p.id] !== JSON.stringify(p));
     if (pending.length === 0) return;
+
+    let aborted = false;
+    const safetyTimer = setTimeout(() => {
+      // Guard de seguridad: si pasaron 12s, no dejar la UI clavada en "Guardando…"
+      setSyncStatus((s) => (s === "saving" ? "idle" : s));
+    }, 12000);
+
     const timer = setTimeout(async () => {
       setSyncStatus("saving");
       let failed = false;
       for (const proj of pending) {
+        if (aborted) break;
         const sig = JSON.stringify(proj);
         const ownerUserId = proj.artistId || meProfile.id || "";
         const saved = await saveProjectToSupabase(proj, ownerUserId);
         if (!saved) {
           failed = true;
+          // Marcamos como intentado para NO entrar en bucle infinito cada 900ms
+          syncedSigRef.current[proj.id] = sig;
           continue;
         }
         const stillTransient = hasTransientMedia(saved);
         if (stillTransient) failed = true;
         const merged = mergePersistedUrls(proj, saved);
-        syncedSigRef.current[proj.id] = stillTransient ? "" : JSON.stringify(merged);
+        // Siempre registramos la firma del resultado para evitar el loop infinito
+        syncedSigRef.current[proj.id] = JSON.stringify(merged);
         if (JSON.stringify(merged) !== sig) {
           setProjects((prev) => prev.map((x) => (x.id === proj.id ? mergePersistedUrls(x, saved) : x)));
         }
       }
-      setSyncStatus(failed ? "error" : "idle");
+      if (!aborted) {
+        clearTimeout(safetyTimer);
+        if (failed) {
+          setSyncStatus("error");
+          // Revertir a idle tras 3.5 segundos para que la pill no quede pegada
+          setTimeout(() => {
+            setSyncStatus((s) => (s === "error" ? "idle" : s));
+          }, 3500);
+        } else {
+          setSyncStatus("idle");
+        }
+      }
     }, 900);
-    return () => clearTimeout(timer);
+
+    return () => {
+      aborted = true;
+      clearTimeout(timer);
+      clearTimeout(safetyTimer);
+    };
   }, [projects, googleConnected, cloudReady, meProfile.id, projectInvites]);
 
   const activeProject: Project | null =
@@ -3833,6 +3860,12 @@ export default function App() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 80, opacity: 0 }}
               transition={{ type: "spring", stiffness: 320, damping: 28 }}
+              onClick={(e) => {
+                const t = e.target as HTMLElement;
+                if (t.closest("button") || t.closest("input")) return;
+                sfx.open();
+                setPlayerExpanded(true);
+              }}
             >
               {/* Barra superior de progreso interactiva (Scrubber) */}
               <div className="mini-scrubber-track">
@@ -3858,7 +3891,7 @@ export default function App() {
                 />
               </div>
 
-              {/* Columna Izquierda: Portada + Nombre del Track y Artista (sin BPM ni Key) */}
+              {/* Columna Izquierda: Portada + Nombre del Track y Artista */}
               <div
                 className="mini-left"
                 onClick={() => {
@@ -3886,13 +3919,15 @@ export default function App() {
                 <div className="mini-meta">
                   <b>{currentTrack.title}</b>
                   {currentTrack.id !== "standby-track" && (
-                    <span>
-                      {currentTrack.artist}
-                      {currentTrack.prod ? ` · prod. ${currentTrack.prod}` : ""}
-                      <small style={{ marginLeft: 6, opacity: 0.72, fontFamily: "monospace" }}>
+                    <div className="mini-meta-sub">
+                      <span>
+                        {currentTrack.artist}
+                        {currentTrack.prod ? ` · prod. ${currentTrack.prod}` : ""}
+                      </span>
+                      <small className="mini-time-badge">
                         {formatTime(miniPlayback.currentSec)} / {formatTime(miniPlayback.durationSec)}
                       </small>
-                    </span>
+                    </div>
                   )}
                 </div>
               </div>
@@ -3940,7 +3975,7 @@ export default function App() {
                 </button>
               </div>
 
-              {/* Columna Derecha: Slider de Volumen en lugar del botón Abrir Reproductor */}
+              {/* Columna Derecha: Slider de Volumen + Botón Expandir 3D */}
               <div className="mini-volume-wrap">
                 <button
                   type="button"
@@ -3976,6 +4011,24 @@ export default function App() {
                   className="apple-volume-slider"
                   aria-label="Volumen"
                 />
+                <button
+                  type="button"
+                  className="mini-expand-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    sfx.open();
+                    setPlayerExpanded(true);
+                  }}
+                  title="Expandir reproductor visual 3D"
+                  aria-label="Expandir reproductor visual 3D"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="15 3 21 3 21 9"></polyline>
+                    <polyline points="9 21 3 21 3 15"></polyline>
+                    <line x1="21" y1="3" x2="14" y2="10"></line>
+                    <line x1="3" y1="21" x2="10" y2="14"></line>
+                  </svg>
+                </button>
               </div>
             </motion.div>
           </div>
@@ -4036,6 +4089,8 @@ export default function App() {
                   setTab("biblioteca");
                 }}
                 onOpenEditTrack={() => setEditingTrack(currentTrack)}
+                theme={theme}
+                onToggleTheme={toggleTheme}
               />
             </motion.div>
           </UniversalPortal>

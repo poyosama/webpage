@@ -177,13 +177,21 @@ export async function uploadMediaToSupabase(
     const mimeExt = (file.type || "").split("/")[1]?.split(";")[0]?.replace("mpeg", "mp3");
     const ext = (rawName.includes(".") ? rawName.split(".").pop() : mimeExt) || "bin";
     const filename = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext.toLowerCase()}`;
-    const { data, error } = await supabase.storage
+
+    // Timeout de 8s para no trabar la app si Supabase Storage está lento o inaccesible
+    const uploadPromise = supabase.storage
       .from("el-tablero-media")
       .upload(filename, file, {
         cacheControl: "31536000",
         upsert: false,
         contentType: file.type || undefined,
       });
+
+    const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
+      setTimeout(() => resolve({ data: null, error: new Error("Storage upload timeout") }), 8000)
+    );
+
+    const { data, error } = await Promise.race([uploadPromise, timeoutPromise]);
 
     if (!error && data) {
       const { data: publicUrlData } = supabase.storage
@@ -192,10 +200,17 @@ export async function uploadMediaToSupabase(
       return publicUrlData.publicUrl;
     }
 
+    // Para archivos pesados (>4MB de audio o video), no generar Data URL en base64 para evitar congelar el hilo y saturar la DB
+    if (file.size > 4 * 1024 * 1024 && (folder === "tracks" || folder === "videos")) {
+      console.warn("Archivo pesado sin bucket disponible, omitiendo Data URL:", folder, file.size);
+      return null;
+    }
+
     // Fallback directo a Data URL en PostgreSQL cuando el bucket aún no está creado o no tiene políticas
     return await blobToDataUrl(file);
-  } catch {
-    return await blobToDataUrl(file);
+  } catch (err) {
+    console.warn("Error en uploadMediaToSupabase:", err);
+    return null;
   }
 }
 
@@ -210,7 +225,10 @@ export async function ensurePersistentUrl(
   if (cache?.has(url)) return cache.get(url) ?? null;
   let result: string | null = null;
   try {
-    const res = await fetch(url);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 6000);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timer);
     const blob = await res.blob();
     result = await uploadMediaToSupabase(blob, folder);
   } catch (err) {

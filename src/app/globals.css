@@ -1786,10 +1786,10 @@ button {
   position: relative;
   overflow: hidden;
   pointer-events: auto;
-  width: min(690px, 100%);
+  width: min(720px, calc(100vw - 32px));
   background: var(--surface);
-  backdrop-filter: blur(26px) saturate(190%);
-  -webkit-backdrop-filter: blur(26px) saturate(190%);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
   border: 1px solid var(--line-strong);
   border-radius: 999px;
   padding: 8px 16px 8px 10px;
@@ -1799,62 +1799,93 @@ button {
   gap: 14px;
   box-shadow: var(--shadow-float);
   color: var(--ink);
+  cursor: pointer;
 }
 
 :root[data-theme="dark"] .ios-mini-player {
-  background: rgba(14, 14, 18, 0.95);
+  background: rgba(18, 18, 24, 0.95);
   border-color: rgba(255, 255, 255, 0.14);
   color: #ffffff;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.75);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 :root[data-theme="dark"] .ios-mini-player .mini-meta b {
   color: #ffffff;
 }
 
-:root[data-theme="dark"] .ios-mini-player .mini-meta span {
-  color: rgba(255, 255, 255, 0.65);
+:root[data-theme="dark"] .ios-mini-player .mini-meta-sub span {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+:root[data-theme="dark"] .ios-mini-player .mini-time-badge {
+  color: rgba(255, 255, 255, 0.55);
 }
 
 :root[data-theme="dark"] .ios-mini-player .mini-btn {
-  color: #ffffff;
+  color: rgba(255, 255, 255, 0.85);
 }
 
 :root[data-theme="dark"] .ios-mini-player .mini-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
 }
 
 :root[data-theme="dark"] .ios-mini-player .mini-play-btn {
   background: #ffffff;
-  color: #000000;
+  color: #09090b;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+}
+
+:root[data-theme="dark"] .ios-mini-player .mini-expand-btn {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+:root[data-theme="dark"] .ios-mini-player .mini-expand-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
 }
 
 :root[data-theme="light"] .ios-mini-player {
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.94);
   border-color: rgba(0, 0, 0, 0.12);
-  color: #000000;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
+  color: #09090b;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.95);
 }
 
 :root[data-theme="light"] .ios-mini-player .mini-meta b {
-  color: #000000;
+  color: #09090b;
 }
 
-:root[data-theme="light"] .ios-mini-player .mini-meta span {
-  color: rgba(0, 0, 0, 0.6);
+:root[data-theme="light"] .ios-mini-player .mini-meta-sub span {
+  color: #4b5563;
+}
+
+:root[data-theme="light"] .ios-mini-player .mini-time-badge {
+  color: #6b7280;
 }
 
 :root[data-theme="light"] .ios-mini-player .mini-btn {
-  color: #000000;
+  color: #374151;
 }
 
 :root[data-theme="light"] .ios-mini-player .mini-btn:hover {
   background: rgba(0, 0, 0, 0.08);
+  color: #09090b;
 }
 
 :root[data-theme="light"] .ios-mini-player .mini-play-btn {
-  background: #000000;
+  background: #09090b;
   color: #ffffff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+}
+
+:root[data-theme="light"] .ios-mini-player .mini-expand-btn {
+  color: #4b5563;
+}
+
+:root[data-theme="light"] .ios-mini-player .mini-expand-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: #09090b;
 }
 
 .mini-left {
@@ -1889,23 +1920,46 @@ button {
   flex: 1;
   min-width: 0;
   cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .mini-meta b {
   display: block;
-  font-size: 0.86rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.25;
+}
+
+.mini-meta-sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.mini-meta-sub span {
+  font-size: 0.74rem;
+  font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.mini-meta span {
-  display: block;
+.mini-time-badge {
   font-size: 0.72rem;
-  color: var(--ink-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-weight: 600;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", monospace;
+  flex-shrink: 0;
 }
 
 .mini-controls {
@@ -1923,22 +1977,30 @@ button {
   display: grid;
   place-items: center;
   font-size: 0.84rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, transform 0.12s;
 }
 
-.mini-btn:hover {
-  background: rgba(15, 15, 17, 0.06);
+.mini-btn:active {
+  transform: scale(0.92);
 }
 
 .mini-play-btn {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: var(--ink);
-  color: #ffffff;
   display: grid;
   place-items: center;
   font-size: 0.84rem;
-  box-shadow: 0 4px 12px rgba(15, 15, 17, 0.2);
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.mini-play-btn:active {
+  transform: scale(0.92);
 }
 
 .mini-volume-wrap {
@@ -1957,6 +2019,9 @@ button {
   place-items: center;
   font-size: 0.82rem;
   color: var(--ink-secondary);
+  border: none;
+  background: transparent;
+  cursor: pointer;
 }
 
 .apple-volume-slider {
@@ -1978,7 +2043,23 @@ button {
   border-radius: 50%;
   background: var(--ink);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
-  transition: transform 0.12s;
+}
+
+.mini-expand-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s, transform 0.15s;
+}
+
+.mini-expand-btn:active {
+  transform: scale(0.92);
 }
 
 .apple-volume-slider::-webkit-slider-thumb:hover {

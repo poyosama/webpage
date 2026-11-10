@@ -392,6 +392,8 @@ export default function PerformativePlayer({
   onClose,
   onJumpToProject,
   onOpenEditTrack,
+  theme,
+  onToggleTheme,
 }: {
   track: Track;
   project: Project;
@@ -418,11 +420,19 @@ export default function PerformativePlayer({
   onClose: () => void;
   onJumpToProject: (projectId: string) => void;
   onOpenEditTrack: () => void;
+  theme?: "dark" | "light";
+  onToggleTheme?: () => void;
 }) {
   // Default en "boids" (36K Partículas con reacción 808) como pidió Juani
   const [mode, setMode] = useState<VisualMode>("boids");
   const [snippetClean, setSnippetClean] = useState(false);
-  const [darkStage, setDarkStage] = useState(true);
+  const [darkStage, setDarkStage] = useState(theme ? theme === "dark" : true);
+
+  useEffect(() => {
+    if (theme) {
+      setDarkStage(theme === "dark");
+    }
+  }, [theme]);
   const [cinemaMode, setCinemaMode] = useState(true);
   const [impulseSignal, setImpulseSignal] = useState(0);
   const [seed, setSeed] = useState(0);
@@ -492,10 +502,12 @@ export default function PerformativePlayer({
         /\.(gif|png|jpe?g|webp|avif)$/i.test(activeCanvasClip.label || ""))
   );
 
+  const isDarkStage = darkStage;
+
   return (
     <div
       className={`perf-player font-skin-sf ${
-        darkStage || isCinemaActive ? "stage-dark" : "stage-light"
+        isDarkStage ? "stage-dark" : "stage-light"
       } ${isCinemaActive ? "has-cinema-canvas" : ""} ${
         snippetClean ? "snippet-clean" : ""
       }`}
@@ -573,9 +585,9 @@ export default function PerformativePlayer({
           dpr={mode === "boids" ? [1, 1.25] : [1, 1.5]}
           gl={{ alpha: true, antialias: mode !== "boids", powerPreference: "high-performance" }}
         >
-          <ambientLight intensity={darkStage || isCinemaActive ? 1.15 : 1.45} />
-          <directionalLight position={[4, 6, 5]} intensity={1.85} />
-          <pointLight position={[-4, -3, 3]} color={track.c2} intensity={6} />
+          <ambientLight intensity={isDarkStage ? 1.15 : 1.6} />
+          <directionalLight position={[4, 6, 5]} intensity={isDarkStage ? 1.85 : 2.2} />
+          <pointLight position={[-4, -3, 3]} color={track.c2} intensity={isDarkStage ? 6 : 4.5} />
 
           {mode === "boids" && (
             <HighResFlowParticles
@@ -583,7 +595,7 @@ export default function PerformativePlayer({
               c2={track.c2}
               impulseSignal={impulseSignal}
               seed={seed}
-              isDarkStage={darkStage || isCinemaActive}
+              isDarkStage={isDarkStage}
             />
           )}
           {mode === "ferro" && <SculptableFerrofluid accent={track.accent} c2={track.c2} />}
@@ -664,6 +676,7 @@ export default function PerformativePlayer({
             onClick={() => {
               sfx.tap();
               setDarkStage((d) => !d);
+              onToggleTheme?.();
             }}
           >
             {darkStage ? (

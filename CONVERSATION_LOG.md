@@ -1209,3 +1209,37 @@
 5. **Menús desplegables estilo Apple / Untitled sin emojis:**
    - Tanto en celular como en escritorio, los botones dispersos y emojis se reemplazaron por un popover flotante con efecto Liquid Glass (`backdrop-filter: blur(28px) saturate(180%)`), bordes finos de 1px y tipografía SF Pro con iconos vectoriales SVG monocromáticos para cada acción (Añadir tracks, Editar detalles, Cambiar portada, Canvas, Privacidad, Compartir invitación, Guardar y Eliminar proyecto).
    - En las canciones de la lista, el submenú inline ahora utiliza botones estilizados con iconos vectoriales (Descargar audio, Editar BPM/Key, Eliminar track).
+
+### Turno 71 — Fix del bucle infinito de guardado ("Guardando…"), Modo Claro/Oscuro en Reproductor 3D y Rediseño de Mini-Player en PC
+**Pedidos del usuario (`juani`):**
+1. *"ademas en la pc pasa que el reproductor se ve asi, por ahi se guarda durante minutos, y el modo noche o luz no funciona en el reproductor"* (con captura `image.png` en PC en modo claro).
+
+**Diagnóstico:**
+1. **"por ahi se guarda durante minutos" (Bucle Infinito en Auto-sync):**
+   - En `App.tsx:719-750`, el efecto de sincronización automática ejecutaba `saveProjectToSupabase(proj, ownerUserId)`. Si el proyecto contenía algún archivo temporal o si fallaba el upload a Supabase Storage, se ejecutaba `syncedSigRef.current[proj.id] = stillTransient ? "" : JSON.stringify(merged);`.
+   - Al resetear la firma a `""`, en el siguiente tick de React la condición `syncedSigRef.current[p.id] !== JSON.stringify(p)` volvía a ser verdadera (porque `"" !== sig`).
+   - Esto disparaba un nuevo guardado a los 900ms, seteando `setSyncStatus("saving")` y re-ejecutando peticiones de red continuamente en un **bucle infinito cada 900ms**. El usuario veía la píldora flotante `Guardando…` de manera indefinida durante minutos enteros.
+   - Además en `src/lib/supabase.ts:171-199`, `uploadMediaToSupabase` no tenía timeout. Si Supabase Storage demoraba o no respondía, la promesa quedaba colgada.
+2. **"el modo noche o luz no funciona en el reproductor":**
+   - En `PerformativePlayer.tsx:486`, la constante `isCinemaActive` se calculaba como `cinemaMode && Boolean(activeCanvasClip?.url || activeCoverUrl)`. Dado que prácticamente todo track o proyecto tiene portada (`activeCoverUrl`), `isCinemaActive` evaluaba SIEMPRE a `true`.
+   - En consecuencia, la clase `${darkStage || isCinemaActive ? "stage-dark" : "stage-light"}` y la prop `isDarkStage={darkStage || isCinemaActive}` evaluaban SIEMPRE a `true`, ignorando por completo el estado `darkStage` cuando el usuario tocaba el botón "Claro".
+   - `PerformativePlayer` no recibía `theme` ni `onToggleTheme` desde `App.tsx`, por lo que no sincronizaba el tema global de la app.
+   - En `board-polish.css:2380-2480`, el dock `.perf-dock.spotify-full-dock`, la metadata y los controles tenían reglas hardcodeadas oscuras con `!important` (`rgba(22, 22, 28, 0.72) !important; color: #ffffff !important;`) sin estilos correspondientes para `.stage-light`.
+3. **"en la pc pasa que el reproductor se ve asi":**
+   - En PC de escritorio en modo claro (captura `image.png`), el mini player flotante (`.ios-mini-player`) tenía bajo contraste en el texto secundario (`color: rgba(0, 0, 0, 0.6)` con `opacity: 0.72` en `<small>`), luciendo lavado y borroso sobre fondo blanco.
+   - Solo la pequeña columna izquierda `.mini-left` tenía handler `onClick={() => setPlayerExpanded(true)}`. Al hacer click en el área libre del dock en PC no ocurría nada, y no existía un botón visible de expandir a la vista 3D.
+
+**Implementación (`supabase.ts`, `App.tsx`, `PerformativePlayer.tsx`, `globals.css`, `board-polish.css`):**
+1. **Erradicación del bucle infinito de auto-sync:**
+   - En `src/lib/supabase.ts`: añadido timeout de 8s con `Promise.race` a `uploadMediaToSupabase`, timeout de 6s con `AbortController` a `ensurePersistentUrl`, y restricción de tamaño (>4MB) para no generar Data URLs gigantes que bloqueen el hilo o saturen la base de datos.
+   - En `src/components/App.tsx`: `syncedSigRef.current[proj.id]` ahora almacena siempre la firma procesada (`JSON.stringify(merged)` o `sig`) impidiendo reintentos en bucle sin modificaciones reales del usuario.
+   - Añadido `safetyTimer` de 12s para garantizar que `syncStatus` vuelva a `idle` en caso de latencia extrema de red.
+   - Los fallos de red muestran la píldora de error y revierten automáticamente a `idle` tras 3.5s.
+2. **Modo Claro / Oscuro impecable en el Reproductor 3D:**
+   - En `src/components/PerformativePlayer.tsx`: agregadas props `theme?: "dark" | "light"` y `onToggleTheme?: () => void`. `darkStage` se inicializa y sincroniza con el tema global.
+   - Separado `isDarkStage = darkStage`: el modo de luz/oscuridad ya no es secuestrado por `isCinemaActive`.
+   - En modo claro (`.stage-light`): Three.js adapta la luz ambiental (`intensity: 1.6`) y `HighResFlowParticles` usa partículas de tinta `#111113` de alto contraste.
+   - En `src/components/board-polish.css`: agregadas reglas completas para `.perf-player.stage-light` (dock en Liquid Glass blanco translúcido `rgba(255, 255, 255, 0.88)`, textos en gris oscuro `#09090b` y `#4b5563`, barra de progreso en contraste, botones y selector en vidrio claro, y drawer de cola en blanco satinado).
+3. **Rediseño y nitidez del Mini-Player en PC:**
+   - En `src/components/App.tsx`: estructurado `.mini-meta-sub` con `.mini-time-badge` para evitar solapamientos. Agregado botón explícito `.mini-expand-btn` con icono de expansión a la derecha del slider de volumen, y habilitada la apertura del reproductor al hacer click en cualquier área libre del dock.
+   - En `src/app/globals.css`: contraste de alta definición para texto, títulos e iconos en modo claro y modo oscuro, con elevación flotante Apple Liquid Glass.
