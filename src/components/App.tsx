@@ -358,7 +358,35 @@ export default function App() {
     // Restaurar desde IndexedDB local (~3ms) cualquier portada/canvas pesado sin esperar a la red
     void fastCacheGet<Project[]>("eltablero_full_projects_v2").then((cachedProjs) => {
       if (Array.isArray(cachedProjs) && cachedProjs.length > 0) {
-        setProjects((prev) => (prev.length === 0 ? cachedProjs : prev));
+        const cachedMap = new Map(cachedProjs.map((cp) => [cp.id, cp]));
+        setProjects((prev) => {
+          if (prev.length === 0) return cachedProjs;
+          return prev.map((p) => {
+            const full = cachedMap.get(p.id);
+            if (!full) return p;
+            return {
+              ...p,
+              coverUrl: p.coverUrl || full.coverUrl,
+              tracks: p.tracks.map((t) => {
+                const ft = full.tracks.find((x) => x.id === t.id);
+                return ft
+                  ? {
+                      ...t,
+                      customAudioUrl: t.customAudioUrl || ft.customAudioUrl,
+                      coverUrl: t.coverUrl || ft.coverUrl,
+                    }
+                  : t;
+              }),
+              videos:
+                p.videos.some((v) => Boolean(v.url))
+                  ? p.videos.map((v) => {
+                      const fv = full.videos.find((x) => x.id === v.id);
+                      return { ...v, url: v.url || fv?.url };
+                    })
+                  : full.videos,
+            };
+          });
+        });
         setSelectedProjectId((prev) => prev || cachedProjs[0].id);
       }
     });
@@ -488,7 +516,18 @@ export default function App() {
         const sigs: Record<string, string> = {};
         visible.forEach((p) => (sigs[p.id] = JSON.stringify(p)));
         syncedSigRef.current = sigs;
-        setProjects(visible);
+        setProjects((prev) => {
+          const prevMap = new Map(prev.map((x) => [x.id, x]));
+          return visible.map((p) => {
+            const loc = prevMap.get(p.id);
+            if (!loc) return p;
+            return {
+              ...p,
+              coverUrl: p.coverUrl || loc.coverUrl,
+              videos: p.videos.some((v) => Boolean(v.url)) ? p.videos : loc.videos,
+            };
+          });
+        });
         if (visible.length > 0) {
           const mine = visible.find((p) => p.artistId === u.id) || visible[0];
           setSelectedProjectId((prev) => prev || mine.id);
@@ -947,7 +986,11 @@ export default function App() {
     setProjects((prev) =>
       prev.map((p) => {
         if (p.id !== projectId) return p;
-        return { ...p, videos: [newClip, ...p.videos] };
+        const updated = { ...p, videos: [newClip, ...p.videos] };
+        if (currentProject.id === p.id || currentProject.id === "standby-project") {
+          setCurrentProject(updated);
+        }
+        return updated;
       })
     );
   };
@@ -956,10 +999,14 @@ export default function App() {
     setProjects((prev) =>
       prev.map((p) => {
         if (p.id !== projectId) return p;
-        return {
+        const updated = {
           ...p,
           videos: p.videos.filter((v) => v.id !== clipId),
         };
+        if (currentProject.id === p.id) {
+          setCurrentProject(updated);
+        }
+        return updated;
       })
     );
   };
@@ -2333,6 +2380,8 @@ export default function App() {
                       {activeProject.videos.length > 0 && activeProject.videos[0].url && (
                         <div className="inspector-canvas-backdrop" aria-hidden="true">
                           {activeProject.videos[0].mediaType === "image" ||
+                          /^data:image\//i.test(activeProject.videos[0].url) ||
+                          /\.(gif|png|jpe?g|webp|avif)(\?|$)/i.test(activeProject.videos[0].url) ||
                           /\.(gif|png|jpe?g|webp|avif)$/i.test(activeProject.videos[0].label) ? (
                             <>
                               <img
@@ -2349,15 +2398,20 @@ export default function App() {
                           ) : (
                             <>
                               <video
+                                key={`amb-${activeProject.videos[0].url}`}
                                 src={activeProject.videos[0].url}
                                 autoPlay
                                 loop
                                 muted
                                 playsInline
                                 disablePictureInPicture
+                                onLoadedMetadata={(e) => {
+                                  e.currentTarget.play().catch(() => {});
+                                }}
                                 className="canvas-backdrop-ambient"
                               />
                               <video
+                                key={`med-${activeProject.videos[0].url}`}
                                 src={activeProject.videos[0].url}
                                 autoPlay
                                 loop
@@ -2365,6 +2419,9 @@ export default function App() {
                                 playsInline
                                 disablePictureInPicture
                                 controlsList="nodownload noplaybackrate nofullscreen"
+                                onLoadedMetadata={(e) => {
+                                  e.currentTarget.play().catch(() => {});
+                                }}
                                 className="canvas-backdrop-media"
                               />
                             </>
@@ -3043,7 +3100,12 @@ export default function App() {
           >
             <PerformativePlayer
               track={currentTrack}
-              project={currentProject}
+              project={
+                projects.find((p) => p.id === currentProject.id) ||
+                projects.find((p) => p.tracks.some((t) => t.id === currentTrack.id)) ||
+                activeProject ||
+                currentProject
+              }
               allProjects={projects}
               isPlaying={isPlaying}
               volume={volume}

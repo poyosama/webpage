@@ -1078,7 +1078,10 @@ export default function ManifoldLibrary3D({
                       style={{
                         transform: `translate3d(${tx.toFixed(1)}px, ${ty.toFixed(1)}px, 0px) rotate(${rotZ.toFixed(2)}deg) scale(${scale.toFixed(3)})`,
                         zIndex,
-                        opacity: absDelta > 3.4 ? 0 : Math.max(0.35, 1 - absDelta * 0.16),
+                        opacity: absDelta > 3.2 ? 0 : 1,
+                        filter: isFocused
+                          ? "none"
+                          : `brightness(${Math.max(0.62, 0.88 - absDelta * 0.08).toFixed(2)})`,
                         pointerEvents: absDelta > 3.2 ? "none" : "auto",
                       }}
                       onClick={(e) => {
@@ -1111,10 +1114,10 @@ export default function ManifoldLibrary3D({
                       </div>
 
                       <div
-                        className="vinyl-fan-sleeve-body"
+                        className={`vinyl-fan-sleeve-body ${p.coverUrl ? "has-cover-art" : ""}`}
                         style={{
                           background: p.coverUrl
-                            ? `linear-gradient(180deg, rgba(10,10,14,0.68) 0%, rgba(10,10,14,0.22) 48%, rgba(10,10,14,0.82) 100%), url(${p.coverUrl}) center / cover no-repeat`
+                            ? `linear-gradient(180deg, rgba(9,9,11,0.38) 0%, rgba(9,9,11,0.05) 48%, rgba(9,9,11,0.62) 100%), url(${p.coverUrl}) center / cover no-repeat`
                             : `linear-gradient(135deg, ${p.c1} 0%, ${p.c2} 135%)`,
                         }}
                       >
@@ -1125,12 +1128,14 @@ export default function ManifoldLibrary3D({
                           </small>
                         </div>
 
-                        <div className="vinyl-fan-center-crest">
-                          <div className="crest-ring">
-                            <strong>{p.tracks[0]?.glyph || "01"}</strong>
-                            <small>{p.type}</small>
+                        {!p.coverUrl && (
+                          <div className="vinyl-fan-center-crest">
+                            <div className="crest-ring">
+                              <strong>{p.tracks[0]?.glyph || "01"}</strong>
+                              <small>{p.type}</small>
+                            </div>
                           </div>
-                        </div>
+                        )}
 
                         <div className="vinyl-fan-corner-badge">
                           <b>{p.artist}</b>

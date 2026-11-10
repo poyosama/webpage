@@ -398,10 +398,26 @@ export default function PerformativePlayer({
   const [notesOpen, setNotesOpen] = useState(false);
   const [showRemaining, setShowRemaining] = useState(false);
 
-  const activeCanvasClip = useMemo(
-    () => project.videos?.find((v) => Boolean(v.url)) || null,
-    [project.videos]
-  );
+  const liveProject = useMemo(() => {
+    return (
+      allProjects.find((p) => p.id === project.id) ||
+      allProjects.find((p) => p.tracks.some((t) => t.id === track.id)) ||
+      project
+    );
+  }, [allProjects, project, track.id]);
+
+  const activeCanvasClip = useMemo(() => {
+    const fromLive = liveProject.videos?.find((v) => Boolean(v.url));
+    if (fromLive) return fromLive;
+    const fromProp = project.videos?.find((v) => Boolean(v.url));
+    if (fromProp) return fromProp;
+    const fromAny = allProjects
+      .find((p) => p.videos?.some((v) => Boolean(v.url)))
+      ?.videos?.find((v) => Boolean(v.url));
+    return fromAny || null;
+  }, [liveProject.videos, project.videos, allProjects]);
+
+  const activeCoverUrl = track.coverUrl || liveProject.coverUrl || project.coverUrl;
 
   const [currentSec, setCurrentSec] = useState(0);
   const [durationSec, setDurationSec] = useState(track.durationSec || 174);
@@ -426,12 +442,19 @@ export default function PerformativePlayer({
 
   // Siguientes del proyecto actual (como "Siguiente de: <Proyecto>" en Spotify)
   const projectNextTracks = useMemo(() => {
-    const idx = project.tracks.findIndex((t) => t.id === track.id);
-    if (idx === -1) return project.tracks;
-    return [...project.tracks.slice(idx + 1), ...project.tracks.slice(0, idx)];
-  }, [project.tracks, track.id]);
+    const idx = liveProject.tracks.findIndex((t) => t.id === track.id);
+    if (idx === -1) return liveProject.tracks;
+    return [...liveProject.tracks.slice(idx + 1), ...liveProject.tracks.slice(0, idx)];
+  }, [liveProject.tracks, track.id]);
 
-  const isCinemaActive = cinemaMode && Boolean(activeCanvasClip?.url || project.coverUrl);
+  const isCinemaActive = cinemaMode && Boolean(activeCanvasClip?.url || activeCoverUrl);
+  const isImageCanvas = Boolean(
+    activeCanvasClip?.url &&
+      (activeCanvasClip.mediaType === "image" ||
+        /^data:image\//i.test(activeCanvasClip.url) ||
+        /\.(gif|png|jpe?g|webp|avif)(\?|$)/i.test(activeCanvasClip.url) ||
+        /\.(gif|png|jpe?g|webp|avif)$/i.test(activeCanvasClip.label || ""))
+  );
 
   return (
     <div
@@ -466,8 +489,7 @@ export default function PerformativePlayer({
       {isCinemaActive && (
         <div className="perf-cinema-backdrop" aria-hidden>
           {activeCanvasClip?.url ? (
-            activeCanvasClip.mediaType === "image" ||
-            /\.(gif|png|jpe?g|webp|avif)(\?|$)/i.test(activeCanvasClip.url) ? (
+            isImageCanvas ? (
               <img
                 src={activeCanvasClip.url}
                 alt=""
@@ -482,11 +504,15 @@ export default function PerformativePlayer({
                 loop
                 muted
                 playsInline
+                disablePictureInPicture
+                onLoadedMetadata={(e) => {
+                  e.currentTarget.play().catch(() => {});
+                }}
               />
             )
-          ) : project.coverUrl ? (
+          ) : activeCoverUrl ? (
             <img
-              src={project.coverUrl}
+              src={activeCoverUrl}
               alt=""
               className="perf-cinema-media is-cover-ambient"
             />

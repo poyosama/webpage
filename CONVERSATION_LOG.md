@@ -938,3 +938,23 @@
    - Actualizado el nombre en toda la interfaz, barra superior, título gigante de `Inicio`, enjambres 3D de partículas en `LandingScene.tsx` y `CreateProjectScreen.tsx`, página 404, manifest PWA, títulos SEO y modales a **`board.`**.
 6. **Botón `+ Agregar tracks al proyecto` Siempre Visible Abajo del Proyecto (`.inspector-bottom-add-tracks-btn`):**
    - Agregada una barra fija y bien visible justo debajo de la lista de tracks de tu proyecto en `Biblioteca` para subir uno o varios archivos WAV/MP3 directo ahí mismo sin tener que ir a buscar botones escondidos.
+
+---
+
+### Turno 53 — Canvas en Reproductor, Canvas Nítido en Mis Proyectos y Contraste / Legibilidad Total
+**Pedidos del usuario (`juani`):**
+- *"y por cierto el canvas no se ve en el reproductor y en mis proyectos se ve demasiado como transparente no se, muchos textos en el mismo color del placeholder por favorrrr contraste para que sea legiblee"*
+
+**Implementación (`src/components/PerformativePlayer.tsx`, `src/components/App.tsx`, `src/components/ManifoldLibrary3D.tsx`, `src/lib/supabase.ts`, `src/app/globals.css`, `src/components/board-polish.css`):**
+1. **Canvas 100% Visible en el Reproductor (`PerformativePlayer.tsx` + `App.tsx` + `supabase.ts`):**
+   - Ahora `PerformativePlayer` recibe y resuelve en vivo el proyecto activo desde `projects` / `allProjects` (y `handleUploadProjectVideo` / `handleRemoveProjectVideo` actualizan también `currentProject`), de modo que cualquier Canvas recién subido o hidratado desde IndexedDB/Supabase aparece al instante en el reproductor.
+   - Mejorada la detección de Canvas tipo imagen/GIF (`mediaType === "image"`, `^data:image/`, extensión en `url` o en `label`) y forzado el `.play()` automático en `<video>` tanto en `PerformativePlayer` como en `Biblioteca`.
+   - Agregado fallback en `saveProjectToSupabase` por si la tabla `project_videos` en Supabase aún no tiene la columna `media_type`, y fusión real con `IndexedDB` (`eltablero_full_projects_v2`) al hacer F5 para no perder nunca URLs pesadas de Canvas o portadas.
+   - Subida la opacidad de `.perf-cinema-media` a `0.85` con una viñeta limpia para que el Canvas brille con todo atrás de las 36.000 partículas.
+2. **Canvas Nítido y Sobres Opacos en `Mis Proyectos` (`board-polish.css` + `ManifoldLibrary3D.tsx`):**
+   - Subida la opacidad del Canvas dentro del proyecto (`.canvas-backdrop-media` a `0.9` y `.canvas-backdrop-ambient` a `0.72` con un scrim mucho más liviano) y hecha sólida la tarjeta derecha de tracks (`rgba(14, 14, 19, 0.92)`) para que nada se vea lavado ni transparente.
+   - Quitada la transparencia (`opacity < 1`) de los sobres de vinilo vecinos en el arco (`ManifoldLibrary3D.tsx`) para que sean sobres físicos 100% opacos con sombreado por `brightness`.
+3. **Contraste y Legibilidad Total en `Mis Proyectos` y `Biblioteca` (`globals.css` + `board-polish.css`):**
+   - Separado el color de los placeholders (`#63636e`) de los colores de texto reales (`--ink: #ffffff`, `--ink-secondary: #d4d4d8`, `--ink-muted: #a1a1aa` en modo oscuro).
+   - Corregidos todos los fondos blancos fijos en modo oscuro (`.manifold-stage-overlay-top`, `.quick-proj-pill-group`, `.project-video-folder-bar`, `.video-clip-pill`, `.vinyl-arc-step-controls`, `.meta-pill-static`, `.vinyl-fan-inspector-card`) que causaban texto blanco sobre fondo blanco o gris apagado.
+

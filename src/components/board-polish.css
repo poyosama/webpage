@@ -204,8 +204,8 @@ textarea,
   width: 124%;
   height: 124%;
   object-fit: cover;
-  filter: blur(34px) saturate(1.35);
-  opacity: 0.48;
+  filter: blur(28px) saturate(1.4);
+  opacity: 0.72;
   transform: scale(1.06);
 }
 
@@ -215,7 +215,8 @@ textarea,
   width: 100%;
   height: 100%;
   object-fit: cover;
-  opacity: 0.52;
+  opacity: 0.9;
+  filter: saturate(1.12) contrast(1.05);
 }
 
 .canvas-backdrop-scrim {
@@ -224,18 +225,18 @@ textarea,
   z-index: 2;
   background: linear-gradient(
     95deg,
-    rgba(9, 9, 11, 0.48) 0%,
-    rgba(9, 9, 11, 0.68) 48%,
-    rgba(9, 9, 11, 0.84) 100%
+    rgba(9, 9, 11, 0.16) 0%,
+    rgba(9, 9, 11, 0.36) 48%,
+    rgba(9, 9, 11, 0.62) 100%
   );
 }
 
 :root[data-theme="light"] .canvas-backdrop-scrim {
   background: linear-gradient(
     95deg,
-    rgba(246, 245, 242, 0.5) 0%,
-    rgba(246, 245, 242, 0.74) 48%,
-    rgba(246, 245, 242, 0.88) 100%
+    rgba(246, 245, 242, 0.22) 0%,
+    rgba(246, 245, 242, 0.48) 48%,
+    rgba(246, 245, 242, 0.72) 100%
   );
 }
 
@@ -430,7 +431,7 @@ textarea,
   font-size: 0.65rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  opacity: 0.7;
+  opacity: 0.85;
   margin-bottom: auto;
 }
 
@@ -444,7 +445,7 @@ textarea,
 .vinyl-render-cover-fallback em {
   font-style: normal;
   font-size: 0.82rem;
-  opacity: 0.78;
+  opacity: 0.9;
 }
 
 .vinyl-render-sleeve-spine {
@@ -475,14 +476,14 @@ textarea,
   bottom: 12px;
   padding: 5px 11px;
   border-radius: 999px;
-  background: rgba(9, 9, 11, 0.78);
+  background: rgba(9, 9, 11, 0.88);
   color: #ffffff;
   font-size: 0.72rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: -0.01em;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.24);
   opacity: 0;
   transform: translateY(4px);
   transition: opacity 0.18s ease, transform 0.18s ease;
@@ -499,18 +500,20 @@ textarea,
   display: flex;
   flex-direction: column;
   gap: 12px;
-  background: rgba(20, 20, 24, 0.55);
-  backdrop-filter: blur(16px) saturate(150%);
-  -webkit-backdrop-filter: blur(16px) saturate(150%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(14, 14, 19, 0.92);
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.5);
   border-radius: 18px;
   padding: 18px 20px;
   min-width: 0;
 }
 
 :root[data-theme="light"] .inspector-unified-stage .inspector-tracklist {
-  background: rgba(255, 255, 255, 0.76);
-  border-color: rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.94);
+  border-color: rgba(15, 15, 17, 0.14);
+  box-shadow: 0 18px 42px rgba(15, 15, 17, 0.1);
 }
 
 .inspector-project-head {
@@ -565,9 +568,10 @@ textarea,
 
 .inspector-project-artist {
   display: block;
-  font-size: 0.84rem;
+  font-size: 0.88rem;
+  font-weight: 500;
   color: var(--ink-secondary);
-  margin-top: 3px;
+  margin-top: 4px;
 }
 
 .inspector-tracks-list-scroll {
@@ -648,8 +652,8 @@ textarea,
 
 .vinyl-fan-inspector-card.is-clickable-card:hover {
   transform: translateY(-3px) scale(1.012);
-  box-shadow: 0 28px 60px rgba(0, 0, 0, 0.14), 0 4px 16px rgba(0, 0, 0, 0.06);
-  border-color: rgba(17, 17, 20, 0.22);
+  box-shadow: 0 28px 60px rgba(0, 0, 0, 0.28), 0 4px 16px rgba(0, 0, 0, 0.14);
+  border-color: var(--line-strong);
 }
 
 .vinyl-fan-inspector-card.is-clickable-card:active {
@@ -670,23 +674,23 @@ textarea,
   width: 100%;
   height: 100%;
   object-fit: cover;
-  opacity: 0.58;
-  filter: saturate(1.18) contrast(1.06);
-  transform: scale(1.02);
+  opacity: 0.85;
+  filter: saturate(1.2) contrast(1.06);
+  transform: scale(1.01);
 }
 
 .perf-cinema-media.is-cover-ambient {
-  opacity: 0.38;
-  filter: blur(28px) saturate(1.35) brightness(0.75);
-  transform: scale(1.14);
+  opacity: 0.52;
+  filter: blur(24px) saturate(1.35) brightness(0.85);
+  transform: scale(1.12);
 }
 
 .perf-cinema-vignette {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 50% 44%, rgba(8, 8, 12, 0.18) 0%, rgba(5, 5, 8, 0.74) 85%),
-    linear-gradient(180deg, rgba(6, 6, 10, 0.55) 0%, rgba(6, 6, 10, 0.18) 42%, rgba(6, 6, 10, 0.82) 100%);
+    radial-gradient(circle at 50% 44%, rgba(8, 8, 12, 0.08) 0%, rgba(5, 5, 8, 0.48) 88%),
+    linear-gradient(180deg, rgba(6, 6, 10, 0.38) 0%, rgba(6, 6, 10, 0.08) 45%, rgba(6, 6, 10, 0.66) 100%);
 }
 
 .perf-player.has-cinema-canvas .perf-canvas-wrap {
@@ -773,7 +777,7 @@ textarea,
   font-size: 0.78rem;
   font-weight: 700;
   color: var(--ink-secondary);
-  opacity: 0.78;
+  opacity: 0.95;
   flex-shrink: 0;
   user-select: none;
 }
@@ -822,13 +826,13 @@ textarea,
   padding: 11px 16px;
   border-radius: 14px;
   border: 1.5px dashed var(--line-strong);
-  background: rgba(128, 128, 140, 0.06);
+  background: rgba(128, 128, 140, 0.12);
   cursor: pointer;
   transition: transform 0.16s ease, background 0.16s ease, border-color 0.16s ease;
 }
 
 .inspector-bottom-add-tracks-btn:hover {
-  background: rgba(128, 128, 140, 0.13);
+  background: rgba(128, 128, 140, 0.2);
   border-color: var(--ink);
   transform: translateY(-1px);
 }
@@ -860,6 +864,237 @@ textarea,
 }
 
 .inspector-bottom-add-tracks-btn .add-tracks-copy small {
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   color: var(--ink-secondary);
 }
+
+/* ==================== CONTRASTE Y LEGIBILIDAD EN MIS PROYECTOS / BIBLIOTECA ==================== */
+:root[data-theme="dark"] .manifold-stage-overlay-top {
+  background: rgba(18, 18, 24, 0.96);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+}
+
+:root[data-theme="dark"] .manifold-stage-overlay-top .mono-tag {
+  color: #d4d4d8;
+  font-weight: 700;
+}
+
+:root[data-theme="dark"] .manifold-stage-overlay-top h3 {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+:root[data-theme="dark"] .quick-proj-pill-group {
+  background: #202028;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+}
+
+:root[data-theme="dark"] .quick-proj-pill-group .quick-proj-pill {
+  color: #f4f4f5 !important;
+}
+
+:root[data-theme="dark"] .quick-proj-pill-group .quick-proj-pill b {
+  color: #ffffff !important;
+}
+
+:root[data-theme="dark"] .quick-proj-pill-group .quick-proj-pill small {
+  background: rgba(255, 255, 255, 0.14);
+  color: #e4e4e7;
+}
+
+:root[data-theme="dark"] .quick-proj-pill-group .pill-trash-btn {
+  color: #d4d4d8;
+  opacity: 0.85;
+}
+
+:root[data-theme="dark"] .quick-proj-pill-group.on {
+  background: #ffffff;
+  border-color: #ffffff;
+  color: #09090b;
+}
+
+:root[data-theme="dark"] .quick-proj-pill-group.on .quick-proj-pill,
+:root[data-theme="dark"] .quick-proj-pill-group.on .quick-proj-pill b {
+  color: #09090b !important;
+}
+
+:root[data-theme="dark"] .quick-proj-pill-group.on .quick-proj-pill small {
+  background: rgba(9, 9, 11, 0.14);
+  color: #09090b;
+}
+
+:root[data-theme="dark"] .quick-proj-pill-group.on .pill-trash-btn {
+  color: #09090b;
+  opacity: 0.85;
+}
+
+:root[data-theme="dark"] .quick-proj-pill.add-project-plus-pill {
+  background: #ffffff;
+  border-color: #ffffff;
+  color: #09090b;
+}
+
+:root[data-theme="dark"] .quick-proj-pill.add-project-plus-pill b {
+  color: #09090b;
+}
+
+:root[data-theme="dark"] .vinyl-arc-step-controls {
+  background: rgba(22, 22, 29, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+:root[data-theme="dark"] .vinyl-step-btn {
+  background: #ffffff;
+  color: #09090b;
+}
+
+:root[data-theme="dark"] .vinyl-step-counter {
+  color: #ffffff;
+}
+
+/* Textos sobre el sobre del vinilo con fondo sólido translúcido para lectura perfecta sobre fotos */
+.vinyl-fan-sleeve-body .vinyl-fan-spine-text {
+  background: rgba(9, 9, 11, 0.78);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 8px 6px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+}
+
+.vinyl-fan-sleeve-body .vinyl-fan-spine-text small {
+  color: #e4e4e7;
+  opacity: 0.95;
+}
+
+.vinyl-fan-sleeve-body .vinyl-fan-corner-badge {
+  background: rgba(9, 9, 11, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 6px 10px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+}
+
+.vinyl-fan-sleeve-body .vinyl-fan-corner-badge span {
+  color: #f4f4f5;
+  opacity: 0.95;
+  font-weight: 700;
+}
+
+/* Tarjeta inspectora derecha en Mis Proyectos */
+:root[data-theme="dark"] .vinyl-fan-inspector-card {
+  background: #17171f !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+  box-shadow: 0 24px 56px rgba(0, 0, 0, 0.65);
+}
+
+:root[data-theme="dark"] .vinyl-fan-inspector-card .mono-tag {
+  color: #e4e4e7;
+  font-weight: 700;
+}
+
+:root[data-theme="dark"] .vinyl-fan-inspector-card .vinyl-fan-artist-line {
+  color: #e4e4e7 !important;
+}
+
+:root[data-theme="dark"] .vinyl-fan-inspector-card .vinyl-fan-artist-line b {
+  color: #ffffff !important;
+}
+
+:root[data-theme="dark"] .vinyl-fan-inspector-card .vinyl-fan-desc {
+  color: #d4d4d8 !important;
+}
+
+:root[data-theme="dark"] .vinyl-mini-track-pill {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+:root[data-theme="dark"] .vinyl-mini-track-pill:hover {
+  background: #ffffff;
+  color: #09090b;
+}
+
+:root[data-theme="dark"] .trash-icon-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+}
+
+/* Barra inferior de Canva y audio en Mis Proyectos */
+:root[data-theme="dark"] .project-video-folder-bar {
+  background: #14141b;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+}
+
+:root[data-theme="dark"] .project-video-folder-bar .video-folder-left,
+:root[data-theme="dark"] .project-video-folder-bar .video-folder-left b {
+  color: #ffffff;
+}
+
+:root[data-theme="dark"] .video-clip-pill {
+  background: #22222c;
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+}
+
+:root[data-theme="dark"] .video-clip-remove-btn {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+}
+
+/* Píldoras de metadata y filas de tracks adentro del proyecto */
+:root[data-theme="dark"] .meta-pill-select,
+:root[data-theme="dark"] .meta-pill-static {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+}
+
+:root[data-theme="dark"] .meta-pill-static b,
+:root[data-theme="dark"] .meta-pill-select select {
+  color: #ffffff;
+}
+
+:root[data-theme="dark"] .visibility-toggle {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  color: #ffffff;
+  font-weight: 700;
+}
+
+:root[data-theme="dark"] .visibility-toggle.on {
+  background: rgba(34, 197, 94, 0.22);
+  border-color: #22c55e;
+  color: #4ade80;
+}
+
+:root[data-theme="dark"] .clean-track-row:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+:root[data-theme="dark"] .clean-track-row .row-main b {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+:root[data-theme="dark"] .clean-track-row .row-main span {
+  color: #d4d4d8;
+}
+
+:root[data-theme="dark"] .meta-chip {
+  background: rgba(255, 255, 255, 0.12);
+  color: #f4f4f5;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+

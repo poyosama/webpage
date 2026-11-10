@@ -293,16 +293,23 @@ export async function fetchUserProjectsFromSupabase(userId?: string): Promise<Pr
         tracks,
         videos: (row.project_videos || [])
           .filter((v: any) => cleanUrl(v.url))
-          .map((v: any): ProjectVideoClip => ({
-            id: v.id,
-            label: v.label || "canvas_loop.mp4",
-            kind: "uploaded",
-            stylePreset: "vhs-grain",
-            url: v.url,
-            mediaType: v.media_type || "video",
-            c1: "#111111",
-            c2: "#222222",
-          })),
+          .map((v: any): ProjectVideoClip => {
+            const isImg =
+              v.media_type === "image" ||
+              /^data:image\//i.test(v.url || "") ||
+              /\.(gif|png|jpe?g|webp|avif)(\?|$)/i.test(v.url || "") ||
+              /\.(gif|png|jpe?g|webp|avif)$/i.test(v.label || "");
+            return {
+              id: v.id,
+              label: v.label || "canvas_loop.mp4",
+              kind: "uploaded",
+              stylePreset: "vhs-grain",
+              url: v.url,
+              mediaType: isImg ? "image" : "video",
+              c1: "#111111",
+              c2: "#222222",
+            };
+          }),
       };
     });
   } catch (err) {
@@ -558,7 +565,15 @@ export async function saveProjectToSupabase(project: Project, userId?: string): 
           media_type: v.mediaType || "video",
         }));
       if (videoRows.length > 0) {
-        const { error: vErr } = await supabase.from("project_videos").upsert(videoRows, { onConflict: "id" });
+        let { error: vErr } = await supabase
+          .from("project_videos")
+          .upsert(videoRows, { onConflict: "id" });
+        if (vErr && /media_type/i.test(vErr.message)) {
+          const fallbackRows = videoRows.map(({ media_type: _mt, ...rest }) => rest);
+          ({ error: vErr } = await supabase
+            .from("project_videos")
+            .upsert(fallbackRows, { onConflict: "id" }));
+        }
         if (vErr) console.warn("Error guardando canvas:", vErr.message);
       }
     }
