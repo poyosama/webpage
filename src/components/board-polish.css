@@ -4,6 +4,7 @@ body,
 * {
   scrollbar-width: none;
   -ms-overflow-style: none;
+  -webkit-tap-highlight-color: transparent;
 }
 html::-webkit-scrollbar,
 body::-webkit-scrollbar,
@@ -11,6 +12,31 @@ body::-webkit-scrollbar,
   display: none;
   width: 0;
   height: 0;
+}
+
+/* Prohibir el palito de texto (caret), selección accidental y bordes de foco salvo en campos de escritura */
+*:not(input):not(textarea):not([contenteditable="true"]),
+input[type="range"],
+input[type="file"],
+input[type="color"],
+input[type="checkbox"],
+input[type="radio"],
+button,
+label,
+select {
+  -webkit-user-select: none;
+  user-select: none;
+  caret-color: transparent !important;
+  outline: none !important;
+}
+
+input:not([type="range"]):not([type="file"]):not([type="color"]):not([type="checkbox"]):not([type="radio"]),
+textarea,
+[contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
+  caret-color: var(--ink) !important;
+  cursor: text;
 }
 
 .auth-splash {

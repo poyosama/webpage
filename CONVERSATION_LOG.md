@@ -759,3 +759,14 @@
 **Implementación (`src/app/globals.css`):**
 - Eliminados `background: #090a0f`, `background: #000` y `width: 100%` en `.inspector-canvas-viewer-card` y `.canvas-video-wrapper`.
 - Configurados ambos contenedores con `width: fit-content; max-width: 100%; display: inline-flex;` y centrados dentro de `.inspector-canvas-section`, aplicando el `border-radius: 14px` y sombra directamente al borde exacto del video/GIF para que se adapte a cualquier aspecto (4:3, 1:1, 9:16, 16:9) sin barras negras a los costados.
+
+
+---
+
+### Turno 42 — Eliminación Global del Cursor de Texto (`caret`) y Focus Outlines fuera de Inputs
+**Prompt del usuario:**
+- *"fijate tambien que esta seleccionada la ruedita del volumen como con ese palito para escribir y aunque no se pueda escribir sacalos todos en todos lados excepto en donde se escribe texto porque realmente queda muy feo"*
+
+**Implementación (`src/components/board-polish.css`):**
+- Aplicado globalmente `caret-color: transparent !important; user-select: none; outline: none !important;` a todos los elementos de la interfaz, incluidos `input[type="range"]` (sliders de volumen y scrubber), `button`, `label`, `select`, etc.
+- Habilitado exclusivamente `user-select: text; caret-color: var(--ink) !important; cursor: text;` para campos reales de escritura (`input` de texto, `textarea` y `[contenteditable="true"]`).
