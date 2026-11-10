@@ -2459,3 +2459,34 @@ textarea,
     max-width: 100% !important;
   }
 }
+
+/* ==================== BIBLIOTECA LIMPIA: solo rueda de vinilos + tarjeta (sin textos arriba) ==================== */
+.library-page.library-clean .library-title-block,
+.library-page.library-clean .seg-pills button:first-child,
+.library-page.library-clean .manifold-overlay-titles,
+.library-page.library-clean .manifold-quick-pills,
+.library-page.library-clean .manifold-stage-overlay-top {
+  display: none !important;
+}
+
+.library-page.library-clean .section-header-row {
+  justify-content: flex-end !important;
+  margin-bottom: 8px !important;
+  min-height: 0 !important;
+}
+
+.library-page.library-clean .section-header-row .row-actions {
+  margin-left: auto !important;
+}
+
+.library-page.library-clean .seg-pills {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+}
+
+@media (max-width: 720px) {
+  .library-page.library-clean .section-header-row {
+    margin-bottom: 4px !important;
+  }
+}

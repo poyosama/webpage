@@ -1062,3 +1062,9 @@
 4. **Reproductor (`IMG_3895`):** badges de edición/tema ocultos en celu (especificidad CSS), sin artista/BPM falsos en "Sin track activo", `darkStage` por defecto.
 5. **808 en celular:** latido atenuado (x0.38) en <=720px.
 6. **Seed procedural:** tocar el fondo cambia la forma de las 36K partículas (flujo, nudo trefoil, hélice ADN, esfera armónica).
+
+---
+
+### Turno 61 — Biblioteca Limpia (solo rueda de vinilos + tarjeta)
+**Pedido (`juani`):** *"quiero que cuando entres a la biblioteca se vea asi (captura), no me gusta todo el texto que tiene arriba"*.
+**Implementación (`App.tsx`, `board-polish.css`):** en `Biblioteca > Mis Proyectos` se ocultan el título, `Mis Proyectos (n)`, el texto "Deslizá la rueda…" y las píldoras superiores (`.library-clean`). Queda solo la rueda + tarjeta, con un acceso mínimo a `Guardados` y el switch de vista arriba a la derecha.

@@ -2231,9 +2231,13 @@ export default function App() {
 
           {/* ==================== 2. BIBLIOTECA / GUARDADOS ==================== */}
           {tab === "biblioteca" && (
-            <div className="library-page">
+            <div
+              className={`library-page ${
+                meProfile.accountType !== "oyente" && librarySubTab === "proyectos" ? "library-clean" : ""
+              }`}
+            >
               <div className="section-header-row">
-                <div>
+                <div className="library-title-block">
                   <span className="mono-tag">
                     {meProfile.accountType === "oyente"
                       ? "COLECCIÓN PERSONAL // GUARDADOS"
