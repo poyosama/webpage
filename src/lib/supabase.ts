@@ -387,18 +387,39 @@ export async function hydrateProjectsAudioInBackground(
 }
 
 // ==================== DB: FETCH DE PERFILES DE LA COMUNIDAD ====================
+export async function purgeJaimeMartinezProfile(): Promise<void> {
+  try {
+    await supabase
+      .from("profiles")
+      .delete()
+      .or("handle.ilike.%jm2100553%,name.ilike.%jaime martinez%");
+  } catch {
+    // ignore
+  }
+}
+
 export async function fetchCommunityProfilesFromSupabase(): Promise<ArtistProfile[]> {
   try {
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, name, handle, role, zone, crew, bio, color, stickers, avatar_url, created_at")
+      .select("id, name, handle, role, zone, crew, bio, color, stickers, avatar_url, created_at, invite_codes")
       .order("created_at", { ascending: false });
 
     if (error || !data) {
       return [];
     }
 
-    return data.map((row: any): ArtistProfile => ({
+    const filteredRows = data.filter((row: any) => {
+      const h = (row.handle || "").toLowerCase();
+      const n = (row.name || "").toLowerCase();
+      if (h.includes("jm2100553") || n.includes("jaime martinez")) {
+        void supabase.from("profiles").delete().eq("id", row.id);
+        return false;
+      }
+      return true;
+    });
+
+    return filteredRows.map((row: any): ArtistProfile => ({
       id: row.id,
       name: row.name,
       handle: row.handle?.startsWith("@") ? row.handle : `@${row.handle || "artista"}`,

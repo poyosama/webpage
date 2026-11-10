@@ -27,6 +27,7 @@ import {
   isSupabaseConfigured,
   fetchUserProjectsFromSupabase,
   fetchCommunityProfilesFromSupabase,
+  purgeJaimeMartinezProfile,
   saveUserProfileToSupabase,
   saveProjectToSupabase,
   deleteTrackFromSupabase,
@@ -44,6 +45,14 @@ import {
   verifyProjectInviteToken,
   type ProjectInviteRole,
 } from "@/lib/supabase";
+import {
+  validateInviteCode,
+  consumeInviteCode,
+  getPendingInviteCode,
+  setPendingInviteCode,
+  getOrGenerateUserInvites,
+} from "@/lib/invites";
+import { InviteFriendsModal, WelcomeInviteModal } from "./InviteFriendsModal";
 import { analyzeAudioFile, downloadTrackAudio } from "@/lib/audioAnalysis";
 import "./board-polish.css";
 
@@ -120,7 +129,7 @@ function formatTime(sec: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-export default function App() {
+export default function App({ initialInviteCode }: { initialInviteCode?: string } = {}) {
   const [tab, setTab] = useState<ScreenTab>("inicio");
   const [meProfile, setMeProfile] = useState<ArtistProfile>(EMPTY_ME_PROFILE);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -136,6 +145,14 @@ export default function App() {
   const lastUserIdRef = useRef<string | null>(null);
   const syncedSigRef = useRef<Record<string, string>>({});
 
+  // Sistema de invitaciones exclusivas de board. (3 códigos cada 2 semanas)
+  const [inviteFriendsModalOpen, setInviteFriendsModalOpen] = useState(false);
+  const [welcomeInvite, setWelcomeInvite] = useState<{
+    code: string;
+    creatorHandle?: string;
+    creatorName?: string;
+  } | null>(null);
+
   // Modo oscuro / Modo claro global para todas las pantallas
   const [theme, setTheme] = useState<"dark" | "light">("dark");
 
@@ -148,6 +165,36 @@ export default function App() {
       document.documentElement.setAttribute("data-theme", "dark");
     }
   }, []);
+
+  // Detección automática de enlaces de invitación (/invite/:code o ?invite=:code) + purga Jaime Martinez
+  useEffect(() => {
+    void purgeJaimeMartinezProfile();
+
+    let code = initialInviteCode;
+    if (!code && typeof window !== "undefined") {
+      const match = window.location.pathname.match(/\/invite\/([^\/?#]+)/i);
+      if (match && match[1]) {
+        code = match[1];
+      } else {
+        const q = new URLSearchParams(window.location.search).get("invite");
+        if (q) code = q;
+      }
+    }
+
+    if (code) {
+      const clean = code.trim().toLowerCase();
+      setPendingInviteCode(clean);
+      void validateInviteCode(clean).then((res) => {
+        if (res.valid) {
+          setWelcomeInvite({
+            code: clean,
+            creatorHandle: res.creatorHandle,
+            creatorName: res.creatorName,
+          });
+        }
+      });
+    }
+  }, [initialInviteCode]);
 
   const toggleTheme = () => {
     sfx.tap();
@@ -551,7 +598,18 @@ export default function App() {
           handle: res.cleanHandle || handle,
           avatarUrl: meta.avatar_url || undefined,
         };
+
+        // Si se registró con un link de invitación, consumirlo inmediatamente
+        const pendingInvite = getPendingInviteCode();
+        if (pendingInvite) {
+          void consumeInviteCode(pendingInvite, u.id, base.handle);
+        }
+        void getOrGenerateUserInvites(u.id, base.handle, base.name);
       }
+      if (existing) {
+        void getOrGenerateUserInvites(u.id, base.handle, base.name);
+      }
+      setWelcomeInvite(null);
       if (pendingRole) base.accountType = pendingRole;
       if (!mounted()) return;
       setMeProfile(base);
@@ -1491,13 +1549,20 @@ export default function App() {
   const myProjects = projects.filter(
     (p) => (meProfile.id && p.artistId === meProfile.id) || Boolean(projectInvites[p.id])
   );
-  const publicUserProjects = projects.filter((p) => p.visibility === "public");
-  // board. Inicio muestra únicamente proyectos públicos + catálogo demo (los proyectos privados jamás aparecen en el Inicio público)
+
+  // Proyectos ordenados por lo más nuevo que se va subiendo en tiempo real
+  const userProjectsRecent = [...projects].sort((a, b) => {
+    const tA = new Date(a.createdAt || 0).getTime();
+    const tB = new Date(b.createdAt || 0).getTime();
+    return tB - tA;
+  });
+
+  // board. Inicio muestra lo que se va subiendo en tiempo real + catálogo base curado
   const boardProjects: Project[] = [
-    ...publicUserProjects,
+    ...userProjectsRecent,
     ...DEMO_PROJECTS.filter(
       (d) =>
-        !publicUserProjects.some(
+        !userProjectsRecent.some(
           (p) =>
             p.id.toLowerCase() === d.id.toLowerCase() ||
             p.title.trim().toLowerCase() === d.title.trim().toLowerCase()
@@ -1520,17 +1585,18 @@ export default function App() {
     : null;
   const projectTypeByCount = (n: number): ProjectType => (n <= 1 ? "Single" : n <= 6 ? "EP" : "LP");
 
-  // Artistas en board.: combinación de perfiles registrados en la nube con los artistas de la escena
+  // Artistas en board.: ÚNICAMENTE las personas reales que se van logueando / registrando (excluyendo a Jaime Martinez)
+  const loggedInArtists = communityArtists.filter((ca) => {
+    const h = (ca.handle || "").toLowerCase();
+    const n = (ca.name || "").toLowerCase();
+    return !h.includes("jm2100553") && !n.includes("jaime martinez");
+  });
+
   const allArtists = [
-    ...communityArtists,
-    ...SCENE_ARTISTS.filter(
-      (sa) =>
-        !communityArtists.some(
-          (ca) =>
-            ca.handle?.toLowerCase() === sa.handle?.toLowerCase() ||
-            ca.name.toLowerCase() === sa.name.toLowerCase()
-        )
-    ),
+    ...(meProfile.id && !loggedInArtists.some((a) => a.id === meProfile.id || a.handle === meProfile.handle)
+      ? [meProfile]
+      : []),
+    ...loggedInArtists,
   ];
   const sortedArtists = allArtists
     .map((a) => {
@@ -1999,12 +2065,12 @@ export default function App() {
                 <div className="apple-card">
                   <div className="card-head">
                     <span className="mono-tag">PROYECTOS // ROTACIÓN DE BOARD.</span>
-                    <h3>Proyectos fijados</h3>
+                    <h3>Lo último subido & Rotación</h3>
                   </div>
                   <div className="track-list-clean">
                     {boardProjects
-                      .flatMap((p) => p.tracks.slice(0, 2).map((t) => ({ track: t, proj: p })))
-                      .slice(0, 8)
+                      .flatMap((p) => p.tracks.map((t) => ({ track: t, proj: p })))
+                      .slice(0, 10)
                       .map(({ track, proj }, i) => {
                           const active = currentTrack.id === track.id;
                           return (
@@ -3783,6 +3849,17 @@ export default function App() {
                     >
                       Cuenta / Google Sign-In
                     </button>
+                    <button
+                      type="button"
+                      className="apple-btn ghost invite-cta-btn"
+                      onClick={() => {
+                        sfx.open();
+                        setInviteFriendsModalOpen(true);
+                      }}
+                      title="Invitá a tus amigos (3 pases cada 2 semanas)"
+                    >
+                      🎟️ Invitar amigos (3 pases)
+                    </button>
                   </div>
                 </div>
 
@@ -3801,6 +3878,27 @@ export default function App() {
                       <span>SEGUIDORES</span>
                     </div>
                   )}
+                </div>
+
+                {/* Banner de Invitaciones exclusivas (3 cada 2 semanas) */}
+                <div
+                  className="profile-invite-banner"
+                  onClick={() => {
+                    sfx.open();
+                    setInviteFriendsModalOpen(true);
+                  }}
+                  title="Abrir mis pases de invitación"
+                >
+                  <div className="profile-invite-banner-left">
+                    <span className="invite-banner-icon">🎟️</span>
+                    <div className="invite-banner-text">
+                      <b>Invitaciones exclusivas a board.</b>
+                      <span>Tenés 3 códigos cada 2 semanas para sumar a tus artistas y productores de confianza.</span>
+                    </div>
+                  </div>
+                  <button type="button" className="apple-btn ghost compact">
+                    Ver pases
+                  </button>
                 </div>
               </section>
 
@@ -4183,6 +4281,32 @@ export default function App() {
               setAuthModalOpen(false);
               sfx.drop();
             }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ==================== MODAL INVITAR AMIGOS (3 CÓDIGOS CADA 2 SEMANAS) ==================== */}
+      <AnimatePresence>
+        {inviteFriendsModalOpen && (
+          <InviteFriendsModal
+            profile={meProfile}
+            onClose={() => setInviteFriendsModalOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ==================== MODAL DE BIENVENIDA POR LINK DE INVITACIÓN ==================== */}
+      <AnimatePresence>
+        {welcomeInvite && !googleConnected && (
+          <WelcomeInviteModal
+            code={welcomeInvite.code}
+            creatorHandle={welcomeInvite.creatorHandle}
+            creatorName={welcomeInvite.creatorName}
+            onAccept={() => {
+              setWelcomeInvite(null);
+              setAuthModalOpen(true);
+            }}
+            onClose={() => setWelcomeInvite(null)}
           />
         )}
       </AnimatePresence>
@@ -4791,7 +4915,7 @@ function EditProfileModal({
   );
 }
 
-/* ==================== COMPONENTE: MODAL LOGIN / REGISTER CON GOOGLE ==================== */
+/* ==================== COMPONENTE: MODAL LOGIN / REGISTER CON GOOGLE (FACTOR AUTH INVITACIÓN) ==================== */
 function GoogleAuthModal({
   profile,
   connected,
@@ -4812,7 +4936,54 @@ function GoogleAuthModal({
   const [msg, setMsg] = useState("");
   const [msgType, setMsgType] = useState<"info" | "error" | "success">("info");
 
+  // Factor Auth: invitación obligatoria para nuevos registros
+  const [inviteCodeInput, setInviteCodeInput] = useState("");
+  const [verifiedInvite, setVerifiedInvite] = useState<{
+    code: string;
+    creatorHandle?: string;
+  } | null>(null);
+  const [checkingInvite, setCheckingInvite] = useState(false);
+  const [inviteError, setInviteError] = useState("");
+  const [existingUserMode, setExistingUserMode] = useState(false);
+
+  useEffect(() => {
+    if (connected) return;
+    const pending = getPendingInviteCode();
+    if (pending) {
+      setInviteCodeInput(pending);
+      void validateInviteCode(pending).then((res) => {
+        if (res.valid) {
+          setVerifiedInvite({ code: pending, creatorHandle: res.creatorHandle });
+        }
+      });
+    }
+  }, [connected]);
+
+  const handleVerifyCode = async () => {
+    if (!inviteCodeInput.trim()) {
+      setInviteError("Ingresá un código de invitación.");
+      return;
+    }
+    setCheckingInvite(true);
+    setInviteError("");
+    sfx.tap();
+    const res = await validateInviteCode(inviteCodeInput);
+    setCheckingInvite(false);
+    if (res.valid) {
+      setVerifiedInvite({ code: inviteCodeInput.trim().toLowerCase(), creatorHandle: res.creatorHandle });
+      setPendingInviteCode(inviteCodeInput.trim().toLowerCase());
+      sfx.drop();
+    } else {
+      setInviteError(res.error || "Código inválido o ya utilizado.");
+    }
+  };
+
   const handleOAuthGoogle = async () => {
+    if (!connected && !verifiedInvite && !existingUserMode) {
+      setInviteError("Ingresá y validá tu código de invitación para registrarte.");
+      return;
+    }
+
     setLoading(true);
     setMsg("Conectando con Google...");
     setMsgType("info");
@@ -4872,11 +5043,11 @@ function GoogleAuthModal({
         <div className="modal-head">
           <div>
             <span className="mono-tag">
-              {connected ? "CUENTA" : "ACCESO"}
+              {connected ? "CUENTA" : "ACCESO EXCLUSIVO"}
             </span>
             <h3 style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <GoogleCircleIcon size={22} />
-              {connected ? "Sesión iniciada" : "Iniciar sesión"}
+              {connected ? "Sesión iniciada" : "Ingreso a board."}
             </h3>
           </div>
           <button type="button" className="apple-btn ghost" onClick={onClose}>
@@ -4897,6 +5068,124 @@ function GoogleAuthModal({
             </div>
           </div>
         ) : null}
+
+        {/* Factor Auth Gate: Invitación obligatoria para nuevos registros */}
+        {!connected && (
+          <>
+            {verifiedInvite ? (
+              <div
+                style={{
+                  padding: "11px 14px",
+                  borderRadius: 12,
+                  fontSize: "0.82rem",
+                  marginBottom: 16,
+                  border: "1px solid rgba(34,197,94,0.35)",
+                  background: "rgba(34,197,94,0.08)",
+                  color: "#16a34a",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 8,
+                }}
+              >
+                <div>
+                  <b>✓ Pase VIP de invitación verificado</b>
+                  <div style={{ fontSize: "0.74rem", opacity: 0.85, marginTop: 2 }}>
+                    Invitado por {verifiedInvite.creatorHandle || "@board"} · Código: {verifiedInvite.code}
+                  </div>
+                </div>
+                <span style={{ fontSize: "1.1rem" }}>🎟️</span>
+              </div>
+            ) : existingUserMode ? (
+              <div
+                style={{
+                  padding: "10px 14px",
+                  borderRadius: 12,
+                  fontSize: "0.82rem",
+                  marginBottom: 16,
+                  border: "1px solid var(--line)",
+                  background: "var(--surface-secondary, rgba(0,0,0,0.02))",
+                  color: "var(--ink)",
+                }}
+              >
+                <div style={{ fontWeight: 600 }}>Miembros existentes</div>
+                <div style={{ fontSize: "0.74rem", color: "var(--ink-secondary)", marginTop: 2, marginBottom: 8 }}>
+                  Si ya tenías cuenta creada en board., ingresá directo con tu cuenta de Google.
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setExistingUserMode(false)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "var(--ink-secondary)",
+                    fontSize: "0.76rem",
+                    cursor: "pointer",
+                    padding: 0,
+                    textDecoration: "underline",
+                  }}
+                >
+                  ← ¿Sos nuevo? Ingresar con código de invitación
+                </button>
+              </div>
+            ) : (
+              <div className="auth-invite-gate-box">
+                <span style={{ fontWeight: 600, color: "var(--ink)" }}>
+                  Acceso exclusivo por invitación
+                </span>
+                <span>
+                  board. es una plataforma privada. Para registrarte como artista o productor necesitás un link o código de invitación de un miembro.
+                </span>
+                <div className="auth-invite-input-row">
+                  <input
+                    placeholder="Código (ej. board-k9x2m)"
+                    value={inviteCodeInput}
+                    onChange={(e) => {
+                      setInviteCodeInput(e.target.value);
+                      setInviteError("");
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleVerifyCode();
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="apple-btn primary compact"
+                    disabled={checkingInvite}
+                    onClick={handleVerifyCode}
+                  >
+                    {checkingInvite ? "..." : "Verificar"}
+                  </button>
+                </div>
+                {inviteError && (
+                  <div style={{ color: "#e11d48", fontSize: "0.76rem", marginTop: 2 }}>
+                    {inviteError}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setExistingUserMode(true);
+                    setInviteError("");
+                  }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "var(--ink-secondary)",
+                    fontSize: "0.76rem",
+                    cursor: "pointer",
+                    padding: 0,
+                    textAlign: "left",
+                    textDecoration: "underline",
+                    marginTop: 4,
+                  }}
+                >
+                  ¿Ya tenías cuenta en board.? Iniciar sesión directo
+                </button>
+              </div>
+            )}
+          </>
+        )}
 
         {msg && (
           <div
@@ -4955,11 +5244,21 @@ function GoogleAuthModal({
             <button
               type="button"
               className="google-oauth-btn"
-              disabled={loading}
+              disabled={loading || (!verifiedInvite && !existingUserMode)}
               onClick={handleOAuthGoogle}
+              style={{
+                opacity: !verifiedInvite && !existingUserMode ? 0.45 : 1,
+                cursor: !verifiedInvite && !existingUserMode ? "not-allowed" : "pointer",
+              }}
             >
               <GoogleCircleIcon size={20} />
-              <span>{loading ? "Conectando..." : "Ingresar con Google"}</span>
+              <span>
+                {loading
+                  ? "Conectando..."
+                  : !verifiedInvite && !existingUserMode
+                  ? "Validá tu invitación para continuar"
+                  : "Ingresar con Google"}
+              </span>
             </button>
           )}
         </div>

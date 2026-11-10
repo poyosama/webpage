@@ -1243,3 +1243,39 @@
 3. **Rediseño y nitidez del Mini-Player en PC:**
    - En `src/components/App.tsx`: estructurado `.mini-meta-sub` con `.mini-time-badge` para evitar solapamientos. Agregado botón explícito `.mini-expand-btn` con icono de expansión a la derecha del slider de volumen, y habilitada la apertura del reproductor al hacer click en cualquier área libre del dock.
    - En `src/app/globals.css`: contraste de alta definición para texto, títulos e iconos en modo claro y modo oscuro, con elevación flotante Apple Liquid Glass.
+
+---
+
+### Turno 72 — Sistema Exclusivo de Invitaciones (3 pases cada 14 días), Factor Auth Gate, Rotación de Usuarios Reales y Purga de Jaime Martínez
+**Pedidos del usuario (`juani`):**
+1. *"quiero que elimines los otros artistas del rotacion nada mas (no los del board en si)"*
+2. *"y los proyectos fijados tambien empeza a mostrar lo que se va subiendo viste"*
+3. *"los artistas en board deja las personas que se van logeando por ahora, al perfil de Jaime Martinez eliminalo"*
+4. *"tenemos que encontrarle la vuelta a los codigos de invitacion, create algo asi en el perfil que diga invitar amigos, y te da (por perfil) 3 codigos cada 2 semanas, tiene que gastarse el link cuando una persona la consume para crearse una cuenta y el link debe contener algo de eltablero.blog/invite/xxxxx algo asi capische ?"*
+5. *"y obviamente sin un link valido no podes registrarte asi que tambien esta ese factor auth"*
+
+**Implementación (`invites.ts`, `InviteFriendsModal.tsx`, `App.tsx`, `supabase.ts`, `next.config.ts`, `board-polish.css`):**
+1. **Sistema de Pases e Invitaciones Exclusivas (`src/lib/invites.ts`):**
+   - Cada perfil de artista/productor cuenta con **3 códigos de invitación cada 14 días** (2 semanas).
+   - Generador y validador de pases (`board-xxxxxx`) con persistencia en Supabase (`profiles.invite_codes`) y caché offline en `board_global_invite_registry_v1`.
+   - Cada código genera su link canónico: `https://www.eltablero.blog/invite/<codeSlug>`.
+   - Al ser consumido durante el registro de un nuevo artista, el código se marca inmediatamente como utilizado (`used: true`), registrando el ID y handle del nuevo usuario (`usedByHandle`, `usedAt`), invalidando el link para siempre (1 solo uso).
+   - El sistema calcula los días restantes (`daysUntilNextBatch`) para la recarga de los siguientes 3 pases.
+2. **Modal de Invitar Amigos y Bienvenida (`src/components/InviteFriendsModal.tsx`, `board-polish.css`):**
+   - En el Perfil (`@handle`), acceso directo `🎟️ Invitar amigos (3 pases)` y banner minimalista.
+   - Modal `InviteFriendsModal` con estética Apple / Glass: muestra cada pase en una tarjeta estilizada, estado (`Disponible` o `✓ Canjeado por @handle`), botón para copiar link en 1 toque con sonido haptic (`sfx.tap()`) y contador de recarga de lote.
+   - Modal `WelcomeInviteModal`: al ingresar mediante un enlace `eltablero.blog/invite/xxxxx`, se abre automáticamente saludando al nuevo artista ("Pase exclusivo de @invitador validado") y guiándolo a reclamar su cuenta.
+3. **Factor Auth Gate para Registro (`src/components/App.tsx`):**
+   - En `GoogleAuthModal`, el registro de nuevos miembros está protegido por el factor de invitación: exige ingresar o validar previamente un link/código activo antes de habilitar el botón de Google Sign-In.
+   - Quienes ya son miembros pueden alternar a `¿Ya tenés cuenta en board.? Iniciar sesión directo →`.
+   - Al completar la autenticación con Google, se consume el pase en el backend de Supabase y el nuevo miembro recibe inmediatamente sus propios 3 pases de invitación.
+4. **Rotación Comunitaria Limpia y Purga de Jaime Martínez (`App.tsx`, `supabase.ts`):**
+   - En `Artistas en board.` de la pantalla de Inicio, se removieron los artistas mock de la escena (`SCENE_ARTISTS`): la rotación comunitaria muestra exclusivamente a los artistas y productores reales que se registran e inician sesión (`communityArtists`).
+   - Los artistas base de `mock.ts` se mantienen para las canciones y proyectos del tablero sin contaminar la lista de usuarios.
+   - Purga permanente del perfil `Jaime Martinez` (`@jm2100553`): función `purgeJaimeMartinezProfile()` ejecutada al inicio de la app que lo elimina de la base de datos de Supabase y filtra cualquier rastro residual en memoria y en listas de perfiles.
+5. **Lo Último Subido & Rotación de Proyectos (`App.tsx`):**
+   - En `PROYECTOS // ROTACIÓN DE BOARD.` ("Lo último subido & Rotación"), los proyectos subidos por los usuarios ahora tienen máxima prioridad y se ordenan de forma descendente por fecha de subida (`createdAt` / `updated_at`), mostrando en primer lugar las canciones y proyectos recién añadidos.
+6. **Next.js & Capacitor Rewrites (`next.config.ts`, `layout.tsx`, `public/manifest.json`):**
+   - Configurado el rewrite `{ source: "/invite/:code*", destination: "/" }` para que los enlaces `eltablero.blog/invite/xxxxx` resuelvan limpiamente en el navegador y en SSR.
+   - Migrado el manifiesto de PWA a `public/manifest.json` con `dynamic = "force-static"` compatible tanto con Next.js 16 (`cacheComponents`) como con exportaciones estáticas de Capacitor iOS (`CAPACITOR_BUILD=true`).
+

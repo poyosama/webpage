@@ -22,6 +22,7 @@ const nextConfig: NextConfig = isCapacitorBuild
           { source: "/crear-proyecto", destination: "/" },
           { source: "/landing", destination: "/" },
           { source: "/project/:id*", destination: "/" },
+          { source: "/invite/:code*", destination: "/" },
         ];
       },
     };

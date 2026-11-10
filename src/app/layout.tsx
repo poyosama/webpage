@@ -41,6 +41,7 @@ export const metadata: Metadata = {
   title: "board.",
   description:
     "Tus proyectos. Tu identidad. Tu gente. Tu música. Entorno 3D Manifold y reproductor de partículas para la escena.",
+  manifest: "/manifest.json",
   icons: {
     icon: "/icon.png",
     apple: "/apple-touch-icon.png",
