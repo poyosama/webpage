@@ -20,41 +20,65 @@ export default function PullToRefresh() {
   useEffect(() => {
     if (!window.matchMedia("(pointer: coarse)").matches) return;
 
-    const blocked = (el: EventTarget | null) => {
-      if (
-        document.body.classList.contains("app-no-scroll") ||
-        document.documentElement.classList.contains("app-no-scroll") ||
-        document.body.classList.contains("mobile-vinyl-wheel-locked")
-      ) {
-        return true;
+    const isScrollableAtTop = (target: EventTarget | null) => {
+      let node = target as HTMLElement | null;
+      while (node && node !== document.body && node !== document.documentElement) {
+        if (node.scrollTop > 4) return false;
+        node = node.parentElement;
       }
-      let node = el as HTMLElement | null;
+      return true;
+    };
+
+    const isInteractiveInput = (target: EventTarget | null) => {
+      let node = target as HTMLElement | null;
       while (node && node !== document.body) {
         if (
           node.matches?.(
-            ".apple-modal-backdrop, .project-inspector-sheet, .perf-player, .vinyl-fan-arc-viewport, .spotify-queue-drawer, input, textarea, select"
+            "input, textarea, select, [contenteditable='true'], .perf-player-expanded, .perf-waveform-scrubber"
           )
         ) {
           return true;
         }
-        if (node.scrollTop > 0) return true;
         node = node.parentElement;
       }
       return false;
     };
 
     const onStart = (e: TouchEvent) => {
-      if (window.scrollY > 0 || blocked(e.target)) {
+      if (e.touches.length !== 1) {
         startY.current = null;
         return;
       }
-      startY.current = e.touches[0].clientY;
+      const touch = e.touches[0];
+      const target = e.target;
+
+      // Si está tocando un campo de texto o scrubber del reproductor, no refrescar
+      if (isInteractiveInput(target)) {
+        startY.current = null;
+        return;
+      }
+
+      // Si la ventana o un contenedor interno ya está scrolleado hacia abajo, no refrescar
+      if (window.scrollY > 4 || !isScrollableAtTop(target)) {
+        startY.current = null;
+        return;
+      }
+
+      // En Biblioteca: si toca directamente la rueda de vinilos en el medio de la pantalla,
+      // dejamos que el gesto sea para rotar los vinilos, salvo que arranque en la zona superior (clientY <= 240)
+      const isVinylWheel = (target as HTMLElement | null)?.closest?.(".vinyl-fan-arc-wheel");
+      if (isVinylWheel && touch.clientY > 240) {
+        startY.current = null;
+        return;
+      }
+
+      startY.current = touch.clientY;
     };
 
     const onMove = (e: TouchEvent) => {
       if (startY.current === null) return;
       const dy = e.touches[0].clientY - startY.current;
-      if (dy <= 0 || window.scrollY > 0) {
+      if (dy <= 0 || window.scrollY > 4) {
         pullRef.current = 0;
         setPull(0);
         return;

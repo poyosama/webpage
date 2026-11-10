@@ -1151,5 +1151,16 @@
    - `.vinyl-fan-clean-title-card` fluye naturalmente justo debajo del sobre activo sin ningún box gris, fondo ni bordes (`background: transparent !important; border: none !important`), con tipografía SF Pro en blanco bold.
    - Ocultada completamente la fila `.section-header-row` en modo `library-clean` para eliminar `Guardados (0)` y dejar la vista 100% inmaculada como en `image.jpg`.
 
+---
 
+### Turno 69 — Pull-to-refresh habilitado en todas las pantallas
+**Pedido del usuario (`juani`):**
+- *"y quiero q se pueda refrescar en todas las pantallas no solo en inicio"*
 
+**Implementación (`PullToRefresh.tsx`, `ManifoldLibrary3D.tsx`):**
+1. **Pull-to-refresh universal:**
+   - Retirado el bloqueo de `app-no-scroll` que limitaba el refresco a `Inicio`.
+   - `PullToRefresh.tsx` ahora se activa en **todas las pantallas** (`Inicio`, `Subir`, `Biblioteca`, `Perfil`, `Crear Proyecto` e interior de proyectos) siempre que no haya un scroll interno bajado (`scrollTop <= 4`) ni se esté interactuando con inputs o sliders.
+2. **Convivencia limpia con la rueda de vinilos en Biblioteca:**
+   - Si el gesto de tirar hacia abajo arranca desde la zona superior (`clientY <= 240px` — navbar, espacio de cabecera o padding superior), se dispara el pull-to-refresh con el spinner flotante (`z-index: 500`).
+   - En `ManifoldLibrary3D.tsx`, se añadió la condición `e.clientY <= 220` en `onPointerDown` para que el drag de la rueda no interfiera cuando el usuario desliza desde el tope de la pantalla para refrescar.

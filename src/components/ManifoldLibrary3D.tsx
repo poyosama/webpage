@@ -987,8 +987,9 @@ export default function ManifoldLibrary3D({
               }}
               onPointerDown={(e) => {
                 if (
+                  e.clientY <= 220 ||
                   (e.target as HTMLElement).closest(
-                    ".vinyl-fan-inspector-card, .vinyl-arc-step-controls"
+                    ".vinyl-fan-inspector-card, .vinyl-arc-step-controls, .ios-navbar"
                   )
                 ) {
                   return;
