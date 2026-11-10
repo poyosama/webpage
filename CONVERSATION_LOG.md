@@ -637,3 +637,17 @@
 
 **Respuesta y Estado:**
 - Se confirmó al usuario que la sesión sigue 100% activa sin bloqueos de cuota o rate-limit en el entorno. La app está desplegada y sincronizada en `main` con todos los cambios operativos.
+
+
+---
+
+### Turno 35 — Handoff y Estado del Repositorio para Próximos Agentes (Claude Opus / Sonnet)
+**Prompt del usuario:**
+- *"okey seguire con otro agente, esta todo conectado y al dia para que otro agente como opus o sonnet lo entienda y trabaje sobre este codigo ?"*
+
+**Resumen de Handoff & Estado Técnico:**
+- Todo el código está 100% commiteado y sincronizado en `origin main`.
+- El build de Next.js (`npm run build`) compila con 0 errores de TypeScript y 0 errores de linting.
+- `AGENTS.md` contiene todas las reglas de negocio, tono, estructura de componentes y vocabulario prohibido ("corte/cortes").
+- `CONVERSATION_LOG.md` tiene el historial cronológico completo de los 35 turnos con decisiones de arquitectura, base de datos de Supabase, componentes 3D Three.js / R3F y Capacitor iOS.
+- Cualquier nuevo agente (Claude Sonnet 3.7 / Opus 3.5 / etc.) puede leer `AGENTS.md` y `CONVERSATION_LOG.md` para retomar de inmediato sin pérdida de contexto.
