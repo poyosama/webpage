@@ -161,3 +161,475 @@ textarea,
   border-color: rgba(225, 29, 72, 0.4);
   cursor: pointer;
 }
+
+/* ==================== UNIFIED PROJECT INSPECTOR (CANVAS BEHIND + VINYL RENDER + TITLE & TRACKS) ==================== */
+.project-inspector-sheet {
+  padding: 18px !important;
+  margin-top: 16px !important;
+}
+
+.cube-interior-back-bar {
+  margin-bottom: 14px;
+}
+
+.inspector-unified-stage {
+  position: relative;
+  border-radius: 22px;
+  overflow: hidden;
+  padding: clamp(20px, 3vw, 34px);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  isolation: isolate;
+}
+
+.inspector-unified-stage.has-canvas-bg {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+/* Canvas de fondo detrás del vinilo y los tracks */
+.inspector-canvas-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.canvas-backdrop-ambient {
+  position: absolute;
+  inset: -12%;
+  width: 124%;
+  height: 124%;
+  object-fit: cover;
+  filter: blur(34px) saturate(1.35);
+  opacity: 0.48;
+  transform: scale(1.06);
+}
+
+.canvas-backdrop-media {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.52;
+}
+
+.canvas-backdrop-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: linear-gradient(
+    95deg,
+    rgba(9, 9, 11, 0.48) 0%,
+    rgba(9, 9, 11, 0.68) 48%,
+    rgba(9, 9, 11, 0.84) 100%
+  );
+}
+
+:root[data-theme="light"] .canvas-backdrop-scrim {
+  background: linear-gradient(
+    95deg,
+    rgba(246, 245, 242, 0.5) 0%,
+    rgba(246, 245, 242, 0.74) 48%,
+    rgba(246, 245, 242, 0.88) 100%
+  );
+}
+
+/* Grilla principal: Vinilo a la izquierda + Proyecto y Tracks a la derecha */
+.inspector-unified-stage .inspector-split {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: minmax(260px, 390px) 1fr;
+  gap: clamp(22px, 3.2vw, 42px);
+  align-items: center;
+  margin-top: 0 !important;
+}
+
+/* ==================== RENDER DE PORTADA + VINILO (REEMPLAZO DEL SPINNER) ==================== */
+.vinyl-showcase-render {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 36px 12px 8px;
+  min-height: 290px;
+}
+
+.vinyl-render-stage {
+  position: relative;
+  width: clamp(200px, 21vw, 268px);
+  aspect-ratio: 1 / 1;
+  cursor: pointer;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+  transform-style: preserve-3d;
+}
+
+.vinyl-render-floor-shadow {
+  position: absolute;
+  left: 6%;
+  right: -24%;
+  bottom: -10%;
+  height: 24%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(0, 0, 0, 0.55) 0%,
+    rgba(0, 0, 0, 0) 72%
+  );
+  filter: blur(12px);
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* El disco negro que asoma por la derecha de la portada */
+.vinyl-render-disc-wrap {
+  position: absolute;
+  top: 3.5%;
+  bottom: 3.5%;
+  right: -34%;
+  width: 93%;
+  z-index: 1;
+  transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+
+.vinyl-render-stage:hover .vinyl-render-disc-wrap,
+.vinyl-showcase-render.is-playing .vinyl-render-disc-wrap {
+  transform: translateX(9%);
+}
+
+.vinyl-render-disc {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, #16161a 0%, #08080a 62%, #040405 100%);
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 1.5px rgba(255, 255, 255, 0.12),
+    inset 0 0 18px rgba(0, 0, 0, 0.9);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.vinyl-render-disc.spinning {
+  animation: vinylStudioSpin 5.5s linear infinite;
+}
+
+@keyframes vinylStudioSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.vinyl-render-sheen {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 32deg,
+    transparent 0deg,
+    rgba(255, 255, 255, 0.15) 28deg,
+    transparent 58deg,
+    transparent 150deg,
+    rgba(255, 255, 255, 0.13) 182deg,
+    transparent 215deg,
+    transparent 360deg
+  );
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+.vinyl-render-grooves {
+  position: absolute;
+  inset: 4%;
+  border-radius: 50%;
+  background: repeating-radial-gradient(
+    circle at 50% 50%,
+    rgba(255, 255, 255, 0.045) 0px,
+    rgba(255, 255, 255, 0.045) 1px,
+    transparent 1.5px,
+    transparent 4px
+  );
+  pointer-events: none;
+}
+
+.vinyl-render-label {
+  position: relative;
+  width: 35%;
+  height: 35%;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 3px #070709,
+    inset 0 0 8px rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.vinyl-render-label-ring {
+  position: absolute;
+  inset: 14%;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  pointer-events: none;
+}
+
+.vinyl-render-spindle-hole {
+  width: 18%;
+  height: 18%;
+  border-radius: 50%;
+  background: #09090b;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 0 1.5px rgba(255, 255, 255, 0.22);
+}
+
+/* Sobre cuadrado de la portada */
+.vinyl-render-sleeve {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+  z-index: 2;
+  background: #121216;
+  box-shadow:
+    14px 0 28px rgba(0, 0, 0, 0.48),
+    0 20px 44px rgba(0, 0, 0, 0.42),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+}
+
+.vinyl-render-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.vinyl-render-cover-fallback {
+  width: 100%;
+  height: 100%;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  color: #ffffff;
+  gap: 4px;
+}
+
+.vinyl-render-cover-fallback .fallback-type-tag {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.7;
+  margin-bottom: auto;
+}
+
+.vinyl-render-cover-fallback strong {
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.vinyl-render-cover-fallback em {
+  font-style: normal;
+  font-size: 0.82rem;
+  opacity: 0.78;
+}
+
+.vinyl-render-sleeve-spine {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 7px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.22) 0%,
+    rgba(0, 0, 0, 0.28) 65%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+.vinyl-render-sleeve-glare {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+.vinyl-render-play-pill {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: rgba(9, 9, 11, 0.78);
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.vinyl-render-stage:hover .vinyl-render-play-pill,
+.vinyl-showcase-render.is-playing .vinyl-render-play-pill {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ==================== COLUMNA DERECHA: NOMBRE DEL PROYECTO + TRACKS 1 POR 1 ==================== */
+.inspector-unified-stage .inspector-tracklist {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: rgba(20, 20, 24, 0.55);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  padding: 18px 20px;
+  min-width: 0;
+}
+
+:root[data-theme="light"] .inspector-unified-stage .inspector-tracklist {
+  background: rgba(255, 255, 255, 0.76);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+.inspector-project-head {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.inspector-top-badges-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.inspector-top-badges-row .project-editable-meta-bar {
+  margin-bottom: 0;
+}
+
+.inspector-compact-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.compact-pill-btn {
+  padding: 5px 11px !important;
+  font-size: 0.74rem !important;
+  border-radius: 999px !important;
+}
+
+.inspector-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.inspector-project-title {
+  font-size: clamp(1.45rem, 2.5vw, 2.05rem);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.08;
+  margin: 0;
+  color: var(--ink);
+}
+
+.inspector-project-artist {
+  display: block;
+  font-size: 0.84rem;
+  color: var(--ink-secondary);
+  margin-top: 3px;
+}
+
+.inspector-tracks-list-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 290px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+/* ==================== OPTIMIZACIÓN MOBILE / iPHONE ==================== */
+@media (max-width: 820px) {
+  .project-inspector-sheet {
+    padding: 12px !important;
+  }
+
+  .inspector-unified-stage {
+    padding: 18px 14px;
+    border-radius: 18px;
+  }
+
+  .inspector-unified-stage .inspector-split {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .vinyl-showcase-render {
+    min-height: 210px;
+    padding: 6px 42px 10px 6px;
+  }
+
+  .vinyl-render-stage {
+    width: clamp(165px, 46vw, 210px);
+  }
+
+  .vinyl-render-play-pill {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .inspector-unified-stage .inspector-tracklist {
+    padding: 14px;
+  }
+
+  .inspector-top-badges-row {
+    gap: 6px;
+  }
+
+  .inspector-compact-actions {
+    width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 2px;
+  }
+
+  .inspector-compact-actions > * {
+    flex-shrink: 0;
+  }
+
+  .inspector-tracks-list-scroll {
+    max-height: 250px;
+  }
+}
+

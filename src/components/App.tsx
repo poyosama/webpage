@@ -1984,172 +1984,41 @@ export default function App() {
                       </div>
                     )}
 
-                    <div className="inspector-header">
-                      <div className="inspector-meta-builder">
-                        <div className="project-editable-meta-bar">
-                          <div className="meta-pill-static">
-                            <b>{activeProject.type}</b>
-                          </div>
-                          <div className="meta-pill-static">
-                            <b>{activeProject.tracks.length} tracks</b>
-                          </div>
-                          {activeIsMine ? (
-                            <button
-                              type="button"
-                              className={`visibility-toggle ${activeProject.visibility === "public" ? "on" : ""}`}
-                              onClick={() => {
-                                sfx.tick();
-                                updateProjectMeta(activeProject.id, {
-                                  visibility: activeProject.visibility === "public" ? "private" : "public",
-                                });
-                              }}
-                              title={
-                                activeProject.visibility === "public"
-                                  ? "Visible para toda la plataforma. Tocá para hacerlo privado."
-                                  : "Solo lo ves vos. Tocá para publicarlo."
-                              }
-                            >
-                              {activeProject.visibility === "public" ? "Público" : "Privado"}
-                            </button>
-                          ) : (
-                            <div className="meta-pill-static">
-                              <b>Público</b>
-                            </div>
-                          )}
-                        </div>
-
-                        <h2>
-                          {activeProject.title} — <em>{activeProject.artist}</em>
-                        </h2>
-                        {activeProject.description && <p>{activeProject.description}</p>}
-                      </div>
-
-                      <div className="row-actions">
-                        {activeIsMine && (
-                          <button
-                            type="button"
-                            className="apple-btn ghost"
-                            onClick={() => {
-                              sfx.open();
-                              setEditingProject(activeProject);
-                            }}
-                          >
-                            Editar
-                          </button>
-                        )}
-                        {activeIsMine && (
-                          <label className="apple-btn ghost" style={{ cursor: "pointer" }}>
-                            <span>Artwork</span>
-                            <input
-                              type="file"
-                              accept="image/*,image/gif"
-                              hidden
-                              onChange={(e) => {
-                                const f = e.target.files?.[0];
-                                if (f) {
-                                  handleUpdateProjectCover(activeProject.id, URL.createObjectURL(f));
-                                  e.target.value = "";
-                                }
-                              }}
-                            />
-                          </label>
-                        )}
-                        {!activeIsMine && (
-                          <button
-                            type="button"
-                            className="apple-btn ghost"
-                            onClick={() => toggleSaveProject(activeProject.id)}
-                          >
-                            {savedProjectIds.includes(activeProject.id) ? "✓ Guardado" : "Guardar"}
-                          </button>
-                        )}
-                        {(activeIsMine ? activeProject.visibility === "public" : true) && (
-                          <button
-                            type="button"
-                            className="apple-btn ghost"
-                            onClick={() => handleCopyProjectLink(activeProject.id)}
-                            title="Copiar link"
-                          >
-                            Link
-                          </button>
-                        )}
-                        {activeIsMine && (
-                          <button type="button" className="apple-btn ghost" onClick={() => navigate("subir")}>
-                            + Tracks
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          className="apple-btn primary"
-                          onClick={() =>
-                            activeProject.tracks[0] && playTrack(activeProject.tracks[0], activeProject, true)
-                          }
-                        >
-                          ▶ Reproducir
-                        </button>
-                        {activeIsMine && (
-                          <button
-                            type="button"
-                            className="apple-btn ghost danger-trash-btn"
-                            title={`Eliminar ${activeProject.title}`}
-                            aria-label={`Eliminar ${activeProject.title}`}
-                            onClick={() => {
-                              if (window.confirm(`¿Eliminar "${activeProject.title}"? No se puede deshacer.`)) {
-                                handleDeleteProject(activeProject.id);
-                              }
-                            }}
-                          >
-                            <TrashIcon />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* ==================== CANVAS VISUAL DEL PROYECTO ==================== */}
-                    <div className="inspector-canvas-section">
-                      <div className="inspector-canvas-header">
-                        <div>
-                          <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 600 }}>Canvas</h3>
-                        </div>
-                        {activeIsMine && (
-                          <div className="row-actions">
-                            <label className="apple-btn ghost" style={{ cursor: "pointer" }}>
-                              <span>{activeProject.videos.length > 0 ? "Cambiar" : "+ Subir canvas"}</span>
-                              <input
-                                type="file"
-                                accept="video/mp4,video/webm,image/gif,image/*,video/*"
-                                hidden
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) handleUploadProjectVideo(activeProject.id, file);
-                                }}
+                    <div
+                      className={`inspector-unified-stage ${
+                        activeProject.videos.length > 0 && activeProject.videos[0].url
+                          ? "has-canvas-bg"
+                          : ""
+                      }`}
+                    >
+                      {/* ==================== CANVAS DETRÁS DE TODO ==================== */}
+                      {activeProject.videos.length > 0 && activeProject.videos[0].url && (
+                        <div className="inspector-canvas-backdrop" aria-hidden="true">
+                          {activeProject.videos[0].mediaType === "image" ||
+                          /\.(gif|png|jpe?g|webp|avif)$/i.test(activeProject.videos[0].label) ? (
+                            <>
+                              <img
+                                src={activeProject.videos[0].url}
+                                alt=""
+                                className="canvas-backdrop-ambient"
                               />
-                            </label>
-                            {activeProject.videos.length > 0 && (
-                              <button
-                                type="button"
-                                className="apple-btn ghost danger-trash-btn"
-                                title="Quitar canvas"
-                                aria-label="Quitar canvas"
-                                onClick={() => handleRemoveProjectVideo(activeProject.id, activeProject.videos[0].id)}
-                              >
-                                <TrashIcon />
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="inspector-canvas-viewer-card">
-                        {activeProject.videos.length > 0 && activeProject.videos[0].url ? (
-                          <div className="canvas-video-wrapper">
-                            {activeProject.videos[0].mediaType === "image" || /\.(gif|png|jpe?g|webp|avif)$/i.test(activeProject.videos[0].label) ? (
                               <img
                                 src={activeProject.videos[0].url}
                                 alt={activeProject.videos[0].label}
-                                className="canvas-active-video-elem"
+                                className="canvas-backdrop-media"
                               />
-                            ) : (
+                            </>
+                          ) : (
+                            <>
+                              <video
+                                src={activeProject.videos[0].url}
+                                autoPlay
+                                loop
+                                muted
+                                playsInline
+                                disablePictureInPicture
+                                className="canvas-backdrop-ambient"
+                              />
                               <video
                                 src={activeProject.videos[0].url}
                                 autoPlay
@@ -2158,72 +2027,255 @@ export default function App() {
                                 playsInline
                                 disablePictureInPicture
                                 controlsList="nodownload noplaybackrate nofullscreen"
-                                className="canvas-active-video-elem"
+                                className="canvas-backdrop-media"
                               />
-                            )}
-                          </div>
-                        ) : (
-                          <div className="canvas-empty-state">
-                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></svg>
-                            <b style={{ fontSize: "0.9rem", opacity: 0.8 }}>Sin canvas</b>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="inspector-split">
-                      <DiscSpinner3D
-                        project={activeProject}
-                        currentTrackId={currentTrack.id}
-                        onPlayTrack={(tr, pr) => playTrack(tr, pr, false)}
-                        onDeleteTrack={handleDeleteTrack}
-                      />
-
-                      <div className="inspector-tracklist">
-                        <div className="card-head">
-                          <h3>Tracks</h3>
+                            </>
+                          )}
+                          <div className="canvas-backdrop-scrim" />
                         </div>
-                        {activeProject.tracks.map((t, idx) => {
-                          const isCurrent = currentTrack.id === t.id;
-                          const art = t.coverUrl || activeProject.coverUrl;
-                          return (
-                            <div
-                              key={t.id}
-                              className={`clean-track-row ${isCurrent ? "is-playing" : ""}`}
-                              onMouseEnter={() => sfx.hover()}
-                              onClick={() => playTrack(t, activeProject, false)}
-                            >
-                              <div className="track-row-art-wrap">
-                                {art ? (
-                                  <img src={art} alt={t.title} className="track-row-img-thumb" />
-                                ) : (
-                                  <span className="track-row-art-fallback">{String(idx + 1).padStart(2, "0")}</span>
-                                )}
-                              </div>
-                              <div className="row-main">
-                                <b>{t.title}</b>
-                                <span>
-                                  {t.artist}
-                                  {t.feat ? ` feat. ${t.feat}` : ""}
-                                </span>
-                              </div>
-                              {activeIsMine && (
-                                <div className="row-inline-actions">
+                      )}
+
+                      {/* ==================== SPLIT PRINCIPAL: VINILO A LA IZQUIERDA + TÍTULO Y TRACKS A LA DERECHA ==================== */}
+                      <div className="inspector-split">
+                        <DiscSpinner3D
+                          project={activeProject}
+                          currentTrackId={currentTrack.id}
+                          onPlayTrack={(tr, pr) => playTrack(tr, pr, false)}
+                          onDeleteTrack={handleDeleteTrack}
+                        />
+
+                        <div className="inspector-tracklist">
+                          <div className="inspector-project-head">
+                            <div className="inspector-top-badges-row">
+                              <div className="project-editable-meta-bar">
+                                <div className="meta-pill-static">
+                                  <b>{activeProject.type}</b>
+                                </div>
+                                <div className="meta-pill-static">
+                                  <b>{activeProject.tracks.length} tracks</b>
+                                </div>
+                                {activeIsMine ? (
                                   <button
                                     type="button"
-                                    className="row-snippet-btn"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setEditingTrack(t);
+                                    className={`visibility-toggle ${
+                                      activeProject.visibility === "public" ? "on" : ""
+                                    }`}
+                                    onClick={() => {
+                                      sfx.tick();
+                                      updateProjectMeta(activeProject.id, {
+                                        visibility:
+                                          activeProject.visibility === "public"
+                                            ? "private"
+                                            : "public",
+                                      });
+                                    }}
+                                    title={
+                                      activeProject.visibility === "public"
+                                        ? "Visible para toda la plataforma. Tocá para hacerlo privado."
+                                        : "Solo lo ves vos. Tocá para publicarlo."
+                                    }
+                                  >
+                                    {activeProject.visibility === "public" ? "Público" : "Privado"}
+                                  </button>
+                                ) : (
+                                  <div className="meta-pill-static">
+                                    <b>Público</b>
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="inspector-compact-actions">
+                                {activeIsMine && (
+                                  <label className="apple-btn ghost compact-pill-btn" style={{ cursor: "pointer" }}>
+                                    <span>Artwork</span>
+                                    <input
+                                      type="file"
+                                      accept="image/*,image/gif"
+                                      hidden
+                                      onChange={(e) => {
+                                        const f = e.target.files?.[0];
+                                        if (f) {
+                                          handleUpdateProjectCover(
+                                            activeProject.id,
+                                            URL.createObjectURL(f)
+                                          );
+                                          e.target.value = "";
+                                        }
+                                      }}
+                                    />
+                                  </label>
+                                )}
+                                {activeIsMine && (
+                                  <label className="apple-btn ghost compact-pill-btn" style={{ cursor: "pointer" }}>
+                                    <span>
+                                      {activeProject.videos.length > 0 ? "Canvas" : "+ Canvas"}
+                                    </span>
+                                    <input
+                                      type="file"
+                                      accept="video/mp4,video/webm,image/gif,image/*,video/*"
+                                      hidden
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                          handleUploadProjectVideo(activeProject.id, file);
+                                          e.target.value = "";
+                                        }
+                                      }}
+                                    />
+                                  </label>
+                                )}
+                                {activeIsMine && activeProject.videos.length > 0 && (
+                                  <button
+                                    type="button"
+                                    className="apple-btn ghost compact-pill-btn danger-trash-btn"
+                                    title="Quitar canvas"
+                                    aria-label="Quitar canvas"
+                                    onClick={() =>
+                                      handleRemoveProjectVideo(
+                                        activeProject.id,
+                                        activeProject.videos[0].id
+                                      )
+                                    }
+                                  >
+                                    ✕ Canvas
+                                  </button>
+                                )}
+                                {activeIsMine && (
+                                  <button
+                                    type="button"
+                                    className="apple-btn ghost compact-pill-btn"
+                                    onClick={() => navigate("subir")}
+                                  >
+                                    + Tracks
+                                  </button>
+                                )}
+                                {activeIsMine && (
+                                  <button
+                                    type="button"
+                                    className="apple-btn ghost compact-pill-btn"
+                                    onClick={() => {
+                                      sfx.open();
+                                      setEditingProject(activeProject);
                                     }}
                                   >
                                     Editar
                                   </button>
-                                </div>
-                              )}
+                                )}
+                                {!activeIsMine && (
+                                  <button
+                                    type="button"
+                                    className="apple-btn ghost compact-pill-btn"
+                                    onClick={() => toggleSaveProject(activeProject.id)}
+                                  >
+                                    {savedProjectIds.includes(activeProject.id)
+                                      ? "✓ Guardado"
+                                      : "Guardar"}
+                                  </button>
+                                )}
+                                {(activeIsMine ? activeProject.visibility === "public" : true) && (
+                                  <button
+                                    type="button"
+                                    className="apple-btn ghost compact-pill-btn"
+                                    onClick={() => handleCopyProjectLink(activeProject.id)}
+                                    title="Copiar link"
+                                  >
+                                    Link
+                                  </button>
+                                )}
+                                {activeIsMine && (
+                                  <button
+                                    type="button"
+                                    className="apple-btn ghost compact-pill-btn danger-trash-btn"
+                                    title={`Eliminar ${activeProject.title}`}
+                                    aria-label={`Eliminar ${activeProject.title}`}
+                                    onClick={() => {
+                                      if (
+                                        window.confirm(
+                                          `¿Eliminar "${activeProject.title}"? No se puede deshacer.`
+                                        )
+                                      ) {
+                                        handleDeleteProject(activeProject.id);
+                                      }
+                                    }}
+                                  >
+                                    <TrashIcon />
+                                  </button>
+                                )}
+                              </div>
                             </div>
-                          );
-                        })}
+
+                            <div className="inspector-title-row">
+                              <div>
+                                <h2 className="inspector-project-title">{activeProject.title}</h2>
+                                <span className="inspector-project-artist">
+                                  {activeProject.artist}
+                                  {activeProject.description ? ` · ${activeProject.description}` : ""}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                className="apple-btn primary"
+                                onClick={() =>
+                                  activeProject.tracks[0] &&
+                                  playTrack(activeProject.tracks[0], activeProject, true)
+                                }
+                              >
+                                ▶ Reproducir
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="inspector-tracks-list-scroll">
+                            {activeProject.tracks.map((t, idx) => {
+                              const isCurrent = currentTrack.id === t.id;
+                              const art = t.coverUrl || activeProject.coverUrl;
+                              return (
+                                <div
+                                  key={t.id}
+                                  className={`clean-track-row ${isCurrent ? "is-playing" : ""}`}
+                                  onMouseEnter={() => sfx.hover()}
+                                  onClick={() => playTrack(t, activeProject, false)}
+                                >
+                                  <div className="track-row-art-wrap">
+                                    {art ? (
+                                      <img
+                                        src={art}
+                                        alt={t.title}
+                                        className="track-row-img-thumb"
+                                      />
+                                    ) : (
+                                      <span className="track-row-art-fallback">
+                                        {String(idx + 1).padStart(2, "0")}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="row-main">
+                                    <b>{t.title}</b>
+                                    <span>
+                                      {t.artist}
+                                      {t.feat ? ` feat. ${t.feat}` : ""}
+                                      {t.prod ? ` · prod. ${t.prod}` : ""}
+                                    </span>
+                                  </div>
+                                  {activeIsMine && (
+                                    <div className="row-inline-actions">
+                                      <button
+                                        type="button"
+                                        className="row-snippet-btn"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setEditingTrack(t);
+                                        }}
+                                      >
+                                        Editar
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </motion.section>

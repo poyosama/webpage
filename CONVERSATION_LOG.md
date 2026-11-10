@@ -785,3 +785,19 @@
 2. **Rewrites para Rutas de la App (`next.config.ts`):**
    - Configurados `rewrites()` en `next.config.ts` para `/library`, `/guardados`, `/upload`, `/subir`, `/profile`, `/perfil`, `/create`, `/crear-proyecto`, `/landing` y `/project/:id*` hacia `/`, evitando que tocar F5 o abrir un link directo en cualquiera de esas secciones tire 404.
 
+
+---
+
+### Turno 44 — Reemplazo del Spinner por Render HD de Portada + Vinilo, Nombre del Proyecto sobre los Tracks y Canvas de Fondo Unificado (Desktop + iPhone)
+**Prompt del usuario:**
+- *"ahora quiero que cambies el spinner por solo un rendercito asi de la portada como vinilo bien renderizado bonito que se vea muy bien, a la derecha donde ahora dice Tracks que diga el nombre del proyecto y abajo de eso los tracks 1 por 1 como esta ahi, con el canvas detras de todo esto? cosa de no scrollear tanto tambien jeje. todo esto anda pensadolo para iphone tambien igual ahora lo vamos a revisar bien la funcionalidad del iphone"*
+
+**Implementación (`src/components/DiscSpinner3D.tsx`, `src/components/App.tsx`, `src/components/board-polish.css`):**
+1. **Render HD de Portada + Vinilo (`src/components/DiscSpinner3D.tsx`):**
+   - Reemplazado el abanico de discos del Spinner por un render de estudio de la portada del proyecto (`.vinyl-render-sleeve` con lomo, brillo especular dinámico y sombra profunda) con el disco de vinilo negro asomando por la derecha (`.vinyl-render-disc` con surcos concéntricos, reflejo anisotrópico, sello central con el artwork y giro continuo cuando el proyecto está sonando).
+   - Incluye inclinación 3D interactiva al puntero/tacto y reproducción directa al tocar la portada.
+2. **Columna Derecha con Nombre del Proyecto + Tracks 1 por 1 (`src/components/App.tsx`):**
+   - Donde antes decía `"Tracks"`, ahora encabeza el **Nombre del proyecto** (`activeProject.title`), artista, badges de tipo/privacidad y acciones compactas (`Artwork`, `Canvas`, `+ Tracks`, `Editar`, `Link`, `▶ Reproducir`, `🗑️`), seguido inmediatamente abajo por la lista de canciones 1 por 1 con scroll interno compacto.
+3. **Canvas Detrás de Todo sin Scrollear (`src/components/App.tsx`, `src/components/board-polish.css`):**
+   - Eliminada la sección separada de Canvas que empujaba todo hacia abajo: ahora el video o GIF del Canvas se renderiza como fondo atmosférico detrás del vinilo y la lista de tracks (`.inspector-canvas-backdrop` con capa ambiental + media principal y scrim de contraste adaptado a modo oscuro/claro), logrando que toda la vista del proyecto entre en una sola pantalla tanto en desktop como en iPhone.
+
