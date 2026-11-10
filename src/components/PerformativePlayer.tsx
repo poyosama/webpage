@@ -196,48 +196,33 @@ function HighResFlowParticles({
       matRef.current.size = baseSize * (1 + pulseDisp * 0.48 * mobileScale);
     }
 
-    const step = clampedDt * 0.95;
     const geo = pointsRef.current.geometry;
     const attr = geo.getAttribute("position") as THREE.BufferAttribute;
     const arr = attr.array as Float32Array;
 
-    const bParam = 0.19;
-    const mx = pointer.x * 2.2;
-    const my = pointer.y * 1.5;
-
+    // Movimiento orgánico armónico sin divergencias numéricas ni saltos aleatorios
+    const waveT = t * 0.65;
     for (let i = 0; i < count; i++) {
       const ix = i * 3;
-      let hx = homePositions[ix];
-      let hy = homePositions[ix + 1];
-      let hz = homePositions[ix + 2];
+      const hx = homePositions[ix];
+      const hy = homePositions[ix + 1];
+      const hz = homePositions[ix + 2];
+      const phi = phases[i];
 
-      // Flujo suave de base (posición madre a la que siempre vuelven después del 808)
-      const vx = Math.sin(hy * 1.55 + t * 0.65) - bParam * hx + (mx - hx) * 0.12;
-      const vy = Math.sin(hz * 1.55 - t * 0.48) - bParam * hy + (my - hy) * 0.12;
-      const vz = Math.sin(hx * 1.55 + phases[i] * 0.2) - bParam * hz;
+      // Ondulación armónica sutil sobre la posición madre fija
+      const wave = Math.sin(waveT + phi) * 0.055;
 
-      hx += vx * step * 1.25;
-      hy += vy * step * 1.25;
-      hz += vz * step * 1.25;
-
-      if (hx * hx + hy * hy + hz * hz > 18) {
-        const a = phases[i] + t;
-        hx = Math.cos(a) * 0.45;
-        hy = Math.sin(a) * 0.45;
-        hz = Math.sin(a * 2) * 0.45;
-      }
-
-      homePositions[ix] = hx;
-      homePositions[ix + 1] = hy;
-      homePositions[ix + 2] = hz;
-
-      // Posición renderizada = Posición madre + Desplazamiento explosivo del 808 (cuando pulseDisp -> 0, vuelven exacto a homePositions)
-      arr[ix] = hx + scatterDirs[ix] * pulseDisp;
-      arr[ix + 1] = hy + scatterDirs[ix + 1] * pulseDisp;
-      arr[ix + 2] = hz + scatterDirs[ix + 2] * pulseDisp;
+      // Posición = Posición madre + Ondulación + Expansión pura de 808 (cuando pulseDisp -> 0 vuelve exacto a su lugar)
+      arr[ix] = hx + scatterDirs[ix] * pulseDisp + wave * 0.5;
+      arr[ix + 1] = hy + scatterDirs[ix + 1] * pulseDisp + wave;
+      arr[ix + 2] = hz + scatterDirs[ix + 2] * pulseDisp + wave * 0.35;
     }
     attr.needsUpdate = true;
-    pointsRef.current.rotation.y += clampedDt * 0.07;
+
+    // Rotación suave continua y fluida de todo el enjambre 3D
+    pointsRef.current.rotation.y += clampedDt * 0.09;
+    pointsRef.current.rotation.x = Math.sin(t * 0.15) * 0.04 - pointer.y * 0.12;
+    pointsRef.current.rotation.z = pointer.x * 0.08;
   });
 
   return (

@@ -668,35 +668,56 @@ textarea,
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
-  background: #07070a;
+  background: #000000 !important;
 }
 
 .perf-cinema-media {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  opacity: 0.85;
-  filter: saturate(1.2) contrast(1.06);
+  opacity: 1 !important;
+  filter: saturate(1.18) contrast(1.1) brightness(0.98) !important;
   transform: scale(1.01);
 }
 
 .perf-cinema-media.is-cover-ambient {
-  opacity: 0.52;
-  filter: blur(24px) saturate(1.35) brightness(0.85);
+  opacity: 0.65;
+  filter: blur(28px) saturate(1.4) brightness(0.85);
   transform: scale(1.12);
 }
 
 .perf-cinema-vignette {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(circle at 50% 44%, rgba(8, 8, 12, 0.08) 0%, rgba(5, 5, 8, 0.48) 88%),
-    linear-gradient(180deg, rgba(6, 6, 10, 0.38) 0%, rgba(6, 6, 10, 0.08) 45%, rgba(6, 6, 10, 0.66) 100%);
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.45) 0%,
+    rgba(0, 0, 0, 0) 18%,
+    rgba(0, 0, 0, 0) 76%,
+    rgba(0, 0, 0, 0.6) 100%
+  ) !important;
 }
 
 .perf-player.has-cinema-canvas .perf-canvas-wrap {
   z-index: 1;
-  mix-blend-mode: screen;
+  /* Eliminado mix-blend-mode: screen para compositing WebGL nativo a 60 FPS sin caídas de frame */
+}
+
+/* En canciones con Canvas activo, el texto se lee impecable con contraste cinematográfico */
+.perf-player.has-cinema-canvas .perf-title {
+  color: #ffffff !important;
+  text-shadow: 0 4px 28px rgba(0, 0, 0, 0.85), 0 2px 8px rgba(0, 0, 0, 0.95) !important;
+}
+
+.perf-player.has-cinema-canvas .perf-kicker {
+  color: rgba(255, 255, 255, 0.92) !important;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.9) !important;
+}
+
+.perf-player.has-cinema-canvas .perf-artwork-card {
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7) !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
 }
 
 /* ==================== NAVEGACIÓN ERGONÓMICA ATRÁS EN EL PROYECTO (CLICK AL COSTADO + BORDE IZQUIERDO) ==================== */
@@ -3031,18 +3052,27 @@ body.app-no-scroll .profile-page {
 }
 
 .perf-player.stage-light .perf-cinema-backdrop {
-  background: #f6f6f4 !important;
+  background: #000000 !important;
+}
+
+.perf-player.stage-light .perf-cinema-media {
+  opacity: 1 !important;
+  filter: saturate(1.18) contrast(1.1) brightness(0.98) !important;
 }
 
 .perf-player.stage-light .perf-cinema-media.is-cover-ambient {
-  opacity: 0.28 !important;
+  opacity: 0.35 !important;
   filter: blur(36px) saturate(1.2) brightness(1.05) !important;
 }
 
 .perf-player.stage-light .perf-cinema-vignette {
-  background:
-    radial-gradient(circle at 50% 44%, rgba(255, 255, 255, 0.15) 0%, rgba(246, 246, 244, 0.65) 88%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.1) 45%, rgba(246, 246, 244, 0.75) 100%) !important;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.35) 0%,
+    rgba(0, 0, 0, 0) 18%,
+    rgba(0, 0, 0, 0) 76%,
+    rgba(0, 0, 0, 0.45) 100%
+  ) !important;
 }
 
 /* ==================== SISTEMA DE INVITACIONES (ESTILO CLUBHOUSE / UNTITLED) ==================== */
