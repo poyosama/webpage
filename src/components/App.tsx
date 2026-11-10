@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import PullToRefresh from "./PullToRefresh";
 import {
   DEMO_PROJECTS,
   EMPTY_ME_PROFILE,
@@ -1725,6 +1726,8 @@ export default function App() {
           </button>
         </div>
       </header>
+
+      <PullToRefresh />
 
       <AnimatePresence mode="wait">
         <motion.main

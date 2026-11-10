@@ -1074,3 +1074,9 @@
 ### Turno 62 — Inicio en celular con collage como en desktop (`IMG_3898.png`)
 **Pedido (`juani`):** *"acomodalo para q se vea como en desktop"*.
 **Implementación (`board-polish.css`):** en <=720px cada fila del collage (`.collage-line`) queda en una sola línea (`nowrap`) con tipografía, tapas y píldoras escaladas con `clamp()/vw`, en vez de partirse en 2–3 renglones y recortarse.
+
+---
+
+### Turno 63 — Pull-to-refresh en el celu
+**Pedido (`juani`):** *"quiero tambien poder refrescar desde el celu haciendo scroll para arriba el tipico refresh"*.
+**Implementación (`PullToRefresh.tsx`, `App.tsx`):** gesto táctil de tirar hacia abajo desde el tope de la página con indicador circular y `location.reload()` al soltar. Se desactiva dentro de modales, hoja del proyecto, reproductor y rueda de vinilos.
