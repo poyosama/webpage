@@ -699,3 +699,25 @@
    - En la lista de tracks del proyecto queda únicamente el botón **Editar**.
 7. **Reproductor — Sensibilidad 808 (`src/components/PerformativePlayer.tsx`):**
    - El desplazamiento de las 36.000 partículas responde solo a transientes reales de sub-graves (`30Hz–115Hz`) sobre una media móvil con umbral alto y amplitud reducida (~25–30%), volviendo por completo a su forma base entre golpes de 808.
+
+
+---
+
+### Turno 39 — Restauración del Collage Editorial y Proyectos de la Escena (brvno, Máximo, Tizianolased, poyo, eyebags)
+**Prompt del usuario:**
+- *"sabes que los placeholder esos que estaban puestos en el tablero del inicio estaban bien, los proyectos de maximo, tizianolased, poyo, eyebags, brvno, todos esos volvelos a poner aunque no existan despues le buscamos la vuelta vas a ver confia en mi"*
+
+**Implementación:**
+1. **Nuevo Artista y Proyecto de la Escena (`src/lib/mock.ts`):**
+   - Agregado `brvno` (`@brvno`) a `SCENE_ARTISTS` con su rol, crew `UG BOARD`, zona `Mendoza` y color `#2563eb`.
+   - Agregado el proyecto `CASI ÁNGEL` de `brvno` (EP · 4 tracks: *CASI ÁNGEL*, *Noches Frías feat. poyo*, *Cero Culpa*, *Despedida*) a `DEMO_PROJECTS`.
+2. **Restauración del Collage Editorial de Inicio (`src/components/App.tsx`):**
+   - Vuelto a poner el layout tipográfico editorial con portadas reales y micro-detalles en `.Roster-collage`:
+     - **Fila 1:** `cluster-dots` + `MIXTAPE // 01` + `LA PLAGA` (*eyebags*) + `CASI ÁNGEL` (*brvno*) + píldora `Mendoza`.
+     - **Fila 2:** Portada real `/covers/perdon-la-demora.png` + `PERDÓN LA DEMORA` (*Tizianolased*) + píldora `8 tracks · 23 min`.
+     - **Fila 3:** Portada real `/covers/chickennugget.png` + `chickenNugget` (*poyo × dorkke*) + portada real `/covers/esto-es-estar-en-sonido.png` + `ESTO ES ESTAR EN SONIDO` (*V4lentin0*).
+     - **Fila 4:** Portada real `/covers/ma7ias.png` + `#MA7IAS` (*Ma7imza*) + portada real `/covers/love2hate.png` + `Love2Hate` (*Icylucki*) + `AMORIO CLUB 2` (*Máximo*).
+   - Al tocar cualquier proyecto del collage o de la tira inferior, reproduce inmediatamente la canción o abre el proyecto.
+3. **Consolidación de Proyectos y Artistas en el Tablero (`src/components/App.tsx`):**
+   - `boardProjects` combina los proyectos del usuario con todos los proyectos emblemáticos de `DEMO_PROJECTS`, asegurando que `chickenNugget`, `PERDÓN LA DEMORA`, `#MA7IAS`, `ESTO ES ESTAR EN SONIDO`, `Love2Hate`, `LA PLAGA`, `AMORIO CLUB 2` y `CASI ÁNGEL` estén siempre presentes en la tira inferior y en `Proyectos fijados`.
+   - `allArtists` fusiona los perfiles de la nube con `SCENE_ARTISTS` (sin duplicar handles), para que `brvno`, `Máximo`, `Tizianolased`, `poyo`, `eyebags`, etc., figuren siempre en `Artistas en El Tablero` y respondan a los filtros de más recientes o populares.

@@ -7,6 +7,7 @@ import {
   DEMO_PROJECTS,
   EMPTY_ME_PROFILE,
   INITIAL_PRODUCER_DROPS,
+  SCENE_ARTISTS,
   STANDBY_PROJECT,
   STANDBY_TRACK,
   type ArtistProfile,
@@ -993,20 +994,46 @@ export default function App() {
 
   const activeIsMine = !!activeProject && activeProject.artistId === meProfile.id;
   const myProjects = projects.filter((p) => p.artistId === meProfile.id);
-  const boardProjects = (projects.length > 0 ? projects : DEMO_PROJECTS)
-    .slice()
-    .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
-  const COLLAGE_SWATCHES = ["coral", "cyan", "gold", "blue", "lime", "purple", "red"];
+  // El tablero combina los proyectos reales de la escena con los proyectos creados por el usuario
+  const boardProjects: Project[] = [
+    ...projects,
+    ...DEMO_PROJECTS.filter(
+      (d) =>
+        !projects.some(
+          (p) =>
+            p.id.toLowerCase() === d.id.toLowerCase() ||
+            p.title.trim().toLowerCase() === d.title.trim().toLowerCase()
+        )
+    ),
+  ];
   const projectTypeByCount = (n: number): ProjectType => (n <= 1 ? "Single" : n <= 6 ? "EP" : "LP");
-  const sortedArtists = communityArtists
+
+  // Artistas en el tablero: combinación de perfiles registrados en la nube con los artistas de la escena
+  const allArtists = [
+    ...communityArtists,
+    ...SCENE_ARTISTS.filter(
+      (sa) =>
+        !communityArtists.some(
+          (ca) =>
+            ca.handle?.toLowerCase() === sa.handle?.toLowerCase() ||
+            ca.name.toLowerCase() === sa.name.toLowerCase()
+        )
+    ),
+  ];
+  const sortedArtists = allArtists
     .map((a) => {
-      const owned = projects.filter((p) => p.artistId === a.id || p.artist.toLowerCase() === a.name.toLowerCase());
-      return { artist: a, owned, trackCount: owned.reduce((acc, p) => acc + p.tracks.length, 0) };
+      const owned = boardProjects.filter(
+        (p) => p.artistId === a.id || p.artist.toLowerCase().includes(a.name.toLowerCase())
+      );
+      return {
+        artist: a,
+        owned,
+        trackCount: owned.reduce((acc, p) => acc + p.tracks.length, 0) || a.tracksCount || 0,
+      };
     })
     .sort((x, y) =>
       artistSort === "populares"
-        ? y.trackCount + y.owned.length * 3 - (x.trackCount + x.owned.length * 3) ||
-          (y.artist.createdAt || "").localeCompare(x.artist.createdAt || "")
+        ? (y.trackCount + y.owned.length * 3) - (x.trackCount + x.owned.length * 3)
         : (y.artist.createdAt || "").localeCompare(x.artist.createdAt || "")
     );
   const savedProjectsList = projects.filter((p) => savedProjectIds.includes(p.id));
@@ -1018,8 +1045,25 @@ export default function App() {
       ? producerDrops
       : producerDrops.filter((d) => d.kind === producerFilter);
 
-  const findProjectById = (id: string) =>
-    projects.find((p) => p.id === id) || DEMO_PROJECTS.find((p) => p.id === id);
+  const findProjectById = (id: string): Project | undefined => {
+    const clean = id.toLowerCase().replace(/^proj-/, "");
+    return (
+      projects.find(
+        (p) =>
+          p.id.toLowerCase() === id.toLowerCase() ||
+          p.id.toLowerCase() === clean ||
+          p.id.toLowerCase() === `proj-${clean}` ||
+          p.title.toLowerCase().replace(/[^a-z0-9]/g, "").includes(clean.replace(/[^a-z0-9]/g, ""))
+      ) ||
+      DEMO_PROJECTS.find(
+        (p) =>
+          p.id.toLowerCase() === id.toLowerCase() ||
+          p.id.toLowerCase() === clean ||
+          p.id.toLowerCase() === `proj-${clean}` ||
+          p.title.toLowerCase().replace(/[^a-z0-9]/g, "").includes(clean.replace(/[^a-z0-9]/g, ""))
+      )
+    );
+  };
 
   if (!authChecked) return <div className="auth-splash" aria-hidden />;
   if (!googleConnected) {
@@ -1214,52 +1258,150 @@ export default function App() {
                   <div className="neon-spine" aria-hidden />
 
                   <div className="Roster-collage">
-                    {Array.from({ length: Math.ceil(Math.min(9, boardProjects.length) / 3) }).map((_, row) => (
-                      <div className="collage-line" key={`row-${row}`}>
-                        {boardProjects.slice(row * 3, row * 3 + 3).map((p, k) => {
-                          const idx = row * 3 + k;
-                          const words = p.title.trim().split(/\s+/);
-                          const head = words.length > 1 ? words.slice(0, -1).join(" ") + " " : "";
-                          const tail = words[words.length - 1];
-                          return (
-                            <div className="collage-item" key={p.id}>
-                              {p.coverUrl ? (
-                                <img src={p.coverUrl} alt={p.title} className="collage-cover-thumb" />
-                              ) : (
-                                <span
-                                  className="collage-cover-thumb collage-cover-fallback"
-                                  style={{ background: `linear-gradient(145deg, ${p.c1}, ${p.c2})` }}
-                                >
-                                  {p.title.charAt(0).toUpperCase()}
-                                </span>
-                              )}
-                              <button
-                                type="button"
-                                className="roster-word clean-editorial-word"
-                                onMouseEnter={() => sfx.hover()}
-                                onClick={() => {
-                                  if (projects.some((x) => x.id === p.id)) {
-                                    setSelectedProjectId(p.id);
-                                    setInsideCubeOpen(true);
-                                    navigate("biblioteca");
-                                  } else if (p.tracks[0]) {
-                                    playTrack(p.tracks[0], p, false);
-                                  }
-                                }}
-                              >
-                                {head}
-                                <span className={`inline-swatch ${COLLAGE_SWATCHES[idx % COLLAGE_SWATCHES.length]}`}>
-                                  {tail}
-                                </span>
-                                <sup className="sup-tag">
-                                  {p.type.toLowerCase()} · {p.artist}
-                                </sup>
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ))}
+                    {/* Fila 1: LA PLAGA (eyebags) + CASI ÁNGEL (brvno) */}
+                    <div className="collage-line">
+                      <span className="cluster-dots">
+                        <i style={{ background: "#e11d48" }} />
+                        <i style={{ background: "#0284c7" }} />
+                        <i style={{ background: "#ca8a04" }} />
+                      </span>
+                      <span className="pixel-tag coral-badge">MIXTAPE // 01</span>
+                      <button
+                        type="button"
+                        className="roster-word clean-editorial-word"
+                        onMouseEnter={() => sfx.hover()}
+                        onClick={() => {
+                          const p = findProjectById("la-plaga");
+                          if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
+                        }}
+                      >
+                        LA <span className="inline-swatch coral">PLAGA</span>
+                        <sup className="sup-tag">mixtape · eyebags</sup>
+                      </button>
+                      <button
+                        type="button"
+                        className="roster-word clean-editorial-word"
+                        onMouseEnter={() => sfx.hover()}
+                        onClick={() => {
+                          const p = findProjectById("casi-angel");
+                          if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
+                        }}
+                      >
+                        CASI <span className="inline-swatch blue">ÁNGEL</span>
+                        <sup className="sup-tag">ep · brvno</sup>
+                      </button>
+                      <span className="cutout-pill">Mendoza</span>
+                    </div>
+
+                    {/* Fila 2: PERDÓN LA DEMORA (Tizianolased) */}
+                    <div className="collage-line">
+                      <img
+                        src="/covers/perdon-la-demora.png"
+                        alt="PERDÓN LA DEMORA"
+                        className="collage-cover-thumb"
+                      />
+                      <button
+                        type="button"
+                        className="roster-word clean-editorial-word"
+                        onMouseEnter={() => sfx.hover()}
+                        onClick={() => {
+                          const p = findProjectById("perdon-la-demora");
+                          if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
+                        }}
+                      >
+                        PERDÓN <span className="inline-swatch cyan">LA DEMORA</span>
+                        <sup className="sup-tag">mixtape · Tizianolased</sup>
+                      </button>
+                      <span className="cutout-pill dark">8 tracks · 23 min</span>
+                    </div>
+
+                    {/* Fila 3: chickenNugget (poyo · dorkke) + ESTO ES ESTAR EN SONIDO (V4lentin0) */}
+                    <div className="collage-line">
+                      <img
+                        src="/covers/chickennugget.png"
+                        alt="chickenNugget"
+                        className="collage-cover-thumb"
+                      />
+                      <button
+                        type="button"
+                        className="roster-word clean-editorial-word"
+                        onMouseEnter={() => sfx.hover()}
+                        onClick={() => {
+                          const p = findProjectById("chickennugget");
+                          if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
+                        }}
+                      >
+                        chicken<span className="inline-swatch gold">Nugget</span>
+                        <sup className="sup-tag">ep · poyo × dorkke</sup>
+                      </button>
+                      <img
+                        src="/covers/esto-es-estar-en-sonido.png"
+                        alt="ESTO ES ESTAR EN SONIDO"
+                        className="collage-cover-thumb"
+                      />
+                      <button
+                        type="button"
+                        className="roster-word clean-editorial-word"
+                        onMouseEnter={() => sfx.hover()}
+                        onClick={() => {
+                          const p = findProjectById("esto-es-estar-en-sonido");
+                          if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
+                        }}
+                      >
+                        <span className="inline-swatch blue">ESTO ES ESTAR</span> EN SONIDO
+                        <sup className="sup-tag">lp · V4lentin0</sup>
+                      </button>
+                    </div>
+
+                    {/* Fila 4: #MA7IAS (Ma7imza) + Love2Hate (Icylucki) + AMORIO CLUB 2 (Máximo) */}
+                    <div className="collage-line">
+                      <img
+                        src="/covers/ma7ias.png"
+                        alt="#MA7IAS"
+                        className="collage-cover-thumb"
+                      />
+                      <button
+                        type="button"
+                        className="roster-word clean-editorial-word"
+                        onMouseEnter={() => sfx.hover()}
+                        onClick={() => {
+                          const p = findProjectById("ma7ias");
+                          if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
+                        }}
+                      >
+                        <span className="inline-swatch lime">#MA7IAS</span>
+                        <sup className="sup-tag">lp · Ma7imza</sup>
+                      </button>
+                      <img
+                        src="/covers/love2hate.png"
+                        alt="Love2Hate"
+                        className="collage-cover-thumb"
+                      />
+                      <button
+                        type="button"
+                        className="roster-word clean-editorial-word"
+                        onMouseEnter={() => sfx.hover()}
+                        onClick={() => {
+                          const p = findProjectById("love2hate");
+                          if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
+                        }}
+                      >
+                        Love<span className="inline-swatch purple">2Hate</span>
+                        <sup className="sup-tag">ep · Icylucki</sup>
+                      </button>
+                      <button
+                        type="button"
+                        className="roster-word clean-editorial-word"
+                        onMouseEnter={() => sfx.hover()}
+                        onClick={() => {
+                          const p = findProjectById("amorio-club-2");
+                          if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
+                        }}
+                      >
+                        <span className="inline-swatch red">AMORIO CLUB 2</span>
+                        <sup className="sup-tag">ep · Máximo</sup>
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -1322,11 +1464,10 @@ export default function App() {
                     <h3>Proyectos fijados</h3>
                   </div>
                   <div className="track-list-clean">
-                    {projects.length > 0 ? (
-                      projects
-                        .flatMap((p) => p.tracks.slice(0, 2).map((t) => ({ track: t, proj: p })))
-                        .slice(0, 7)
-                        .map(({ track, proj }, i) => {
+                    {boardProjects
+                      .flatMap((p) => p.tracks.slice(0, 2).map((t) => ({ track: t, proj: p })))
+                      .slice(0, 8)
+                      .map(({ track, proj }, i) => {
                           const active = currentTrack.id === track.id;
                           return (
                             <div
@@ -1381,24 +1522,7 @@ export default function App() {
                               </div>
                             </div>
                           );
-                        })
-                    ) : (
-                      <div style={{ padding: "40px 16px", textAlign: "center" }}>
-                        <span className="mono-tag" style={{ display: "inline-block", marginBottom: 6 }}>
-                          0 PROYECTOS EN ROTACIÓN
-                        </span>
-                        <p style={{ color: "var(--ink-secondary)", fontSize: "0.86rem", margin: "4px 0 14px" }}>
-                          No hay proyectos publicados todavía. Creá uno en la biblioteca para que aparezca acá.
-                        </p>
-                        <button
-                          type="button"
-                          className="apple-btn primary"
-                          onClick={() => navigate("crear-proyecto")}
-                        >
-                          + Crear Primer Proyecto
-                        </button>
-                      </div>
-                    )}
+                        })}
                   </div>
                 </div>
 
