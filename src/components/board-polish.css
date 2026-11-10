@@ -2310,15 +2310,23 @@ body.app-no-scroll .profile-page {
   flex-shrink: 0 !important;
 }
 
-/* Centro tipográfico y portada estilo Apple Music Fullscreen */
+/* Centro tipográfico y portada estilo Apple Music Fullscreen (centrado geométrico absoluto) */
 .perf-center-typo {
-  inset: clamp(74px, 11dvh, 106px) 0 clamp(142px, 22dvh, 188px) 0 !important;
+  position: absolute !important;
+  top: 48% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
   display: flex !important;
   flex-direction: column !important;
   align-items: center !important;
   justify-content: center !important;
-  gap: clamp(6px, 1.2dvh, 12px) !important;
+  gap: clamp(8px, 1.4dvh, 14px) !important;
   padding: 0 clamp(18px, 4vw, 48px) !important;
+  text-align: center !important;
+  pointer-events: none !important;
+  z-index: 5 !important;
+  max-width: min(92vw, 860px) !important;
+  width: 100% !important;
 }
 
 .perf-artwork-card {
@@ -2376,10 +2384,14 @@ body.app-no-scroll .profile-page {
   color: rgba(255, 255, 255, 0.9) !important;
 }
 
-/* Dock inferior en Liquid Glass Oscuro de alto contraste */
+/* Dock inferior en Liquid Glass Oscuro de alto contraste - CENTRADO HORIZONTAL ABSOLUTO */
 .perf-dock.spotify-full-dock {
+  position: absolute !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
   width: min(1040px, calc(100vw - clamp(20px, 4vw, 48px))) !important;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + clamp(10px, 2dvh, 22px)) !important;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + clamp(12px, 2.2dvh, 24px)) !important;
+  margin: 0 !important;
   padding: clamp(12px, 1.8dvh, 16px) clamp(14px, 2.2vw, 22px) !important;
   border-radius: clamp(22px, 3vmin, 28px) !important;
   background: rgba(22, 22, 28, 0.72) !important;
@@ -2389,6 +2401,7 @@ body.app-no-scroll .profile-page {
   box-shadow: 0 28px 72px rgba(0, 0, 0, 0.68),
     inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
   color: #ffffff !important;
+  z-index: 30 !important;
 }
 
 .spotify-now-meta b {
@@ -2824,9 +2837,60 @@ body.app-no-scroll .profile-page {
   background: rgba(0, 0, 0, 0.22) !important;
 }
 
-.perf-player.stage-light .perf-center-typo h2 {
-  color: rgba(9, 9, 11, 0.85) !important;
+.perf-player.stage-light .perf-center-typo h2,
+.perf-player.stage-light .perf-title {
+  color: #09090b !important;
   text-shadow: none !important;
+}
+
+.perf-player.stage-light .perf-kicker {
+  color: #3f3f46 !important;
+  text-shadow: none !important;
+  font-weight: 600 !important;
+}
+
+.perf-player.stage-light .perf-artwork-card {
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.14), 0 4px 14px rgba(0, 0, 0, 0.06) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+.perf-player.stage-light .perf-artwork-card small {
+  color: #52525b !important;
+  background: rgba(0, 0, 0, 0.05) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+/* ==================== REPRODUCTOR PERFORMATIVO: MODO OSCURO (STAGE-DARK GLOSS) ==================== */
+.perf-player.stage-dark {
+  background: #09090b !important;
+  color: #fafafa !important;
+}
+
+.perf-player.stage-dark .perf-title {
+  color: #ffffff !important;
+  text-shadow: 0 8px 34px rgba(0, 0, 0, 0.75) !important;
+}
+
+.perf-player.stage-dark .perf-kicker {
+  color: rgba(255, 255, 255, 0.78) !important;
+  text-shadow: 0 4px 18px rgba(0, 0, 0, 0.75) !important;
+}
+
+.perf-player.stage-dark .perf-topbar {
+  background: linear-gradient(180deg, rgba(9, 9, 11, 0.88) 0%, rgba(9, 9, 11, 0) 100%) !important;
+}
+
+.perf-player.stage-dark .pill-control,
+.perf-player.stage-dark .mono-badge {
+  background: rgba(24, 24, 30, 0.75) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+
+.perf-player.stage-dark .pill-control.active {
+  background: #ffffff !important;
+  color: #09090b !important;
+  border-color: #ffffff !important;
 }
 
 .perf-player.stage-light .perf-note {

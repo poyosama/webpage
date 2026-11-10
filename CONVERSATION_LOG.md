@@ -1279,3 +1279,36 @@
    - Configurado el rewrite `{ source: "/invite/:code*", destination: "/" }` para que los enlaces `eltablero.blog/invite/xxxxx` resuelvan limpiamente en el navegador y en SSR.
    - Migrado el manifiesto de PWA a `public/manifest.json` con `dynamic = "force-static"` compatible tanto con Next.js 16 (`cacheComponents`) como con exportaciones estáticas de Capacitor iOS (`CAPACITOR_BUILD=true`).
 
+---
+
+### Turno 73 — Fix Definitivo de Reproductor en PC: Centrado Absoluto del Dock, Tipografía de Alto Contraste en Modo Claro y Partículas de Tinta 36K
+**Pedido del usuario (`juani`):**
+- *"mira asi se ve el reproductorque te habia dicho antes"* (adjuntando captura `image.png` en PC en modo claro).
+
+**Diagnóstico sobre `image.png`:**
+1. **Dock inferior desalineado a la izquierda:**
+   - `.perf-dock.spotify-full-dock` tenía ancho `min(1040px, ...)` dentro de `.perf-player` (flex column con `align-items: stretch`). Al no tener posición absoluta ni centrado forzado, en monitores anchos de PC se anclaba al inicio del flexbox (extremo izquierdo de la pantalla).
+2. **Tipografía invisible / bajo contraste en modo claro (`stage-light`):**
+   - `.perf-title` tenía `color: #ffffff !important;` y sombra oscura dura; sobre fondo blanco marfil `#f6f6f4` se veía descolorido y borroso.
+   - `.perf-kicker` (`poyo • prod. dorkke`) tenía `color: rgba(255, 255, 255, 0.76) !important;` fijo, provocando texto blanco puro sobre fondo blanco (100% invisible).
+3. **36.000 partículas invisibles en modo claro:**
+   - En `HighResFlowParticles`, los colores de los tracks (que suelen tener `accent = #ffffff` o grises pálidos) se proyectaban directamente al material sin adaptación de luminancia. En modo claro, las partículas blancas y grises desaparecían contra el fondo `#f6f6f4`.
+   - El sprite 16x16 y tamaño 0.025 resultaban imperceptibles en alta resolución de escritorio.
+
+**Implementación (`PerformativePlayer.tsx`, `board-polish.css`):**
+1. **Centrado absoluto y definitivo del Dock inferior (`board-polish.css`):**
+   - `.perf-dock.spotify-full-dock` configurado con `position: absolute !important; left: 50% !important; transform: translateX(-50%) !important; z-index: 30 !important;`
+   - El dock queda matemáticamente centrado en el medio exacto de la pantalla en cualquier resolución (PC 4K, 1440p, 1080p, tablets y celulares).
+2. **Centrado absoluto del artwork y tipografía central (`board-polish.css`):**
+   - `.perf-center-typo` anclado a `position: absolute !important; top: 48% !important; left: 50% !important; transform: translate(-50%, -50%) !important;`
+3. **Alto contraste Apple en Modo Claro (`board-polish.css`):**
+   - `.perf-player.stage-light .perf-title`: `color: #09090b !important; text-shadow: none !important;` (negro carbón nítido).
+   - `.perf-player.stage-light .perf-kicker`: `color: #3f3f46 !important; text-shadow: none !important; font-weight: 600 !important;` (gris profundo de alto contraste, perfectamente legible).
+   - `.perf-player.stage-light .perf-artwork-card`: sombra sutil de elevación editorial (`0 20px 48px rgba(0, 0, 0, 0.14)`) y borde fino de 1px.
+4. **Partículas de tinta de alto impacto en Modo Claro (`PerformativePlayer.tsx`):**
+   - Adaptación dinámica de luminancia `getContrastColor()`: si el color del track es claro (`lum > 0.55`), se convierte en tinta profunda (`#09090b`, `#18181b`, `#27272a`), garantizando que las 36.000 partículas se vean nítidas y densas bailando al ritmo de los 808s sobre fondo claro.
+   - Sprite radial mejorado a 32x32 con mayor suavizado (`tex.generateMipmaps = false; LinearFilter`).
+   - Tamaño optimizado (`0.034` en modo claro, `0.026` en modo oscuro) con opacidad `0.96`.
+   - Iluminación de escena adaptativa en Three.js con luz direccional y ambiental calibradas para ambos modos.
+
+

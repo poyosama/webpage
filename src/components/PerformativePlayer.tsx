@@ -41,15 +41,15 @@ function HighResFlowParticles({
 
   const circleSprite = useMemo(() => {
     const c = document.createElement("canvas");
-    c.width = 16;
-    c.height = 16;
+    c.width = 32;
+    c.height = 32;
     const g = c.getContext("2d")!;
-    const grad = g.createRadialGradient(8, 8, 1, 8, 8, 7.5);
+    const grad = g.createRadialGradient(16, 16, 2, 16, 16, 15);
     grad.addColorStop(0, "rgba(255,255,255,1)");
-    grad.addColorStop(0.55, "rgba(255,255,255,0.8)");
+    grad.addColorStop(0.65, "rgba(255,255,255,0.85)");
     grad.addColorStop(1, "rgba(255,255,255,0)");
     g.fillStyle = grad;
-    g.fillRect(0, 0, 16, 16);
+    g.fillRect(0, 0, 32, 32);
     const tex = new THREE.CanvasTexture(c);
     tex.generateMipmaps = false;
     tex.minFilter = THREE.LinearFilter;
@@ -63,9 +63,27 @@ function HighResFlowParticles({
     const scatter = new Float32Array(count * 3);
     const col = new Float32Array(count * 3);
     const ph = new Float32Array(count);
-    const cA = new THREE.Color(accent);
-    const cB = new THREE.Color(c2);
-    const cInk = new THREE.Color(isDarkStage ? "#ffffff" : "#18181b");
+
+    const getContrastColor = (hex: string, fallbackDark: string) => {
+      try {
+        const c = new THREE.Color(hex);
+        const lum = 0.299 * c.r + 0.587 * c.g + 0.114 * c.b;
+        if (!isDarkStage) {
+          // En modo claro (fondo marfil/blanco), convertimos colores claros a tinta profunda
+          if (lum > 0.55) return new THREE.Color(fallbackDark);
+        } else {
+          // En modo oscuro (fondo negro), aclaramos si se pierde en la oscuridad
+          if (lum < 0.18) return new THREE.Color("#e4e4e7");
+        }
+        return c;
+      } catch {
+        return new THREE.Color(isDarkStage ? "#ffffff" : fallbackDark);
+      }
+    };
+
+    const cA = getContrastColor(accent, "#09090b");
+    const cB = getContrastColor(c2, "#27272a");
+    const cInk = new THREE.Color(isDarkStage ? "#ffffff" : "#09090b");
 
     for (let i = 0; i < count; i++) {
       const ix = i * 3;
@@ -174,7 +192,8 @@ function HighResFlowParticles({
 
     const pulseDisp = dispRef.current;
     if (matRef.current) {
-      matRef.current.size = 0.025 * (1 + pulseDisp * 0.48 * mobileScale);
+      const baseSize = isDarkStage ? 0.026 : 0.034;
+      matRef.current.size = baseSize * (1 + pulseDisp * 0.48 * mobileScale);
     }
 
     const step = clampedDt * 0.95;
@@ -230,11 +249,11 @@ function HighResFlowParticles({
       <pointsMaterial
         ref={matRef}
         map={circleSprite}
-        size={0.025}
+        size={isDarkStage ? 0.026 : 0.034}
         vertexColors
         transparent
-        alphaTest={0.04}
-        opacity={0.9}
+        alphaTest={0.02}
+        opacity={isDarkStage ? 0.92 : 0.96}
         sizeAttenuation
         depthWrite={false}
       />
@@ -585,9 +604,9 @@ export default function PerformativePlayer({
           dpr={mode === "boids" ? [1, 1.25] : [1, 1.5]}
           gl={{ alpha: true, antialias: mode !== "boids", powerPreference: "high-performance" }}
         >
-          <ambientLight intensity={isDarkStage ? 1.15 : 1.6} />
-          <directionalLight position={[4, 6, 5]} intensity={isDarkStage ? 1.85 : 2.2} />
-          <pointLight position={[-4, -3, 3]} color={track.c2} intensity={isDarkStage ? 6 : 4.5} />
+          <ambientLight intensity={isDarkStage ? 1.15 : 1.7} />
+          <directionalLight position={[4, 6, 5]} intensity={isDarkStage ? 1.85 : 2.4} />
+          <pointLight position={[-4, -3, 3]} color={isDarkStage ? track.c2 : "#27272a"} intensity={isDarkStage ? 6 : 4} />
 
           {mode === "boids" && (
             <HighResFlowParticles
