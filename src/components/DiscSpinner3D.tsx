@@ -1,7 +1,7 @@
 "use client";
 
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { type Project, type Track } from "@/lib/mock";
 import { sfx } from "@/lib/sfx";
@@ -19,11 +19,11 @@ function ResponsiveSpinnerGroup({ children }: { children: React.ReactNode }) {
 function useDiscPlateTexture(track: Track, projectCoverUrl?: string, index: number = 0, total: number = 1) {
   const [texture, setTexture] = useState<THREE.Texture>(() => {
     const c = document.createElement("canvas");
-    c.width = 512;
-    c.height = 512;
+    c.width = 1024;
+    c.height = 1024;
     const g = c.getContext("2d")!;
     g.fillStyle = "#0c0d12";
-    g.fillRect(0, 0, 512, 512);
+    g.fillRect(0, 0, 1024, 1024);
     const tex = new THREE.CanvasTexture(c);
     tex.colorSpace = THREE.SRGBColorSpace;
     return tex;
@@ -32,15 +32,18 @@ function useDiscPlateTexture(track: Track, projectCoverUrl?: string, index: numb
   useEffect(() => {
     let active = true;
     const c = document.createElement("canvas");
-    c.width = 512;
-    c.height = 512;
+    c.width = 1024;
+    c.height = 1024;
     const g = c.getContext("2d")!;
     const tex = new THREE.CanvasTexture(c);
     tex.colorSpace = THREE.SRGBColorSpace;
-    tex.anisotropy = 4;
+    tex.anisotropy = 8;
+    tex.generateMipmaps = true;
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
 
     const imgUrl = track.coverUrl || projectCoverUrl;
 
+    g.scale(2, 2);
     const draw = (img?: HTMLImageElement) => {
       if (!active) return;
       g.fillStyle = "#0c0d12";
@@ -172,7 +175,7 @@ function DiscPlate({
 
   return (
     <group ref={groupRef}>
-      <mesh
+      <group
         onPointerOver={(e) => {
           e.stopPropagation();
           setHoveredIdx(index);
@@ -199,59 +202,30 @@ function DiscPlate({
           }
         }}
       >
-        <boxGeometry args={[2.0, 2.0, 0.04]} />
-        <meshBasicMaterial map={tex} />
-      </mesh>
+        {/* Vinilo asomando por detrás del sobre */}
+        <group position={[0, 0.5, -0.05]} rotation={[Math.PI / 2, 0, 0]}>
+          <mesh>
+            <cylinderGeometry args={[0.95, 0.95, 0.02, 128]} />
+            <meshStandardMaterial color="#08080b" metalness={0.65} roughness={0.32} />
+          </mesh>
+          {[0.82, 0.7, 0.58, 0.46].map((r) => (
+            <mesh key={r} position={[0, 0.0115, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+              <ringGeometry args={[r, r + 0.004, 128]} />
+              <meshBasicMaterial color="#ffffff" transparent opacity={0.07} depthWrite={false} />
+            </mesh>
+          ))}
+          <mesh position={[0, 0.0125, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <circleGeometry args={[0.3, 64]} />
+            <meshBasicMaterial map={tex} />
+          </mesh>
+        </group>
+        {/* Sobre con la tapa */}
+        <mesh>
+          <boxGeometry args={[2.0, 2.0, 0.045]} />
+          <meshStandardMaterial map={tex} roughness={0.55} metalness={0.05} />
+        </mesh>
+      </group>
     </group>
-  );
-}
-
-function SpinnerParticles() {
-  const pointsRef = useRef<THREE.Points>(null!);
-  const count = 300;
-  const [positions, phases] = useMemo(() => {
-    const pos = new Float32Array(count * 3);
-    const ph = new Float32Array(count);
-    for (let i = 0; i < count; i++) {
-      const angle = (Math.random() - 0.5) * Math.PI * 1.5;
-      const r = 1.2 + Math.random() * 1.6;
-      pos[i * 3] = Math.sin(angle) * r + (Math.random() - 0.5) * 0.4;
-      pos[i * 3 + 1] = (Math.random() - 0.5) * 1.6;
-      pos[i * 3 + 2] = Math.cos(angle) * r * 0.6 + (Math.random() - 0.5) * 0.8;
-      ph[i] = Math.random() * Math.PI * 2;
-    }
-    return [pos, ph];
-  }, [count]);
-
-  useFrame(({ clock }) => {
-    const t = clock.getElapsedTime();
-    if (!pointsRef.current) return;
-    const posAttr = pointsRef.current.geometry.attributes.position as THREE.BufferAttribute;
-    const arr = posAttr.array as Float32Array;
-    for (let i = 0; i < count; i++) {
-      const idx = i * 3;
-      arr[idx + 1] += Math.sin(t * 1.3 + phases[i]) * 0.0016;
-    }
-    posAttr.needsUpdate = true;
-  });
-
-  return (
-    <points ref={pointsRef}>
-      <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          args={[positions, 3]}
-        />
-      </bufferGeometry>
-      <pointsMaterial
-        size={0.04}
-        color="#ffffff"
-        transparent
-        opacity={0.8}
-        blending={THREE.AdditiveBlending}
-        depthWrite={false}
-      />
-    </points>
   );
 }
 
@@ -360,8 +334,13 @@ export default function DiscSpinner3D({
         }}
       >
         {/* Cámara con zoom out y más desde arriba */}
-        <Canvas camera={{ position: [0, 1.35, 6.8], fov: 36 }} dpr={[1, 2]}>
-          <ambientLight intensity={1.4} />
+        <Canvas
+          camera={{ position: [0, 1.35, 6.8], fov: 36 }}
+          dpr={[1, typeof window !== "undefined" && window.innerWidth < 768 ? 1.5 : 2]}
+          gl={{ antialias: true, powerPreference: "high-performance" }}
+        >
+          <ambientLight intensity={0.9} />
+          <directionalLight position={[-4, 3, 4]} intensity={0.6} />
           <directionalLight position={[4, 6, 5]} intensity={1.6} />
           <ResponsiveSpinnerGroup>
             {tracks.map((t, i) => (
@@ -383,7 +362,6 @@ export default function DiscSpinner3D({
                 }}
               />
             ))}
-            <SpinnerParticles />
           </ResponsiveSpinnerGroup>
           <SpinnerPhysics
             total={tracks.length}

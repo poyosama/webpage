@@ -5,10 +5,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import {
   DEMO_PROJECTS,
-  INITIAL_ME_PROFILE,
+  EMPTY_ME_PROFILE,
   INITIAL_PRODUCER_DROPS,
-  INITIAL_PROJECTS,
-  SCENE_ARTISTS,
   STANDBY_PROJECT,
   STANDBY_TRACK,
   type ArtistProfile,
@@ -30,13 +28,15 @@ import {
   fetchCommunityProfilesFromSupabase,
   saveUserProfileToSupabase,
   saveProjectToSupabase,
-  saveTrackToSupabase,
   deleteTrackFromSupabase,
+  deleteProjectFromSupabase,
   uploadMediaToSupabase,
-  updateProjectCoverInSupabase,
   toggleSavedProjectInSupabase,
   fetchSavedProjectIdsFromSupabase,
+  mergePersistedUrls,
+  hasTransientMedia,
 } from "@/lib/supabase";
+import "./board-polish.css";
 
 const DiscSpinner3D = dynamic(() => import("./DiscSpinner3D"), { ssr: false });
 const PerformativePlayer = dynamic(() => import("./PerformativePlayer"), { ssr: false });
@@ -112,13 +112,19 @@ function formatTime(sec: number): string {
 
 export default function App() {
   const [tab, setTab] = useState<ScreenTab>("inicio");
-  const [meProfile, setMeProfile] = useState<ArtistProfile>(INITIAL_ME_PROFILE);
+  const [meProfile, setMeProfile] = useState<ArtistProfile>(EMPTY_ME_PROFILE);
   const [projects, setProjects] = useState<Project[]>([]);
   const [communityArtists, setCommunityArtists] = useState<ArtistProfile[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [producerDrops, setProducerDrops] = useState<ProducerDropItem[]>([]);
   const [producerFilter, setProducerFilter] = useState<"Todos" | ProducerDropKind>("Todos");
   const [hydrated, setHydrated] = useState<boolean>(false);
+  const [authChecked, setAuthChecked] = useState<boolean>(false);
+  const [cloudReady, setCloudReady] = useState<boolean>(false);
+  const [syncStatus, setSyncStatus] = useState<"idle" | "saving" | "error">("idle");
+  const [artistSort, setArtistSort] = useState<"recientes" | "populares">("recientes");
+  const lastUserIdRef = useRef<string | null>(null);
+  const syncedSigRef = useRef<Record<string, string>>({});
 
   // Modo oscuro / Modo claro global para todas las pantallas
   const [theme, setTheme] = useState<"dark" | "light">("dark");
@@ -282,9 +288,6 @@ export default function App() {
 
   const handleUpdateProjectCover = (projectId: string, newCoverUrl: string) => {
     updateProjectMeta(projectId, { coverUrl: newCoverUrl });
-    if (googleConnected) {
-      updateProjectCoverInSupabase(projectId, newCoverUrl);
-    }
     sfx.drop();
   };
 
@@ -299,26 +302,11 @@ export default function App() {
     }
   };
 
-  // Hidratar proyectos y perfil guardados por el usuario en su dispositivo (Web / Capacitor iOS)
+  // Hidratar solo preferencias locales (las novedades de productores). Proyectos y perfil viven en la nube.
   useEffect(() => {
     try {
-      const savedProjs = localStorage.getItem(STORAGE_PROJECTS_KEY);
-      if (savedProjs) {
-        const parsed = JSON.parse(savedProjs) as Project[];
-        if (Array.isArray(parsed)) {
-          setProjects(parsed);
-          if (parsed[0]) {
-            setSelectedProjectId(parsed[0].id);
-            setCurrentProject(parsed[0]);
-            if (parsed[0].tracks[0]) setCurrentTrack(parsed[0].tracks[0]);
-          }
-        }
-      }
-      const savedProfile = localStorage.getItem(STORAGE_PROFILE_KEY);
-      if (savedProfile) {
-        const parsedProf = JSON.parse(savedProfile) as ArtistProfile;
-        if (parsedProf && parsedProf.id) setMeProfile(parsedProf);
-      }
+      localStorage.removeItem("eltablero_real_projects_v1");
+      localStorage.removeItem("eltablero_real_profile_v1");
       const savedDrops = localStorage.getItem(STORAGE_DROPS_KEY);
       if (savedDrops) {
         const parsedDrops = JSON.parse(savedDrops) as ProducerDropItem[];
@@ -334,194 +322,221 @@ export default function App() {
   useEffect(() => {
     if (!hydrated) return;
     try {
-      localStorage.setItem(STORAGE_PROJECTS_KEY, JSON.stringify(projects));
-    } catch {
-      // ignore quota errors
-    }
-  }, [projects, hydrated]);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    try {
-      localStorage.setItem(STORAGE_PROFILE_KEY, JSON.stringify(meProfile));
-    } catch {
-      // ignore
-    }
-  }, [meProfile, hydrated]);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    try {
       localStorage.setItem(STORAGE_DROPS_KEY, JSON.stringify(producerDrops));
     } catch {
       // ignore
     }
   }, [producerDrops, hydrated]);
 
-  // Escuchar sesión activa de Supabase Auth y sincronizar datos de la nube
+  // Carga (o crea) el perfil de la cuenta + todos los proyectos que la cuenta puede ver
+  const applySession = async (u: any, mounted: () => boolean, fresh: boolean) => {
+    if (!u || !mounted()) return;
+    const meta = u.user_metadata || {};
+    const defaultName = meta.full_name || meta.name || u.email?.split("@")[0] || "Artista";
+    const rawH = (meta.user_name || u.email?.split("@")[0] || "artista").replace(/[^a-zA-Z0-9_]/g, "");
+
+    let pendingRole: "artista" | "oyente" | null = null;
+    try {
+      pendingRole = (localStorage.getItem("eltablero_pending_role") as "artista" | "oyente") || null;
+      const stored = localStorage.getItem(`eltablero_role_${u.id}`) as "artista" | "oyente" | null;
+      if (pendingRole) {
+        localStorage.setItem(`eltablero_role_${u.id}`, pendingRole);
+        localStorage.removeItem("eltablero_pending_role");
+      } else {
+        pendingRole = stored;
+      }
+    } catch {}
+
+    try {
+      const { data: existing } = await supabase.from("profiles").select("*").eq("id", u.id).maybeSingle();
+      let base: ArtistProfile;
+      if (existing) {
+        base = {
+          ...EMPTY_ME_PROFILE,
+          id: u.id,
+          email: u.email,
+          name: existing.name || defaultName,
+          handle: existing.handle?.startsWith("@") ? existing.handle : `@${existing.handle}`,
+          role: existing.role || EMPTY_ME_PROFILE.role,
+          zone: existing.zone || "",
+          crew: existing.crew || "",
+          bio: existing.bio || "",
+          color: existing.color || EMPTY_ME_PROFILE.color,
+          avatarUrl: existing.avatar_url || meta.avatar_url || undefined,
+          stickers: existing.stickers || [],
+          createdAt: existing.created_at,
+        };
+      } else {
+        // Cuenta nueva: perfil vacío (solo nombre y handle de Google)
+        let handle = `@${rawH.toLowerCase()}`;
+        let res = await saveUserProfileToSupabase({ id: u.id, handle, name: defaultName, avatarUrl: meta.avatar_url });
+        if (!res.success) {
+          handle = `@${rawH.toLowerCase()}${Math.floor(100 + Math.random() * 900)}`;
+          res = await saveUserProfileToSupabase({ id: u.id, handle, name: defaultName, avatarUrl: meta.avatar_url });
+        }
+        base = {
+          ...EMPTY_ME_PROFILE,
+          id: u.id,
+          email: u.email,
+          name: defaultName,
+          handle: res.cleanHandle || handle,
+          avatarUrl: meta.avatar_url || undefined,
+        };
+      }
+      if (pendingRole) base.accountType = pendingRole;
+      if (!mounted()) return;
+      setMeProfile(base);
+      setGoogleConnected(true);
+      if (fresh) {
+        setShowLanding(false);
+        setTab("inicio");
+      }
+
+      const [allProjs, profiles, savedIds] = await Promise.all([
+        fetchUserProjectsFromSupabase(),
+        fetchCommunityProfilesFromSupabase(),
+        fetchSavedProjectIdsFromSupabase(u.id),
+      ]);
+      if (!mounted()) return;
+      setCommunityArtists(profiles);
+      if (savedIds.length) setSavedProjectIds((prev) => Array.from(new Set([...prev, ...savedIds])));
+      if (allProjs) {
+        // Solo lo propio + lo que otros hicieron público
+        const visible = allProjs.filter((p) => p.artistId === u.id || p.visibility === "public");
+        const sigs: Record<string, string> = {};
+        visible.forEach((p) => (sigs[p.id] = JSON.stringify(p)));
+        syncedSigRef.current = sigs;
+        setProjects(visible);
+        if (visible.length > 0) {
+          const mine = visible.find((p) => p.artistId === u.id) || visible[0];
+          setSelectedProjectId(mine.id);
+          setCurrentProject(mine);
+          if (mine.tracks[0]) setCurrentTrack(mine.tracks[0]);
+        }
+      }
+      setCloudReady(true);
+    } catch (e) {
+      console.warn("Fallo sincronizar la cuenta con Supabase:", e);
+      if (mounted()) setGoogleConnected(true);
+    }
+  };
+
+  // Escuchar sesión activa de Supabase Auth
   useEffect(() => {
-    let mounted = true;
+    let alive = true;
+    const mounted = () => alive;
 
-    async function loadData() {
-      // 1. Cargar perfiles reales de Supabase
-      try {
-        const realProfiles = await fetchCommunityProfilesFromSupabase();
-        if (mounted) setCommunityArtists(realProfiles);
-      } catch (err) {
-        console.warn("Error cargando perfiles de comunidad:", err);
-      }
-
-      // 2. Cargar todos los proyectos reales de Supabase
-      try {
-        const allProjs = await fetchUserProjectsFromSupabase();
-        if (allProjs && mounted) {
-          setProjects(allProjs);
-          if (allProjs.length > 0) {
-            setSelectedProjectId(allProjs[0].id);
-            setCurrentProject(allProjs[0]);
-            if (allProjs[0].tracks[0]) setCurrentTrack(allProjs[0].tracks[0]);
-          }
-        }
-      } catch (err) {
-        console.warn("Error cargando proyectos de Supabase:", err);
-      }
-
-      // Helper para sincronizar el perfil con Supabase preservando el handle único
-      const syncUserProfileWithSession = async (u: any) => {
-        if (!u || !mounted) return;
-        setGoogleConnected(true);
-        const meta = u.user_metadata || {};
-        const defaultName = meta.full_name || meta.name || u.email?.split("@")[0] || "Artista";
-        const rawH = (meta.user_name || u.email?.split("@")[0] || "artista").replace(/[^a-zA-Z0-9_]/g, "");
-        const defaultHandle = `@${rawH}`;
-
-        try {
-          // Revisar si ya existe un perfil en la tabla 'profiles' para este user id
-          const { data: existing } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", u.id)
-            .maybeSingle();
-
-          if (existing) {
-            // RESPETAR EL HANDLE Y NOMBRE QUE EL USUARIO YA ELIGIÓ Y GUARDÓ
-            const loadedHandle = existing.handle?.startsWith("@") ? existing.handle : `@${existing.handle}`;
-            setMeProfile((prev) => ({
-              ...prev,
-              id: u.id,
-              email: u.email,
-              name: existing.name || defaultName,
-              handle: loadedHandle,
-              role: existing.role || prev.role,
-              zone: existing.zone || prev.zone,
-              crew: existing.crew || prev.crew,
-              bio: existing.bio || prev.bio,
-              color: existing.color || prev.color,
-              avatarUrl: existing.avatar_url || meta.avatar_url || prev.avatarUrl,
-            }));
-          } else {
-            // Primera vez: crear perfil inicial sin pisar handles tomados
-            await saveUserProfileToSupabase({
-              id: u.id,
-              handle: defaultHandle,
-              name: defaultName,
-              avatarUrl: meta.avatar_url,
-            });
-            setMeProfile((prev) => ({
-              ...prev,
-              id: u.id,
-              email: u.email,
-              name: defaultName,
-              handle: defaultHandle,
-            }));
-          }
-
-          const updatedProfiles = await fetchCommunityProfilesFromSupabase();
-          if (mounted) setCommunityArtists(updatedProfiles);
-        } catch (e) {
-          console.warn("Fallo sincronizar perfil con Supabase:", e);
-        }
-      };
-
-      // 3. Revisar sesión de auth
+    (async () => {
       try {
         const {
           data: { session },
         } = await supabase.auth.getSession();
-        if (session?.user && mounted) {
-          await syncUserProfileWithSession(session.user);
-        } else if (mounted) {
-          setGoogleConnected(false);
+        if (session?.user && alive) {
+          lastUserIdRef.current = session.user.id;
+          setGoogleConnected(true);
+          setAuthChecked(true);
+          await applySession(session.user, mounted, false);
+          return;
         }
       } catch (err) {
         console.warn("Supabase session check:", err);
       }
-    }
-
-    loadData();
+      if (alive) {
+        setGoogleConnected(false);
+        setAuthChecked(true);
+      }
+    })();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user && mounted) {
-        setGoogleConnected(true);
-        setShowLanding(false);
-        setTab("inicio");
-        const u = session.user;
-        const meta = u.user_metadata || {};
-        const defaultName = meta.full_name || meta.name || u.email?.split("@")[0] || "Artista";
-
-        try {
-          const { data: existing } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", u.id)
-            .maybeSingle();
-
-          if (existing) {
-            const loadedHandle = existing.handle?.startsWith("@") ? existing.handle : `@${existing.handle}`;
-            setMeProfile((prev) => ({
-              ...prev,
-              id: u.id,
-              email: u.email,
-              name: existing.name || defaultName,
-              handle: loadedHandle,
-              role: existing.role || prev.role,
-              zone: existing.zone || prev.zone,
-              crew: existing.crew || prev.crew,
-              bio: existing.bio || prev.bio,
-              color: existing.color || prev.color,
-              avatarUrl: existing.avatar_url || meta.avatar_url || prev.avatarUrl,
-            }));
-          }
-
-          const updatedProfiles = await fetchCommunityProfilesFromSupabase();
-          if (mounted) setCommunityArtists(updatedProfiles);
-        } catch {}
-
-        const allProjs = await fetchUserProjectsFromSupabase();
-        if (allProjs && mounted) {
-          setProjects(allProjs);
-          if (allProjs.length > 0) {
-            setSelectedProjectId(allProjs[0].id);
-            setCurrentProject(allProjs[0]);
-            if (allProjs[0].tracks[0]) setCurrentTrack(allProjs[0].tracks[0]);
-          }
-        }
-      } else if (event === "SIGNED_OUT" && mounted) {
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!alive) return;
+      if (event === "SIGNED_OUT") {
+        lastUserIdRef.current = null;
+        syncedSigRef.current = {};
         setGoogleConnected(false);
-        setShowLanding(true);
+        setCloudReady(false);
+        setProjects([]);
+        setMeProfile(EMPTY_ME_PROFILE);
+        setSavedProjectIds([]);
+        setCurrentProject(STANDBY_PROJECT);
+        setCurrentTrack(STANDBY_TRACK);
+        setIsPlaying(false);
+        setShowLanding(false);
+        setAuthChecked(true);
+        return;
       }
+      const u = session?.user;
+      if (!u) return;
+      // Refrescos de token / foco de pestaña no deben reiniciar la app: solo reaccionar a un usuario nuevo
+      if (lastUserIdRef.current === u.id) return;
+      lastUserIdRef.current = u.id;
+      setAuthChecked(true);
+      setGoogleConnected(true);
+      setTimeout(() => {
+        applySession(u, mounted, true);
+      }, 0);
     });
 
     return () => {
-      mounted = false;
+      alive = false;
       subscription.unsubscribe();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // El tipo de proyecto se detecta solo: 1 track = Single, 2-6 = EP, 7+ = LP
+  useEffect(() => {
+    if (!meProfile.id) return;
+    const AUTO = ["Single", "EP", "LP", "Album"];
+    const wanted = (n: number) => (n <= 1 ? "Single" : n <= 6 ? "EP" : "LP");
+    const needs = projects.some(
+      (p) => p.artistId === meProfile.id && AUTO.includes(p.type) && p.type !== wanted(p.tracks.length)
+    );
+    if (!needs) return;
+    setProjects((prev) =>
+      prev.map((p) =>
+        p.artistId === meProfile.id && AUTO.includes(p.type) && p.type !== wanted(p.tracks.length)
+          ? { ...p, type: wanted(p.tracks.length) as ProjectType }
+          : p
+      )
+    );
+  }, [projects, meProfile.id]);
+
+  // Sincronización automática con la nube: sube archivos temporales y guarda proyectos propios
+  useEffect(() => {
+    if (!googleConnected || !cloudReady || !meProfile.id) return;
+    const mine = projects.filter((p) => p.artistId === meProfile.id);
+    const pending = mine.filter((p) => syncedSigRef.current[p.id] !== JSON.stringify(p));
+    if (pending.length === 0) return;
+    const timer = setTimeout(async () => {
+      setSyncStatus("saving");
+      let failed = false;
+      for (const proj of pending) {
+        const sig = JSON.stringify(proj);
+        const saved = await saveProjectToSupabase(proj, meProfile.id);
+        if (!saved) {
+          failed = true;
+          continue;
+        }
+        const stillTransient = hasTransientMedia(saved);
+        if (stillTransient) failed = true;
+        const merged = mergePersistedUrls(proj, saved);
+        syncedSigRef.current[proj.id] = stillTransient ? "" : JSON.stringify(merged);
+        if (JSON.stringify(merged) !== sig) {
+          setProjects((prev) => prev.map((x) => (x.id === proj.id ? mergePersistedUrls(x, saved) : x)));
+        }
+      }
+      setSyncStatus(failed ? "error" : "idle");
+    }, 900);
+    return () => clearTimeout(timer);
+  }, [projects, googleConnected, cloudReady, meProfile.id]);
+
   const activeProject: Project | null =
-    projects.find((p) => p.id === selectedProjectId) || projects[0] || null;
+    projects.find((p) => p.id === selectedProjectId) ||
+    projects.find((p) => p.artistId === meProfile.id) ||
+    projects[0] ||
+    null;
 
   const playTrack = (track: Track, project: Project, openFull = false) => {
     const isDifferentTrack = track.id !== currentTrack.id;
@@ -732,15 +747,7 @@ export default function App() {
       })
     );
     setSelectedProjectId(projectId);
-
-    // Persistir directamente en el servidor Supabase
-    if (googleConnected) {
-      const targetProj = projects.find((p) => p.id === projectId);
-      if (targetProj) {
-        await saveProjectToSupabase(targetProj, meProfile.id);
-        await saveTrackToSupabase(projectId, newTrack, insertIndex);
-      }
-    }
+    // La sincronización con la nube (archivos incluidos) la hace el efecto de sync
   };
 
   const handleUploadProjectVideo = (projectId: string, file: File) => {
@@ -779,8 +786,9 @@ export default function App() {
 
   const handleDeleteProject = (projectId: string) => {
     if (googleConnected) {
-      supabase.from("projects").delete().eq("id", projectId).then();
+      deleteProjectFromSupabase(projectId).then();
     }
+    delete syncedSigRef.current[projectId];
     setProjects((prev) => {
       const next = prev.filter((p) => p.id !== projectId);
       if (next.length === 0) {
@@ -802,29 +810,6 @@ export default function App() {
       return next;
     });
     sfx.close();
-  };
-
-  const handleWipeAllProjects = () => {
-    sfx.close();
-    setProjects([]);
-    setSelectedProjectId("");
-    setInsideCubeOpen(false);
-    setCurrentProject(STANDBY_PROJECT);
-    setCurrentTrack(STANDBY_TRACK);
-    setIsPlaying(false);
-    sfx.stopGroove();
-  };
-
-  const handleRestoreDemoProjects = () => {
-    sfx.open();
-    setProjects(DEMO_PROJECTS);
-    if (DEMO_PROJECTS[0]) {
-      setSelectedProjectId(DEMO_PROJECTS[0].id);
-      setCurrentProject(DEMO_PROJECTS[0]);
-      if (DEMO_PROJECTS[0].tracks[0]) {
-        setCurrentTrack(DEMO_PROJECTS[0].tracks[0]);
-      }
-    }
   };
 
   const handleDeleteTrack = (projectId: string, trackId: string) => {
@@ -880,12 +865,6 @@ export default function App() {
         );
       }
     }
-    if (googleConnected) {
-      const owner = projects.find((p) => p.tracks.some((t) => t.id === updatedTrack.id));
-      if (owner) {
-        saveTrackToSupabase(owner.id, updatedTrack);
-      }
-    }
     setEditingTrack(null);
     sfx.drop();
   };
@@ -907,7 +886,6 @@ export default function App() {
       duration: "2:34",
       durationSec: 154,
       version: 1,
-      note: "Subido desde iPhone / Archivos",
       glyph: "01",
       c1: "#ffffff",
       c2: "#888888",
@@ -928,14 +906,6 @@ export default function App() {
       })
     );
     sfx.drop();
-
-    if (googleConnected) {
-      const targetProj = projects.find((p) => p.id === projectId);
-      if (targetProj) {
-        await saveProjectToSupabase(targetProj, meProfile.id);
-        await saveTrackToSupabase(projectId, newTrack, targetProj.tracks.length);
-      }
-    }
   };
 
   const handleSaveEditedProject = (updatedProject: Project) => {
@@ -979,12 +949,12 @@ export default function App() {
       id: userId,
       handle: updated.handle,
       name: updated.name,
-      role: updated.role || meProfile.role,
-      zone: updated.zone || meProfile.zone,
-      crew: updated.crew || meProfile.crew,
-      bio: updated.bio || meProfile.bio,
+      role: updated.role ?? meProfile.role,
+      zone: updated.zone ?? meProfile.zone,
+      crew: updated.crew ?? meProfile.crew,
+      bio: updated.bio ?? meProfile.bio,
       color: updated.color || meProfile.color,
-      stickers: updated.stickers || meProfile.stickers,
+      stickers: updated.stickers ?? meProfile.stickers,
       avatarUrl: updated.avatarUrl || meProfile.avatarUrl,
     });
 
@@ -1021,7 +991,24 @@ export default function App() {
     }
   };
 
+  const activeIsMine = !!activeProject && activeProject.artistId === meProfile.id;
   const myProjects = projects.filter((p) => p.artistId === meProfile.id);
+  const boardProjects = (projects.length > 0 ? projects : DEMO_PROJECTS)
+    .slice()
+    .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+  const COLLAGE_SWATCHES = ["coral", "cyan", "gold", "blue", "lime", "purple", "red"];
+  const projectTypeByCount = (n: number): ProjectType => (n <= 1 ? "Single" : n <= 6 ? "EP" : "LP");
+  const sortedArtists = communityArtists
+    .map((a) => {
+      const owned = projects.filter((p) => p.artistId === a.id || p.artist.toLowerCase() === a.name.toLowerCase());
+      return { artist: a, owned, trackCount: owned.reduce((acc, p) => acc + p.tracks.length, 0) };
+    })
+    .sort((x, y) =>
+      artistSort === "populares"
+        ? y.trackCount + y.owned.length * 3 - (x.trackCount + x.owned.length * 3) ||
+          (y.artist.createdAt || "").localeCompare(x.artist.createdAt || "")
+        : (y.artist.createdAt || "").localeCompare(x.artist.createdAt || "")
+    );
   const savedProjectsList = projects.filter((p) => savedProjectIds.includes(p.id));
   const activeAttributes = activeProject
     ? activeProject.attributes || [activeProject.zone, activeProject.year]
@@ -1033,6 +1020,33 @@ export default function App() {
 
   const findProjectById = (id: string) =>
     projects.find((p) => p.id === id) || DEMO_PROJECTS.find((p) => p.id === id);
+
+  if (!authChecked) return <div className="auth-splash" aria-hidden />;
+  if (!googleConnected) {
+    return (
+      <>
+        <LandingScene
+          onOpenGoogleAuth={() => setAuthModalOpen(true)}
+          onSetAccountRole={(role) => {
+            try {
+              localStorage.setItem("eltablero_pending_role", role);
+            } catch {}
+          }}
+        />
+        <AnimatePresence>
+          {authModalOpen && (
+            <GoogleAuthModal
+              profile={meProfile}
+              connected={false}
+              onClose={() => setAuthModalOpen(false)}
+              onSaveProfile={handleSaveProfileAndHandle}
+              onSignOut={() => setAuthModalOpen(false)}
+            />
+          )}
+        </AnimatePresence>
+      </>
+    );
+  }
 
   return (
     <div className="apple-shell">
@@ -1200,149 +1214,52 @@ export default function App() {
                   <div className="neon-spine" aria-hidden />
 
                   <div className="Roster-collage">
-                    {/* Fila 1: LA PLAGA (eyebags) — fuente unificada sin gothic-drop ni cortes */}
-                    <div className="collage-line">
-                      <span className="cluster-dots">
-                        <i style={{ background: "#e11d48" }} />
-                        <i style={{ background: "#0284c7" }} />
-                        <i style={{ background: "#ca8a04" }} />
-                      </span>
-                      <span className="pixel-tag coral-badge">MIXTAPE // 01</span>
-                      <button
-                        type="button"
-                        className="roster-word clean-editorial-word"
-                        onMouseEnter={() => sfx.hover()}
-                        onClick={() => {
-                          const p = findProjectById("proj-la-plaga");
-                          if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
-                        }}
-                      >
-                        LA <span className="inline-swatch coral">PLAGA</span>
-                        <sup className="sup-tag">mixtape · eyebags</sup>
-                      </button>
-                      <span className="cutout-pill">Mendoza</span>
-                    </div>
-
-                    {/* Fila 2: PERDÓN LA DEMORA (Tizianolased) — sin etiqueta chickenNugget */}
-                    <div className="collage-line">
-                      <img
-                        src="/covers/perdon-la-demora.png"
-                        alt="PERDÓN LA DEMORA"
-                        className="collage-cover-thumb"
-                      />
-                      <button
-                        type="button"
-                        className="roster-word clean-editorial-word"
-                        onMouseEnter={() => sfx.hover()}
-                        onClick={() => {
-                          const p = findProjectById("proj-perdon-demora");
-                          if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
-                        }}
-                      >
-                        PERDÓN <span className="inline-swatch cyan">LA DEMORA</span>
-                        <sup className="sup-tag">mixtape · Tizianolased</sup>
-                      </button>
-                      <span className="cutout-pill dark">8 tracks · 23 min</span>
-                    </div>
-
-                    {/* Fila 3: chickenNugget (poyo · dorkke) + ESTO ES ESTAR EN SONIDO (V4lentin0) */}
-                    <div className="collage-line">
-                      <img
-                        src="/covers/chickennugget.png"
-                        alt="chickenNugget"
-                        className="collage-cover-thumb"
-                      />
-                      <button
-                        type="button"
-                        className="roster-word clean-editorial-word"
-                        onMouseEnter={() => sfx.hover()}
-                        onClick={() => {
-                          const p = findProjectById("proj-chickennugget");
-                          if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
-                        }}
-                      >
-                        chicken<span className="inline-swatch gold">Nugget</span>
-                        <sup className="sup-tag">ep · poyo × dorkke</sup>
-                      </button>
-                      <img
-                        src="/covers/esto-es-estar-en-sonido.png"
-                        alt="ESTO ES ESTAR EN SONIDO"
-                        className="collage-cover-thumb"
-                      />
-                      <button
-                        type="button"
-                        className="roster-word clean-editorial-word"
-                        onMouseEnter={() => sfx.hover()}
-                        onClick={() => {
-                          const p = findProjectById("proj-en-sonido");
-                          if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
-                        }}
-                      >
-                        <span className="inline-swatch blue">ESTO ES ESTAR</span> EN SONIDO
-                        <sup className="sup-tag">lp · V4lentin0</sup>
-                      </button>
-                    </div>
-
-                    {/* Fila 4: #MA7IAS (Ma7imza) + Love2Hate (Icylucki) + AMORIO CLUB 2 (Máximo) */}
-                    <div className="collage-line">
-                      <img
-                        src="/covers/ma7ias.png"
-                        alt="#MA7IAS"
-                        className="collage-cover-thumb"
-                      />
-                      <button
-                        type="button"
-                        className="roster-word clean-editorial-word"
-                        onMouseEnter={() => sfx.hover()}
-                        onClick={() => {
-                          const p = findProjectById("proj-ma7ias");
-                          if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
-                        }}
-                      >
-                        <span className="inline-swatch lime">#MA7IAS</span>
-                        <sup className="sup-tag">lp · Ma7imza</sup>
-                      </button>
-                      <img
-                        src="/covers/love2hate.png"
-                        alt="Love2Hate"
-                        className="collage-cover-thumb"
-                      />
-                      <button
-                        type="button"
-                        className="roster-word clean-editorial-word"
-                        onMouseEnter={() => sfx.hover()}
-                        onClick={() => {
-                          const p = findProjectById("proj-love2hate");
-                          if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
-                        }}
-                      >
-                        Love<span className="inline-swatch purple">2Hate</span>
-                        <sup className="sup-tag">ep · Icylucki</sup>
-                      </button>
-                      <button
-                        type="button"
-                        className="roster-word clean-editorial-word"
-                        onMouseEnter={() => sfx.hover()}
-                        onClick={() => {
-                          const p = findProjectById("proj-amorio-club-2");
-                          if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
-                        }}
-                      >
-                        <span className="inline-swatch red">AMORIO CLUB 2</span>
-                        <sup className="sup-tag">ep · Máximo</sup>
-                      </button>
-                      <button
-                        type="button"
-                        className="collage-cta-pill"
-                        onMouseEnter={() => sfx.hover()}
-                        onClick={() => {
-                          sfx.open();
-                          setPlayerExpanded(true);
-                        }}
-                      >
-                        Abrir Reproductor 3D →
-                      </button>
-                    </div>
+                    {Array.from({ length: Math.ceil(Math.min(9, boardProjects.length) / 3) }).map((_, row) => (
+                      <div className="collage-line" key={`row-${row}`}>
+                        {boardProjects.slice(row * 3, row * 3 + 3).map((p, k) => {
+                          const idx = row * 3 + k;
+                          const words = p.title.trim().split(/\s+/);
+                          const head = words.length > 1 ? words.slice(0, -1).join(" ") + " " : "";
+                          const tail = words[words.length - 1];
+                          return (
+                            <div className="collage-item" key={p.id}>
+                              {p.coverUrl ? (
+                                <img src={p.coverUrl} alt={p.title} className="collage-cover-thumb" />
+                              ) : (
+                                <span
+                                  className="collage-cover-thumb collage-cover-fallback"
+                                  style={{ background: `linear-gradient(145deg, ${p.c1}, ${p.c2})` }}
+                                >
+                                  {p.title.charAt(0).toUpperCase()}
+                                </span>
+                              )}
+                              <button
+                                type="button"
+                                className="roster-word clean-editorial-word"
+                                onMouseEnter={() => sfx.hover()}
+                                onClick={() => {
+                                  if (projects.some((x) => x.id === p.id)) {
+                                    setSelectedProjectId(p.id);
+                                    setInsideCubeOpen(true);
+                                    navigate("biblioteca");
+                                  } else if (p.tracks[0]) {
+                                    playTrack(p.tracks[0], p, false);
+                                  }
+                                }}
+                              >
+                                {head}
+                                <span className={`inline-swatch ${COLLAGE_SWATCHES[idx % COLLAGE_SWATCHES.length]}`}>
+                                  {tail}
+                                </span>
+                                <sup className="sup-tag">
+                                  {p.type.toLowerCase()} · {p.artist}
+                                </sup>
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
                   </div>
                 </div>
 
@@ -1356,7 +1273,7 @@ export default function App() {
 
                 {/* 3º: TIRA HORIZONTAL DE MINIPORTADAS (con tapas reales y sin scrollbar fantasma) */}
                 <div className="filmstrip-row">
-                  {(projects.length > 0 ? projects : DEMO_PROJECTS).map((p, idx) => (
+                  {boardProjects.map((p, idx) => (
                     <motion.button
                       key={p.id}
                       type="button"
@@ -1364,7 +1281,15 @@ export default function App() {
                       whileTap={{ scale: 0.985 }}
                       className="filmstrip-thumb"
                       onMouseEnter={() => sfx.hover()}
-                      onClick={() => p.tracks[0] && playTrack(p.tracks[0], p, false)}
+                      onClick={() => {
+                        if (projects.some((x) => x.id === p.id)) {
+                          setSelectedProjectId(p.id);
+                          setInsideCubeOpen(true);
+                          navigate("biblioteca");
+                        } else if (p.tracks[0]) {
+                          playTrack(p.tracks[0], p, false);
+                        }
+                      }}
                     >
                       <div
                         className="filmstrip-art"
@@ -1374,7 +1299,7 @@ export default function App() {
                             : `linear-gradient(145deg, ${p.c1} 0%, ${p.c2} 100%)`,
                         }}
                       >
-                        <span className="thumb-index">0{idx + 1}</span>
+                        <span className="thumb-index">{String(idx + 1).padStart(2, "0")}</span>
                         {!p.coverUrl && (
                           <strong className="thumb-glyph">{p.tracks[0]?.glyph}</strong>
                         )}
@@ -1478,55 +1403,66 @@ export default function App() {
                 </div>
 
                 <div className="apple-card">
-                  <div className="card-head">
-                    <span className="mono-tag">ARTISTAS // ROTACIÓN DEL TABLERO</span>
-                    <h3>Artistas en El Tablero</h3>
+                  <div className="card-head card-head-with-filter">
+                    <div>
+                      <span className="mono-tag">ARTISTAS // ROTACIÓN DEL TABLERO</span>
+                      <h3>Artistas en El Tablero</h3>
+                    </div>
+                    <div className="seg-pills artist-sort-pills">
+                      {(["recientes", "populares"] as const).map((k) => (
+                        <button
+                          key={k}
+                          type="button"
+                          className={artistSort === k ? "on" : ""}
+                          onClick={() => {
+                            sfx.tap();
+                            setArtistSort(k);
+                          }}
+                        >
+                          {k === "recientes" ? "Más recientes" : "Populares"}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                   <div className="artist-directory-list">
-                    {communityArtists.length > 0 ? (
-                      communityArtists.map((a) => {
-                        const artistTrackCount = projects
-                          .filter((p) => p.artistId === a.id || p.artist.toLowerCase() === a.name.toLowerCase())
-                          .reduce((acc, p) => acc + p.tracks.length, 0);
-                        return (
-                          <div
-                            key={a.id}
-                            className="artist-dir-item"
-                            onMouseEnter={() => sfx.hover()}
-                            onClick={() => {
-                              const found = projects.find((p) => p.artistId === a.id || p.artist.toLowerCase() === a.name.toLowerCase());
-                              if (found) {
-                                setSelectedProjectId(found.id);
-                                navigate("biblioteca");
-                              }
-                            }}
-                          >
-                            <div className="artist-dir-avatar" style={{ background: a.color, overflow: "hidden" }}>
-                              {a.avatarUrl ? (
-                                <img
-                                  src={a.avatarUrl}
-                                  alt={a.name}
-                                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                                />
-                              ) : (
-                                a.stickers[0] || a.name.charAt(0).toUpperCase()
-                              )}
-                            </div>
-                            <div className="artist-dir-info">
-                              <b>
-                                {a.name} <em>{a.handle}</em>
-                              </b>
-                              <span>
-                                {a.role} · {a.zone}
-                              </span>
-                            </div>
-                            <div className="artist-dir-stats">
-                              <b>{artistTrackCount}</b>
-                              <small>tracks</small>
-                            </div>
+                    {sortedArtists.length > 0 ? (
+                      sortedArtists.map(({ artist: a, owned, trackCount }) => (
+                        <div
+                          key={a.id}
+                          className="artist-dir-item"
+                          onMouseEnter={() => sfx.hover()}
+                          onClick={() => {
+                            const found = owned[0];
+                            if (found) {
+                              setSelectedProjectId(found.id);
+                              setInsideCubeOpen(true);
+                              navigate("biblioteca");
+                            }
+                          }}
+                        >
+                          <div className="artist-dir-avatar" style={{ background: a.color, overflow: "hidden" }}>
+                            {a.avatarUrl ? (
+                              <img
+                                src={a.avatarUrl}
+                                alt={a.name}
+                                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                              />
+                            ) : (
+                              a.name.charAt(0).toUpperCase()
+                            )}
                           </div>
-                        );
-                      })
+                          <div className="artist-dir-info">
+                            <b>
+                              {a.name} <em>{a.handle}</em>
+                            </b>
+                            <span>{[a.role, a.zone].filter(Boolean).join(" · ")}</span>
+                          </div>
+                          <div className="artist-dir-stats">
+                            <b>{trackCount}</b>
+                            <small>tracks</small>
+                          </div>
+                        </div>
+                      ))
                     ) : (
                       <div style={{ padding: "40px 16px", textAlign: "center" }}>
                         <span className="mono-tag" style={{ display: "inline-block", marginBottom: 6 }}>
@@ -1682,7 +1618,7 @@ export default function App() {
                           setLibrarySubTab("proyectos");
                         }}
                       >
-                        Mis Proyectos ({projects.length})
+                        Mis Proyectos ({myProjects.length})
                       </button>
                       <button
                         type="button"
@@ -1697,43 +1633,41 @@ export default function App() {
                     </div>
                   )}
 
-                  {librarySubTab === "proyectos" && meProfile.accountType !== "oyente" && (
-                    <>
-                      {projects.length > 0 && (
-                        <button
-                          type="button"
-                          className="apple-btn ghost danger-trash-btn"
-                          onClick={handleWipeAllProjects}
-                          title="Dejar la biblioteca en 0 proyectos para arrancar en limpio"
-                        >
-                          Limpiar proyectos ({projects.length})
-                        </button>
-                      )}
-
-                      <div className="seg-pills">
-                        <button
-                          type="button"
-                          className={libraryLayoutMode === "inside" ? "on" : ""}
-                          onClick={() => {
-                            sfx.tap();
-                            setLibraryLayoutMode("inside");
-                            setInsideCubeOpen(false);
-                          }}
-                        >
-                          Por defecto
-                        </button>
-                        <button
-                          type="button"
-                          className={libraryLayoutMode === "side-by-side" ? "on" : ""}
-                          onClick={() => {
-                            sfx.tap();
-                            setLibraryLayoutMode("side-by-side");
-                          }}
-                        >
-                          ◫ Lado a Lado
-                        </button>
-                      </div>
-                    </>
+                  {meProfile.accountType !== "oyente" && (
+                    <div className="layout-switch" role="group" aria-label="Vista de la biblioteca">
+                      <button
+                        type="button"
+                        className={`layout-icon-btn ${libraryLayoutMode === "inside" && librarySubTab === "proyectos" ? "active" : ""}`}
+                        aria-label="Una ventana"
+                        title="Una ventana"
+                        onClick={() => {
+                          sfx.tap();
+                          setLibrarySubTab("proyectos");
+                          setLibraryLayoutMode("inside");
+                          setInsideCubeOpen(false);
+                        }}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                          <rect x="4" y="5" width="16" height="14" rx="2" />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        className={`layout-icon-btn ${libraryLayoutMode === "side-by-side" && librarySubTab === "proyectos" ? "active" : ""}`}
+                        aria-label="Dos ventanas"
+                        title="Dos ventanas"
+                        onClick={() => {
+                          sfx.tap();
+                          setLibrarySubTab("proyectos");
+                          setLibraryLayoutMode("side-by-side");
+                        }}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                          <rect x="3" y="5" width="8" height="14" rx="2" />
+                          <rect x="13" y="5" width="8" height="14" rx="2" />
+                        </svg>
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -1821,7 +1755,7 @@ export default function App() {
                   {/* Escena 3D de Mis Proyectos (se muestra siempre en Lado a Lado, o cuando estás afuera del cubo en modo Por defecto) */}
                   {(libraryLayoutMode === "side-by-side" || !insideCubeOpen || !activeProject) && (
                     <ManifoldLibrary3D
-                      projects={projects}
+                      projects={myProjects}
                       selectedProjectId={activeProject?.id || ""}
                       viewMode={libraryViewMode}
                       onChangeViewMode={(m) => setLibraryViewMode(m)}
@@ -1870,7 +1804,7 @@ export default function App() {
                         </button>
 
                         <div className="manifold-quick-pills">
-                          {projects.map((p) => {
+                          {myProjects.map((p) => {
                             const active = p.id === activeProject.id;
                             return (
                               <div
@@ -1923,143 +1857,122 @@ export default function App() {
 
                     <div className="inspector-header">
                       <div className="inspector-meta-builder">
-                        {/* Metadata del proyecto: Tipo de Proyecto, tracks y Atributos */}
                         <div className="project-editable-meta-bar">
-                          <label className="meta-pill-select">
-                            <span>TIPO</span>
-                            <select
-                              value={activeProject.type}
-                              onChange={(e) => {
-                                sfx.tick();
-                                updateProjectMeta(activeProject.id, {
-                                  type: e.target.value as ProjectType,
-                                });
-                              }}
-                            >
-                              {PROJECT_TYPES.map((pt) => (
-                                <option key={pt} value={pt}>
-                                  {pt}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-
+                          <div className="meta-pill-static">
+                            <b>{activeProject.type}</b>
+                          </div>
                           <div className="meta-pill-static">
                             <b>{activeProject.tracks.length} tracks</b>
                           </div>
-
-                          {activeAttributes.map((attr) => (
-                            <span key={attr} className="meta-user-attr-pill">
-                              {attr}
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveAttribute(activeProject.id, attr)}
-                                title="Quitar atributo"
-                              >
-                                ✕
-                              </button>
-                            </span>
-                          ))}
-
-                          <form
-                            className="meta-add-attr-form"
-                            onSubmit={(e) => {
-                              e.preventDefault();
-                              handleAddAttribute(activeProject.id, newAttrInput);
-                            }}
-                          >
-                            <input
-                              value={newAttrInput}
-                              onChange={(e) => setNewAttrInput(e.target.value)}
-                              placeholder="+ Atributo (ej. Trap, 2026...)"
-                            />
-                            {newAttrInput.trim() && (
-                              <button type="submit" className="meta-attr-submit">
-                                +
-                              </button>
-                            )}
-                          </form>
+                          {activeIsMine ? (
+                            <button
+                              type="button"
+                              className={`visibility-toggle ${activeProject.visibility === "public" ? "on" : ""}`}
+                              onClick={() => {
+                                sfx.tick();
+                                updateProjectMeta(activeProject.id, {
+                                  visibility: activeProject.visibility === "public" ? "private" : "public",
+                                });
+                              }}
+                              title={
+                                activeProject.visibility === "public"
+                                  ? "Visible para toda la plataforma. Tocá para hacerlo privado."
+                                  : "Solo lo ves vos. Tocá para publicarlo."
+                              }
+                            >
+                              {activeProject.visibility === "public" ? "Público" : "Privado"}
+                            </button>
+                          ) : (
+                            <div className="meta-pill-static">
+                              <b>Público</b>
+                            </div>
+                          )}
                         </div>
 
                         <h2>
                           {activeProject.title} — <em>{activeProject.artist}</em>
                         </h2>
-                        <p>{activeProject.description}</p>
+                        {activeProject.description && <p>{activeProject.description}</p>}
                       </div>
 
                       <div className="row-actions">
-                        <button
-                          type="button"
-                          className="apple-btn ghost"
-                          onClick={() => {
-                            sfx.open();
-                            setEditingProject(activeProject);
-                          }}
-                        >
-                          Editar
-                        </button>
-                        <label
-                          className="apple-btn ghost"
-                          style={{ cursor: "pointer" }}
-                          title="Cambiar tapa o portada del proyecto"
-                        >
-                          <span>Cambiar portada</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            hidden
-                            onChange={(e) => {
-                              const f = e.target.files?.[0];
-                              if (f) {
-                                handleUpdateProjectCover(activeProject.id, URL.createObjectURL(f));
-                                e.target.value = "";
-                              }
+                        {activeIsMine && (
+                          <button
+                            type="button"
+                            className="apple-btn ghost"
+                            onClick={() => {
+                              sfx.open();
+                              setEditingProject(activeProject);
                             }}
-                          />
-                        </label>
-                        <button
-                          type="button"
-                          className="apple-btn ghost"
-                          onClick={() => toggleSaveProject(activeProject.id)}
-                          title={savedProjectIds.includes(activeProject.id) ? "Quitar de Guardados" : "Guardar en tu biblioteca"}
-                        >
-                          {savedProjectIds.includes(activeProject.id) ? "✓ Guardado" : "Guardar"}
-                        </button>
-                        <button
-                          type="button"
-                          className="apple-btn ghost"
-                          onClick={() => handleCopyProjectLink(activeProject.id)}
-                          title="Copiar link limpio del proyecto"
-                        >
-                          🔗 Copiar link
-                        </button>
-                        <button
-                          type="button"
-                          className="apple-btn ghost"
-                          onClick={() => navigate("subir")}
-                        >
-                          + Agregar canciones
-                        </button>
+                          >
+                            Editar
+                          </button>
+                        )}
+                        {activeIsMine && (
+                          <label className="apple-btn ghost" style={{ cursor: "pointer" }}>
+                            <span>Artwork</span>
+                            <input
+                              type="file"
+                              accept="image/*,image/gif"
+                              hidden
+                              onChange={(e) => {
+                                const f = e.target.files?.[0];
+                                if (f) {
+                                  handleUpdateProjectCover(activeProject.id, URL.createObjectURL(f));
+                                  e.target.value = "";
+                                }
+                              }}
+                            />
+                          </label>
+                        )}
+                        {!activeIsMine && (
+                          <button
+                            type="button"
+                            className="apple-btn ghost"
+                            onClick={() => toggleSaveProject(activeProject.id)}
+                          >
+                            {savedProjectIds.includes(activeProject.id) ? "✓ Guardado" : "Guardar"}
+                          </button>
+                        )}
+                        {(activeIsMine ? activeProject.visibility === "public" : true) && (
+                          <button
+                            type="button"
+                            className="apple-btn ghost"
+                            onClick={() => handleCopyProjectLink(activeProject.id)}
+                            title="Copiar link"
+                          >
+                            Link
+                          </button>
+                        )}
+                        {activeIsMine && (
+                          <button type="button" className="apple-btn ghost" onClick={() => navigate("subir")}>
+                            + Tracks
+                          </button>
+                        )}
                         <button
                           type="button"
                           className="apple-btn primary"
                           onClick={() =>
-                            activeProject.tracks[0] &&
-                            playTrack(activeProject.tracks[0], activeProject, true)
+                            activeProject.tracks[0] && playTrack(activeProject.tracks[0], activeProject, true)
                           }
                         >
-                          ▶ Abrir en reproductor
+                          ▶ Reproducir
                         </button>
-                        <button
-                          type="button"
-                          className="apple-btn ghost danger-trash-btn"
-                          title={`Eliminar proyecto ${activeProject.title}`}
-                          onClick={() => handleDeleteProject(activeProject.id)}
-                        >
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                            <TrashIcon /> Eliminar proyecto
-                          </span>
-                        </button>
+                        {activeIsMine && (
+                          <button
+                            type="button"
+                            className="apple-btn ghost danger-trash-btn"
+                            title={`Eliminar ${activeProject.title}`}
+                            aria-label={`Eliminar ${activeProject.title}`}
+                            onClick={() => {
+                              if (window.confirm(`¿Eliminar "${activeProject.title}"? No se puede deshacer.`)) {
+                                handleDeleteProject(activeProject.id);
+                              }
+                            }}
+                          >
+                            <TrashIcon />
+                          </button>
+                        )}
                       </div>
                     </div>
 
@@ -2069,30 +1982,33 @@ export default function App() {
                         <div>
                           <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 600 }}>Canvas</h3>
                         </div>
-                        <div className="row-actions">
-                          <label className="apple-btn ghost" style={{ cursor: "pointer" }}>
-                            <span>{activeProject.videos.length > 0 ? "Cambiar Canvas" : "+ Subir Video / GIF al Canvas"}</span>
-                            <input
-                              type="file"
-                              accept="video/mp4,video/webm,image/gif,image/*,video/*"
-                              hidden
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) handleUploadProjectVideo(activeProject.id, file);
-                              }}
-                            />
-                          </label>
-                          {activeProject.videos.length > 0 && (
-                            <button
-                              type="button"
-                              className="apple-btn ghost danger-trash-btn"
-                              title="Quitar video del Canvas"
-                              onClick={() => handleRemoveProjectVideo(activeProject.id, activeProject.videos[0].id)}
-                            >
-                              Quitar
-                            </button>
-                          )}
-                        </div>
+                        {activeIsMine && (
+                          <div className="row-actions">
+                            <label className="apple-btn ghost" style={{ cursor: "pointer" }}>
+                              <span>{activeProject.videos.length > 0 ? "Cambiar" : "+ Subir canvas"}</span>
+                              <input
+                                type="file"
+                                accept="video/mp4,video/webm,image/gif,image/*,video/*"
+                                hidden
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) handleUploadProjectVideo(activeProject.id, file);
+                                }}
+                              />
+                            </label>
+                            {activeProject.videos.length > 0 && (
+                              <button
+                                type="button"
+                                className="apple-btn ghost danger-trash-btn"
+                                title="Quitar canvas"
+                                aria-label="Quitar canvas"
+                                onClick={() => handleRemoveProjectVideo(activeProject.id, activeProject.videos[0].id)}
+                              >
+                                <TrashIcon />
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       <div className="inspector-canvas-viewer-card">
@@ -2120,24 +2036,7 @@ export default function App() {
                         ) : (
                           <div className="canvas-empty-state">
                             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></svg>
-                            <div style={{ textAlign: "center" }}>
-                              <b style={{ display: "block", marginBottom: 3, fontSize: "0.95rem" }}>Sin video de Canvas subido</b>
-                              <small style={{ color: "var(--ink-secondary)", fontSize: "0.78rem" }}>
-                                Subí un loop corto de 3 a 5 segundos (MP4, WebM o GIF) para que se vea en grande con la música.
-                              </small>
-                            </div>
-                            <label className="apple-btn primary" style={{ cursor: "pointer", marginTop: 4 }}>
-                              <span>+ Subir video 3–5s / GIF al Canvas</span>
-                              <input
-                                type="file"
-                                accept="video/mp4,video/webm,image/gif,image/*,video/*"
-                                hidden
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) handleUploadProjectVideo(activeProject.id, file);
-                                }}
-                              />
-                            </label>
+                            <b style={{ fontSize: "0.9rem", opacity: 0.8 }}>Sin canvas</b>
                           </div>
                         )}
                       </div>
@@ -2153,13 +2052,11 @@ export default function App() {
 
                       <div className="inspector-tracklist">
                         <div className="card-head">
-                          <span className="mono-tag">
-                            {activeProject.tracks.length} CANCIONES EN ESTE PROYECTO
-                          </span>
-                          <h3>Tracks del proyecto (editar · cambiar tapa · eliminar)</h3>
+                          <h3>Tracks</h3>
                         </div>
                         {activeProject.tracks.map((t, idx) => {
                           const isCurrent = currentTrack.id === t.id;
+                          const art = t.coverUrl || activeProject.coverUrl;
                           return (
                             <div
                               key={t.id}
@@ -2167,70 +2064,34 @@ export default function App() {
                               onMouseEnter={() => sfx.hover()}
                               onClick={() => playTrack(t, activeProject, false)}
                             >
-                              <label
-                                className="track-row-art-wrap"
-                                title="Cambiar tapa de la canción"
-                                style={{ cursor: "pointer" }}
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                {t.coverUrl || activeProject.coverUrl ? (
-                                  <img
-                                    src={t.coverUrl || activeProject.coverUrl}
-                                    alt={t.title}
-                                    className="track-row-img-thumb"
-                                  />
+                              <div className="track-row-art-wrap">
+                                {art ? (
+                                  <img src={art} alt={t.title} className="track-row-img-thumb" />
                                 ) : (
                                   <span className="track-row-art-fallback">{String(idx + 1).padStart(2, "0")}</span>
                                 )}
-                                <input
-                                  type="file"
-                                  accept="image/*,.png,.jpg,.jpeg,.webp,.gif"
-                                  hidden
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) {
-                                      const coverUrl = URL.createObjectURL(file);
-                                      handleSaveEditedTrack({ ...t, coverUrl });
-                                    }
-                                  }}
-                                />
-                              </label>
+                              </div>
                               <div className="row-main">
                                 <b>{t.title}</b>
                                 <span>
-                                  {t.artist} {t.feat ? `feat. ${t.feat}` : ""} {t.prod ? `· prod. ${t.prod}` : ""}
+                                  {t.artist}
+                                  {t.feat ? ` feat. ${t.feat}` : ""}
                                 </span>
                               </div>
-                              <div className="row-pills">
-                                <span className="meta-chip">{t.bpm} BPM</span>
-                                <span className="meta-chip">{t.key}</span>
-                                <span className="meta-chip">v{t.version}</span>
-                              </div>
-                              <div className="row-inline-actions">
-                                <button
-                                  type="button"
-                                  className="row-snippet-btn"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditingTrack(t);
-                                  }}
-                                >
-                                  Editar
-                                </button>
-                                {activeProject.tracks.length > 1 && (
+                              {activeIsMine && (
+                                <div className="row-inline-actions">
                                   <button
                                     type="button"
-                                    className="trash-icon-btn"
-                                    title={`Eliminar track ${t.title}`}
+                                    className="row-snippet-btn"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleDeleteTrack(activeProject.id, t.id);
+                                      setEditingTrack(t);
                                     }}
                                   >
-                                    <TrashIcon />
+                                    Editar
                                   </button>
-                                )}
-                              </div>
+                                </div>
+                              )}
                             </div>
                           );
                         })}
@@ -2265,50 +2126,17 @@ export default function App() {
               meProfile={meProfile}
               existingCount={projects.length}
               onCancel={() => navigate("biblioteca")}
-              onCreateProject={async (newProj) => {
-                setProjects((prev) => [newProj, ...prev]);
-                setSelectedProjectId(newProj.id);
+              onCreateProject={(newProj) => {
+                const proj: Project = {
+                  ...newProj,
+                  artistId: meProfile.id,
+                  visibility: newProj.visibility || "private",
+                  createdAt: new Date().toISOString(),
+                };
+                setProjects((prev) => [proj, ...prev]);
+                setSelectedProjectId(proj.id);
                 setInsideCubeOpen(false);
                 navigate("biblioteca");
-                if (googleConnected && meProfile.id) {
-                  try {
-                    await supabase.from("projects").upsert({
-                      id: newProj.id,
-                      user_id: meProfile.id,
-                      title: newProj.title,
-                      artist: newProj.artist,
-                      type: newProj.type,
-                      year: newProj.year,
-                      status: newProj.status,
-                      zone: newProj.zone,
-                      description: newProj.description,
-                      cover_url: newProj.coverUrl || null,
-                      order_index: 0,
-                    });
-                    for (let i = 0; i < newProj.tracks.length; i++) {
-                      const tr = newProj.tracks[i];
-                      await supabase.from("tracks").upsert({
-                        id: tr.id,
-                        project_id: newProj.id,
-                        title: tr.title,
-                        artist: tr.artist,
-                        feat: tr.feat || null,
-                        prod: tr.prod || null,
-                        bpm: tr.bpm,
-                        musical_key: tr.key,
-                        duration: tr.duration,
-                        duration_sec: tr.durationSec,
-                        version: tr.version,
-                        glyph: tr.glyph,
-                        audio_url: tr.customAudioUrl || null,
-                        cover_url: tr.coverUrl || newProj.coverUrl || null,
-                        order_index: i,
-                      });
-                    }
-                  } catch (e) {
-                    console.warn("Supabase project sync error:", e);
-                  }
-                }
               }}
             />
           )}
@@ -2340,7 +2168,7 @@ export default function App() {
                   <div className="profile-main-copy">
                     <div className="profile-badges">
                       <span className="mono-tag">{meProfile.role}</span>
-                      <span className="mono-tag">{meProfile.zone}</span>
+                      {meProfile.zone && <span className="mono-tag">{meProfile.zone}</span>}
                       {googleConnected && (
                         <span className="mono-tag google-verified">
                           Google: {meProfile.email}
@@ -2350,14 +2178,16 @@ export default function App() {
                     <h1>
                       {meProfile.name} <em>{meProfile.handle}</em>
                     </h1>
-                    <p>{meProfile.bio}</p>
-                    <div className="profile-sticker-tray">
-                      {meProfile.stickers.map((st, i) => (
-                        <span key={i} className="sticker-chip">
-                          {st}
-                        </span>
-                      ))}
-                    </div>
+                    {meProfile.bio && <p>{meProfile.bio}</p>}
+                    {meProfile.stickers.length > 0 && (
+                      <div className="profile-sticker-tray">
+                        {meProfile.stickers.map((st, i) => (
+                          <span key={i} className="sticker-chip">
+                            {st}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div className="profile-cta-col">
                     <button
@@ -2385,25 +2215,19 @@ export default function App() {
 
                 <div className="profile-metrics-bar">
                   <div>
-                    <b>{meProfile.tracksCount}</b>
-                    <span>TRACKS SUBIDOS</span>
+                    <b>{myProjects.reduce((acc, p) => acc + p.tracks.length, 0)}</b>
+                    <span>TRACKS</span>
                   </div>
                   <div>
-                    <b>{projects.length}</b>
-                    <span>PROYECTOS EN 3D</span>
+                    <b>{myProjects.length}</b>
+                    <span>PROYECTOS</span>
                   </div>
-                  <div>
-                    <b>{meProfile.friendsCount}</b>
-                    <span>AMIGOS EN LA ESCENA</span>
-                  </div>
-                  <div>
-                    <b>{meProfile.followersCount}</b>
-                    <span>OYENTES / FOLLOWERS</span>
-                  </div>
-                  <div>
-                    <b>{meProfile.playsTotal}</b>
-                    <span>REPRODUCCIONES</span>
-                  </div>
+                  {meProfile.followersCount > 0 && (
+                    <div>
+                      <b>{meProfile.followersCount}</b>
+                      <span>SEGUIDORES</span>
+                    </div>
+                  )}
                 </div>
               </section>
 
@@ -2422,31 +2246,11 @@ export default function App() {
               <section className="profile-manifold-showcase">
                 <div className="section-header-row">
                   <div>
-                    <span className="mono-tag">
-                      IDENTIDAD VISUAL // BIBLIOTECA 3D DE {meProfile.handle.toUpperCase()}
-                    </span>
                     <h2 className="editorial-h2">
                       Mis Proyectos &amp; Canvas
                     </h2>
                   </div>
                   <div className="row-actions">
-                    {projects.length > 0 ? (
-                      <button
-                        type="button"
-                        className="apple-btn ghost danger-trash-btn"
-                        onClick={handleWipeAllProjects}
-                      >
-                        Wipear ejemplos (0 proyectos)
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="apple-btn ghost"
-                        onClick={handleRestoreDemoProjects}
-                      >
-                        Restaurar ejemplos
-                      </button>
-                    )}
                     <button
                       type="button"
                       className="apple-btn primary"
@@ -2459,13 +2263,13 @@ export default function App() {
                       className="apple-btn ghost"
                       onClick={() => navigate("subir")}
                     >
-                      + Subir Canciones (Batch WAV)
+                      + Subir tracks
                     </button>
                   </div>
                 </div>
 
                 <ManifoldLibrary3D
-                  projects={myProjects.length > 0 ? myProjects : projects}
+                  projects={myProjects}
                   selectedProjectId={selectedProjectId}
                   viewMode={libraryViewMode}
                   onChangeViewMode={(m) => setLibraryViewMode(m)}
@@ -2756,19 +2560,20 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* ==================== LANDING SCENE CON REFERRAL GATE (ACCESO EXCLUSIVO CON SESIÓN) ==================== */}
+      {/* ==================== LANDING SOBRE LA APP (solo si se abre /landing con sesión) ==================== */}
       <AnimatePresence>
-        {(!googleConnected || showLanding) && (
-          <LandingScene
-            onOpenGoogleAuth={() => {
-              setAuthModalOpen(true);
-            }}
-            onSetAccountRole={(role) => {
-              setMeProfile((prev) => ({ ...prev, accountType: role }));
-            }}
-          />
-        )}
+        {showLanding && <LandingScene onOpenGoogleAuth={() => setShowLanding(false)} />}
       </AnimatePresence>
+
+      {syncStatus !== "idle" && (
+        <button
+          type="button"
+          className={`sync-pill ${syncStatus}`}
+          onClick={() => syncStatus === "error" && setProjects((p) => [...p])}
+        >
+          {syncStatus === "saving" ? "Guardando…" : "No se pudo guardar en la nube · reintentar"}
+        </button>
+      )}
     </div>
   );
 }
@@ -2975,9 +2780,7 @@ function EditProjectModal({
 }) {
   const [title, setTitle] = useState(project.title);
   const [artist, setArtist] = useState(project.artist);
-  const [type, setType] = useState<ProjectType>(project.type);
-  const [year, setYear] = useState(project.year);
-  const [status, setStatus] = useState(project.status);
+  const [visibility, setVisibility] = useState<"private" | "public">(project.visibility || "private");
   const [description, setDescription] = useState(project.description || "");
   const [coverUrl, setCoverUrl] = useState<string | undefined>(project.coverUrl);
   const [zone, setZone] = useState(project.zone || "Mendoza");
@@ -2999,8 +2802,8 @@ function EditProjectModal({
       >
         <div className="modal-head">
           <div>
-            <span className="mono-tag">PROYECTO // METADATA &amp; VINILO</span>
-            <h3>Editar datos y portada del vinilo</h3>
+            <span className="mono-tag">PROYECTO</span>
+            <h3>Editar proyecto</h3>
           </div>
           <button type="button" className="apple-btn ghost" onClick={onClose}>
             Cerrar
@@ -3016,45 +2819,24 @@ function EditProjectModal({
             <span>ARTISTA O CREW</span>
             <input value={artist} onChange={(e) => setArtist(e.target.value)} required />
           </label>
-          <label className="modal-field">
-            <span>TIPO DE PROYECTO</span>
-            <select
-              className="apple-select"
-              value={type}
-              onChange={(e) => setType(e.target.value as ProjectType)}
-            >
-              {PROJECT_TYPES.map((pt) => (
-                <option key={pt} value={pt}>
-                  {pt}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="modal-field">
-            <span>ESTADO</span>
-            <select
-              className="apple-select"
-              value={status}
-              onChange={(e) => setStatus(e.target.value as Project["status"])}
-            >
-              <option value="Publicado">Publicado</option>
-              <option value="En mezcla">En mezcla</option>
-              <option value="Master">Master</option>
-              <option value="WIP">WIP</option>
-              <option value="Privado">Privado</option>
-            </select>
-          </label>
-          <label className="modal-field">
-            <span>AÑO / EDICIÓN</span>
-            <input value={year} onChange={(e) => setYear(e.target.value)} />
-          </label>
+          <div className="modal-field full">
+            <span>PRIVACIDAD</span>
+            <div className="seg-pills" style={{ marginTop: 6 }}>
+              <button type="button" className={visibility === "private" ? "on" : ""} onClick={() => setVisibility("private")}>
+                Privado
+              </button>
+              <button type="button" className={visibility === "public" ? "on" : ""} onClick={() => setVisibility("public")}>
+                Público
+              </button>
+            </div>
+          </div>
           <label className="modal-field">
             <span>ZONA</span>
             <input value={zone} onChange={(e) => setZone(e.target.value)} />
           </label>
 
           <label className="modal-field full">
-            <span>TAPA / PORTADA DEL VINILO (IMAGEN)</span>
+            <span>ARTWORK</span>
             <div style={{ display: "flex", gap: 14, alignItems: "center", marginTop: 6 }}>
               {coverUrl ? (
                 <img
@@ -3076,20 +2858,17 @@ function EditProjectModal({
                     if (f) setCoverUrl(URL.createObjectURL(f));
                   }}
                 />
-                <small style={{ display: "block", color: "rgba(255,255,255,0.5)", marginTop: 4, fontSize: 11 }}>
-                  Esta imagen viste el sobre del vinilo 3D, el sello central del disco y los tracks.
-                </small>
               </div>
             </div>
           </label>
 
           <label className="modal-field full">
-            <span>DESCRIPCIÓN / LINER NOTES</span>
+            <span>DESCRIPCIÓN</span>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
-              placeholder="Notas del proyecto, concepto o créditos..."
+              placeholder="Descripción (opcional)"
             />
           </label>
         </div>
@@ -3112,9 +2891,7 @@ function EditProjectModal({
                   ...project,
                   title: title.trim() || project.title,
                   artist: artist.trim() || project.artist,
-                  type,
-                  year,
-                  status,
+                  visibility,
                   zone,
                   description,
                   coverUrl,
@@ -3383,12 +3160,16 @@ function GoogleAuthModal({
     setMsg("Conectando con Google...");
     setMsgType("info");
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: typeof window !== "undefined" ? window.location.origin : undefined,
+          redirectTo: typeof window !== "undefined" ? `${window.location.origin}/` : undefined,
         },
       });
+      if (data?.url && typeof window !== "undefined") {
+        window.location.assign(data.url);
+        return;
+      }
       if (error) {
         setMsg(`Error de Google: ${error.message}`);
         setMsgType("error");
@@ -3434,11 +3215,11 @@ function GoogleAuthModal({
         <div className="modal-head">
           <div>
             <span className="mono-tag">
-              {connected ? "CUENTA DE GOOGLE // SESIÓN ACTIVA" : "AUTENTICACIÓN // EL TABLERO ID"}
+              {connected ? "CUENTA" : "ACCESO"}
             </span>
             <h3 style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <GoogleCircleIcon size={22} />
-              {connected ? "Iniciado sesión con Google" : "Iniciar sesión con Google"}
+              {connected ? "Sesión iniciada" : "Iniciar sesión"}
             </h3>
           </div>
           <button type="button" className="apple-btn ghost" onClick={onClose}>
@@ -3455,24 +3236,10 @@ function GoogleAuthModal({
                   <b style={{ fontSize: "0.92rem", wordBreak: "break-all" }}>{profile.email || email}</b>
                   <span className="google-verified-tag">Verificado ✓</span>
                 </div>
-                <small style={{ color: "var(--ink-secondary)", fontSize: "0.75rem", display: "block", marginTop: 2 }}>
-                  Sincronizado en tiempo real con Supabase Cloud
-                </small>
               </div>
             </div>
           </div>
-        ) : (
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: 6, fontSize: "0.72rem", color: "#16a34a", marginBottom: 12 }}>
-            <span className="live-pulse-dot" />
-            <span>SUPABASE CLOUD CONECTADO // txhrbfgejcwmmurriccw</span>
-          </div>
-        )}
-
-        <p className="modal-subcopy">
-          {connected
-            ? "Tu cuenta de Google está vinculada. Tu @handle es único e irrepetible: solo vos podés usarlo en El tablero."
-            : "Con tu cuenta de Google sincronizás tus proyectos en los servidores de El tablero y asegurás tu @handle único para la escena."}
-        </p>
+        ) : null}
 
         {msg && (
           <div
@@ -3503,9 +3270,6 @@ function GoogleAuthModal({
               onChange={(e) => setHandle(e.target.value)}
               placeholder="@tu_handle"
             />
-            <small style={{ color: "var(--ink-secondary)", fontSize: "0.68rem", marginTop: 3 }}>
-              Identificador público reservado en PostgreSQL. Nadie más puede registrar tu mismo handle.
-            </small>
           </label>
         </div>
 

@@ -109,35 +109,49 @@ function HighResFlowParticles({
     };
   }, [accent, c2]);
 
+  const slowAvgRef = useRef(0);
+  const targetRef = useRef(0);
+
   useFrame(({ clock, pointer }, dt) => {
-    const { beat, eightOhEight } = sfx.sampleReactiveLevels();
+    // Solo la banda sub-grave (30Hz–115Hz); medios/agudos (beat) NO mueven las partículas
+    const { bass } = sfx.sampleReactiveLevels();
     const clampedDt = Math.min(0.033, dt);
     const t = clock.elapsedTime;
 
-    // Si el usuario clickea o pega el 808 de la canción, las partículas saltan según la fuerza del 808 y vuelven elásticamente
+    // Media móvil lenta (~1.2s) del nivel de sub-graves: el "piso" de la mezcla
+    slowAvgRef.current += (bass - slowAvgRef.current) * Math.min(1, clampedDt / 1.2);
+    // Golpe real = sub-grave muy por encima del piso lento + umbral alto
+    const transient = bass - slowAvgRef.current * 1.12 - 0.09;
+    const hit = Math.max(0, Math.min(1, transient / 0.22));
+
+    // Click del usuario: mini pulso sutil
     if (impulseSignal !== lastImpulseRef.current) {
       lastImpulseRef.current = impulseSignal;
-      velRef.current += 9.5;
+      targetRef.current = Math.max(targetRef.current, 0.3);
     }
 
-    // Fuerza objetivo proporcional a qué tan fuerte suena el 808 en este instante
-    const target808 = Math.min(1.6, eightOhEight * 1.45);
-    if (target808 > dispRef.current) {
-      // Ataque rápido de golpe de 808: salta hacia afuera con fuerza proporcional al 808
-      velRef.current += (target808 - dispRef.current) * 58 * clampedDt;
-    }
-    // Resorte elástico que las devuelve exactamente a su posición original apenas termina el 808
-    const springForce = (target808 - dispRef.current) * 32 - velRef.current * 9.2;
-    velRef.current += springForce * clampedDt;
-    dispRef.current = Math.max(0, dispRef.current + velRef.current * clampedDt);
+    // Amplitud máxima sutil (~30% de la anterior)
+    const MAX_DISP = 0.42;
+    const hitTarget = Math.pow(hit, 1.4) * MAX_DISP;
+    if (hitTarget > targetRef.current) targetRef.current = hitTarget;
+    // Decay del objetivo hacia 0 entre golpes
+    targetRef.current *= Math.exp(-clampedDt * 9);
+    if (targetRef.current < 0.002) targetRef.current = 0;
+
+    // Suavizado attack rápido / decay más lento, sin overshoot: siempre vuelve a 0
+    const cur = dispRef.current;
+    const k = targetRef.current > cur ? 28 : 10;
+    let next = cur + (targetRef.current - cur) * Math.min(1, clampedDt * k);
+    if (targetRef.current === 0 && next < 0.003) next = 0;
+    dispRef.current = next;
+    velRef.current = 0;
 
     const pulseDisp = dispRef.current;
     if (matRef.current) {
-      // 50% más chicas (0.025 base) y laten un poquito en tamaño con el 808
-      matRef.current.size = 0.025 * (1 + pulseDisp * 0.38);
+      matRef.current.size = 0.025 * (1 + pulseDisp * 0.2);
     }
 
-    const step = clampedDt * (0.95 + beat * 0.45);
+    const step = clampedDt * 0.95;
     const geo = pointsRef.current.geometry;
     const attr = geo.getAttribute("position") as THREE.BufferAttribute;
     const arr = attr.array as Float32Array;
@@ -462,7 +476,7 @@ export default function PerformativePlayer({
       >
         <Canvas
           camera={{ position: [0, 0, 5.2], fov: 42 }}
-          dpr={mode === "boids" ? [1, 1.25] : [1, 1.75]}
+          dpr={mode === "boids" ? [1, 1.25] : [1, 1.5]}
           gl={{ antialias: mode !== "boids", powerPreference: "high-performance" }}
         >
           <ambientLight intensity={darkStage ? 0.95 : 1.45} />

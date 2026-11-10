@@ -29,6 +29,7 @@ create table if not exists public.projects (
   type text default 'Mixtape' not null,
   year text default '2026',
   status text default 'Publicado',
+  is_public boolean not null default false,
   zone text default 'Mendoza',
   description text default '',
   cover_url text,
@@ -123,3 +124,5 @@ create policy "Usuarios autenticados suben media" on storage.objects for insert 
 drop policy if exists "Usuarios editan y borran su media" on storage.objects;
 create policy "Usuarios editan y borran su media" on storage.objects for all using (bucket_id = 'el-tablero-media' and auth.uid() = owner);
 
+
+-- Para proyectos privados/públicos y guardados correr también: supabase/migration_visibility.sql

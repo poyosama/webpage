@@ -50,6 +50,7 @@ export default function MacInstallerUpload({
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [installedCount, setInstalledCount] = useState<number | null>(null);
   const [globalProd, setGlobalProd] = useState("");
+  const [cloudFailCount, setCloudFailCount] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -110,17 +111,24 @@ export default function MacInstallerUpload({
     sfx.drop();
     setIsUploading(true);
     const startIdx = targetProject.tracks.length;
+    let failed = 0;
+    setCloudFailCount(0);
 
     for (let idx = 0; idx < batchItems.length; idx++) {
       const item = batchItems[idx];
       let finalAudioUrl = item.audioObjectUrl;
       if (item.file) {
+        let ok = false;
         try {
           const cloudUrl = await uploadMediaToSupabase(item.file, "tracks");
-          if (cloudUrl) finalAudioUrl = cloudUrl;
+          if (cloudUrl && !cloudUrl.startsWith("blob:")) {
+            finalAudioUrl = cloudUrl;
+            ok = true;
+          }
         } catch (e) {
           console.warn("Storage upload warn:", e);
         }
+        if (!ok) failed++;
       }
 
       const newTrack: Track = {
@@ -150,6 +158,7 @@ export default function MacInstallerUpload({
       );
     }
 
+    setCloudFailCount(failed);
     setInstalledCount(batchItems.length);
     setBatchItems([]);
     setIsUploading(false);
@@ -242,6 +251,12 @@ export default function MacInstallerUpload({
           <span>{batchItems.length} {batchItems.length === 1 ? "vinilito listo" : "vinilitos listos"}</span>
         </div>
       </div>
+
+      {cloudFailCount > 0 && (
+        <p role="alert" style={{ color: "#ff6b6b", fontSize: "0.8rem", margin: "8px 0" }}>
+          No se pudo guardar en la nube
+        </p>
+      )}
 
       {/* RESULTADO DE INSTALACIÓN EXITOSA */}
       {installedCount !== null && (

@@ -1,0 +1,225 @@
+.cp-page {
+  position: relative;
+  min-height: 100dvh;
+  width: 100%;
+  overflow: hidden;
+  color: var(--ink);
+}
+
+.cp-stage {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 14%, #000 78%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 14%, #000 78%, transparent 100%);
+}
+.cp-stage canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+.cp-content {
+  position: relative;
+  z-index: 1;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 88px 16px 40px;
+  gap: 16px;
+}
+
+.cp-back {
+  position: absolute;
+  top: 84px;
+  left: 20px;
+  background: none;
+  border: 0;
+  color: var(--ink-secondary);
+  font-size: 15px;
+  cursor: pointer;
+  transition: color 0.2s, transform 0.2s;
+}
+.cp-back:hover {
+  color: var(--ink);
+  transform: translateX(-2px);
+}
+
+.cp-card {
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px;
+  border-radius: 28px;
+  background: color-mix(in srgb, var(--bg) 62%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
+  -webkit-backdrop-filter: blur(28px) saturate(1.4);
+  backdrop-filter: blur(28px) saturate(1.4);
+}
+
+.cp-title {
+  margin: 0 0 4px;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.cp-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 14px 16px;
+  font: inherit;
+  font-size: 15px;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
+  border: 1px solid transparent;
+  border-radius: 14px;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+.cp-input::placeholder {
+  color: var(--ink-muted);
+}
+.cp-input:focus {
+  border-color: var(--ink);
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--ink) 10%, transparent);
+}
+.cp-input-lg {
+  font-size: 18px;
+  font-weight: 600;
+  padding: 16px;
+}
+
+.cp-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.cp-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.cp-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-secondary);
+  padding-left: 4px;
+}
+
+.cp-drop {
+  flex: 1;
+  min-height: 96px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 8px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.25;
+  color: var(--ink-secondary);
+  border: 1px dashed color-mix(in srgb, var(--ink) 28%, transparent);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+.cp-drop:hover,
+.cp-drop.on {
+  color: var(--ink);
+  border-color: var(--ink);
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+.cp-drop.on {
+  border-style: solid;
+}
+
+.cp-cover-row {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.cp-cover {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--ink) 20%, transparent);
+}
+.cp-cover-actions {
+  display: flex;
+  gap: 10px;
+}
+.cp-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-size: 12px;
+  color: var(--ink-secondary);
+  cursor: pointer;
+}
+.cp-link:hover {
+  color: var(--ink);
+}
+
+.cp-colors {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  padding: 4px 0;
+}
+.cp-colors button {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  outline-offset: 2px;
+}
+.cp-colors button.on {
+  outline: 2px solid var(--ink);
+}
+
+.cp-submit {
+  width: 100%;
+  padding: 15px;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--bg);
+  background: var(--ink);
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+@media (max-width: 560px) {
+  .cp-tiles {
+    grid-template-columns: 1fr;
+  }
+  .cp-drop {
+    min-height: 64px;
+    flex-direction: row;
+  }
+  .cp-card {
+    padding: 18px;
+    border-radius: 24px;
+  }
+  .cp-content {
+    padding-top: 72px;
+  }
+}

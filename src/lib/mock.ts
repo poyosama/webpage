@@ -58,6 +58,8 @@ export type Project = {
   artistId: string;
   type: ProjectType;
   status: "Publicado" | "WIP" | "Privado" | "En mezcla" | "Master";
+  visibility?: "private" | "public";
+  createdAt?: string;
   year: string;
   dateLabel: string;
   zone: string;
@@ -121,6 +123,27 @@ export type ArtistProfile = {
   playsTotal: string;
   accountType?: "artista" | "oyente";
   stickers: string[];
+  createdAt?: string;
+};
+
+// Perfil vacío para cuentas nuevas (sin datos de prueba)
+export const EMPTY_ME_PROFILE: ArtistProfile = {
+  id: "",
+  handle: "@",
+  name: "",
+  role: "Artista",
+  accountType: "artista",
+  category: "rapero",
+  zone: "",
+  crew: "",
+  bio: "",
+  color: "#111111",
+  tracksCount: 0,
+  projectsCount: 0,
+  friendsCount: 0,
+  followersCount: 0,
+  playsTotal: "0",
+  stickers: [],
 };
 
 export const INITIAL_ME_PROFILE: ArtistProfile = {

@@ -1,0 +1,137 @@
+/* ===== Pulido global: sin scrollbars visibles, contraste por tema, Inicio dinámico ===== */
+html,
+body,
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+*::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.auth-splash {
+  position: fixed;
+  inset: 0;
+  background: #070709;
+  z-index: 9999;
+}
+
+/* Contraste: blanco sobre negro / negro sobre blanco */
+.seg-pills button.on {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+/* Switch de layout de la Biblioteca (solo iconos) */
+.layout-switch {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.layout-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 28px;
+  border-radius: 9px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-secondary);
+  cursor: pointer;
+  transition: background 0.16s, color 0.16s;
+}
+.layout-icon-btn:hover {
+  color: var(--ink);
+}
+.layout-icon-btn.active {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+/* Inicio: collage dinámico alineado con cada proyecto */
+.collage-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  max-width: 100%;
+}
+.collage-item .roster-word {
+  min-width: 0;
+  text-align: left;
+}
+.collage-cover-thumb {
+  width: 44px;
+  height: 44px;
+}
+.collage-cover-fallback {
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+}
+.collage-line {
+  gap: 14px 28px;
+}
+
+.card-head-with-filter {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.artist-sort-pills button {
+  padding: 6px 12px;
+  font-size: 0.72rem;
+}
+
+/* Privacidad del proyecto */
+.visibility-toggle {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--ink-secondary);
+  cursor: pointer;
+  transition: all 0.16s;
+}
+.visibility-toggle.on {
+  background: var(--ink);
+  color: var(--bg);
+  border-color: var(--ink);
+}
+
+/* Estado de sincronización con la nube */
+.sync-pill {
+  position: fixed;
+  left: 50%;
+  bottom: 96px;
+  transform: translateX(-50%);
+  z-index: 60;
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-translucent);
+  color: var(--ink);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.sync-pill.error {
+  color: #e11d48;
+  border-color: rgba(225, 29, 72, 0.4);
+  cursor: pointer;
+}

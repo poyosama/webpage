@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Instrument_Serif, JetBrains_Mono, UnifrakturMaguntia } from "next/font/google";
+import { Inter, Instrument_Serif, DM_Mono, UnifrakturMaguntia } from "next/font/google";
 import "./globals.css";
 
 const sans = Inter({
@@ -15,10 +15,11 @@ const serif = Instrument_Serif({
   style: ["normal", "italic"],
 });
 
-const mono = JetBrains_Mono({
+// DM Mono: el 0 se distingue claramente del 8 (sin barra ni punto interno)
+const mono = DM_Mono({
   variable: "--font-mono",
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  weight: ["400", "500"],
 });
 
 const gothic = UnifrakturMaguntia({

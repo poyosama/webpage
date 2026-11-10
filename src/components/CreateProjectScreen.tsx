@@ -1,8 +1,9 @@
 "use client";
 
-import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls } from "@react-three/drei";
-import { useMemo, useRef, useState } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { motion, AnimatePresence } from "framer-motion";
+import { Unbounded } from "next/font/google";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import {
   type ArtistProfile,
@@ -12,357 +13,201 @@ import {
   type Track,
 } from "@/lib/mock";
 import { sfx } from "@/lib/sfx";
+import "./create-project.css";
 
-type SentientBehavior = "auto" | "logo" | "clusters" | "shapes" | "scatter";
+const display = Unbounded({ subsets: ["latin"], weight: ["800"], display: "swap" });
 
-// Genera una nube de puntos 3D volumétrica con el texto tipeado o "El tablero" por defecto
-function buildLogoTargets(count: number, rawText: string = "El tablero"): Float32Array {
-  const targets = new Float32Array(count * 3);
-  if (typeof document === "undefined") return targets;
+const AUDIO_RE = /\.(wav|mp3|m4a|flac|aac|ogg|aiff|alac|opus)$/i;
+const DEFAULT_TEXT = "EL TABLERO";
 
-  const text = (rawText.trim() || "El tablero").toUpperCase();
-  const W = 880;
-  const H = 240;
+function useIsMobile() {
+  const [mobile, setMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+  return mobile;
+}
+
+function useTheme() {
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  useEffect(() => {
+    const el = document.documentElement;
+    const read = () => setTheme(el.getAttribute("data-theme") === "light" ? "light" : "dark");
+    read();
+    const mo = new MutationObserver(read);
+    mo.observe(el, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => mo.disconnect();
+  }, []);
+  return theme;
+}
+
+/**
+ * Muestrea el texto en un canvas 2D y devuelve una lista de puntos (x,y) en [-0.5, 0.5] x [-0.5, 0.5]
+ * junto con la relación de aspecto del bloque de texto.
+ */
+function sampleText(rawText: string, fontFamily: string) {
+  const text = (rawText.trim() || DEFAULT_TEXT).toUpperCase();
+  const W = 1400;
+  const H = 360;
   const c = document.createElement("canvas");
   c.width = W;
   c.height = H;
-  const g = c.getContext("2d")!;
-
-  g.fillStyle = "#000000";
+  const g = c.getContext("2d", { willReadFrequently: true })!;
+  g.fillStyle = "#000";
   g.fillRect(0, 0, W, H);
-
-  // Tamaño tipográfico adaptativo para que entre cualquier nombre de proyecto
-  let fontSize = 126;
-  if (text.length > 20) fontSize = 54;
-  else if (text.length > 14) fontSize = 72;
-  else if (text.length > 9) fontSize = 94;
-
-  g.fillStyle = "#ffffff";
-  g.font = `800 ${fontSize}px -apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, sans-serif`;
+  g.fillStyle = "#fff";
   g.textAlign = "center";
   g.textBaseline = "middle";
-
-  const chars = text.split("");
-  const tightFactor = 0.88;
-  const widths = chars.map((ch) => g.measureText(ch).width * tightFactor);
-  const totalW = widths.reduce((a, b) => a + b, 0);
-  let curX = (W - totalW) / 2;
-  const centerY = H * 0.52;
-
-  for (let i = 0; i < chars.length; i++) {
-    const ch = chars[i];
-    const cw = widths[i];
-    g.fillText(ch, curX + cw * 0.5, centerY);
-    curX += cw;
+  let size = 250;
+  g.font = `800 ${size}px ${fontFamily}`;
+  const w = g.measureText(text).width;
+  const maxW = W * 0.94;
+  if (w > maxW) {
+    size = Math.max(40, size * (maxW / w));
+    g.font = `800 ${size}px ${fontFamily}`;
   }
-
-  const img = g.getImageData(0, 0, W, H).data;
-  const validPixels: [number, number][] = [];
-  for (let y = 0; y < H; y += 2) {
-    for (let x = 0; x < W; x += 2) {
-      const lum = img[(y * W + x) * 4];
-      if (lum > 105) {
-        validPixels.push([(x / W - 0.5) * 6.6, (0.5 - y / H) * 2.0]);
+  g.fillText(text, W / 2, H / 2);
+  const data = g.getImageData(0, 0, W, H).data;
+  const pts: number[] = [];
+  const step = 3;
+  let minX = W;
+  let maxX = 0;
+  for (let y = 0; y < H; y += step) {
+    for (let x = 0; x < W; x += step) {
+      if (data[(y * W + x) * 4] > 110) {
+        pts.push(x, y);
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
       }
     }
   }
-
-  if (validPixels.length === 0) {
-    validPixels.push([0, 0]);
-  }
-
-  for (let i = 0; i < count; i++) {
-    const ix = i * 3;
-    const [px, py] = validPixels[(i * 7) % validPixels.length];
-    // Extrusión 3D en varias capas de profundidad Z
-    const layer = ((i % 9) - 4) / 4; // -1 a +1
-    const zDepth = layer * 0.28 + (Math.random() - 0.5) * 0.05;
-    targets[ix] = px + (Math.random() - 0.5) * 0.022;
-    targets[ix + 1] = py + (Math.random() - 0.5) * 0.022;
-    targets[ix + 2] = zDepth;
-  }
-
-  return targets;
+  if (pts.length === 0) pts.push(W / 2, H / 2, minX, maxX);
+  const bw = Math.max(1, maxX - minX);
+  const cx = (minX + maxX) / 2;
+  return { pts, W, H, cx, bw };
 }
 
-function SentientTableroSwarm({
-  accent,
-  c2,
-  behavior,
-  keystrokePulse,
-  targetText,
+function MorphSwarm({
+  text,
+  fontReady,
+  fontFamily,
+  count,
+  color,
 }: {
-  accent: string;
-  c2: string;
-  behavior: SentientBehavior;
-  keystrokePulse: number;
-  targetText: string;
+  text: string;
+  fontReady: boolean;
+  fontFamily: string;
+  count: number;
+  color: string;
 }) {
   const pointsRef = useRef<THREE.Points>(null!);
-  const count = 28000;
-  const clusterCount = 12;
-  const lastPulseRef = useRef(0);
-  const keyEnergyRef = useRef(0);
+  const size = useThree((s) => s.size);
+  const pointer = useRef({ x: 0, y: 0 });
 
   const sprite = useMemo(() => {
     const c = document.createElement("canvas");
-    c.width = 16;
-    c.height = 16;
+    c.width = 32;
+    c.height = 32;
     const g = c.getContext("2d")!;
-    const grad = g.createRadialGradient(8, 8, 1, 8, 8, 7.5);
+    const grad = g.createRadialGradient(16, 16, 0, 16, 16, 15);
     grad.addColorStop(0, "rgba(255,255,255,1)");
-    grad.addColorStop(0.55, "rgba(255,255,255,0.82)");
+    grad.addColorStop(0.6, "rgba(255,255,255,0.9)");
     grad.addColorStop(1, "rgba(255,255,255,0)");
     g.fillStyle = grad;
-    g.fillRect(0, 0, 16, 16);
+    g.fillRect(0, 0, 32, 32);
     const tex = new THREE.CanvasTexture(c);
     tex.generateMipmaps = false;
     tex.minFilter = THREE.LinearFilter;
-    tex.magFilter = THREE.LinearFilter;
     return tex;
   }, []);
 
-  const logoTargets = useMemo(() => buildLogoTargets(count, targetText), [count, targetText]);
-
-  const { positions, velocities, colors, clusterIds, phases, shapeTargets } = useMemo(() => {
-    const pos = new Float32Array(count * 3);
-    const vel = new Float32Array(count * 3);
-    const col = new Float32Array(count * 3);
-    const cIds = new Uint8Array(count);
-    const ph = new Float32Array(count);
-    const shapes = new Float32Array(count * 3);
-
-    const cA = new THREE.Color(accent);
-    const cB = new THREE.Color(c2);
-    const cInk = new THREE.Color("#0f0f11");
-
+  // Datos persistentes por partícula (no se reconstruyen al escribir)
+  const data = useMemo(() => {
+    const positions = new Float32Array(count * 3);
+    const targets = new Float32Array(count * 3);
+    const pick = new Float32Array(count);
+    const rate = new Float32Array(count);
+    const depth = new Float32Array(count);
+    const phase = new Float32Array(count);
     for (let i = 0; i < count; i++) {
-      const ix = i * 3;
-      const cid = i % clusterCount;
-      cIds[i] = cid;
-      ph[i] = Math.random() * Math.PI * 2;
-
-      // Posición inicial cerca del logo con dispersión suave
-      pos[ix] = logoTargets[ix] + (Math.random() - 0.5) * 1.8;
-      pos[ix + 1] = logoTargets[ix + 1] + (Math.random() - 0.5) * 1.8;
-      pos[ix + 2] = logoTargets[ix + 2] + (Math.random() - 0.5) * 1.8;
-
-      // Formas conectadas entre sí (anillos entrelazados + doble hélice + esfera geodésica)
-      const u = (i / count) * Math.PI * 2;
-      const subShape = i % 3;
-      if (subShape === 0) {
-        // Nudo / Anillo entrelazado
-        const p = 2;
-        const q = 3;
-        const r = 1.45 + 0.45 * Math.cos(q * u * 6);
-        shapes[ix] = r * Math.cos(p * u * 6) + (Math.random() - 0.5) * 0.14;
-        shapes[ix + 1] = r * Math.sin(p * u * 6) * 0.72 + (Math.random() - 0.5) * 0.14;
-        shapes[ix + 2] = 0.65 * Math.sin(q * u * 6) + (Math.random() - 0.5) * 0.14;
-      } else if (subShape === 1) {
-        // Esfera celular hueca con filamentos
-        const phi = Math.acos(1 - 2 * ((i * 13) % count) / count);
-        const theta = Math.PI * (1 + Math.sqrt(5)) * i;
-        const rad = 1.55 + Math.sin(phi * 6) * 0.22;
-        shapes[ix] = rad * Math.sin(phi) * Math.cos(theta);
-        shapes[ix + 1] = rad * Math.cos(phi) * 0.85;
-        shapes[ix + 2] = rad * Math.sin(phi) * Math.sin(theta);
-      } else {
-        // Espiral / ADN conectando los extremos
-        const xHelix = ((i / count) - 0.5) * 5.8;
-        const strand = i % 2 === 0 ? 0 : Math.PI;
-        shapes[ix] = xHelix;
-        shapes[ix + 1] = Math.sin(xHelix * 2.2 + strand) * 0.95 + (Math.random() - 0.5) * 0.12;
-        shapes[ix + 2] = Math.cos(xHelix * 2.2 + strand) * 0.95 + (Math.random() - 0.5) * 0.12;
-      }
-
-      // Todas las partículas de Crear Proyecto son 100% BLANCAS brillantes (#ffffff)
-      const brightness = 0.92 + (i % 9) * 0.01;
-      col[ix] = brightness;
-      col[ix + 1] = brightness;
-      col[ix + 2] = brightness;
+      pick[i] = Math.random();
+      rate[i] = 2.2 + Math.random() * 3.2;
+      depth[i] = (Math.random() * 2 - 1) * 0.3;
+      phase[i] = Math.random() * Math.PI * 2;
+      positions[i * 3] = (Math.random() - 0.5) * 7;
+      positions[i * 3 + 1] = (Math.random() - 0.5) * 4;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 5;
     }
+    return { positions, targets, pick, rate, depth, phase };
+  }, [count]);
 
-    return {
-      positions: pos,
-      velocities: vel,
-      colors: col,
-      clusterIds: cIds,
-      phases: ph,
-      shapeTargets: shapes,
+  // Recalcula SOLO los targets (mutando el buffer) cuando cambia el texto/tamaño
+  useEffect(() => {
+    if (!fontReady) return;
+    const { pts, W, H, cx, bw } = sampleText(text, fontFamily);
+    const n = pts.length / 2;
+    const aspect = size.width / Math.max(1, size.height);
+    const visH = 2 * 5.2 * Math.tan((40 * Math.PI) / 360);
+    const visW = visH * aspect;
+    const worldW = Math.min(visW * 0.9, 7.2);
+    const scale = worldW / Math.max(bw, W * 0.35);
+    const { targets, pick, depth } = data;
+    for (let i = 0; i < count; i++) {
+      const k = Math.min(n - 1, Math.floor(pick[i] * n));
+      const px = pts[k * 2];
+      const py = pts[k * 2 + 1];
+      targets[i * 3] = (px - cx) * scale + (Math.random() - 0.5) * 0.008;
+      targets[i * 3 + 1] = (H / 2 - py) * scale + 0.35 + (Math.random() - 0.5) * 0.008;
+      targets[i * 3 + 2] = depth[i];
+    }
+  }, [text, fontReady, fontFamily, size.width, size.height, count, data]);
+
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      pointer.current.x = (e.clientX / window.innerWidth) * 2 - 1;
+      pointer.current.y = (e.clientY / window.innerHeight) * 2 - 1;
     };
-  }, [logoTargets]);
+    window.addEventListener("pointermove", onMove, { passive: true });
+    return () => window.removeEventListener("pointermove", onMove);
+  }, []);
 
-  // Centros dinámicos de los 12 grupos sentientes
-  const clusterCenters = useMemo(
-    () => Array.from({ length: clusterCount }, () => new THREE.Vector3()),
-    []
-  );
-
-  useFrame(({ clock, pointer }, dt) => {
-    const clampedDt = Math.min(0.033, dt);
+  useFrame(({ clock }, dtRaw) => {
+    const dt = Math.min(0.05, dtRaw);
     const t = clock.elapsedTime;
-
-    if (keystrokePulse !== lastPulseRef.current) {
-      lastPulseRef.current = keystrokePulse;
-      keyEnergyRef.current = Math.min(1.4, keyEnergyRef.current + 0.55);
-    }
-    keyEnergyRef.current *= 0.9;
-
-    // Si está en "auto", el enjambre sentiente alterna orgánicamente entre:
-    // 0: Logo 3D "El tablero" (con exploradoras sueltas) -> 1: Dispersión en Grupos -> 2: Formas entre sí -> 3: Explosión individual y regreso al Logo 3D
-    const cyclePhase = (t * 0.18) % 4;
-    let activeStage: "logo" | "clusters" | "shapes" | "scatter" = "logo";
-    if (behavior !== "auto") {
-      activeStage = behavior;
-    } else if (cyclePhase < 1.35) {
-      activeStage = "logo";
-    } else if (cyclePhase < 2.25) {
-      activeStage = "clusters";
-    } else if (cyclePhase < 3.25) {
-      activeStage = "shapes";
-    } else {
-      activeStage = "scatter";
-    }
-
-    // Actualizar las trayectorias autónomas de los 12 grupos (bandadas)
-    for (let c = 0; c < clusterCount; c++) {
-      const a = t * (0.75 + (c % 4) * 0.18) + c * 1.1;
-      const b = t * (0.55 + (c % 3) * 0.22) - c * 0.8;
-      clusterCenters[c].set(
-        Math.cos(a) * 2.55 + Math.sin(b * 1.4) * 0.75,
-        Math.sin(b) * 1.35 + Math.cos(a * 1.2) * 0.4,
-        Math.sin(a * 0.8 + b) * 1.45
-      );
-    }
-
-    const mx = pointer.x * 3.1;
-    const my = pointer.y * 1.8;
-
-    const geo = pointsRef.current.geometry;
-    const attr = geo.getAttribute("position") as THREE.BufferAttribute;
-    const arr = attr.array as Float32Array;
-
+    const { positions, targets, rate, phase } = data;
     for (let i = 0; i < count; i++) {
       const ix = i * 3;
-      const x = arr[ix];
-      const y = arr[ix + 1];
-      const z = arr[ix + 2];
-      const ph = phases[i];
-      const cid = clusterIds[i];
-
-      let tx = logoTargets[ix];
-      let ty = logoTargets[ix + 1];
-      let tz = logoTargets[ix + 2];
-      let springK = 14.0;
-      let damping = 0.87;
-
-      // Exploradoras individuales ("se dispersan de a una"): ~7% de las partículas salen a explorar por su cuenta en ondas rotativas
-      const soloWave = Math.sin(t * 1.9 + ph * 8.0 + cid * 0.5);
-      const isSoloScout = soloWave > 0.92;
-
-      if (activeStage === "logo") {
-        // Modelo 3D vivo de "El tablero" con respiración 3D y exploradoras individuales que se desprenden y vuelven
-        const breath = Math.sin(t * 2.1 + tx * 0.8) * 0.045;
-        tx += breath * 0.4;
-        ty += breath;
-        tz += Math.cos(t * 1.7 + tx * 1.2) * 0.08;
-
-        if (isSoloScout) {
-          // Sale de a una a orbitar alrededor del logo y luego vuelve a su letra
-          tx += Math.cos(t * 3.2 + ph * 12) * 1.35;
-          ty += Math.sin(t * 2.8 + ph * 10) * 1.15;
-          tz += Math.sin(t * 3.6 + ph * 6) * 1.25;
-          springK = 6.5;
-        }
-      } else if (activeStage === "clusters") {
-        // Se dispersan en 12 grupos sentientes que orbitan, se cruzan y se pasan partículas entre sí
-        const center = clusterCenters[cid];
-        const orbitR = 0.32 + (i % 7) * 0.065;
-        const localAngle = t * 2.8 + ph * 4;
-        tx = center.x + Math.cos(localAngle) * orbitR;
-        ty = center.y + Math.sin(localAngle * 1.3) * orbitR;
-        tz = center.z + Math.sin(localAngle * 0.8 + ph) * orbitR;
-        springK = 9.5;
-        damping = 0.9;
-      } else if (activeStage === "shapes") {
-        // Crean formas geométricas/orgánicas entre sí (nudo + esfera celular + doble hélice rotando en 3D)
-        const sx = shapeTargets[ix];
-        const sy = shapeTargets[ix + 1];
-        const sz = shapeTargets[ix + 2];
-        const rotA = t * 0.55;
-        const cosA = Math.cos(rotA);
-        const sinA = Math.sin(rotA);
-        tx = sx * cosA - sz * sinA;
-        ty = sy + Math.sin(t * 2 + sx) * 0.1;
-        tz = sx * sinA + sz * cosA;
-        springK = 11.0;
-      } else {
-        // Dispersión libre individual y en racimos antes de volver a juntarse en el logo
-        const burst = 1.65 + Math.sin(ph * 5 + t * 2) * 0.95;
-        tx = logoTargets[ix] * burst + Math.cos(ph * 15 + t * 2.4) * 1.4;
-        ty = logoTargets[ix + 1] * burst + Math.sin(ph * 13 - t * 2.1) * 1.25;
-        tz = logoTargets[ix + 2] * burst + Math.sin(ph * 9 + t * 2.8) * 1.6;
-        springK = 7.5;
-      }
-
-      // Impulso al escribir en el formulario de Crear Proyecto
-      if (keyEnergyRef.current > 0.02) {
-        const kPush = keyEnergyRef.current * 0.42;
-        tx += Math.cos(ph * 17 + t * 8) * kPush;
-        ty += Math.sin(ph * 19 + t * 8) * kPush;
-        tz += Math.sin(ph * 11 - t * 8) * kPush;
-      }
-
-      // Repulsión/curiosidad sentiente al pasar el cursor cerca
-      const dxm = x - mx;
-      const dym = y - my;
-      const distSq = dxm * dxm + dym * dym;
-      let pushX = 0;
-      let pushY = 0;
-      let pushZ = 0;
-      if (distSq < 1.15 && distSq > 0.0001) {
-        const dist = Math.sqrt(distSq);
-        const f = ((1.07 - dist) / 1.07) * 9.5;
-        // Giran en remolino sentiente alrededor del puntero
-        pushX = (dxm / dist) * f - (dym / dist) * f * 0.45;
-        pushY = (dym / dist) * f + (dxm / dist) * f * 0.45;
-        pushZ = Math.sin(ph * 8 + t * 5) * f * 0.4;
-      }
-
-      let vx = velocities[ix];
-      let vy = velocities[ix + 1];
-      let vz = velocities[ix + 2];
-
-      vx = (vx + ((tx - x) * springK + pushX) * clampedDt) * damping;
-      vy = (vy + ((ty - y) * springK + pushY) * clampedDt) * damping;
-      vz = (vz + ((tz - z) * springK + pushZ) * clampedDt) * damping;
-
-      velocities[ix] = vx;
-      velocities[ix + 1] = vy;
-      velocities[ix + 2] = vz;
-
-      arr[ix] = x + vx * clampedDt * 6.2;
-      arr[ix + 1] = y + vy * clampedDt * 6.2;
-      arr[ix + 2] = z + vz * clampedDt * 6.2;
+      const ph = phase[i];
+      const tx = targets[ix] + Math.sin(t * 0.9 + ph) * 0.006;
+      const ty = targets[ix + 1] + Math.cos(t * 0.8 + ph * 1.3) * 0.006;
+      const tz = targets[ix + 2] + Math.sin(t * 0.6 + ph * 2) * 0.02;
+      const k = 1 - Math.exp(-dt * rate[i]);
+      positions[ix] += (tx - positions[ix]) * k;
+      positions[ix + 1] += (ty - positions[ix + 1]) * k;
+      positions[ix + 2] += (tz - positions[ix + 2]) * k;
     }
-
-    attr.needsUpdate = true;
+    const geo = pointsRef.current.geometry;
+    (geo.getAttribute("position") as THREE.BufferAttribute).needsUpdate = true;
+    const p = pointsRef.current;
+    p.rotation.y += (pointer.current.x * 0.22 + Math.sin(t * 0.35) * 0.08 - p.rotation.y) * 0.04;
+    p.rotation.x += (pointer.current.y * 0.08 - p.rotation.x) * 0.04;
   });
 
   return (
     <points ref={pointsRef} frustumCulled={false}>
       <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
-        <bufferAttribute attach="attributes-color" args={[colors, 3]} />
+        <bufferAttribute attach="attributes-position" args={[data.positions, 3]} />
       </bufferGeometry>
       <pointsMaterial
         map={sprite}
-        color="#ffffff"
-        size={0.028}
-        vertexColors
+        color={color}
+        size={0.017}
         transparent
-        alphaTest={0.04}
-        opacity={0.96}
+        alphaTest={0.05}
+        opacity={0.95}
         toneMapped={false}
         sizeAttenuation
         depthWrite={false}
@@ -371,19 +216,30 @@ function SentientTableroSwarm({
   );
 }
 
-const PROJECT_TYPES: ProjectType[] = [
-  "Mixtape",
-  "EP",
-  "LP",
-  "Album",
-  "Single",
-  "Beatpost",
-  "Soundkit",
-  "Drumkit",
-  "Loopkit",
-  "Catálogo de Beats",
-  "WIP",
-];
+function detectType(n: number): ProjectType {
+  if (n <= 1) return "Single";
+  if (n <= 6) return "EP";
+  return "LP";
+}
+
+const ImageIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <circle cx="8.5" cy="8.5" r="1.5" />
+    <polyline points="21 15 16 10 5 21" />
+  </svg>
+);
+const WaveIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+    <path d="M4 10v4M8 6v12M12 3v18M16 8v8M20 11v2" />
+  </svg>
+);
+const ClipIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round">
+    <rect x="3" y="5" width="18" height="14" rx="2" />
+    <polygon points="10 9 15 12 10 15" />
+  </svg>
+);
 
 export default function CreateProjectScreen({
   meProfile,
@@ -397,123 +253,93 @@ export default function CreateProjectScreen({
   onCancel: () => void;
 }) {
   const [title, setTitle] = useState("");
-  const [type, setType] = useState<ProjectType>("EP");
-  const [status, setStatus] = useState<Project["status"]>("Publicado");
-  const [zone, setZone] = useState("Mendoza");
-  const [year, setYear] = useState("2026");
   const [description, setDescription] = useState("");
   const [color, setColor] = useState("#e11d48");
-  const [attrs, setAttrs] = useState<string[]>(["Mendoza", "2026", "808"]);
-  const [attrInput, setAttrInput] = useState("");
-  const [behavior, setBehavior] = useState<SentientBehavior>("auto");
-  const [keystrokePulse, setKeystrokePulse] = useState(0);
-
-  const [coverUrl, setCoverUrl] = useState<string>("");
+  const [coverUrl, setCoverUrl] = useState("");
   const [uploadedClips, setUploadedClips] = useState<ProjectVideoClip[]>([]);
   const [uploadedTracks, setUploadedTracks] = useState<Track[]>([]);
+  const [fontReady, setFontReady] = useState(false);
+
+  const mobile = useIsMobile();
+  const theme = useTheme();
+  const fontFamily = display.style.fontFamily;
+  const count = mobile ? 9000 : 22000;
+  const inkColor = theme === "light" ? "#0f0f11" : "#f4f4f5";
+
+  useEffect(() => {
+    let alive = true;
+    document.fonts
+      .load(`800 100px ${fontFamily}`, "ELTABLERO")
+      .catch(() => undefined)
+      .finally(() => alive && setFontReady(true));
+    return () => {
+      alive = false;
+    };
+  }, [fontFamily]);
+
+  const type = detectType(uploadedTracks.length);
 
   const handleCoverFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     sfx.drop();
-    const url = URL.createObjectURL(file);
-    setCoverUrl(url);
-    setKeystrokePulse((n) => n + 1);
+    setCoverUrl(URL.createObjectURL(file));
   };
 
-  const addAttr = () => {
-    const clean = attrInput.trim();
-    if (!clean || attrs.includes(clean)) return;
-    setAttrs((prev) => [...prev, clean]);
-    setAttrInput("");
-    setKeystrokePulse((n) => n + 1);
-    sfx.tap();
+  const makeTracks = (files: File[]): Track[] =>
+    files.map((file, i) => ({
+      id: `tr-new-${Date.now()}-${i}`,
+      title: file.name.replace(/\.[^/.]+$/, ""),
+      artist: meProfile.name,
+      prod: meProfile.name,
+      bpm: 136,
+      key: "F#m",
+      duration: "2:30",
+      durationSec: 150,
+      version: 1,
+      c1: "#111111",
+      c2: color,
+      accent: color,
+      glyph: String(uploadedTracks.length + i + 1).padStart(2, "0"),
+      audioFreq: 130.8,
+      customAudioUrl: URL.createObjectURL(file),
+    }));
+
+  const handleTrackFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    sfx.drop();
+    setUploadedTracks((prev) => [...prev, ...makeTracks(files)]);
   };
 
   const handleVideoFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawFiles = Array.from(e.target.files || []);
     if (rawFiles.length === 0) return;
     sfx.drop();
-
-    // Si el usuario en iPhone eligió un audio (WAV, MP3, etc.) desde este input, lo ruteamos directo a tracks
-    const audioFiles = rawFiles.filter(
-      (f) => f.type.startsWith("audio/") || /\.(wav|mp3|m4a|flac|aac|ogg|aiff|alac)$/i.test(f.name)
-    );
-    const videoFiles = rawFiles.filter(
-      (f) => !f.type.startsWith("audio/") && !/\.(wav|mp3|m4a|flac|aac|ogg|aiff|alac)$/i.test(f.name)
-    );
-
-    if (audioFiles.length > 0) {
-      const addedTracks: Track[] = audioFiles.map((file, i) => {
-        const cleanName = file.name.replace(/\.[^/.]+$/, "");
-        return {
-          id: `tr-new-${Date.now()}-${i}`,
-          title: cleanName,
-          artist: meProfile.name,
-          prod: meProfile.name,
-          bpm: 136,
-          key: "F#m",
-          duration: "2:30",
-          durationSec: 150,
-          version: 1,
-          c1: "#111111",
-          c2: color,
-          accent: color,
-          glyph: String(uploadedTracks.length + i + 1).padStart(2, "0"),
-          audioFreq: 130.8,
-          customAudioUrl: URL.createObjectURL(file),
-        };
-      });
-      setUploadedTracks((prev) => [...prev, ...addedTracks]);
-    }
-
+    const isAudio = (f: File) => f.type.startsWith("audio/") || AUDIO_RE.test(f.name);
+    const audioFiles = rawFiles.filter(isAudio);
+    const videoFiles = rawFiles.filter((f) => !isAudio(f));
+    if (audioFiles.length > 0) setUploadedTracks((prev) => [...prev, ...makeTracks(audioFiles)]);
     if (videoFiles.length > 0) {
-      const added: ProjectVideoClip[] = videoFiles.map((file, i) => {
-        const isImg =
-          file.type.startsWith("image/") || /\.(gif|png|jpe?g|webp|avif)$/i.test(file.name);
-        return {
-          id: `clip-new-${Date.now()}-${i}`,
-          label: file.name,
-          kind: "uploaded",
-          stylePreset: "vhs-grain",
-          url: URL.createObjectURL(file),
-          mediaType: isImg ? "image" : "video",
-          c1: "#111111",
-          c2: color,
-        };
-      });
-      setUploadedClips((prev) => [...prev, ...added]);
-    }
-    setKeystrokePulse((n) => n + 1);
-  };
-
-  const handleTrackFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
-    sfx.drop();
-    const added: Track[] = files.map((file, i) => {
-      const cleanName = file.name.replace(/\.[^/.]+$/, "");
-      return {
-        id: `tr-new-${Date.now()}-${i}`,
-        title: cleanName,
-        artist: meProfile.name,
-        prod: meProfile.name,
-        bpm: 136,
-        key: "F#m",
-        duration: "2:30",
-        durationSec: 150,
-        version: 1,
+      const added: ProjectVideoClip[] = videoFiles.map((file, i) => ({
+        id: `clip-new-${Date.now()}-${i}`,
+        label: file.name,
+        kind: "uploaded",
+        stylePreset: "vhs-grain",
+        url: URL.createObjectURL(file),
+        mediaType:
+          file.type.startsWith("image/") || /\.(gif|png|jpe?g|webp|avif)$/i.test(file.name)
+            ? "image"
+            : "video",
         c1: "#111111",
         c2: color,
-        accent: color,
-        glyph: String(uploadedTracks.length + i + 1).padStart(2, "0"),
-        audioFreq: 130.8,
-        customAudioUrl: URL.createObjectURL(file),
-      };
-    });
-    setUploadedTracks((prev) => [...prev, ...added]);
-    setKeystrokePulse((n) => n + 1);
+      }));
+      setUploadedClips((prev) => [...prev, ...added]);
+    }
   };
+
+  const uid = (p: string) =>
+    typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${p}-${Date.now()}`;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -525,12 +351,12 @@ export default function CreateProjectScreen({
       Math.sin(angle) * 0.95,
     ];
 
-    const defaultTracks: Track[] =
+    const tracks: Track[] =
       uploadedTracks.length > 0
         ? uploadedTracks
         : [
             {
-              id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `tr-${Date.now()}-1`,
+              id: uid("tr"),
               title: `${title.trim() || "Track"} 01`,
               artist: meProfile.name,
               prod: meProfile.name,
@@ -547,12 +373,12 @@ export default function CreateProjectScreen({
             },
           ];
 
-    const defaultVideos: ProjectVideoClip[] =
+    const videos: ProjectVideoClip[] =
       uploadedClips.length > 0
         ? uploadedClips
         : [
             {
-              id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `v-${Date.now()}-1`,
+              id: uid("v"),
               label: `${finalTitle.toLowerCase().replace(/\s+/g, "_")}_canvas.mp4 (4s)`,
               kind: "procedural",
               stylePreset: "kinetic-type",
@@ -562,29 +388,27 @@ export default function CreateProjectScreen({
           ];
 
     const newProject: Project = {
-      id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `proj-${Date.now()}`,
+      id: uid("proj"),
       title: finalTitle,
       artist: meProfile.name,
       artistId: meProfile.id,
       type,
-      status,
-      year,
+      status: "Publicado",
+      year: String(new Date().getFullYear()),
       dateLabel: "HOY",
-      zone,
-      attributes: attrs,
+      zone: "Mendoza",
+      attributes: [],
       coverUrl: coverUrl || undefined,
       c1: "#111111",
       c2: color,
       accent: color,
       tagGlyph: `0${existingCount + 1} // ${type.toUpperCase()}`,
-      description:
-        description.trim() ||
-        `${type} de ${meProfile.name} creado en El tablero (${defaultTracks.length} tracks).`,
+      description: description.trim(),
       plays: "0",
       blockPos,
       blockSize: [1.55, 1.45, 1.55],
-      videos: defaultVideos,
-      tracks: defaultTracks,
+      videos,
+      tracks,
     };
 
     sfx.drop();
@@ -592,268 +416,106 @@ export default function CreateProjectScreen({
   };
 
   return (
-    <section className="create-project-page">
-      <div className="section-header-row">
-        <div>
-          <span className="mono-tag">NUEVO PROYECTO // ENJAMBRE SENTIENTE 3D</span>
-          <h1 className="editorial-h1">Crear Proyecto</h1>
-        </div>
-        <div className="seg-pills">
-          <button
-            type="button"
-            className={behavior === "auto" ? "on" : ""}
-            onClick={() => {
-              sfx.tap();
-              setBehavior("auto");
-            }}
-          >
-            Sentiente Auto
-          </button>
-          <button
-            type="button"
-            className={behavior === "logo" ? "on" : ""}
-            onClick={() => {
-              sfx.tap();
-              setBehavior("logo");
-            }}
-          >
-            Modelo 3D Tipográfico
-          </button>
-          <button
-            type="button"
-            className={behavior === "clusters" ? "on" : ""}
-            onClick={() => {
-              sfx.tap();
-              setBehavior("clusters");
-            }}
-          >
-            Grupos
-          </button>
-          <button
-            type="button"
-            className={behavior === "shapes" ? "on" : ""}
-            onClick={() => {
-              sfx.tap();
-              setBehavior("shapes");
-            }}
-          >
-            Formas
-          </button>
-          <button type="button" className="apple-btn ghost" onClick={onCancel}>
-            ← Volver
-          </button>
-        </div>
+    <section className="cp-page">
+      <div className="cp-stage" aria-hidden>
+        <Canvas
+          camera={{ position: [0, 0, 5.2], fov: 40 }}
+          dpr={[1, 1.5]}
+          gl={{ antialias: false, alpha: true, powerPreference: "high-performance" }}
+        >
+          <MorphSwarm
+            text={title}
+            fontReady={fontReady}
+            fontFamily={fontFamily}
+            count={count}
+            color={inkColor}
+          />
+        </Canvas>
       </div>
 
-      {/* Escenario 3D Sentiente con el modelo 3D volumétrico del texto tipeado o "El tablero" */}
-      <div className="sentient-stage-card">
-        <div className="sentient-canvas-box">
-          <div className="sentient-stage-hud">
-            <span className="mono-tag">
-              28K PARTÍCULAS SENTIENTES · MODELANDO: &ldquo;{(title.trim() || "El tablero").toUpperCase()}&rdquo;
-            </span>
-            <span className="mono-tag">ESCRIBÍ EL NOMBRE ABAJO PARA QUE LAS PARTÍCULAS ARMEN EL TEXTO</span>
-          </div>
+      <div className="cp-content">
+        <button type="button" className="cp-back" onClick={onCancel}>
+          ← Volver
+        </button>
 
-          <Canvas
-            camera={{ position: [0, 0, 5.2], fov: 40 }}
-            dpr={[1, 1.35]}
-            gl={{ antialias: false, powerPreference: "high-performance" }}
-          >
-            <color attach="background" args={["#070709"]} />
-            <SentientTableroSwarm
-              accent={color}
-              c2={color}
-              behavior={behavior}
-              keystrokePulse={keystrokePulse}
-              targetText={title}
-            />
-            <OrbitControls
-              enableZoom={true}
-              minDistance={2.8}
-              maxDistance={9.5}
-              enablePan={false}
-              rotateSpeed={0.65}
-            />
-          </Canvas>
-        </div>
+        <motion.form
+          className="cp-card"
+          onSubmit={handleSubmit}
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 140, damping: 20 }}
+        >
+          <h1 className="cp-title">Crear proyecto</h1>
 
-        {/* Formulario de creación del proyecto */}
-        <form className="create-project-form" onSubmit={handleSubmit}>
-          <div className="create-form-grid">
-            <label className="modal-field">
-              <span>NOMBRE DEL PROYECTO</span>
-              <input
-                value={title}
-                onChange={(e) => {
-                  setTitle(e.target.value);
-                  setKeystrokePulse((n) => n + 1);
-                }}
-                placeholder="ej. FUEGO LENTO VOL. 2"
-                required
-              />
-            </label>
+          <input
+            className="cp-input cp-input-lg"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Nombre del proyecto"
+            required
+            autoFocus
+          />
+          <input
+            className="cp-input"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Descripción"
+          />
 
-            <label className="modal-field">
-              <span>TIPO DE PROYECTO</span>
-              <select
-                className="apple-select"
-                value={type}
-                onChange={(e) => {
-                  setType(e.target.value as ProjectType);
-                  setKeystrokePulse((n) => n + 1);
-                }}
-              >
-                {PROJECT_TYPES.map((pt) => (
-                  <option key={pt} value={pt}>
-                    {pt}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="modal-field">
-              <span>ESTADO</span>
-              <select
-                className="apple-select"
-                value={status}
-                onChange={(e) => setStatus(e.target.value as Project["status"])}
-              >
-                <option value="Publicado">Publicado</option>
-                <option value="En mezcla">En mezcla</option>
-                <option value="Master">Master</option>
-                <option value="WIP">WIP</option>
-                <option value="Privado">Privado</option>
-              </select>
-            </label>
-
-            <div className="modal-field">
-              <span>COLOR DEL BLOQUE &amp; ENJAMBRE</span>
-              <div className="color-dots">
-                {["#e11d48", "#0284c7", "#ca8a04", "#65a30d", "#7e22ce", "#14b8a6"].map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    style={{ background: c }}
-                    className={color === c ? "on" : ""}
-                    onClick={() => {
-                      sfx.tap();
-                      setColor(c);
-                      setKeystrokePulse((n) => n + 1);
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* Selector dedicado para Tapa / Portada del Proyecto */}
-            <div className="modal-field full">
-              <span>PORTADA / TAPA DEL DISCO (OPCIONAL)</span>
-              <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+          <div className="cp-tiles">
+            <div className="cp-tile">
+              <span className="cp-label">Artwork</span>
+              <AnimatePresence mode="wait" initial={false}>
                 {coverUrl ? (
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <img
-                      src={coverUrl}
-                      alt="Preview tapa"
-                      style={{
-                        width: "60px",
-                        height: "60px",
-                        objectFit: "cover",
-                        borderRadius: "8px",
-                        border: "1px solid rgba(255,255,255,0.2)",
-                      }}
-                    />
-                    <label className="apple-btn ghost" style={{ cursor: "pointer", fontSize: "12px" }}>
-                      <span>Cambiar portada</span>
-                      <input type="file" accept="image/*" hidden onChange={handleCoverFile} />
-                    </label>
-                    <button
-                      type="button"
-                      className="apple-btn ghost"
-                      style={{ fontSize: "12px" }}
-                      onClick={() => setCoverUrl("")}
-                    >
-                      Quitar
-                    </button>
-                  </div>
-                ) : (
-                  <label
-                    className="apple-btn ghost"
-                    style={{
-                      cursor: "pointer",
-                      width: "100%",
-                      justifyContent: "center",
-                      border: "1px dashed rgba(255,255,255,0.25)",
-                      padding: "14px 18px",
-                    }}
+                  <motion.div
+                    key="cover"
+                    className="cp-cover-row"
+                    initial={{ opacity: 0, scale: 0.94 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.94 }}
                   >
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: "8px", fontWeight: 600 }}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                      + Subir Portada / Tapa del Proyecto (JPG, PNG, WEBP)
-                    </span>
-                    <input type="file" accept="image/*" hidden onChange={handleCoverFile} />
-                  </label>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={coverUrl} alt="Artwork" className="cp-cover" />
+                    <div className="cp-cover-actions">
+                      <label className="cp-link">
+                        Cambiar
+                        <input type="file" accept="image/*,image/gif" hidden onChange={handleCoverFile} />
+                      </label>
+                      <button type="button" className="cp-link" onClick={() => setCoverUrl("")}>
+                        Quitar
+                      </button>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.label
+                    key="drop"
+                    className="cp-drop"
+                    whileHover={{ scale: 1.015 }}
+                    whileTap={{ scale: 0.97 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                  >
+                    <ImageIcon />
+                    <span>Subir portada (jpg, png, webp, gif)</span>
+                    <input type="file" accept="image/*,image/gif" hidden onChange={handleCoverFile} />
+                  </motion.label>
                 )}
-              </div>
+              </AnimatePresence>
             </div>
 
-            <label className="modal-field full">
-              <span>DESCRIPCIÓN / CONCEPTO DEL PROYECTO</span>
-              <input
-                value={description}
-                onChange={(e) => {
-                  setDescription(e.target.value);
-                  setKeystrokePulse((n) => n + 1);
-                }}
-                placeholder="Grabado en Mendoza, sintetizadores analógicos, 808 crudo..."
-              />
-            </label>
-
-            <div className="modal-field full">
-              <span>ATRIBUTOS DEL PROYECTO</span>
-              <div className="project-editable-meta-bar">
-                {attrs.map((a) => (
-                  <span key={a} className="meta-user-attr-pill">
-                    {a}
-                    <button
-                      type="button"
-                      onClick={() => setAttrs((prev) => prev.filter((x) => x !== a))}
-                    >
-                      ✕
-                    </button>
-                  </span>
-                ))}
-                <div className="meta-add-attr-form">
-                  <input
-                    value={attrInput}
-                    onChange={(e) => setAttrInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        addAttr();
-                      }
-                    }}
-                    placeholder="+ Agregar atributo (Enter)"
-                  />
-                  <button type="button" className="meta-attr-submit" onClick={addAttr}>
-                    +
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="modal-field">
-              <span>CANCIONES INICIALES (WAV / MP3)</span>
-              <label
-                className="apple-btn ghost"
-                style={{
-                  justifyContent: "center",
-                  cursor: "pointer",
-                  border: uploadedTracks.length > 0 ? "1px solid rgba(255,255,255,0.4)" : "1px solid rgba(255,255,255,0.15)",
-                }}
+            <div className="cp-tile">
+              <span className="cp-label">Tracks (wav, mp3)</span>
+              <motion.label
+                className={`cp-drop${uploadedTracks.length ? " on" : ""}`}
+                whileHover={{ scale: 1.015 }}
+                whileTap={{ scale: 0.97 }}
               >
-                <span style={{ fontWeight: 600 }}>
-                  {uploadedTracks.length > 0 ? `✓ ${uploadedTracks.length} canciones cargadas` : "+ Subir canciones (WAV / MP3)"}
+                <WaveIcon />
+                <span>
+                  {uploadedTracks.length > 0
+                    ? `${uploadedTracks.length} · ${type === "LP" ? "Álbum" : type}`
+                    : "Subir tracks"}
                 </span>
                 <input
                   type="file"
@@ -862,35 +524,45 @@ export default function CreateProjectScreen({
                   hidden
                   onChange={handleTrackFiles}
                 />
-              </label>
+              </motion.label>
             </div>
 
-            <div className="modal-field">
-              <span>CANVAS (VIDEOS 3-5S / GIFS)</span>
-              <label className="apple-btn ghost" style={{ justifyContent: "center", cursor: "pointer" }}>
-                <span>
-                  {uploadedClips.length > 0 ? `✓ ${uploadedClips.length} clips cargados` : "+ Subir videos 3-5s"}
-                </span>
-                <input
-                  type="file"
-                  accept="video/*,image/gif,image/*"
-                  multiple
-                  hidden
-                  onChange={handleVideoFiles}
-                />
-              </label>
+            <div className="cp-tile">
+              <span className="cp-label">Canvas</span>
+              <motion.label
+                className={`cp-drop${uploadedClips.length ? " on" : ""}`}
+                whileHover={{ scale: 1.015 }}
+                whileTap={{ scale: 0.97 }}
+              >
+                <ClipIcon />
+                <span>{uploadedClips.length > 0 ? `${uploadedClips.length} clips` : "Subir canvas"}</span>
+                <input type="file" accept="video/*,image/gif,image/*" multiple hidden onChange={handleVideoFiles} />
+              </motion.label>
             </div>
           </div>
 
-          <div className="create-form-footer">
-            <button type="button" className="apple-btn ghost" onClick={onCancel}>
-              Cancelar
-            </button>
-            <button type="submit" className="apple-btn primary">
-              Crear proyecto
-            </button>
+          <div className="cp-colors">
+            {["#e11d48", "#0284c7", "#ca8a04", "#65a30d", "#7e22ce", "#14b8a6"].map((c) => (
+              <motion.button
+                key={c}
+                type="button"
+                aria-label={c}
+                style={{ background: c }}
+                className={color === c ? "on" : ""}
+                whileHover={{ scale: 1.15 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => {
+                  sfx.tap();
+                  setColor(c);
+                }}
+              />
+            ))}
           </div>
-        </form>
+
+          <motion.button type="submit" className="cp-submit" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}>
+            Crear proyecto
+          </motion.button>
+        </motion.form>
       </div>
     </section>
   );

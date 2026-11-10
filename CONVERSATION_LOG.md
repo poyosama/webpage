@@ -663,3 +663,39 @@
 - Leído en su totalidad `AGENTS.md` (reglas de vocabulario prohibido "corte/cortes", estética Apple/Editorial + 3D Manifold, raperos y productores reales, orden de páginas en píldora, landing exclusiva con referral gate, sistema 3D de vinilos y cubos, Supabase y Capacitor iOS).
 - Revisados los últimos turnos de `CONVERSATION_LOG.md` (Turnos 33 al 35: correcciones del scrubber, contraste estricto black-on-white / white-on-black, persistencia en Supabase, remoción de clips innecesarios en biblioteca, partículas 2D en landing y estado de build limpio).
 - Repositorio limpio y sincronizado con `origin/main`. Listo para arrancar con las siguientes tareas.
+
+
+---
+
+### Turno 37–38 — Login en iPhone/PC, Persistencia Completa en la Nube, Rediseño de Crear Proyecto, Spinner HD y Calibración 808
+**Prompts del usuario:**
+- *"bueno va pibe eh ... (login en iPhone/PC, vinilos de la landing con el centro de distintos colores, sacar barrita de scroll, guardar todas las imágenes/videos/wav/mp3 y privacidad privado/público, fuente donde el 0 no parezca un 8, perfiles nuevos vacíos sin datos de prueba, inicio con portadas alineadas y click para abrir proyectos + filtro de artistas por más recientes o populares, biblioteca con íconos de 1/2 ventanas visibles también en guardados, modelo 3D tipográfico que se reordene en tiempo real con fuente display y sin cortarse abajo, rediseño Apple minimalista de Crear Proyecto con autodetección Single/EP/LP y textos nuevos, spinner en alta resolución sin partículas, tracklist solo con Editar, y bajar mucho la sensibilidad de las partículas del reproductor para que solo salten con los 808)"*
+- *"segui"*
+
+**Implementación:**
+1. **Login en iPhone y PC + Landing (`src/components/LandingScene.tsx`, `src/components/App.tsx`):**
+   - Cuando no hay sesión activa se renderiza únicamente `LandingScene` (sin montar los múltiples `Canvas` 3D de la app por detrás, que agotaban contextos WebGL en iOS y bloqueaban los botones).
+   - El botón **Iniciar sesión** de la landing dispara directamente `supabase.auth.signInWithOAuth({ provider: "google" })` con redirección explícita (`window.location.assign(data.url)`), y `onAuthStateChange` ignora refrescos de token (`TOKEN_REFRESHED`) del mismo usuario para que nunca reinicie el estado ni las partículas.
+   - Vinilos del enjambre con shader GLSL propio: cuerpo negro con surcos y brillo especular, y **solo el sello central** coloreado con un color distinto por cada vinilito.
+   - Tiempo de simulación propio acotado (`simTimeRef`) y menor conteo/DPR en mobile para evitar tirones o reinicios en iPhone.
+2. **Sin Scrollbars Visibles y Fuente Monoespaciada (`src/components/board-polish.css`, `src/app/layout.tsx`):**
+   - Ocultadas las barras de scroll nativas en web y mobile (`scrollbar-width: none` y `::-webkit-scrollbar { display: none }`).
+   - Reemplazada `JetBrains Mono` por `DM Mono` en `--font-mono`, donde el `0` es limpio y no se confunde con un `8`.
+3. **Persistencia Completa de Archivos y Privacidad (`src/lib/supabase.ts`, `supabase/migration_visibility.sql`, `src/components/MacInstallerUpload.tsx`, `src/components/App.tsx`):**
+   - `ensurePersistentUrl` convierte cualquier `blob:` o `data:` URL (portadas, GIFs, WAV/MP3, videos de Canvas y avatares) en archivo subido al bucket `el-tablero-media` antes de guardar en PostgreSQL, y `mergePersistedUrls` reemplaza las URLs temporales en memoria para que al tocar F5 no se pierda nada.
+   - IDs locales se mapean de forma determinística a UUIDs válidos (`toDbId`) para que el upsert en las tablas `projects`, `tracks` y `project_videos` nunca falle por tipo.
+   - Los proyectos nacen en **Privado** (`visibility: "private"`) y pueden pasarse a **Público** desde el inspector o el modal de edición; script SQL listo en `supabase/migration_visibility.sql`.
+4. **Perfiles Nuevos Vacíos (`src/lib/mock.ts`, `src/lib/supabase.ts`, `src/components/App.tsx`):**
+   - Agregado `EMPTY_ME_PROFILE` sin bio, crew, zona, stickers ni métricas falsas de `@poyo`. Al registrarse un usuario nuevo con Google se crea su perfil limpio y su biblioteca arranca con `0` proyectos propios.
+5. **Inicio Dinámico y Filtro de Artistas (`src/components/App.tsx`, `src/components/board-polish.css`):**
+   - El collage superior se genera dinámicamente desde los proyectos activos, cada uno con su miniatura de portada alineada al lado de su título y metadata; al clickear en el collage o en la tira inferior se abre el proyecto en la Biblioteca.
+   - Eliminado el botón `"Abrir Reproductor 3D →"`.
+   - Agregado filtro **Más recientes / Populares** en `Artistas en El Tablero`.
+6. **Biblioteca, Crear Proyecto y Spinner (`src/components/CreateProjectScreen.tsx`, `src/components/create-project.css`, `src/components/DiscSpinner3D.tsx`, `src/components/App.tsx`):**
+   - Switch de vista reemplazado por dos íconos (1 ventana / 2 ventanas lado a lado) que permanecen visibles también en `Guardados`.
+   - `CreateProjectScreen` rediseñado estilo Apple: tarjeta limpia con `Artwork` (`Subir portada (jpg, png, webp, gif)`), `Tracks (wav, mp3)` y `Canvas`; sin selectores de tipo/estado/atributos, sin ejemplos y sin textos explicativos ni descripciones autogeneradas. El tipo se detecta solo (`1` track = Single, `2–6` = EP, `7+` = LP).
+   - El modelo tipográfico 3D usa la fuente display `Unbounded`, reordena las partículas en tiempo real por interpolación suave hacia las nuevas letras (sin reconstruir la escena ni pegar latidos) y pasa por detrás de la tarjeta con máscara de fade inferior para que nunca quede recortado.
+   - `DiscSpinner3D` actualizado a texturas 1024px con anisotropía, DPR hasta 2, vinilo 3D con sobre y sello central de alta definición, y sin partículas.
+   - En la lista de tracks del proyecto queda únicamente el botón **Editar**.
+7. **Reproductor — Sensibilidad 808 (`src/components/PerformativePlayer.tsx`):**
+   - El desplazamiento de las 36.000 partículas responde solo a transientes reales de sub-graves (`30Hz–115Hz`) sobre una media móvil con umbral alto y amplitud reducida (~25–30%), volviendo por completo a su forma base entre golpes de 808.

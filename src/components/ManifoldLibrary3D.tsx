@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { type Project, type ProjectVideoClip } from "@/lib/mock";
 import { sfx } from "@/lib/sfx";
+import "./library-polish.css";
 
 function ResponsiveSceneGroup({
   children,
@@ -1185,7 +1186,7 @@ export default function ManifoldLibrary3D({
                         </span>
                         <input
                           type="file"
-                          accept="image/*"
+                          accept="image/*,image/gif"
                           hidden
                           onChange={(e) => {
                             const file = e.target.files?.[0];

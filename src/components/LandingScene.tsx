@@ -1,72 +1,20 @@
 "use client";
 
 import { Canvas, useFrame } from "@react-three/fiber";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { sfx } from "@/lib/sfx";
 import { supabase } from "@/lib/supabase";
 
-function buildDiscSprite(): THREE.CanvasTexture {
-  if (typeof document === "undefined") {
-    return new THREE.CanvasTexture({} as HTMLCanvasElement);
-  }
-  const c = document.createElement("canvas");
-  c.width = 64;
-  c.height = 64;
-  const g = c.getContext("2d")!;
-  g.clearRect(0, 0, 64, 64);
-
-  // Micro Vinilo con surcos finos y centro brillante
-  g.fillStyle = "#0c0c0e";
-  g.beginPath();
-  g.arc(32, 32, 30, 0, Math.PI * 2);
-  g.fill();
-
-  // Surcos concéntricos
-  g.lineWidth = 1;
-  [24, 20, 16, 12].forEach((r) => {
-    g.strokeStyle = "rgba(255, 255, 255, 0.12)";
-    g.beginPath();
-    g.arc(32, 32, r, 0, Math.PI * 2);
-    g.stroke();
-  });
-
-  // Brillo especular diagonal en arco
-  const sheen = g.createLinearGradient(10, 10, 54, 54);
-  sheen.addColorStop(0, "rgba(255, 255, 255, 0.22)");
-  sheen.addColorStop(0.5, "rgba(255, 255, 255, 0.0)");
-  sheen.addColorStop(1, "rgba(255, 255, 255, 0.22)");
-  g.fillStyle = sheen;
-  g.beginPath();
-  g.arc(32, 32, 29, 0, Math.PI * 2);
-  g.fill();
-
-  // Sello central
-  g.fillStyle = "#e11d48";
-  g.beginPath();
-  g.arc(32, 32, 8, 0, Math.PI * 2);
-  g.fill();
-
-  // Agujero central del vinilo
-  g.fillStyle = "#000000";
-  g.beginPath();
-  g.arc(32, 32, 2.5, 0, Math.PI * 2);
-  g.fill();
-
-  const tex = new THREE.CanvasTexture(c);
-  tex.generateMipmaps = false;
-  tex.minFilter = THREE.LinearFilter;
-  tex.magFilter = THREE.LinearFilter;
-  return tex;
-}
-
 const VINYL_PALETTE = [
-  "#e11d48", // coral / red
-  "#0284c7", // electric cyan
-  "#ca8a04", // gold
-  "#65a30d", // neon lime
-  "#7e22ce", // purple
+  "#e11d48", // coral
+  "#0284c7", // cyan
+  "#eab308", // gold
+  "#84cc16", // lime
+  "#a855f7", // purple
   "#14b8a6", // teal
+  "#f97316", // orange
+  "#ec4899", // pink
 ];
 
 function buildLandingLogoTargets(count: number): Float32Array {
@@ -130,10 +78,52 @@ function buildLandingLogoTargets(count: number): Float32Array {
   return targets;
 }
 
-function MicroDiscsSwarm() {
+const VERT_SHADER = /* glsl */ `
+  attribute vec3 aColor;
+  varying vec3 vColor;
+  uniform float uSize;
+  void main() {
+    vColor = aColor;
+    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+    gl_Position = projectionMatrix * mv;
+    gl_PointSize = clamp(uSize * (300.0 / max(0.3, -mv.z)), 2.0, 26.0);
+  }
+`;
+
+// Cuerpo del vinilo negro con surcos y reflejo; SOLO el sello central toma el color de cada partícula
+const FRAG_SHADER = /* glsl */ `
+  varying vec3 vColor;
+  void main() {
+    vec2 p = gl_PointCoord - vec2(0.5);
+    float r = length(p);
+    if (r > 0.49) discard;
+
+    // Agujero central
+    if (r < 0.055) {
+      gl_FragColor = vec4(0.02, 0.02, 0.03, 0.96);
+      return;
+    }
+
+    // Sello central de colores distintos en cada vinilito
+    if (r < 0.19) {
+      float innerRim = smoothstep(0.19, 0.165, r);
+      vec3 labelCol = vColor * (0.92 + 0.14 * innerRim);
+      gl_FragColor = vec4(labelCol, 0.97);
+      return;
+    }
+
+    // Surcos negros + brillo diagonal de vinilo
+    float groove = sin(r * 135.0) * 0.5 + 0.5;
+    float sheen = pow(abs(dot(normalize(p), vec2(0.7071, 0.7071))), 5.0) * 0.24;
+    float base = 0.065 + groove * 0.045 + sheen;
+    float alpha = smoothstep(0.49, 0.455, r) * 0.94;
+    gl_FragColor = vec4(vec3(base), alpha);
+  }
+`;
+
+function MicroDiscsSwarm({ count }: { count: number }) {
   const pointsRef = useRef<THREE.Points>(null!);
-  const count = 18000;
-  const sprite = useMemo(() => buildDiscSprite(), []);
+  const simTimeRef = useRef(0);
   const logoTargets = useMemo(() => buildLandingLogoTargets(count), [count]);
 
   const { orbitPositions, currentPositions, colors, phases } = useMemo(() => {
@@ -164,8 +154,7 @@ function MicroDiscsSwarm() {
 
       ph[i] = Math.random() * Math.PI * 2;
 
-      // Colores random vibrantes de la paleta de vinilitos de El Tablero
-      const colorPick = parsedColors[i % parsedColors.length];
+      const colorPick = parsedColors[(i * 5 + (i % 3)) % parsedColors.length];
       col[ix] = colorPick.r;
       col[ix + 1] = colorPick.g;
       col[ix + 2] = colorPick.b;
@@ -174,12 +163,16 @@ function MicroDiscsSwarm() {
     return { orbitPositions: orbitPos, currentPositions: currPos, colors: col, phases: ph };
   }, [count]);
 
-  useFrame(({ clock, pointer }, dt) => {
-    const t = clock.elapsedTime;
-    const clampedDt = Math.min(0.033, dt);
+  const uniforms = useMemo(() => ({ uSize: { value: 0.055 } }), []);
+
+  useFrame(({ pointer }, dt) => {
+    // Usar tiempo propio acotado para que al volver de segundo plano en iPhone no salte ni se reinicie el ciclo
+    const clampedDt = Math.min(0.033, Math.max(0.001, dt));
+    simTimeRef.current += clampedDt;
+    const t = simTimeRef.current;
+
     const arr = pointsRef.current.geometry.attributes.position.array as Float32Array;
 
-    // Ciclo de 13s: 6s órbita libre, 1.5s morph a "EL TABLERO" en 2D, 4s hold de "EL TABLERO", 1.5s dispersión
     const cycle = t % 13;
     let morphFactor = 0;
     if (cycle < 5.5) {
@@ -197,31 +190,28 @@ function MicroDiscsSwarm() {
 
     const mx = pointer.x * 0.85;
     const my = pointer.y * 0.85;
+    const step = Math.min(0.22, clampedDt * 4.5);
 
     for (let i = 0; i < count; i++) {
       const ix = i * 3;
       const phi = phases[i];
 
-      // Posición de órbita base
       const ox = orbitPositions[ix] + Math.cos(t * 1.1 + phi) * 0.08;
       const oy = orbitPositions[ix + 1] + Math.sin(t * 1.4 + phi) * 0.08;
       const oz = orbitPositions[ix + 2] + Math.sin(t * 0.9 + phi) * 0.06;
 
-      // Posición objetivo texto 2D "EL TABLERO"
       const tx = logoTargets[ix];
       const ty = logoTargets[ix + 1];
       const tz = logoTargets[ix + 2];
 
-      // Interpolación entre órbita y texto 2D
       const targetX = THREE.MathUtils.lerp(ox, tx, smoothMorph);
       const targetY = THREE.MathUtils.lerp(oy, ty, smoothMorph);
       const targetZ = THREE.MathUtils.lerp(oz, tz, smoothMorph);
 
-      arr[ix] += (targetX - arr[ix]) * (clampedDt * 4.5);
-      arr[ix + 1] += (targetY - arr[ix + 1]) * (clampedDt * 4.5);
-      arr[ix + 2] += (targetZ - arr[ix + 2]) * (clampedDt * 4.5);
+      arr[ix] += (targetX - arr[ix]) * step;
+      arr[ix + 1] += (targetY - arr[ix + 1]) * step;
+      arr[ix + 2] += (targetZ - arr[ix + 2]) * step;
 
-      // Leve interacción con el puntero cuando está disperso
       if (smoothMorph < 0.3) {
         const dx = arr[ix] - mx * 3;
         const dy = arr[ix + 1] - my * 2;
@@ -235,7 +225,6 @@ function MicroDiscsSwarm() {
       }
     }
 
-    // Leve rotación solo cuando no está en texto 2D para mantener legibilidad
     pointsRef.current.rotation.y = t * 0.04 * (1 - smoothMorph);
     pointsRef.current.geometry.attributes.position.needsUpdate = true;
   });
@@ -244,23 +233,19 @@ function MicroDiscsSwarm() {
     <points ref={pointsRef} frustumCulled={false}>
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" args={[currentPositions, 3]} />
-        <bufferAttribute attach="attributes-color" args={[colors, 3]} />
+        <bufferAttribute attach="attributes-aColor" args={[colors, 3]} />
       </bufferGeometry>
-      <pointsMaterial
-        map={sprite}
-        size={0.048}
-        vertexColors
+      <shaderMaterial
+        vertexShader={VERT_SHADER}
+        fragmentShader={FRAG_SHADER}
+        uniforms={uniforms}
         transparent
-        alphaTest={0.03}
-        opacity={0.94}
         depthWrite={false}
-        sizeAttenuation
       />
     </points>
   );
 }
 
-// Códigos de invitación válidos (estilo HeySpace / red privada del underground)
 const VALID_REFERRAL_CODES = [
   "TABLERO-UG-2026",
   "POYO-VIP",
@@ -271,13 +256,25 @@ const VALID_REFERRAL_CODES = [
   "TABLERO-PRIVATE",
 ];
 
+async function triggerGoogleOAuth(): Promise<string | null> {
+  const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/` : undefined;
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo },
+  });
+  if (error) return error.message;
+  if (data?.url && typeof window !== "undefined") {
+    window.location.assign(data.url);
+  }
+  return null;
+}
+
 export default function LandingScene({
-  onEnterAsGuest,
   onOpenGoogleAuth,
   onSetAccountRole,
 }: {
   onEnterAsGuest?: () => void;
-  onOpenGoogleAuth: () => void;
+  onOpenGoogleAuth?: () => void;
   onSetAccountRole?: (role: "artista" | "oyente") => void;
 }) {
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
@@ -285,6 +282,33 @@ export default function LandingScene({
   const [chosenRole, setChosenRole] = useState<"artista" | "oyente">("artista");
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 768px)");
+    setIsMobile(mq.matches);
+    const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener?.("change", onChange);
+    return () => mq.removeEventListener?.("change", onChange);
+  }, []);
+
+  const handleDirectSignIn = async () => {
+    sfx.open();
+    setErrorMsg("");
+    setLoading(true);
+    try {
+      const err = await triggerGoogleOAuth();
+      if (err) {
+        setErrorMsg(`Error al conectar con Google: ${err}`);
+        setLoading(false);
+        onOpenGoogleAuth?.();
+      }
+    } catch (err: any) {
+      setErrorMsg(`Error al conectar con Google: ${err?.message || err}`);
+      setLoading(false);
+    }
+  };
 
   const handleValidateAndRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -296,27 +320,24 @@ export default function LandingScene({
       VALID_REFERRAL_CODES.includes(clean) ||
       clean.includes("TABLERO") ||
       clean.includes("VIP") ||
-      clean.length >= 8;
+      clean.length >= 6;
 
     if (!isValid) {
       sfx.close();
-      setErrorMsg("Link o código de invitación inválido, che. El tablero es una red privada solo por invitación (referral). Pedile acceso a un miembro.");
+      setErrorMsg("Código de invitación inválido.");
       return;
     }
 
     sfx.drop();
-    if (onSetAccountRole) {
-      onSetAccountRole(chosenRole);
-    }
+    onSetAccountRole?.(chosenRole);
     setLoading(true);
 
     try {
-      await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: typeof window !== "undefined" ? window.location.origin : undefined,
-        },
-      });
+      const err = await triggerGoogleOAuth();
+      if (err) {
+        setErrorMsg(`Error al conectar con Google: ${err}`);
+        setLoading(false);
+      }
     } catch (err: any) {
       setErrorMsg(`Error al conectar con Google: ${err?.message || err}`);
       setLoading(false);
@@ -325,19 +346,18 @@ export default function LandingScene({
 
   return (
     <div className="landing-stage-wrapper">
-      {/* 3D Canvas con micro vinilos y micro CDs flotando a 60 FPS */}
-      <div className="landing-canvas-container">
+      <div className="landing-canvas-container" style={{ pointerEvents: "none" }}>
         <Canvas
           camera={{ position: [0, 0, 4.8], fov: 42 }}
-          dpr={[1, 1.35]}
+          dpr={isMobile ? [1, 1.15] : [1, 1.35]}
           gl={{ antialias: false, powerPreference: "high-performance" }}
+          style={{ pointerEvents: "none" }}
         >
           <color attach="background" args={["#070709"]} />
-          <MicroDiscsSwarm />
+          <MicroDiscsSwarm count={isMobile ? 7500 : 16000} />
         </Canvas>
       </div>
 
-      {/* Top minimal bar */}
       <header className="landing-top-bar">
         <div className="landing-brand-tag">
           <span className="brand-dot" />
@@ -345,7 +365,6 @@ export default function LandingScene({
         </div>
       </header>
 
-      {/* Centro de la landing: tipografía de El tablero + píldora Registrarme / Iniciar sesión */}
       <div className="landing-center-content">
         <span className="mono-tag" style={{ letterSpacing: "0.22em", marginBottom: 12 }}>
           ACCESO ANTICIPADO
@@ -357,11 +376,11 @@ export default function LandingScene({
           Tus proyectos. Tu identidad. Tu gente. Tu música.
         </p>
 
-        {/* Píldora del medio estilo reproductor minimalista */}
         <div className="landing-center-pill">
           <button
             type="button"
             className="landing-pill-btn primary"
+            disabled={loading}
             onClick={() => {
               sfx.open();
               setErrorMsg("");
@@ -374,27 +393,24 @@ export default function LandingScene({
           <button
             type="button"
             className="landing-pill-btn"
-            onClick={() => {
-              sfx.open();
-              onOpenGoogleAuth();
-            }}
+            disabled={loading}
+            onClick={handleDirectSignIn}
           >
-            Iniciar sesión
+            {loading ? "Conectando..." : "Iniciar sesión"}
           </button>
         </div>
 
-        <small className="landing-referral-hint">
-          ¿Tenés un link de invitación? Tocá <b>Registrarme</b> y pegalo para ingresar.
-        </small>
+        {errorMsg && !inviteModalOpen && (
+          <small style={{ color: "#e11d48", marginTop: 10, fontSize: "0.78rem" }}>{errorMsg}</small>
+        )}
       </div>
 
-      {/* Modal de Validación de Referral Invite estilo HeySpace */}
       {inviteModalOpen && (
         <div className="apple-modal-backdrop" onClick={() => setInviteModalOpen(false)}>
           <div className="apple-modal-card narrow" onClick={(e) => e.stopPropagation()}>
             <div className="modal-head">
               <div>
-                <span className="mono-tag">ACCESO PRIVADO // REFERRAL INVITE</span>
+                <span className="mono-tag">ACCESO ANTICIPADO</span>
                 <h3>Invitación a El tablero</h3>
               </div>
               <button
@@ -405,10 +421,6 @@ export default function LandingScene({
                 ✕
               </button>
             </div>
-
-            <p className="modal-subcopy">
-              El tablero es una comunidad privada y curada para la escena underground. Para ingresar necesitás un link o código de referido otorgado por un miembro activo.
-            </p>
 
             {errorMsg && (
               <div
@@ -428,21 +440,18 @@ export default function LandingScene({
 
             <form onSubmit={handleValidateAndRegister} className="modal-form-grid single-col">
               <label className="modal-field">
-                <span>LINK O CÓDIGO DE INVITACIÓN</span>
+                <span>CÓDIGO DE INVITACIÓN</span>
                 <input
                   value={inviteCode}
                   onChange={(e) => setInviteCode(e.target.value)}
-                  placeholder="ej. TABLERO-UG-2026 o https://eltablero.blog/invite/..."
+                  placeholder="TABLERO-UG-2026"
                   required
                   autoFocus
                 />
-                <small style={{ color: "var(--ink-secondary)", fontSize: "0.7rem", marginTop: 4 }}>
-                  Código VIP de acceso temprano. Sin referral válido no es posible registrarse.
-                </small>
               </label>
 
               <div className="modal-field">
-                <span>¿CÓMO VAS A USAR EL TABLERO?</span>
+                <span>PERFIL</span>
                 <div className="seg-pills" style={{ marginTop: 6 }}>
                   <button
                     type="button"
@@ -452,7 +461,7 @@ export default function LandingScene({
                       setChosenRole("artista");
                     }}
                   >
-                    🎙️ Artista / Productor
+                    Artista / Productor
                   </button>
                   <button
                     type="button"
@@ -462,14 +471,9 @@ export default function LandingScene({
                       setChosenRole("oyente");
                     }}
                   >
-                    🎧 Oyente
+                    Oyente
                   </button>
                 </div>
-                <small style={{ color: "var(--ink-secondary)", fontSize: "0.68rem", marginTop: 4 }}>
-                  {chosenRole === "artista"
-                    ? "Podrás crear proyectos 3D, subir tracks WAV/MP3, videos Canvas y vincular tu @handle único."
-                    : "Tu biblioteca se enfocará en tus proyectos Guardados para escuchar la música de la escena."}
-                </small>
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
@@ -479,7 +483,7 @@ export default function LandingScene({
                   disabled={loading}
                   style={{ justifyContent: "center", padding: "12px 18px", fontSize: "0.95rem" }}
                 >
-                  {loading ? "Verificando y conectando..." : "Validar y Conectar con Google →"}
+                  {loading ? "Conectando..." : "Continuar con Google →"}
                 </button>
               </div>
             </form>
