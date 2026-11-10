@@ -1092,3 +1092,21 @@
 ### Turno 65 — Orden del collage de Inicio en celular (`IMG_3899.png`)
 **Pedido (`juani`):** *"y la organizacion del tablero ta fiera"*.
 **Implementación (`board-polish.css`):** el collage se cortaba por la derecha (`blabla`, `23 m…`, `AMORIO`) y las palabras eran casi invisibles. En <=720px ahora fluye como nube centrada (`display: contents` en las filas, `flex-wrap`), con texto legible, tapas de 38px y sin píldoras/etiquetas decorativas que ensuciaban.
+
+---
+
+### Turno 66 — Ícono oficial permanente de board. + Tapas atómicas alineadas con sus proyectos (`IMG_3900.png`)
+**Pedidos del usuario (`juani`):**
+1. *"generame un icono para el iphone que sea el logo de board. y dejalo ese para siempre no quiero q se pueda cambiar q el icono sea ese"*
+2. *"segui, y de paso arregla que aparece la tapa de los proyectos en el que no es, esta como desfasado que aparezca la portada y a la derecha el nombre"* (`IMG_3900.png`)
+
+**Implementación (`App.tsx`, `board-polish.css`, `manifest.ts`, `public/`):**
+1. **Ícono oficial permanente de board. generado y seteado:**
+   - Generado isotipo/wordmark minimalista con fondo oscuro `#0a0a0c`, `board.` en tipografía geométrica pura blanca y punto final verde esmeralda `#22c55e`.
+   - Exportado en todas las resoluciones canónicas: `public/apple-touch-icon.png` (1024x1024), `public/icon.png` (512x512), `public/icon-192.png` (192x192) y `src/app/favicon.ico`.
+   - Actualizado `manifest.ts` con todos los tamaños y purposes maskable/any.
+   - Eliminado `AppIconPicker.tsx` y su interfaz en `EditProfileModal` para que quede fijo y no sea modificable.
+2. **Corrección del desfasaje de tapas en el collage (`IMG_3900.png`):**
+   - Antes las etiquetas `<img>` estaban sueltas como elementos independientes entre botones dentro de `.collage-line`, por lo que al hacer wrap de flexbox la tapa de un proyecto caía al final de una línea o arriba del proyecto siguiente.
+   - Ahora cada proyecto es un bloque atómico `.collage-item` (`<button>` unificado) que agrupa obligatoriamente su portada a la izquierda (`<img className="collage-cover-thumb" />`) y el nombre del proyecto a la derecha (`<span className="roster-word">...</span>`). Si el bloque salta de línea, la portada y su nombre se mueven juntos sin desfasarse jamás.
+

@@ -5,7 +5,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import PullToRefresh from "./PullToRefresh";
-import AppIconPicker, { AppIconApplier } from "./AppIconPicker";
 import {
   DEMO_PROJECTS,
   EMPTY_ME_PROFILE,
@@ -1729,7 +1728,6 @@ export default function App() {
       </header>
 
       <PullToRefresh />
-      <AppIconApplier />
 
       <AnimatePresence mode="wait">
         <motion.main
@@ -1764,31 +1762,36 @@ export default function App() {
                       <span className="pixel-tag coral-badge">MIXTAPE // 01</span>
                       <button
                         type="button"
-                        className="roster-word clean-editorial-word"
+                        className="collage-item clean-editorial-word"
                         onMouseEnter={() => sfx.hover()}
                         onClick={() => {
                           const p = findProjectById("la-plaga");
                           if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
                         }}
                       >
-                        LA <span className="inline-swatch coral">PLAGA</span>
+                        <span className="roster-word">
+                          LA <span className="inline-swatch coral">PLAGA</span>
+                        </span>
                         <sup className="sup-tag">mixtape · eyebags</sup>
                       </button>
-                      <img
-                        src="/covers/blablabla.png"
-                        alt="blablabla"
-                        className="collage-cover-thumb"
-                      />
+
                       <button
                         type="button"
-                        className="roster-word clean-editorial-word"
+                        className="collage-item clean-editorial-word"
                         onMouseEnter={() => sfx.hover()}
                         onClick={() => {
                           const p = findProjectById("blablabla");
                           if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
                         }}
                       >
-                        bla<span className="inline-swatch red">blabla</span>
+                        <img
+                          src="/covers/blablabla.png"
+                          alt="blablabla"
+                          className="collage-cover-thumb"
+                        />
+                        <span className="roster-word">
+                          bla<span className="inline-swatch red">blabla</span>
+                        </span>
                         <sup className="sup-tag">ep · bbbrvno</sup>
                       </button>
                       <span className="cutout-pill">Mendoza</span>
@@ -1796,21 +1799,23 @@ export default function App() {
 
                     {/* Fila 2: PERDÓN LA DEMORA (Tizianolased) */}
                     <div className="collage-line">
-                      <img
-                        src="/covers/perdon-la-demora.png"
-                        alt="PERDÓN LA DEMORA"
-                        className="collage-cover-thumb"
-                      />
                       <button
                         type="button"
-                        className="roster-word clean-editorial-word"
+                        className="collage-item clean-editorial-word"
                         onMouseEnter={() => sfx.hover()}
                         onClick={() => {
                           const p = findProjectById("perdon-la-demora");
                           if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
                         }}
                       >
-                        PERDÓN <span className="inline-swatch cyan">LA DEMORA</span>
+                        <img
+                          src="/covers/perdon-la-demora.png"
+                          alt="PERDÓN LA DEMORA"
+                          className="collage-cover-thumb"
+                        />
+                        <span className="roster-word">
+                          PERDÓN <span className="inline-swatch cyan">LA DEMORA</span>
+                        </span>
                         <sup className="sup-tag">mixtape · Tizianolased</sup>
                       </button>
                       <span className="cutout-pill dark">8 tracks · 23 min</span>
@@ -1818,88 +1823,101 @@ export default function App() {
 
                     {/* Fila 3: chickenNugget (poyo · dorkke) + ESTO ES ESTAR EN SONIDO (V4lentin0) */}
                     <div className="collage-line">
-                      <img
-                        src="/covers/chickennugget.png"
-                        alt="chickenNugget"
-                        className="collage-cover-thumb"
-                      />
                       <button
                         type="button"
-                        className="roster-word clean-editorial-word"
+                        className="collage-item clean-editorial-word"
                         onMouseEnter={() => sfx.hover()}
                         onClick={() => {
                           const p = findProjectById("chickennugget");
                           if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
                         }}
                       >
-                        chicken<span className="inline-swatch gold">Nugget</span>
+                        <img
+                          src="/covers/chickennugget.png"
+                          alt="chickenNugget"
+                          className="collage-cover-thumb"
+                        />
+                        <span className="roster-word">
+                          chicken<span className="inline-swatch gold">Nugget</span>
+                        </span>
                         <sup className="sup-tag">ep · poyo × dorkke</sup>
                       </button>
-                      <img
-                        src="/covers/esto-es-estar-en-sonido.png"
-                        alt="ESTO ES ESTAR EN SONIDO"
-                        className="collage-cover-thumb"
-                      />
+
                       <button
                         type="button"
-                        className="roster-word clean-editorial-word"
+                        className="collage-item clean-editorial-word"
                         onMouseEnter={() => sfx.hover()}
                         onClick={() => {
                           const p = findProjectById("esto-es-estar-en-sonido");
                           if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
                         }}
                       >
-                        <span className="inline-swatch blue">ESTO ES ESTAR</span> EN SONIDO
+                        <img
+                          src="/covers/esto-es-estar-en-sonido.png"
+                          alt="ESTO ES ESTAR EN SONIDO"
+                          className="collage-cover-thumb"
+                        />
+                        <span className="roster-word">
+                          <span className="inline-swatch blue">ESTO ES ESTAR</span> EN SONIDO
+                        </span>
                         <sup className="sup-tag">lp · V4lentin0</sup>
                       </button>
                     </div>
 
                     {/* Fila 4: #MA7IAS (Ma7imza) + Love2Hate (Icylucki) + AMORIO CLUB 2 (Máximo) */}
                     <div className="collage-line">
-                      <img
-                        src="/covers/ma7ias.png"
-                        alt="#MA7IAS"
-                        className="collage-cover-thumb"
-                      />
                       <button
                         type="button"
-                        className="roster-word clean-editorial-word"
+                        className="collage-item clean-editorial-word"
                         onMouseEnter={() => sfx.hover()}
                         onClick={() => {
                           const p = findProjectById("ma7ias");
                           if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
                         }}
                       >
-                        <span className="inline-swatch lime">#MA7IAS</span>
+                        <img
+                          src="/covers/ma7ias.png"
+                          alt="#MA7IAS"
+                          className="collage-cover-thumb"
+                        />
+                        <span className="roster-word">
+                          <span className="inline-swatch lime">#MA7IAS</span>
+                        </span>
                         <sup className="sup-tag">lp · Ma7imza</sup>
                       </button>
-                      <img
-                        src="/covers/love2hate.png"
-                        alt="Love2Hate"
-                        className="collage-cover-thumb"
-                      />
+
                       <button
                         type="button"
-                        className="roster-word clean-editorial-word"
+                        className="collage-item clean-editorial-word"
                         onMouseEnter={() => sfx.hover()}
                         onClick={() => {
                           const p = findProjectById("love2hate");
                           if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
                         }}
                       >
-                        Love<span className="inline-swatch purple">2Hate</span>
+                        <img
+                          src="/covers/love2hate.png"
+                          alt="Love2Hate"
+                          className="collage-cover-thumb"
+                        />
+                        <span className="roster-word">
+                          Love<span className="inline-swatch purple">2Hate</span>
+                        </span>
                         <sup className="sup-tag">ep · Icylucki</sup>
                       </button>
+
                       <button
                         type="button"
-                        className="roster-word clean-editorial-word"
+                        className="collage-item clean-editorial-word"
                         onMouseEnter={() => sfx.hover()}
                         onClick={() => {
                           const p = findProjectById("amorio-club-2");
                           if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
                         }}
                       >
-                        <span className="inline-swatch red">AMORIO CLUB 2</span>
+                        <span className="roster-word">
+                          <span className="inline-swatch red">AMORIO CLUB 2</span>
+                        </span>
                         <sup className="sup-tag">ep · Máximo</sup>
                       </button>
                     </div>
@@ -4354,7 +4372,6 @@ function EditProfileModal({
         )}
 
         <div className="modal-form-grid">
-          <AppIconPicker />
           {/* FOTO DE PERFIL */}
           <div className="modal-field full profile-avatar-edit-field">
             <span>FOTO DE PERFIL</span>

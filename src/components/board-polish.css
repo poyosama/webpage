@@ -2596,4 +2596,16 @@ textarea,
   .corecore-stage .neon-spine {
     opacity: 0.35 !important;
   }
+
+  /* Cada proyecto con su propia portada a la izquierda y el nombre a la derecha */
+  .corecore-stage .collage-item {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 2px 4px !important;
+    cursor: pointer !important;
+  }
 }
+
