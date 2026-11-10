@@ -961,6 +961,81 @@ export default function App() {
     playTrack(nextTrack, currentProject, playerExpanded);
   };
 
+  // Widget nativo de iPhone / Android (pantalla de bloqueo, Control Center, AirPods):
+  // título, artistas y tapa del track actual, igual que [untitled] / Spotify.
+  const mediaSessionCtlRef = useRef({ toggle: () => {}, step: (_d: 1 | -1) => {}, playing: false });
+  mediaSessionCtlRef.current = { toggle: togglePlay, step: stepTrack, playing: isPlaying };
+
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !("mediaSession" in navigator)) return;
+    const ms = navigator.mediaSession;
+    if (currentTrack.id === "standby-track") {
+      ms.metadata = null;
+      return;
+    }
+    const artists = [currentTrack.artist, currentTrack.feat && `feat. ${currentTrack.feat}`]
+      .filter(Boolean)
+      .join(" ");
+    const rawCover = currentTrack.coverUrl || currentProject.coverUrl || "/icon.png";
+    const cover = rawCover.startsWith("/") ? `${window.location.origin}${rawCover}` : rawCover;
+    const prodLine =
+      currentTrack.prod && currentTrack.prod !== currentTrack.artist
+        ? `${artists} · prod. ${currentTrack.prod}`
+        : artists;
+    try {
+      ms.metadata = new MediaMetadata({
+        title: currentTrack.title,
+        artist: prodLine,
+        album: currentProject.title,
+        artwork: [96, 192, 256, 384, 512].map((s) => ({ src: cover, sizes: `${s}x${s}` })),
+      });
+    } catch {
+      /* algunos navegadores rechazan data URLs enormes: dejamos solo título */
+      ms.metadata = new MediaMetadata({ title: currentTrack.title, artist: prodLine, album: currentProject.title });
+    }
+  }, [
+    currentTrack.id,
+    currentTrack.title,
+    currentTrack.artist,
+    currentTrack.feat,
+    currentTrack.prod,
+    currentTrack.coverUrl,
+    currentProject.title,
+    currentProject.coverUrl,
+  ]);
+
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !("mediaSession" in navigator)) return;
+    const ms = navigator.mediaSession;
+    ms.playbackState = isPlaying ? "playing" : "paused";
+  }, [isPlaying]);
+
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !("mediaSession" in navigator)) return;
+    const ms = navigator.mediaSession;
+    const set = (a: MediaSessionAction, h: MediaSessionActionHandler | null) => {
+      try {
+        ms.setActionHandler(a, h);
+      } catch {}
+    };
+    set("play", () => {
+      if (!mediaSessionCtlRef.current.playing) mediaSessionCtlRef.current.toggle();
+    });
+    set("pause", () => {
+      if (mediaSessionCtlRef.current.playing) mediaSessionCtlRef.current.toggle();
+    });
+    set("previoustrack", () => mediaSessionCtlRef.current.step(-1));
+    set("nexttrack", () => mediaSessionCtlRef.current.step(1));
+    set("seekto", (d) => {
+      if (typeof d.seekTime === "number") sfx.seek(d.seekTime);
+    });
+    return () => {
+      (["play", "pause", "previoustrack", "nexttrack", "seekto"] as MediaSessionAction[]).forEach((a) =>
+        set(a, null)
+      );
+    };
+  }, []);
+
   onTrackEndedRef.current = () => {
     if (repeatMode === "one") {
       sfx.seek(0);

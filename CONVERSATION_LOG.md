@@ -1040,3 +1040,12 @@
 3. **Dock Inferior en Apple Dark Liquid Glass de Alto Contraste (`.perf-dock.spotify-full-dock`):**
    - `darkStage` activado por defecto (`useState(true)`) y dock inferior rediseñado en cristal oscuro (`rgba(22, 22, 28, 0.72)`, `blur(40px)`) con controles blancos nítidos, barra de progreso blanca/verde esmeralda y layout móvil tipo iOS Apple Music (barra de progreso arriba -> controles de reproducción centrados al medio -> selector de motor visual, lyrics y cola abajo).
 
+
+---
+
+### Turno 59 — Widget de Reproducción del iPhone (Media Session) con Tema, Autores y Tapa
+**Pedidos del usuario (`juani`):**
+- *"quiero q el widget del iphone de reproduccion muestre el tema y los autores y la tapa igual q untitled"* y *"en la pantalla de home en el iphone quiero cambiarle el icono"* (pendiente: falta que pase la imagen del ícono nuevo).
+
+**Implementación (`src/components/App.tsx`):**
+- Integrada la **Media Session API** (`navigator.mediaSession`): pantalla de bloqueo, Control Center y AirPods muestran título del track, artista + feat + productor, proyecto como álbum y la tapa (del track o del proyecto). Handlers de play/pause/anterior/siguiente/seek conectados al reproductor.
