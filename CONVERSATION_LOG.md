@@ -1068,3 +1068,9 @@
 ### Turno 61 — Biblioteca Limpia (solo rueda de vinilos + tarjeta)
 **Pedido (`juani`):** *"quiero que cuando entres a la biblioteca se vea asi (captura), no me gusta todo el texto que tiene arriba"*.
 **Implementación (`App.tsx`, `board-polish.css`):** en `Biblioteca > Mis Proyectos` se ocultan el título, `Mis Proyectos (n)`, el texto "Deslizá la rueda…" y las píldoras superiores (`.library-clean`). Queda solo la rueda + tarjeta, con un acceso mínimo a `Guardados` y el switch de vista arriba a la derecha.
+
+---
+
+### Turno 62 — Inicio en celular con collage como en desktop (`IMG_3898.png`)
+**Pedido (`juani`):** *"acomodalo para q se vea como en desktop"*.
+**Implementación (`board-polish.css`):** en <=720px cada fila del collage (`.collage-line`) queda en una sola línea (`nowrap`) con tipografía, tapas y píldoras escaladas con `clamp()/vw`, en vez de partirse en 2–3 renglones y recortarse.
