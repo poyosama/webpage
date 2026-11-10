@@ -246,9 +246,25 @@ function HighResFlowParticles({
   );
 }
 
-// 2. FERROFLUIDO 3D ESCULTABLE HD (3X MÁS POLÍGONOS + ACELERACIÓN GPU 60 FPS)
-function SculptableFerrofluid({ accent, c2 }: { accent: string; c2: string }) {
+// 2. FERROFLUIDO 3D ESCULTABLE HD CON PARTÍCULAS EN LA SUPERFICIE (SALTO 808 Y RETORNO ELÁSTICO)
+function SculptableFerrofluid({
+  accent,
+  c2,
+  isDarkStage = true,
+  impulseSignal = 0,
+}: {
+  accent: string;
+  c2: string;
+  isDarkStage?: boolean;
+  impulseSignal?: number;
+}) {
   const meshRef = useRef<THREE.Mesh>(null!);
+  const pointsRef = useRef<THREE.Points>(null!);
+  const pointsMatRef = useRef<THREE.PointsMaterial>(null!);
+  const lastImpulseRef = useRef(0);
+  const jumpDispRef = useRef(0);
+  const targetJumpRef = useRef(0);
+
   const uniformsRef = useRef({
     uTime: { value: 0 },
     uBass: { value: 0 },
@@ -313,8 +329,99 @@ function SculptableFerrofluid({ accent, c2 }: { accent: string; c2: string }) {
 
   const hoverDirRef = useRef<THREE.Vector3 | null>(null);
 
-  useFrame(({ clock }) => {
-    const { beat, bass } = sfx.sampleReactiveLevels();
+  // Sprite circular suave 32x32 para las partículas de la superficie
+  const particleSprite = useMemo(() => {
+    const c = document.createElement("canvas");
+    c.width = 32;
+    c.height = 32;
+    const g = c.getContext("2d")!;
+    const grad = g.createRadialGradient(16, 16, 2, 16, 16, 15);
+    grad.addColorStop(0, "rgba(255,255,255,1)");
+    grad.addColorStop(0.65, "rgba(255,255,255,0.85)");
+    grad.addColorStop(1, "rgba(255,255,255,0)");
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 32, 32);
+    const tex = new THREE.CanvasTexture(c);
+    tex.generateMipmaps = false;
+    tex.minFilter = THREE.LinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    return tex;
+  }, []);
+
+  // 8.200 micro-gotas / partículas magnéticas ancladas a la piel del ferrofluido
+  const particlesCount = 8200;
+
+  const { baseDirs, scatterDirs, colors } = useMemo(() => {
+    const baseD = new Float32Array(particlesCount * 3);
+    const scatD = new Float32Array(particlesCount * 3);
+    const col = new Float32Array(particlesCount * 3);
+
+    const cA = new THREE.Color(accent);
+    const cB = new THREE.Color(c2);
+    const cHighlight = new THREE.Color(isDarkStage ? "#ffffff" : "#09090b");
+    const cSecondary = new THREE.Color(isDarkStage ? "#bae6fd" : "#27272a");
+
+    const phi = Math.PI * (Math.sqrt(5) - 1); // golden ratio para distribución uniforme en esfera (Fibonacci)
+
+    for (let i = 0; i < particlesCount; i++) {
+      const ix = i * 3;
+      const y = 1 - (i / (particlesCount - 1)) * 2;
+      const radiusAtY = Math.sqrt(Math.max(0, 1 - y * y));
+      const theta = phi * i;
+
+      const x = Math.cos(theta) * radiusAtY;
+      const z = Math.sin(theta) * radiusAtY;
+
+      baseD[ix] = x;
+      baseD[ix + 1] = y;
+      baseD[ix + 2] = z;
+
+      // Vector de salto hacia afuera (radial normal + pequeña dispersión estocástica orgánica)
+      const spread = 0.28;
+      const rx = x + (Math.random() - 0.5) * spread;
+      const ry = y + (Math.random() - 0.5) * spread;
+      const rz = z + (Math.random() - 0.5) * spread;
+      const rLen = Math.hypot(rx, ry, rz) || 1;
+      const burstPower = 0.52 + Math.pow(Math.random(), 0.72) * 1.5;
+
+      scatD[ix] = (rx / rLen) * burstPower;
+      scatD[ix + 1] = (ry / rLen) * burstPower;
+      scatD[ix + 2] = (rz / rLen) * burstPower;
+
+      // Colores de partículas: en modo oscuro destellos blancos/cian/accent, en modo claro perlas de tinta oscura
+      let chosen: THREE.Color;
+      const mod = i % 4;
+      if (mod === 0) chosen = cHighlight;
+      else if (mod === 1) chosen = isDarkStage ? cA : new THREE.Color("#09090b");
+      else if (mod === 2) chosen = isDarkStage ? cB : new THREE.Color("#18181b");
+      else chosen = isDarkStage ? cSecondary : new THREE.Color("#27272a");
+
+      col[ix] = chosen.r;
+      col[ix + 1] = chosen.g;
+      col[ix + 2] = chosen.b;
+    }
+
+    return {
+      baseDirs: baseD,
+      scatterDirs: scatD,
+      colors: col,
+    };
+  }, [accent, c2, isDarkStage]);
+
+  const renderPositions = useMemo(() => {
+    const pos = new Float32Array(particlesCount * 3);
+    for (let i = 0; i < particlesCount; i++) {
+      const ix = i * 3;
+      pos[ix] = baseDirs[ix] * 0.965;
+      pos[ix + 1] = baseDirs[ix + 1] * 0.965;
+      pos[ix + 2] = baseDirs[ix + 2] * 0.965;
+    }
+    return pos;
+  }, [baseDirs]);
+
+  useFrame(({ clock }, dt) => {
+    const { beat, bass, eightOhEight } = sfx.sampleReactiveLevels();
+    const clampedDt = Math.min(0.033, dt);
     const t = clock.elapsedTime;
     uniformsRef.current.uTime.value = t;
     uniformsRef.current.uBass.value = bass;
@@ -333,6 +440,81 @@ function SculptableFerrofluid({ accent, c2 }: { accent: string; c2: string }) {
         0.0,
         0.08
       );
+    }
+
+    // === REACCIÓN DE SALTO Y RETORNO ELÁSTICO DE LAS PARTÍCULAS EN LA SUPERFICIE ===
+    const MAX_JUMP = 1.35;
+    const hitTarget = Math.max(
+      Math.pow(eightOhEight || 0, 0.8) * MAX_JUMP,
+      Math.pow(bass || 0, 0.85) * 1.15
+    );
+
+    // Impulso manual al clickear la pantalla
+    if (impulseSignal !== lastImpulseRef.current) {
+      lastImpulseRef.current = impulseSignal;
+      targetJumpRef.current = Math.max(targetJumpRef.current, 0.85);
+    }
+
+    if (hitTarget > targetJumpRef.current) targetJumpRef.current = hitTarget;
+    // Decaimiento elástico: regresan suave y limpiamente a su posición base en la piel
+    targetJumpRef.current *= Math.exp(-clampedDt * 8.2);
+    if (targetJumpRef.current < 0.002) targetJumpRef.current = 0;
+
+    const cur = jumpDispRef.current;
+    const k = targetJumpRef.current > cur ? 36 : 11;
+    let next = cur + (targetJumpRef.current - cur) * Math.min(1, clampedDt * k);
+    if (targetJumpRef.current === 0 && next < 0.002) next = 0;
+    jumpDispRef.current = next;
+
+    const jumpDisp = jumpDispRef.current;
+
+    if (pointsMatRef.current) {
+      const baseSize = isDarkStage ? 0.022 : 0.028;
+      pointsMatRef.current.size = baseSize * (1 + jumpDisp * 0.55);
+    }
+
+    if (pointsRef.current) {
+      const geo = pointsRef.current.geometry;
+      const posAttr = geo.getAttribute("position") as THREE.BufferAttribute;
+      const arr = posAttr.array as Float32Array;
+
+      const spikeAmp = 0.18 + bass * 0.35 + beat * 0.16;
+      const hStr = uniformsRef.current.uHoverStrength.value;
+      const hDir = uniformsRef.current.uHoverDir.value;
+      const baseR = 0.965;
+
+      for (let i = 0; i < particlesCount; i++) {
+        const ix = i * 3;
+        const bx = baseDirs[ix];
+        const by = baseDirs[ix + 1];
+        const bz = baseDirs[ix + 2];
+
+        // Misma función de onda matemática que el vertex shader para abrazar la piel líquida
+        const n =
+          Math.sin(bx * 4.2 + t * 2.4) *
+          Math.cos(by * 4.2 - t * 2.0) *
+          Math.sin(bz * 4.2 + t * 1.7);
+        let s = 1.0 + n * spikeAmp;
+
+        if (hStr > 0.005) {
+          const dotVal = bx * hDir.x + by * hDir.y + bz * hDir.z;
+          if (dotVal > 0.6) {
+            s += (dotVal - 0.6) * 0.55 * hStr;
+          }
+        }
+
+        // Posición de reposo exactamente sobre la superficie ondulante del ferrofluido
+        const surfX = bx * baseR * s;
+        const surfY = by * baseR * s;
+        const surfZ = bz * baseR * s;
+
+        // Salto hacia afuera en cada golpe de 808 / bass y retorno limpio a la superficie
+        arr[ix] = surfX + scatterDirs[ix] * jumpDisp;
+        arr[ix + 1] = surfY + scatterDirs[ix + 1] * jumpDisp;
+        arr[ix + 2] = surfZ + scatterDirs[ix + 2] * jumpDisp;
+      }
+
+      posAttr.needsUpdate = true;
     }
   });
 
@@ -354,6 +536,23 @@ function SculptableFerrofluid({ accent, c2 }: { accent: string; c2: string }) {
           hoverDirRef.current = null;
         }}
       />
+      <points ref={pointsRef} frustumCulled={false}>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[renderPositions, 3]} />
+          <bufferAttribute attach="attributes-color" args={[colors, 3]} />
+        </bufferGeometry>
+        <pointsMaterial
+          ref={pointsMatRef}
+          map={particleSprite}
+          size={isDarkStage ? 0.022 : 0.028}
+          vertexColors
+          transparent
+          alphaTest={0.02}
+          opacity={isDarkStage ? 0.95 : 0.92}
+          sizeAttenuation
+          depthWrite={false}
+        />
+      </points>
       <OrbitControls
         enableZoom={true}
         minDistance={2.6}
@@ -577,11 +776,11 @@ export default function PerformativePlayer({
       <div
         className="perf-canvas-wrap"
         onClick={() => {
+          setImpulseSignal((n) => n + 1);
           if (mode === "boids") {
-            setImpulseSignal((n) => n + 1);
             setSeed((n) => n + 1);
-            sfx.tap();
           }
+          sfx.tap();
         }}
       >
         <Canvas
@@ -602,7 +801,14 @@ export default function PerformativePlayer({
               isDarkStage={isDarkStage}
             />
           )}
-          {mode === "ferro" && <SculptableFerrofluid accent={track.accent} c2={track.c2} />}
+          {mode === "ferro" && (
+            <SculptableFerrofluid
+              accent={track.accent}
+              c2={track.c2}
+              isDarkStage={isDarkStage}
+              impulseSignal={impulseSignal}
+            />
+          )}
         </Canvas>
       </div>
 

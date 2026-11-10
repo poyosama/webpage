@@ -1342,3 +1342,26 @@
    - `.perf-cinema-media` configurado a `opacity: 1 !important; filter: saturate(1.18) contrast(1.1) brightness(0.98) !important;` con fondo negro absoluto `#000000`.
    - Removida la niebla blanca: `.perf-cinema-vignette` ahora es un degradé de bordes limpio y cinematográfico (transparente en el 70% central de la pantalla), dejando el video con toda su riqueza de color y definición sin opacarlo.
    - En canciones con Canvas activo, el título y subtítulo adoptan sombra de contraste cinematográfico para mantenerse perfectamente legibles sobre cualquier escena del video.
+
+---
+
+### Turno 75 — Partículas Reactivas en la Superficie del Ferrofluido 3D (Salto 808 y Retorno Elástico a la Piel)
+**Pedido del usuario (`juani`):**
+- *"al ferrofluido tambien ponele particulas en la superficie que saltan pero vuelven a su posicion"*
+
+**Implementación (`PerformativePlayer.tsx`):**
+1. **8.200 micro-gotas / partículas magnéticas ancladas a la superficie:**
+   - En `SculptableFerrofluid`, se implementó una distribución esférica uniforme de Fibonacci con 8.200 partículas situadas exactamente en la piel del ferrofluido (`radius: 0.965`).
+   - Sprite circular HD 32x32 con degradé radial suave (`circleSprite` / `LinearFilter`).
+2. **Seguimiento dinámico de la onda del ferrofluido:**
+   - Las partículas calculan su posición base en cada frame siguiendo la misma ecuación armónica del vertex shader de la GPU (`n = sin(...) * cos(...) * sin(...)` y `s = 1.0 + n * spikeAmp`), además de acompañar la atracción magnética interactiva cuando el usuario pasa el mouse o arrastra sobre el ferrofluido.
+3. **Salto explosivo al 808 y retorno elástico perfecto a su posición:**
+   - Conectado a la señal de sub-graves y 808 (`eightOhEight` y `bass` de `sfx.sampleReactiveLevels()`).
+   - Al pegar el golpe de 808, las partículas salen disparadas hacia afuera a lo largo de sus vectores radiales normales (`scatterDirs`) con magnitud orgánica variable por partícula (`jumpDisp * (0.52 + rand^0.72 * 1.5)`).
+   - Suavizado elástico con decaimiento exponencial (`Math.exp(-clampedDt * 8.2)`): apenas termina el impacto del 808, las partículas regresan suave y limpiamente a su posición exacta sobre la piel del ferrofluido ("saltan pero vuelven a su posicion").
+   - El tamaño de partícula se expande sutilmente durante el salto para un efecto de micro-gotas volumétricas.
+4. **Interacción por click y contraste de color adaptable:**
+   - Al tocar o hacer click en cualquier parte de la pantalla, se dispara un pulso de salto manual con sonido haptic (`sfx.tap()`).
+   - En modo oscuro (`isDarkStage`), las partículas lucen como destellos de luz plateados, blancos y cian iridiscente sobre el metal líquido oscuro.
+   - En modo claro (`!isDarkStage`), se adaptan a perlas de tinta oscura profunda (`#09090b` / `#18181b` / `#27272a`) de alto contraste sobre el fondo marfil.
+
