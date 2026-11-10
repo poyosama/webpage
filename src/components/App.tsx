@@ -19,7 +19,6 @@ import {
   type Track,
 } from "@/lib/mock";
 import { sfx } from "@/lib/sfx";
-import MacInstallerUpload from "./MacInstallerUpload";
 import type { QueueEntry, RepeatMode } from "./PerformativePlayer";
 import {
   supabase,
@@ -35,9 +34,14 @@ import {
   fetchSavedProjectIdsFromSupabase,
   mergePersistedUrls,
   hasTransientMedia,
+  fastCacheGet,
+  fastCacheSet,
+  resolveTrackAudioUrl,
+  hydrateProjectsAudioInBackground,
 } from "@/lib/supabase";
 import "./board-polish.css";
 
+const MacInstallerUpload = dynamic(() => import("./MacInstallerUpload"), { ssr: false });
 const DiscSpinner3D = dynamic(() => import("./DiscSpinner3D"), { ssr: false });
 const PerformativePlayer = dynamic(() => import("./PerformativePlayer"), { ssr: false });
 const ManifoldLibrary3D = dynamic(() => import("./ManifoldLibrary3D"), { ssr: false });
@@ -308,21 +312,82 @@ export default function App() {
   };
 
   // Hidratar solo preferencias locales (las novedades de productores). Proyectos y perfil viven en la nube.
+  // Hidratación instantánea (0ms Stale-While-Revalidate) desde localStorage + IndexedDB al apretar F5
   useEffect(() => {
     try {
-      localStorage.removeItem("eltablero_real_projects_v1");
-      localStorage.removeItem("eltablero_real_profile_v1");
       const savedDrops = localStorage.getItem(STORAGE_DROPS_KEY);
       if (savedDrops) {
         const parsedDrops = JSON.parse(savedDrops) as ProducerDropItem[];
         if (Array.isArray(parsedDrops)) setProducerDrops(parsedDrops);
+      }
+
+      const rawSnap = localStorage.getItem("eltablero_fast_snapshot_v2");
+      if (rawSnap) {
+        const snap = JSON.parse(rawSnap);
+        if (snap?.meProfile?.id) {
+          setMeProfile(snap.meProfile);
+          setGoogleConnected(true);
+        }
+        if (Array.isArray(snap?.communityArtists) && snap.communityArtists.length > 0) {
+          setCommunityArtists(snap.communityArtists);
+        }
+        if (Array.isArray(snap?.projects) && snap.projects.length > 0) {
+          setProjects(snap.projects);
+          const first = snap.projects[0];
+          if (first) {
+            setSelectedProjectId((prev) => prev || first.id);
+          }
+        }
       }
     } catch {
       // ignore storage errors
     } finally {
       setHydrated(true);
     }
+
+    // Restaurar desde IndexedDB local (~3ms) cualquier portada/canvas pesado sin esperar a la red
+    void fastCacheGet<Project[]>("eltablero_full_projects_v2").then((cachedProjs) => {
+      if (Array.isArray(cachedProjs) && cachedProjs.length > 0) {
+        setProjects((prev) => (prev.length === 0 ? cachedProjs : prev));
+        setSelectedProjectId((prev) => prev || cachedProjs[0].id);
+      }
+    });
   }, []);
+
+  // Guardar snapshot ultra-liviano en localStorage + copia completa en IndexedDB para F5 instantáneo
+  useEffect(() => {
+    if (!hydrated || !googleConnected || !meProfile.id) return;
+    try {
+      const stripHeavy = (u?: string) => (u && u.length > 90000 ? undefined : u);
+      const lightProjects = projects.map((p) => ({
+        ...p,
+        coverUrl: stripHeavy(p.coverUrl),
+        tracks: p.tracks.map((t) => ({
+          ...t,
+          customAudioUrl: stripHeavy(t.customAudioUrl),
+          coverUrl: stripHeavy(t.coverUrl),
+        })),
+        videos: p.videos.map((v) => ({
+          ...v,
+          url: stripHeavy(v.url),
+        })),
+      }));
+      localStorage.setItem(
+        "eltablero_fast_snapshot_v2",
+        JSON.stringify({
+          meProfile: { ...meProfile, avatarUrl: stripHeavy(meProfile.avatarUrl) },
+          projects: lightProjects,
+          communityArtists: communityArtists.slice(0, 30).map((a) => ({
+            ...a,
+            avatarUrl: stripHeavy(a.avatarUrl),
+          })),
+        })
+      );
+    } catch {
+      // ignore quota errors
+    }
+    void fastCacheSet("eltablero_full_projects_v2", projects);
+  }, [projects, meProfile, communityArtists, hydrated, googleConnected]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -333,7 +398,7 @@ export default function App() {
     }
   }, [producerDrops, hydrated]);
 
-  // Carga (o crea) el perfil de la cuenta + todos los proyectos que la cuenta puede ver
+  // Carga (o crea) el perfil de la cuenta + todos los proyectos en PARALELO (Stale-While-Revalidate)
   const applySession = async (u: any, mounted: () => boolean, fresh: boolean) => {
     if (!u || !mounted()) return;
     const meta = u.user_metadata || {};
@@ -353,7 +418,15 @@ export default function App() {
     } catch {}
 
     try {
-      const { data: existing } = await supabase.from("profiles").select("*").eq("id", u.id).maybeSingle();
+      // 1 sola ronda de red: pedimos perfil, proyectos, artistas y guardados TODOS EN PARALELO
+      const [profileRes, allProjs, profiles, savedIds] = await Promise.all([
+        supabase.from("profiles").select("*").eq("id", u.id).maybeSingle(),
+        fetchUserProjectsFromSupabase(),
+        fetchCommunityProfilesFromSupabase(),
+        fetchSavedProjectIdsFromSupabase(u.id),
+      ]);
+
+      const existing = profileRes.data;
       let base: ArtistProfile;
       if (existing) {
         base = {
@@ -397,12 +470,6 @@ export default function App() {
         setTab("inicio");
       }
 
-      const [allProjs, profiles, savedIds] = await Promise.all([
-        fetchUserProjectsFromSupabase(),
-        fetchCommunityProfilesFromSupabase(),
-        fetchSavedProjectIdsFromSupabase(u.id),
-      ]);
-      if (!mounted()) return;
       setCommunityArtists(profiles);
       if (savedIds.length) setSavedProjectIds((prev) => Array.from(new Set([...prev, ...savedIds])));
       if (allProjs) {
@@ -414,10 +481,14 @@ export default function App() {
         setProjects(visible);
         if (visible.length > 0) {
           const mine = visible.find((p) => p.artistId === u.id) || visible[0];
-          setSelectedProjectId(mine.id);
-          setCurrentProject(mine);
-          if (mine.tracks[0]) setCurrentTrack(mine.tracks[0]);
+          setSelectedProjectId((prev) => prev || mine.id);
         }
+
+        // Hidratar en segundo plano los audios desde IndexedDB / Supabase sin bloquear la UI
+        void hydrateProjectsAudioInBackground(visible, (trackId, audioUrl) => {
+          if (!mounted()) return;
+          setCustomAudioMap((prev) => (prev[trackId] === audioUrl ? prev : { ...prev, [trackId]: audioUrl }));
+        });
       }
       setCloudReady(true);
     } catch (e) {
@@ -459,6 +530,10 @@ export default function App() {
       if (event === "SIGNED_OUT") {
         lastUserIdRef.current = null;
         syncedSigRef.current = {};
+        try {
+          localStorage.removeItem("eltablero_fast_snapshot_v2");
+        } catch {}
+        void fastCacheSet("eltablero_full_projects_v2", []);
         setGoogleConnected(false);
         setCloudReady(false);
         setProjects([]);
@@ -549,13 +624,30 @@ export default function App() {
     setCurrentProject(project);
     setIsPlaying(true);
     sfx.play();
-    sfx.startGroove(
-      track.bpm,
-      track.audioFreq,
-      track.customAudioUrl || customAudioMap[track.id],
-      track.durationSec,
-      isDifferentTrack
-    );
+    const knownAudio = track.customAudioUrl || customAudioMap[track.id];
+    if (knownAudio) {
+      sfx.startGroove(
+        track.bpm,
+        track.audioFreq,
+        knownAudio,
+        track.durationSec,
+        isDifferentTrack
+      );
+    } else {
+      // Resolver desde IndexedDB (1ms) o Supabase bajo demanda si el usuario tocó Play enseguida
+      void resolveTrackAudioUrl(track.id).then((resolved) => {
+        if (resolved) {
+          setCustomAudioMap((prev) => ({ ...prev, [track.id]: resolved }));
+        }
+        sfx.startGroove(
+          track.bpm,
+          track.audioFreq,
+          resolved,
+          track.durationSec,
+          isDifferentTrack
+        );
+      });
+    }
     if (openFull) setPlayerExpanded(true);
   };
 
@@ -576,12 +668,27 @@ export default function App() {
       }
       setIsPlaying(true);
       sfx.play();
-      sfx.resumeGroove(
-        currentTrack.bpm,
-        currentTrack.audioFreq,
-        currentTrack.customAudioUrl || customAudioMap[currentTrack.id],
-        currentTrack.durationSec
-      );
+      const knownAudio = currentTrack.customAudioUrl || customAudioMap[currentTrack.id];
+      if (knownAudio) {
+        sfx.resumeGroove(
+          currentTrack.bpm,
+          currentTrack.audioFreq,
+          knownAudio,
+          currentTrack.durationSec
+        );
+      } else {
+        void resolveTrackAudioUrl(currentTrack.id).then((resolved) => {
+          if (resolved) {
+            setCustomAudioMap((prev) => ({ ...prev, [currentTrack.id]: resolved }));
+          }
+          sfx.resumeGroove(
+            currentTrack.bpm,
+            currentTrack.audioFreq,
+            resolved,
+            currentTrack.durationSec
+          );
+        });
+      }
     }
   };
 

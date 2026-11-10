@@ -50,7 +50,110 @@ export const isTransientUrl = (url?: string | null): boolean =>
 const cleanUrl = (url?: string | null): string | undefined =>
   url && !url.startsWith("blob:") ? url : undefined;
 
-function blobToDataUrl(blob: Blob): Promise<string | null> {
+const audioMemCache = new Map<string, string>();
+
+// ==================== INDEXEDDB CACHE LOCAL ULTRA-RÁPIDO (0 RED EN F5) ====================
+const IDB_NAME = "el_tablero_fast_cache_v1";
+const IDB_STORE = "kv";
+
+function openFastIdb(): Promise<IDBDatabase | null> {
+  if (typeof window === "undefined" || !("indexedDB" in window)) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    try {
+      const req = window.indexedDB.open(IDB_NAME, 1);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(IDB_STORE)) {
+          db.createObjectStore(IDB_STORE);
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+export async function fastCacheGet<T = unknown>(key: string): Promise<T | null> {
+  const db = await openFastIdb();
+  if (!db) return null;
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction(IDB_STORE, "readonly");
+      const req = tx.objectStore(IDB_STORE).get(key);
+      req.onsuccess = () => resolve((req.result as T) ?? null);
+      req.onerror = () => resolve(null);
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+export async function fastCacheSet(key: string, value: unknown): Promise<void> {
+  const db = await openFastIdb();
+  if (!db) return;
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction(IDB_STORE, "readwrite");
+      tx.objectStore(IDB_STORE).put(value, key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+    } catch {
+      resolve();
+    }
+  });
+}
+
+function compressImageBlobToDataUrl(blob: Blob, maxDim = 720, quality = 0.85): Promise<string | null> {
+  if (typeof document === "undefined") return Promise.resolve(null);
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        let w = img.naturalWidth || img.width;
+        let h = img.naturalHeight || img.height;
+        if (w > maxDim || h > maxDim) {
+          const ratio = Math.min(maxDim / w, maxDim / h);
+          w = Math.max(1, Math.round(w * ratio));
+          h = Math.max(1, Math.round(h * ratio));
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          URL.revokeObjectURL(url);
+          resolve(null);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, w, h);
+        const out = canvas.toDataURL("image/webp", quality);
+        URL.revokeObjectURL(url);
+        resolve(out);
+      } catch {
+        URL.revokeObjectURL(url);
+        resolve(null);
+      }
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(null);
+    };
+    img.src = url;
+  });
+}
+
+async function blobToDataUrl(blob: Blob): Promise<string | null> {
+  if (
+    blob.type.startsWith("image/") &&
+    !blob.type.includes("gif") &&
+    !blob.type.includes("svg")
+  ) {
+    const compressed = await compressImageBlobToDataUrl(blob, 720, 0.85);
+    if (compressed) return compressed;
+  }
   return new Promise((resolve) => {
     try {
       const reader = new FileReader();
@@ -117,10 +220,15 @@ export async function ensurePersistentUrl(
   return result;
 }
 
-// ==================== DB: FETCH DE PROYECTOS (los propios + los públicos, según RLS) ====================
+// ==================== DB: FETCH ULTRA-RÁPIDO DE PROYECTOS (SIN BLOQUEAR EN BLOBS DE AUDIO) ====================
+const TRACK_META_COLS =
+  "id, project_id, title, artist, feat, prod, bpm, musical_key, duration, duration_sec, version, note, glyph, c1, c2, accent, audio_freq, cover_url, order_index";
+
 export async function fetchUserProjectsFromSupabase(userId?: string): Promise<Project[] | null> {
   try {
-    let query = supabase.from("projects").select("*, tracks:tracks(*), project_videos:project_videos(*)");
+    let query = supabase
+      .from("projects")
+      .select(`*, tracks:tracks(${TRACK_META_COLS}), project_videos:project_videos(*)`);
 
     if (userId) {
       query = query.eq("user_id", userId);
@@ -136,26 +244,29 @@ export async function fetchUserProjectsFromSupabase(userId?: string): Promise<Pr
     return data.map((row: any, idx: number): Project => {
       const tracks = [...(row.tracks || [])]
         .sort((a: any, b: any) => (a.order_index ?? 0) - (b.order_index ?? 0))
-        .map((t: any): Track => ({
-          id: t.id,
-          title: t.title,
-          artist: t.artist,
-          feat: t.feat || undefined,
-          prod: t.prod || undefined,
-          bpm: t.bpm || 140,
-          key: t.musical_key || "F#m",
-          duration: t.duration || "2:30",
-          durationSec: t.duration_sec || 150,
-          version: t.version || 1,
-          note: t.note || undefined,
-          glyph: t.glyph || "01",
-          c1: t.c1 || "#ffffff",
-          c2: t.c2 || "#888888",
-          accent: t.accent || "#ffffff",
-          audioFreq: t.audio_freq || 80,
-          customAudioUrl: cleanUrl(t.audio_url),
-          coverUrl: cleanUrl(t.cover_url),
-        }));
+        .map((t: any): Track => {
+          const cachedAudio = audioMemCache.get(toDbId(t.id)) || cleanUrl(t.audio_url);
+          return {
+            id: t.id,
+            title: t.title,
+            artist: t.artist,
+            feat: t.feat || undefined,
+            prod: t.prod || undefined,
+            bpm: t.bpm || 140,
+            key: t.musical_key || "F#m",
+            duration: t.duration || "2:30",
+            durationSec: t.duration_sec || 150,
+            version: t.version || 1,
+            note: t.note || undefined,
+            glyph: t.glyph || "01",
+            c1: t.c1 || "#ffffff",
+            c2: t.c2 || "#888888",
+            accent: t.accent || "#ffffff",
+            audioFreq: t.audio_freq || 80,
+            customAudioUrl: cachedAudio,
+            coverUrl: cleanUrl(t.cover_url),
+          };
+        });
       const isPublic = row.is_public === true;
       return {
         id: row.id,
@@ -197,6 +308,56 @@ export async function fetchUserProjectsFromSupabase(userId?: string): Promise<Pr
   } catch (err) {
     console.warn("Fallo fetchUserProjectsFromSupabase:", err);
     return null;
+  }
+}
+
+/** Obtiene el audio_url de un track (primero desde memoria o IndexedDB local en 1ms, luego desde Supabase). */
+export async function resolveTrackAudioUrl(trackId: string): Promise<string | undefined> {
+  const dbId = toDbId(trackId);
+  const mem = audioMemCache.get(dbId);
+  if (mem) return mem;
+
+  const disk = await fastCacheGet<string>(`audio:${dbId}`);
+  if (disk) {
+    audioMemCache.set(dbId, disk);
+    return disk;
+  }
+
+  try {
+    const { data } = await supabase
+      .from("tracks")
+      .select("id, audio_url")
+      .eq("id", dbId)
+      .maybeSingle();
+    const url = cleanUrl(data?.audio_url);
+    if (url) {
+      audioMemCache.set(dbId, url);
+      void fastCacheSet(`audio:${dbId}`, url);
+      return url;
+    }
+  } catch {
+    // ignore
+  }
+  return undefined;
+}
+
+/** Hidrata en segundo plano los audio_url de los proyectos sin bloquear la pantalla inicial. */
+export async function hydrateProjectsAudioInBackground(
+  projects: Project[],
+  onAudioResolved: (trackId: string, audioUrl: string) => void
+): Promise<void> {
+  for (const p of projects) {
+    for (const t of p.tracks) {
+      if (t.customAudioUrl) {
+        const dbId = toDbId(t.id);
+        audioMemCache.set(dbId, t.customAudioUrl);
+        continue;
+      }
+      const url = await resolveTrackAudioUrl(t.id);
+      if (url) {
+        onAudioResolved(t.id, url);
+      }
+    }
   }
 }
 
@@ -303,7 +464,14 @@ export async function saveProjectToSupabase(project: Project, userId?: string): 
 
     const tracks: Track[] = [];
     for (const t of project.tracks || []) {
-      const audio = await ensurePersistentUrl(t.customAudioUrl, "tracks", cache);
+      const dbTrackId = toDbId(t.id);
+      let audio = await ensurePersistentUrl(t.customAudioUrl, "tracks", cache);
+      if (!audio) {
+        audio = (await resolveTrackAudioUrl(t.id)) ?? null;
+      } else if (!isTransientUrl(audio)) {
+        audioMemCache.set(dbTrackId, audio);
+        void fastCacheSet(`audio:${dbTrackId}`, audio);
+      }
       const cover = await ensurePersistentUrl(t.coverUrl, "covers", cache);
       tracks.push({
         ...t,
