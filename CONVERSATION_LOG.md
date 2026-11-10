@@ -958,3 +958,18 @@
    - Separado el color de los placeholders (`#63636e`) de los colores de texto reales (`--ink: #ffffff`, `--ink-secondary: #d4d4d8`, `--ink-muted: #a1a1aa` en modo oscuro).
    - Corregidos todos los fondos blancos fijos en modo oscuro (`.manifold-stage-overlay-top`, `.quick-proj-pill-group`, `.project-video-folder-bar`, `.video-clip-pill`, `.vinyl-arc-step-controls`, `.meta-pill-static`, `.vinyl-fan-inspector-card`) que causaban texto blanco sobre fondo blanco o gris apagado.
 
+---
+
+### Turno 54 — Proyectos Privados con Links de "Invitación al EP / Proyecto" estilo `[untitled]` (`Solo escuchar` vs `Permitir editar el proyecto`)
+**Pedidos del usuario (`juani`):**
+- *"y que cuando una persona pone un proyecto suyo privado que no lo pueda ver nadie mas que a quien le paso el link de "invitacion al ep" igual que hace untitled pero que la persona a la hora de generar el link pueda generar un link permisivo de "solo lectura" por asi decirlo pero que diga solo escuchar ponele o algo asi, despues otro que permita editar el proyecto..."*
+
+**Implementación (`src/lib/supabase.ts`, `src/components/App.tsx`, `src/components/board-polish.css`):**
+1. **Privacidad Estricta estilo `[untitled]` (`visibility === "private"`):**
+   - Cuando un usuario pone un proyecto en **`🔒 Privado`**, nunca aparece en el `Inicio` público (`filmstrip-row`, `Proyectos fijados`, `Artistas en board.`), ni lo puede ver ningún otro usuario en la plataforma, **excepto** su creador o la persona a la que le hayan pasado el link válido de **`Invitación al EP / Proyecto`** (`/project/:id?invite=<token>`).
+   - Compartir un proyecto ya no lo pasa forzosamente a público: mantiene su privacidad intacta.
+2. **Modal `Invitación al EP / Proyecto` (`InviteProjectModal` en `src/components/App.tsx`):**
+   - Al tocar **`🔗 Invitar al EP / Single / LP`** se abre el modal estilo `[untitled]` con el resumen del proyecto, selector rápido `🔒 Privado / 🌐 Público` y **2 tipos de links de invitación verificables (`makeProjectInviteToken` / `verifyProjectInviteToken`)**:
+     1. **`🎧 Solo escuchar` (`?invite=ls_...`):** Quien entra por este link puede ver y reproducir el proyecto privado, descargar los tracks (`⬇`) y guardarlo en su biblioteca (`+ Guardar en Biblioteca`), pero no puede editar ni borrar nada (muestra la insignia `🎧 Invitación · Solo escuchar`).
+     2. **`✏️ Permitir editar el proyecto` (`?invite=ed_...`):** Quien entra por este link obtiene permisos de colaborador (`canEditActive = true`, insignia `✏️ Invitación · Podés editar`) para subir tracks nuevos, editar Key/BPM/metadata, cambiar el Artwork o el Canvas y editar la info del proyecto, sincronizando los cambios a Supabase sin alterar el `user_id` del dueño original.
+

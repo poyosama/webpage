@@ -38,6 +38,9 @@ import {
   fastCacheSet,
   resolveTrackAudioUrl,
   hydrateProjectsAudioInBackground,
+  makeProjectInviteToken,
+  verifyProjectInviteToken,
+  type ProjectInviteRole,
 } from "@/lib/supabase";
 import { analyzeAudioFile, downloadTrackAudio } from "@/lib/audioAnalysis";
 import "./board-polish.css";
@@ -215,8 +218,23 @@ export default function App() {
   const [librarySubTab, setLibrarySubTab] = useState<"proyectos" | "guardados">("proyectos");
   const [shareCopiedId, setShareCopiedId] = useState<string | null>(null);
   const [uploadingTrackProjectId, setUploadingTrackProjectId] = useState<string | null>(null);
+  // Invitaciones a proyectos privados ("listen" = Solo escuchar, "edit" = Permitir editar el proyecto)
+  const [projectInvites, setProjectInvites] = useState<Record<string, ProjectInviteRole>>({});
+  const [invitingProjectId, setInvitingProjectId] = useState<string | null>(null);
 
-  // Limpiar tokens de OAuth (#access_token=...) y sincronizar URLs limpias (/library, /profile, /upload, /project/:id)
+  const readStoredProjectInvites = (): Record<string, ProjectInviteRole> => {
+    if (typeof window === "undefined") return {};
+    try {
+      const raw = localStorage.getItem("eltablero_project_invites_v1");
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+      return {};
+    }
+  };
+
+  // Limpiar tokens de OAuth (#access_token=...) y sincronizar URLs limpias (/library, /profile, /upload, /project/:id?invite=...)
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -224,6 +242,7 @@ export default function App() {
       window.history.replaceState(null, "", window.location.pathname + window.location.search);
     }
 
+    const storedInvites = readStoredProjectInvites();
     const path = window.location.pathname;
     if (path === "/landing") {
       setShowLanding(true);
@@ -237,14 +256,23 @@ export default function App() {
     } else if (path === "/create" || path === "/crear-proyecto") {
       setTab("crear-proyecto");
     } else if (path.startsWith("/project/")) {
-      const pId = path.replace("/project/", "").trim();
+      const pId = decodeURIComponent(path.replace("/project/", "")).trim();
       if (pId) {
+        const inviteParam = new URLSearchParams(window.location.search).get("invite");
+        const verifiedRole = verifyProjectInviteToken(pId, inviteParam);
+        if (verifiedRole) {
+          storedInvites[pId] = verifiedRole;
+          try {
+            localStorage.setItem("eltablero_project_invites_v1", JSON.stringify(storedInvites));
+          } catch {}
+        }
         setSelectedProjectId(pId);
         setLibrarySubTab("proyectos");
         setTab("biblioteca");
         setInsideCubeOpen(true);
       }
     }
+    setProjectInvites(storedInvites);
 
     const onPop = () => {
       const cur = window.location.pathname;
@@ -304,21 +332,10 @@ export default function App() {
     sfx.drop();
   };
 
+  // Abre el modal estilo [untitled] de "Invitación al EP / Proyecto" (sin hacer público el proyecto privado)
   const handleCopyProjectLink = (projectId: string) => {
-    const targetProj = projects.find((p) => p.id === projectId);
-    if (targetProj && targetProj.artistId === meProfile.id && targetProj.visibility !== "public") {
-      updateProjectMeta(projectId, { visibility: "public" });
-    }
-    const origin = typeof window !== "undefined" ? window.location.origin : "https://eltablero.blog";
-    const url = `${origin}/project/${projectId}`;
-    sfx.tick();
-    setShareCopiedId(projectId);
-    window.setTimeout(() => {
-      setShareCopiedId((prev) => (prev === projectId ? null : prev));
-    }, 2600);
-    if (typeof navigator !== "undefined" && navigator.clipboard) {
-      navigator.clipboard.writeText(url).catch(() => {});
-    }
+    sfx.open();
+    setInvitingProjectId(projectId);
   };
 
   // Hidratar solo preferencias locales (las novedades de productores). Proyectos y perfil viven en la nube.
@@ -505,14 +522,22 @@ export default function App() {
       setGoogleConnected(true);
       if (fresh) {
         setShowLanding(false);
-        setTab("inicio");
+        if (typeof window !== "undefined" && window.location.pathname.startsWith("/project/")) {
+          setTab("biblioteca");
+          setInsideCubeOpen(true);
+        } else {
+          setTab("inicio");
+        }
       }
 
       setCommunityArtists(profiles);
       if (savedIds.length) setSavedProjectIds((prev) => Array.from(new Set([...prev, ...savedIds])));
       if (allProjs) {
-        // Solo lo propio + lo que otros hicieron público
-        const visible = allProjs.filter((p) => p.artistId === u.id || p.visibility === "public");
+        const storedInvites = readStoredProjectInvites();
+        // Privacidad estilo [untitled]: un proyecto privado SOLO lo ve su creador o quien recibió el link de Invitación
+        const visible = allProjs.filter(
+          (p) => p.artistId === u.id || p.visibility === "public" || Boolean(storedInvites[p.id])
+        );
         const sigs: Record<string, string> = {};
         visible.forEach((p) => (sigs[p.id] = JSON.stringify(p)));
         syncedSigRef.current = sigs;
@@ -569,6 +594,25 @@ export default function App() {
       if (alive) {
         setGoogleConnected(false);
         setAuthChecked(true);
+        // Si entró por un link directo /project/:id?invite=... sin sesión iniciada, cargar el proyecto invitado
+        if (typeof window !== "undefined" && window.location.pathname.startsWith("/project/")) {
+          const storedInvites = readStoredProjectInvites();
+          const allProjs = await fetchUserProjectsFromSupabase();
+          if (allProjs && alive) {
+            const visible = allProjs.filter(
+              (p) => p.visibility === "public" || Boolean(storedInvites[p.id])
+            );
+            const sigs: Record<string, string> = {};
+            visible.forEach((p) => (sigs[p.id] = JSON.stringify(p)));
+            syncedSigRef.current = sigs;
+            setProjects(visible);
+            setCloudReady(true);
+            void hydrateProjectsAudioInBackground(visible, (trackId, audioUrl) => {
+              if (!alive) return;
+              setCustomAudioMap((prev) => (prev[trackId] === audioUrl ? prev : { ...prev, [trackId]: audioUrl }));
+            });
+          }
+        }
       }
     })();
 
@@ -616,34 +660,42 @@ export default function App() {
 
   // El tipo de proyecto se detecta solo: 1 track = Single, 2-6 = EP, 7+ = LP
   useEffect(() => {
-    if (!meProfile.id) return;
     const AUTO = ["Single", "EP", "LP", "Album"];
     const wanted = (n: number) => (n <= 1 ? "Single" : n <= 6 ? "EP" : "LP");
     const needs = projects.some(
-      (p) => p.artistId === meProfile.id && AUTO.includes(p.type) && p.type !== wanted(p.tracks.length)
+      (p) =>
+        ((meProfile.id && p.artistId === meProfile.id) || projectInvites[p.id] === "edit") &&
+        AUTO.includes(p.type) &&
+        p.type !== wanted(p.tracks.length)
     );
     if (!needs) return;
     setProjects((prev) =>
       prev.map((p) =>
-        p.artistId === meProfile.id && AUTO.includes(p.type) && p.type !== wanted(p.tracks.length)
+        ((meProfile.id && p.artistId === meProfile.id) || projectInvites[p.id] === "edit") &&
+        AUTO.includes(p.type) &&
+        p.type !== wanted(p.tracks.length)
           ? { ...p, type: wanted(p.tracks.length) as ProjectType }
           : p
       )
     );
-  }, [projects, meProfile.id]);
+  }, [projects, meProfile.id, projectInvites]);
 
-  // Sincronización automática con la nube: sube archivos temporales y guarda proyectos propios
+  // Sincronización automática con la nube: sube archivos temporales y guarda proyectos propios o con invitación de edición
   useEffect(() => {
-    if (!googleConnected || !cloudReady || !meProfile.id) return;
-    const mine = projects.filter((p) => p.artistId === meProfile.id);
-    const pending = mine.filter((p) => syncedSigRef.current[p.id] !== JSON.stringify(p));
+    const hasEditInvite = Object.values(projectInvites).includes("edit");
+    if (!cloudReady || (!googleConnected && !hasEditInvite)) return;
+    const editable = projects.filter(
+      (p) => (meProfile.id && p.artistId === meProfile.id) || projectInvites[p.id] === "edit"
+    );
+    const pending = editable.filter((p) => syncedSigRef.current[p.id] !== JSON.stringify(p));
     if (pending.length === 0) return;
     const timer = setTimeout(async () => {
       setSyncStatus("saving");
       let failed = false;
       for (const proj of pending) {
         const sig = JSON.stringify(proj);
-        const saved = await saveProjectToSupabase(proj, meProfile.id);
+        const ownerUserId = proj.artistId || meProfile.id || "";
+        const saved = await saveProjectToSupabase(proj, ownerUserId);
         if (!saved) {
           failed = true;
           continue;
@@ -659,7 +711,7 @@ export default function App() {
       setSyncStatus(failed ? "error" : "idle");
     }, 900);
     return () => clearTimeout(timer);
-  }, [projects, googleConnected, cloudReady, meProfile.id]);
+  }, [projects, googleConnected, cloudReady, meProfile.id, projectInvites]);
 
   const activeProject: Project | null =
     projects.find((p) => p.id === selectedProjectId) ||
@@ -1295,10 +1347,26 @@ export default function App() {
     }
   };
 
-  const activeIsMine = !!activeProject && activeProject.artistId === meProfile.id;
-  const myProjects = projects.filter((p) => p.artistId === meProfile.id);
-  // board. combina los proyectos reales de la escena con los proyectos creados por el usuario
+  const activeIsMine = Boolean(activeProject && meProfile.id && activeProject.artistId === meProfile.id);
+  const activeInviteRole: ProjectInviteRole | null = activeProject ? projectInvites[activeProject.id] || null : null;
+  const canEditActive = Boolean(activeProject && (activeIsMine || activeInviteRole === "edit"));
+  const myProjects = projects.filter(
+    (p) => (meProfile.id && p.artistId === meProfile.id) || Boolean(projectInvites[p.id])
+  );
+  const publicUserProjects = projects.filter((p) => p.visibility === "public");
+  // board. Inicio muestra únicamente proyectos públicos + catálogo demo (los proyectos privados jamás aparecen en el Inicio público)
   const boardProjects: Project[] = [
+    ...publicUserProjects,
+    ...DEMO_PROJECTS.filter(
+      (d) =>
+        !publicUserProjects.some(
+          (p) =>
+            p.id.toLowerCase() === d.id.toLowerCase() ||
+            p.title.trim().toLowerCase() === d.title.trim().toLowerCase()
+        )
+    ),
+  ];
+  const allAccessibleProjects: Project[] = [
     ...projects,
     ...DEMO_PROJECTS.filter(
       (d) =>
@@ -1309,6 +1377,9 @@ export default function App() {
         )
     ),
   ];
+  const invitingProject: Project | null = invitingProjectId
+    ? allAccessibleProjects.find((p) => p.id === invitingProjectId) || null
+    : null;
   const projectTypeByCount = (n: number): ProjectType => (n <= 1 ? "Single" : n <= 6 ? "EP" : "LP");
 
   // Artistas en board.: combinación de perfiles registrados en la nube con los artistas de la escena
@@ -1339,7 +1410,7 @@ export default function App() {
         ? (y.trackCount + y.owned.length * 3) - (x.trackCount + x.owned.length * 3)
         : (y.artist.createdAt || "").localeCompare(x.artist.createdAt || "")
     );
-  const savedProjectsList = boardProjects.filter((p) => savedProjectIds.includes(p.id));
+  const savedProjectsList = allAccessibleProjects.filter((p) => savedProjectIds.includes(p.id));
   const activeAttributes = activeProject
     ? activeProject.attributes || [activeProject.zone, activeProject.year]
     : [];
@@ -1368,8 +1439,10 @@ export default function App() {
     );
   };
 
+  const hasGuestInviteAccess = Boolean(selectedProjectId && projectInvites[selectedProjectId]);
+
   if (!authChecked) return <div className="auth-splash" aria-hidden />;
-  if (!googleConnected) {
+  if (!googleConnected && !hasGuestInviteAccess) {
     return (
       <>
         <LandingScene
@@ -2436,7 +2509,7 @@ export default function App() {
                           project={activeProject}
                           currentTrackId={currentTrack.id}
                           onPlayTrack={(tr, pr) => playTrack(tr, pr, false)}
-                          onDeleteTrack={handleDeleteTrack}
+                          onDeleteTrack={canEditActive ? handleDeleteTrack : undefined}
                         />
 
                         <div className="inspector-tracklist">
@@ -2467,20 +2540,32 @@ export default function App() {
                                     title={
                                       activeProject.visibility === "public"
                                         ? "Visible para toda la plataforma. Tocá para hacerlo privado."
-                                        : "Solo lo ves vos. Tocá para publicarlo."
+                                        : "Solo lo ve quien tenga el link de invitación. Tocá para publicarlo."
                                     }
                                   >
-                                    {activeProject.visibility === "public" ? "Público" : "Privado"}
+                                    {activeProject.visibility === "public" ? "🌐 Público" : "🔒 Privado"}
                                   </button>
                                 ) : (
-                                  <div className="meta-pill-static">
-                                    <b>Público</b>
-                                  </div>
+                                  <>
+                                    <div className="meta-pill-static">
+                                      <b>{activeProject.visibility === "public" ? "🌐 Público" : "🔒 Privado"}</b>
+                                    </div>
+                                    {activeInviteRole === "edit" && (
+                                      <div className="meta-pill-static invite-role-pill edit">
+                                        <b>✏️ Invitación · Podés editar</b>
+                                      </div>
+                                    )}
+                                    {activeInviteRole === "listen" && (
+                                      <div className="meta-pill-static invite-role-pill listen">
+                                        <b>🎧 Invitación · Solo escuchar</b>
+                                      </div>
+                                    )}
+                                  </>
                                 )}
                               </div>
 
                               <div className="inspector-compact-actions">
-                                {activeIsMine && (
+                                {canEditActive && (
                                   <label className="apple-btn ghost compact-pill-btn" style={{ cursor: "pointer" }}>
                                     <span>Artwork</span>
                                     <input
@@ -2500,7 +2585,7 @@ export default function App() {
                                     />
                                   </label>
                                 )}
-                                {activeIsMine && (
+                                {canEditActive && (
                                   <label className="apple-btn ghost compact-pill-btn" style={{ cursor: "pointer" }}>
                                     <span>
                                       {activeProject.videos.some((v) => Boolean(v.url)) ? "Cambiar Canvas" : "+ Canvas"}
@@ -2519,7 +2604,7 @@ export default function App() {
                                     />
                                   </label>
                                 )}
-                                {activeIsMine && activeProject.videos.some((v) => Boolean(v.url)) && (
+                                {canEditActive && activeProject.videos.some((v) => Boolean(v.url)) && (
                                   <button
                                     type="button"
                                     className="apple-btn ghost compact-pill-btn danger-trash-btn"
@@ -2535,7 +2620,7 @@ export default function App() {
                                     ✕ Canvas
                                   </button>
                                 )}
-                                {activeIsMine && (
+                                {canEditActive && (
                                   <button
                                     type="button"
                                     className="apple-btn ghost compact-pill-btn"
@@ -2553,9 +2638,11 @@ export default function App() {
                                     shareCopiedId === activeProject.id ? "copied-ok" : ""
                                   }`}
                                   onClick={() => handleCopyProjectLink(activeProject.id)}
-                                  title="Generar y copiar link para compartir este proyecto"
+                                  title={`Generar link de Invitación al ${activeProject.type} (Solo escuchar o Permitir editar)`}
                                 >
-                                  {shareCopiedId === activeProject.id ? "✓ Link copiado" : "🔗 Compartir"}
+                                  {shareCopiedId === activeProject.id
+                                    ? "✓ Link copiado"
+                                    : `🔗 Invitar al ${activeProject.type}`}
                                 </button>
                                 {!activeIsMine && (
                                   <button
@@ -2660,10 +2747,10 @@ export default function App() {
                                   </div>
                                   <div
                                     className="row-pills"
-                                    title={activeIsMine ? "Tocá para editar Key y BPM" : undefined}
-                                    style={activeIsMine ? { cursor: "pointer" } : undefined}
+                                    title={canEditActive ? "Tocá para editar Key y BPM" : undefined}
+                                    style={canEditActive ? { cursor: "pointer" } : undefined}
                                     onClick={(e) => {
-                                      if (!activeIsMine) return;
+                                      if (!canEditActive) return;
                                       e.stopPropagation();
                                       setEditingTrack(t);
                                     }}
@@ -2688,7 +2775,7 @@ export default function App() {
                                     >
                                       ⬇
                                     </button>
-                                    {activeIsMine && (
+                                    {canEditActive && (
                                       <>
                                         <button
                                           type="button"
@@ -2720,7 +2807,7 @@ export default function App() {
                           </div>
 
                           {/* Botón inferior siempre visible para agregar tracks al proyecto */}
-                          {activeIsMine && (
+                          {canEditActive && (
                             <div className="inspector-bottom-add-bar">
                               <label className="inspector-bottom-add-tracks-btn">
                                 <span className="add-plus-circle">+</span>
@@ -3169,6 +3256,31 @@ export default function App() {
               handleDeleteProject(editingProject.id);
               setEditingProject(null);
             }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ==================== MODAL "INVITACIÓN AL EP / PROYECTO" (ESTILO [untitled]) ==================== */}
+      <AnimatePresence>
+        {invitingProject && (
+          <InviteProjectModal
+            project={invitingProject}
+            isOwner={Boolean(meProfile.id && invitingProject.artistId === meProfile.id)}
+            canShareEdit={Boolean(
+              (meProfile.id && invitingProject.artistId === meProfile.id) ||
+                projectInvites[invitingProject.id] === "edit"
+            )}
+            onToggleVisibility={(nextVis) => {
+              sfx.tick();
+              updateProjectMeta(invitingProject.id, { visibility: nextVis });
+            }}
+            onCopiedLink={(pid) => {
+              setShareCopiedId(pid);
+              window.setTimeout(() => {
+                setShareCopiedId((prev) => (prev === pid ? null : prev));
+              }, 2600);
+            }}
+            onClose={() => setInvitingProjectId(null)}
           />
         )}
       </AnimatePresence>
@@ -3966,3 +4078,174 @@ function GoogleAuthModal({
     </motion.div>
   );
 }
+
+/* ==================== COMPONENTE: MODAL INVITACIÓN AL EP / PROYECTO (ESTILO [untitled]) ==================== */
+function InviteProjectModal({
+  project,
+  isOwner,
+  canShareEdit,
+  onToggleVisibility,
+  onCopiedLink,
+  onClose,
+}: {
+  project: Project;
+  isOwner: boolean;
+  canShareEdit: boolean;
+  onToggleVisibility: (nextVisibility: "private" | "public") => void;
+  onCopiedLink: (projectId: string) => void;
+  onClose: () => void;
+}) {
+  const [copiedRole, setCopiedRole] = useState<ProjectInviteRole | null>(null);
+  const origin = typeof window !== "undefined" ? window.location.origin : "https://eltablero.blog";
+  const listenUrl = `${origin}/project/${project.id}?invite=${makeProjectInviteToken(project.id, "listen")}`;
+  const editUrl = `${origin}/project/${project.id}?invite=${makeProjectInviteToken(project.id, "edit")}`;
+
+  const copyInvite = (role: ProjectInviteRole, url: string) => {
+    sfx.tick();
+    setCopiedRole(role);
+    onCopiedLink(project.id);
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(url).catch(() => {});
+    }
+    window.setTimeout(() => {
+      setCopiedRole((prev) => (prev === role ? null : prev));
+    }, 2800);
+  };
+
+  return (
+    <motion.div
+      className="apple-modal-backdrop"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onClose}
+    >
+      <motion.div
+        className="apple-modal-card invite-project-modal-card"
+        initial={{ scale: 0.94, y: 16 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.94, y: 16 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="modal-head">
+          <div>
+            <span className="mono-tag">INVITACIÓN PRIVADA // BOARD.</span>
+            <h3>Invitación al {project.type}</h3>
+          </div>
+          <button type="button" className="apple-btn ghost" onClick={onClose}>
+            Cerrar
+          </button>
+        </div>
+
+        <div className="invite-project-summary">
+          {project.coverUrl ? (
+            <img src={project.coverUrl} alt={project.title} className="invite-project-cover" />
+          ) : (
+            <div className="invite-project-cover fallback">
+              <DiscIcon size={26} />
+            </div>
+          )}
+          <div className="invite-project-meta">
+            <b>{project.title}</b>
+            <span>
+              {project.artist} · {project.tracks.length} {project.tracks.length === 1 ? "track" : "tracks"}
+            </span>
+          </div>
+          <div className={`invite-privacy-badge ${project.visibility === "public" ? "public" : "private"}`}>
+            {project.visibility === "public" ? "🌐 Público" : "🔒 Privado"}
+          </div>
+        </div>
+
+        {isOwner && (
+          <div className="invite-visibility-bar">
+            <div className="invite-visibility-copy">
+              <b>Visibilidad del {project.type}</b>
+              <small>
+                {project.visibility === "private"
+                  ? "Nadie más puede ver este proyecto salvo a quien le pases un link de invitación abajo."
+                  : "Visible para todos en el Inicio de board."}
+              </small>
+            </div>
+            <div className="seg-pills">
+              <button
+                type="button"
+                className={project.visibility !== "public" ? "on" : ""}
+                onClick={() => onToggleVisibility("private")}
+              >
+                🔒 Privado
+              </button>
+              <button
+                type="button"
+                className={project.visibility === "public" ? "on" : ""}
+                onClick={() => onToggleVisibility("public")}
+              >
+                🌐 Público
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="invite-links-stack">
+          {/* OPCIÓN 1: SOLO ESCUCHAR */}
+          <div className="invite-option-card listen">
+            <div className="invite-option-top">
+              <span className="invite-role-tag listen">SOLO LECTURA · ESCUCHA</span>
+              <h4>🎧 Solo escuchar</h4>
+              <p>
+                Quien abra este link de invitación al {project.type} puede ver y escuchar el proyecto privado,
+                descargar los tracks y guardarlo en su biblioteca, pero no puede modificar nada.
+              </p>
+            </div>
+            <div className="invite-url-row">
+              <input
+                type="text"
+                readOnly
+                value={listenUrl}
+                onClick={(e) => e.currentTarget.select()}
+                className="invite-url-input"
+              />
+              <button
+                type="button"
+                className={`apple-btn primary invite-copy-btn ${copiedRole === "listen" ? "copied" : ""}`}
+                onClick={() => copyInvite("listen", listenUrl)}
+              >
+                {copiedRole === "listen" ? "✓ Link copiado" : "Copiar link · Solo escuchar"}
+              </button>
+            </div>
+          </div>
+
+          {/* OPCIÓN 2: PERMITIR EDITAR EL PROYECTO */}
+          {canShareEdit && (
+            <div className="invite-option-card edit">
+              <div className="invite-option-top">
+                <span className="invite-role-tag edit">COLABORADOR · PERMISO DE EDICIÓN</span>
+                <h4>✏️ Permitir editar el proyecto</h4>
+                <p>
+                  Quien abra este link entra con permisos para editar el {project.type}: puede subir tracks
+                  nuevos, editar Key y BPM, cambiar el Artwork o el Canvas y editar la info del proyecto.
+                </p>
+              </div>
+              <div className="invite-url-row">
+                <input
+                  type="text"
+                  readOnly
+                  value={editUrl}
+                  onClick={(e) => e.currentTarget.select()}
+                  className="invite-url-input"
+                />
+                <button
+                  type="button"
+                  className={`apple-btn ghost invite-copy-btn edit-btn ${copiedRole === "edit" ? "copied" : ""}`}
+                  onClick={() => copyInvite("edit", editUrl)}
+                >
+                  {copiedRole === "edit" ? "✓ Link de edición copiado" : "Copiar link · Permitir editar"}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+

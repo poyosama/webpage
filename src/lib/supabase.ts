@@ -503,7 +503,7 @@ export async function saveProjectToSupabase(project: Project, userId?: string): 
       zone: project.zone,
       description: project.description || "",
       cover_url: coverUrl,
-      user_id: userId || null,
+      user_id: (project.artistId && UUID_RE.test(project.artistId) ? project.artistId : userId) || null,
       updated_at: new Date().toISOString(),
     };
 
@@ -727,3 +727,41 @@ export async function toggleSavedProjectInSupabase(userId: string, projectId: st
     console.warn("toggleSavedProjectInSupabase warn:", err);
   }
 }
+
+// ==================== LINKS DE INVITACIÓN AL EP / PROYECTO (ESTILO [untitled]) ====================
+export type ProjectInviteRole = "listen" | "edit";
+
+function computeInviteHash(input: string): string {
+  let h1 = 0x811c9dc5;
+  let h2 = 0x01000193;
+  for (let i = 0; i < input.length; i++) {
+    const ch = input.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 0x01000193) >>> 0;
+    h2 = Math.imul(h2 ^ (ch * 31), 0x85ebca6b) >>> 0;
+  }
+  return `${h1.toString(36)}${h2.toString(36)}`.slice(0, 12);
+}
+
+/**
+ * Genera el token verificable para un link de "Invitación al EP / Proyecto" estilo [untitled]:
+ * - "listen": Solo escuchar (acceso a proyecto privado para escuchar, descargar y guardar en biblioteca)
+ * - "edit": Permitir editar el proyecto (acceso de colaborador para subir tracks, editar Key/BPM, portada, canvas, etc.)
+ */
+export function makeProjectInviteToken(projectId: string, role: ProjectInviteRole): string {
+  const cleanId = projectId.trim().toLowerCase();
+  const sig = computeInviteHash(`board_invite_v1::${cleanId}::${role}`);
+  const prefix = role === "edit" ? "ed" : "ls";
+  return `${prefix}_${sig}`;
+}
+
+export function verifyProjectInviteToken(
+  projectId: string,
+  token: string | null | undefined
+): ProjectInviteRole | null {
+  if (!token || !projectId) return null;
+  const cleanToken = token.trim();
+  if (cleanToken === makeProjectInviteToken(projectId, "edit")) return "edit";
+  if (cleanToken === makeProjectInviteToken(projectId, "listen")) return "listen";
+  return null;
+}
+
