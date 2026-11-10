@@ -20,7 +20,6 @@ import {
 } from "@/lib/mock";
 import { sfx } from "@/lib/sfx";
 import MacInstallerUpload from "./MacInstallerUpload";
-import UntitledImporter from "./UntitledImporter";
 import type { QueueEntry, RepeatMode } from "./PerformativePlayer";
 import {
   supabase,
@@ -2411,18 +2410,6 @@ export default function App() {
                   )}
                 </div>
               </section>
-
-              {/* IMPORTADOR DIRECTO DESDE [untitled] EN LA PÁGINA DEL PERFIL */}
-              <UntitledImporter
-                meProfile={meProfile}
-                existingCount={projects.length}
-                onImportProject={(newProj) => {
-                  setProjects((prev) => [newProj, ...prev]);
-                  setSelectedProjectId(newProj.id);
-                  setInsideCubeOpen(false);
-                  navigate("biblioteca");
-                }}
-              />
 
               <section className="profile-manifold-showcase">
                 <div className="section-header-row">

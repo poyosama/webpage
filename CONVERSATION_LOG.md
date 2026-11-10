@@ -801,3 +801,14 @@
 3. **Canvas Detrás de Todo sin Scrollear (`src/components/App.tsx`, `src/components/board-polish.css`):**
    - Eliminada la sección separada de Canvas que empujaba todo hacia abajo: ahora el video o GIF del Canvas se renderiza como fondo atmosférico detrás del vinilo y la lista de tracks (`.inspector-canvas-backdrop` con capa ambiental + media principal y scrim de contraste adaptado a modo oscuro/claro), logrando que toda la vista del proyecto entre en una sola pantalla tanto en desktop como en iPhone.
 
+
+---
+
+### Turno 45 — Retiro Definitivo del Importador de `[untitled]` del Perfil
+**Prompt del usuario:**
+- *"lo del untitled es cualquier cosa ahora encima muchisimo texto mucha explicacion lo intente y no se puede y no entiendo, quiero que 1 de 2, o me digas si se puede de alguna manera exportar los proyectos con las canciones la info y los archivos conectando alguna api o alguna mierda que use untitled para importar todo tal cual ? o 2 directamente no se puede hacer como yo te planteo ? (si no se puede ya sacalo y fue)"*
+
+**Explicación Técnica y Acción (`src/components/App.tsx`):**
+- `[untitled]` (`untitled.stream`) no tiene API pública ni OAuth para terceros, y sirve los audios mediante URLs privadas firmadas en CloudFront/S3 detrás de tokens de sesión y bloqueo CORS. Por eso es imposible que una web externa importe automáticamente los archivos de audio, tracks y metadata reales solo con un link.
+- Siguiendo la instrucción del usuario (*"si no se puede ya sacalo y fue"*), se retiró por completo el bloque `UntitledImporter` de la página de Perfil en `src/components/App.tsx`, dejando el perfil mucho más limpio y directo (con `+ Crear Proyecto` y `+ Subir tracks`).
+
