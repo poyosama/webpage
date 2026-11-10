@@ -1329,8 +1329,63 @@ textarea,
   border-color: rgba(59, 130, 246, 0.48) !important;
 }
 
+/* En escritorio se oculta la vista móvil dedicada estilo [untitled] */
+.untitled-mobile-project-view {
+  display: none;
+}
+
 /* ==================== REPLANTEO MINIMALISTA Y FUNCIONAL EN CELULAR (<= 720px) ==================== */
 @media (max-width: 720px) {
+  /* Bloqueo total de scroll de página cuando estás en la rueda de vinilos en el celu */
+  html:has(body.mobile-vinyl-wheel-locked),
+  body.mobile-vinyl-wheel-locked {
+    overflow: hidden !important;
+    height: 100dvh !important;
+    overscroll-behavior: none !important;
+  }
+
+  body.mobile-vinyl-wheel-locked .apple-shell {
+    height: 100dvh !important;
+    overflow: hidden !important;
+    padding-top: calc(env(safe-area-inset-top, 0px) + 92px) !important;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 74px) !important;
+  }
+
+  body.mobile-vinyl-wheel-locked .ios-main,
+  body.mobile-vinyl-wheel-locked .library-page,
+  body.mobile-vinyl-wheel-locked .library-inside-stack,
+  body.mobile-vinyl-wheel-locked .manifold-3d-wrapper {
+    height: 100% !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  body.mobile-vinyl-wheel-locked .page-head.compact {
+    margin-bottom: 6px !important;
+    flex-shrink: 0 !important;
+  }
+
+  body.mobile-vinyl-wheel-locked .page-head.compact h1 {
+    font-size: 1.25rem !important;
+    margin: 0 !important;
+  }
+
+  body.mobile-vinyl-wheel-locked .manifold-3d-canvas-stage.vinyl-arc-stage {
+    flex: 1 !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  body.mobile-vinyl-wheel-locked .vinyl-fan-arc-viewport {
+    flex: 1 !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    touch-action: none !important;
+  }
+
   /* 1. Barra superior sin los 54px muertos en navegadores móviles */
   .apple-shell {
     padding-top: calc(env(safe-area-inset-top, 0px) + 100px) !important;
@@ -1358,6 +1413,10 @@ textarea,
   }
 
   /* 2. Dynamic Island Mini-Player en celular: ocultar slider de volumen (se usa botón físico) para darle 2x espacio al título y controles */
+  .ios-mini-player-dock {
+    z-index: 160 !important;
+  }
+
   .ios-mini-player {
     width: calc(100vw - 16px) !important;
     bottom: calc(env(safe-area-inset-bottom, 0px) + 8px) !important;
@@ -1393,10 +1452,10 @@ textarea,
     gap: 6px !important;
   }
 
-  /* 3. Biblioteca / Mis Proyectos en celular: encabezado minimalista y abanico de vinilos centrado */
+  /* 3. Biblioteca / Mis Proyectos en celular: rueda táctil sin scroll de página */
   .page-head.compact {
-    gap: 8px !important;
-    margin-bottom: 10px !important;
+    gap: 6px !important;
+    margin-bottom: 8px !important;
   }
 
   .library-top-actions {
@@ -1405,21 +1464,22 @@ textarea,
     gap: 6px !important;
   }
 
-  .library-layout-Mode-switch {
+  .layout-switch {
     display: none !important;
   }
 
   .manifold-stage-overlay-top {
-    padding: 10px 12px !important;
-    gap: 8px !important;
+    padding: 8px 12px !important;
+    gap: 6px !important;
+    flex-shrink: 0 !important;
   }
 
-  .manifold-stage-title .mono-tag {
+  .manifold-overlay-titles .mono-tag {
     display: none !important;
   }
 
-  .manifold-stage-title h3 {
-    font-size: 0.82rem !important;
+  .manifold-overlay-titles h3 {
+    font-size: 0.78rem !important;
   }
 
   .manifold-quick-pills {
@@ -1434,23 +1494,24 @@ textarea,
     display: none !important;
   }
 
-  .vinyl-fan-stage {
-    min-height: 410px !important;
-    height: 425px !important;
-  }
-
   .vinyl-fan-arc-wheel {
-    left: 22px !important;
-    top: 39% !important;
+    left: 26px !important;
+    top: 36% !important;
     width: 158px !important;
     height: 158px !important;
+  }
+
+  .vinyl-fan-sleeve-card {
+    transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+      filter 0.28s ease,
+      opacity 0.25s ease !important;
   }
 
   .vinyl-fan-inspector-card {
     left: 10px !important;
     right: 10px !important;
     bottom: 10px !important;
-    padding: 12px 14px !important;
+    padding: 11px 14px !important;
     border-radius: 16px !important;
   }
 
@@ -1468,135 +1529,360 @@ textarea,
   }
 
   .project-video-folder-bar {
-    padding: 8px 10px !important;
-    gap: 6px !important;
-    display: flex !important;
-    flex-wrap: wrap !important;
-    align-items: center !important;
-  }
-
-  .project-video-folder-bar .video-folder-left {
     display: none !important;
   }
 
-  .project-video-folder-bar .video-folder-clips {
-    width: 100% !important;
-    overflow-x: auto !important;
-    flex-wrap: nowrap !important;
-    margin-bottom: 2px !important;
+  /* ==================== 4. UI DE ABRIR UN PROYECTO EN EL CELU: IDÉNTICA A [untitled] (IMG_3888.png) ==================== */
+  .project-inspector-sheet .cube-interior-back-bar,
+  .project-inspector-sheet .inspector-unified-stage {
+    display: none !important;
   }
 
-  .project-video-folder-bar .upload-video-btn {
-    flex: 1 1 calc(50% - 4px) !important;
-    justify-content: center !important;
-    text-align: center !important;
-    padding: 8px 10px !important;
-    font-size: 0.74rem !important;
+  .project-inspector-sheet {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 145 !important;
+    background: #0a0a0c !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
   }
 
-  /* 4. Interior del proyecto en celular: vinilo compacto arriba, lista de tracks fluida sin scroll encerrado y BPM/Key visibles */
-  .cube-interior-back-bar {
-    padding: 8px 10px !important;
-    gap: 8px !important;
-  }
-
-  .inspector-unified-stage {
-    padding: 10px !important;
-    gap: 10px !important;
-  }
-
-  .vinyl-showcase-render {
-    min-height: 168px !important;
-    padding: 4px 36px 8px 4px !important;
-  }
-
-  .vinyl-render-stage {
-    width: clamp(136px, 38vw, 168px) !important;
-  }
-
-  .inspector-unified-stage .inspector-tracklist {
-    padding: 12px !important;
-  }
-
-  .inspector-title-row {
-    flex-direction: column !important;
-    align-items: flex-start !important;
-    gap: 8px !important;
-  }
-
-  .inspector-title-ctas {
-    width: 100% !important;
+  .untitled-mobile-project-view {
     display: flex !important;
-    overflow-x: auto !important;
-    flex-wrap: nowrap !important;
-    gap: 6px !important;
-    padding-bottom: 2px !important;
+    flex-direction: column !important;
+    min-height: 100dvh !important;
+    background: #0a0a0c !important;
+    color: #ffffff !important;
+    padding: calc(env(safe-area-inset-top, 0px) + 14px) 22px
+      calc(env(safe-area-inset-bottom, 0px) + 108px) !important;
+    box-sizing: border-box !important;
   }
 
-  .inspector-title-ctas > * {
+  .untitled-mobile-topbar {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    margin-bottom: 18px !important;
+  }
+
+  .untitled-top-right-group {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+  }
+
+  .untitled-icon-squircle {
+    width: 42px !important;
+    height: 42px !important;
+    border-radius: 14px !important;
+    background: #1c1c1e !important;
+    border: 1px solid rgba(255, 255, 255, 0.06) !important;
+    color: #ffffff !important;
+    display: grid !important;
+    place-items: center !important;
+    cursor: pointer !important;
+    padding: 0 !important;
+    transition: transform 0.14s ease, background 0.15s ease !important;
+  }
+
+  .untitled-icon-squircle:active,
+  .untitled-icon-squircle.is-active {
+    background: #2c2c2e !important;
+    transform: scale(0.95) !important;
+  }
+
+  .untitled-mobile-search-bar {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    background: #1c1c1e !important;
+    border-radius: 12px !important;
+    padding: 9px 12px !important;
+    margin-bottom: 14px !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .untitled-mobile-search-input {
+    flex: 1 !important;
+    background: transparent !important;
+    border: none !important;
+    color: #ffffff !important;
+    font-size: 0.9rem !important;
+    outline: none !important;
+  }
+
+  .untitled-mobile-search-input::placeholder {
+    color: #8e8e93 !important;
+  }
+
+  .untitled-search-clear {
+    background: transparent !important;
+    border: none !important;
+    color: #8e8e93 !important;
+    font-size: 0.85rem !important;
+    padding: 2px 6px !important;
+  }
+
+  .untitled-mobile-menu-sheet {
+    display: flex !important;
+    flex-direction: column !important;
+    background: #1c1c1e !important;
+    border-radius: 16px !important;
+    padding: 6px !important;
+    margin-bottom: 16px !important;
+    border: 1px solid rgba(255, 255, 255, 0.09) !important;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55) !important;
+  }
+
+  .untitled-menu-item {
+    display: flex !important;
+    align-items: center !important;
+    width: 100% !important;
+    padding: 12px 14px !important;
+    border: none !important;
+    background: transparent !important;
+    color: #ffffff !important;
+    font-size: 0.9rem !important;
+    font-weight: 600 !important;
+    text-align: left !important;
+    border-radius: 10px !important;
+    cursor: pointer !important;
+  }
+
+  .untitled-menu-item:active {
+    background: rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .untitled-menu-item.danger {
+    color: #ff453a !important;
+  }
+
+  /* Portada cuadrada grande centrada como en IMG_3888.png */
+  .untitled-mobile-cover-wrap {
+    width: min(76vw, 296px) !important;
+    aspect-ratio: 1 / 1 !important;
+    border-radius: 18px !important;
+    overflow: hidden !important;
+    margin: 4px auto 26px !important;
+    background: #141416 !important;
+    box-shadow: 0 22px 54px rgba(0, 0, 0, 0.72) !important;
     flex-shrink: 0 !important;
   }
 
-  /* Filas de tracks en celular con BPM & Key visibles como micro-badges debajo del título */
-  .clean-track-row {
+  .untitled-mobile-cover-img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    display: block !important;
+  }
+
+  .untitled-mobile-cover-fallback {
+    width: 100% !important;
+    height: 100% !important;
     display: grid !important;
-    grid-template-columns: 20px 34px minmax(0, 1fr) auto !important;
-    grid-template-areas:
-      "num swatch main actions"
-      "num swatch pills actions" !important;
-    column-gap: 8px !important;
-    row-gap: 3px !important;
-    padding: 9px 8px !important;
+    place-items: center !important;
+    font-size: 2.6rem !important;
+    font-weight: 800 !important;
+    color: #ffffff !important;
+  }
+
+  /* Fila de Título + Subtítulo + Botón Play Blanco Squircle */
+  .untitled-mobile-title-row {
+    display: flex !important;
     align-items: center !important;
+    justify-content: space-between !important;
+    gap: 14px !important;
+    margin-bottom: 16px !important;
   }
 
-  .clean-track-row .inspector-track-num,
-  .clean-track-row .row-num {
-    grid-area: num !important;
-    min-width: 18px !important;
-    font-size: 0.72rem !important;
-  }
-
-  .clean-track-row .row-swatch {
-    grid-area: swatch !important;
-    width: 34px !important;
-    height: 34px !important;
-  }
-
-  .clean-track-row .row-main {
-    grid-area: main !important;
+  .untitled-mobile-title-copy {
+    flex: 1 !important;
     min-width: 0 !important;
   }
 
-  .clean-track-row .row-main b {
-    font-size: 0.84rem !important;
+  .untitled-mobile-title {
+    margin: 0 0 4px !important;
+    font-size: 1.75rem !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.03em !important;
+    line-height: 1.12 !important;
+    color: #ffffff !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
   }
 
-  .clean-track-row .row-main span {
-    font-size: 0.71rem !important;
+  .untitled-mobile-subtitle {
+    margin: 0 !important;
+    font-size: 0.92rem !important;
+    font-weight: 500 !important;
+    color: #8e8e93 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
   }
 
-  .clean-track-row .row-pills {
-    grid-area: pills !important;
+  .untitled-mobile-play-btn {
+    width: 52px !important;
+    height: 52px !important;
+    border-radius: 18px !important;
+    background: #ffffff !important;
+    color: #09090b !important;
+    border: none !important;
+    display: grid !important;
+    place-items: center !important;
+    flex-shrink: 0 !important;
+    cursor: pointer !important;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.38) !important;
+    transition: transform 0.14s ease !important;
+  }
+
+  .untitled-mobile-play-btn:active {
+    transform: scale(0.94) !important;
+  }
+
+  /* Botón ancho + Add tracks */
+  .untitled-mobile-add-btn {
     display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    height: 48px !important;
+    border-radius: 14px !important;
+    background: #1c1c1e !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    color: #ffffff !important;
+    font-size: 0.96rem !important;
+    font-weight: 600 !important;
+    letter-spacing: -0.01em !important;
+    margin-bottom: 18px !important;
+    cursor: pointer !important;
+    box-sizing: border-box !important;
+  }
+
+  .untitled-mobile-add-btn:active {
+    background: #2c2c2e !important;
+  }
+
+  /* Lista de tracks numerada limpia */
+  .untitled-mobile-tracklist {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+  }
+
+  .untitled-mobile-track-item {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .untitled-mobile-track-row {
+    display: flex !important;
+    align-items: center !important;
+    gap: 14px !important;
+    padding: 11px 2px !important;
+    border-radius: 12px !important;
+    cursor: pointer !important;
+  }
+
+  .untitled-mobile-track-row:active {
+    background: rgba(255, 255, 255, 0.06) !important;
+  }
+
+  .untitled-mobile-track-num {
+    width: 20px !important;
+    text-align: left !important;
+    font-size: 0.94rem !important;
+    font-weight: 500 !important;
+    color: #8e8e93 !important;
+    flex-shrink: 0 !important;
+  }
+
+  .untitled-mobile-track-row.is-playing .untitled-mobile-track-num,
+  .untitled-mobile-track-row.is-playing .untitled-mobile-track-info b {
+    color: #4ade80 !important;
+  }
+
+  .untitled-mobile-track-info {
+    flex: 1 !important;
+    min-width: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+  }
+
+  .untitled-mobile-track-info b {
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+    color: #ffffff !important;
+    letter-spacing: -0.015em !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .untitled-mobile-track-info span {
+    font-size: 0.85rem !important;
+    font-weight: 400 !important;
+    color: #8e8e93 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .untitled-mobile-track-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .untitled-globe-badge {
+    color: #636366 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+  }
+
+  .untitled-mobile-track-dots {
+    background: transparent !important;
+    border: none !important;
+    color: #ffffff !important;
+    font-size: 1rem !important;
+    letter-spacing: 0.06em !important;
+    padding: 6px 4px !important;
+    cursor: pointer !important;
+  }
+
+  .untitled-track-inline-menu {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 8px 10px !important;
+    margin: 2px 0 8px 34px !important;
+    background: #1c1c1e !important;
+    border-radius: 12px !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
     flex-wrap: wrap !important;
-    gap: 4px !important;
   }
 
-  .clean-track-row .row-pills .meta-chip {
-    padding: 2px 6px !important;
-    font-size: 0.63rem !important;
-    border-radius: 6px !important;
+  .untitled-track-inline-menu button {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: none !important;
+    color: #ffffff !important;
+    padding: 7px 11px !important;
+    border-radius: 9px !important;
+    font-size: 0.78rem !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
   }
 
-  .clean-track-row .row-inline-actions {
-    grid-area: actions !important;
-    gap: 4px !important;
-  }
-
-  .clean-track-row .row-snippet-btn {
-    padding: 5px 8px !important;
-    font-size: 0.68rem !important;
+  .untitled-track-inline-menu button.danger {
+    color: #ff453a !important;
+    background: rgba(255, 69, 58, 0.14) !important;
   }
 
   /* 5. Reproductor Fullscreen (PerformativePlayer) minimalista en celular */

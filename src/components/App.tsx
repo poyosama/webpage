@@ -221,6 +221,45 @@ export default function App() {
   // Invitaciones a proyectos privados ("listen" = Solo escuchar, "edit" = Permitir editar el proyecto)
   const [projectInvites, setProjectInvites] = useState<Record<string, ProjectInviteRole>>({});
   const [invitingProjectId, setInvitingProjectId] = useState<string | null>(null);
+  // Estados de la vista móvil estilo [untitled] adentro del proyecto
+  const [projectSearchOpen, setProjectSearchOpen] = useState<boolean>(false);
+  const [projectSearchQuery, setProjectSearchQuery] = useState<string>("");
+  const [projectMenuOpen, setProjectMenuOpen] = useState<boolean>(false);
+  const [mobileTrackMenuId, setMobileTrackMenuId] = useState<string | null>(null);
+
+  const formatProjectTotalDuration = (tracksList: Track[]): string => {
+    const totalSec = tracksList.reduce((acc, tr) => {
+      if (typeof tr.durationSec === "number" && tr.durationSec > 0) {
+        return acc + tr.durationSec;
+      }
+      const parts = (tr.duration || "0:00").split(":").map((n) => parseInt(n, 10) || 0);
+      if (parts.length === 2) return acc + parts[0] * 60 + parts[1];
+      return acc + 150;
+    }, 0);
+    const mins = Math.floor(totalSec / 60);
+    const secs = Math.round(totalSec % 60);
+    return `${mins}m ${String(secs).padStart(2, "0")}s`;
+  };
+
+  // En el celu, cuando estás en la rueda de vinilos de Biblioteca (afuera del proyecto), bloqueamos el scroll de la página para que solo scrollee la rueda táctil
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const syncWheelScrollLock = () => {
+      const isMob = window.innerWidth <= 720;
+      const shouldLock =
+        isMob &&
+        tab === "biblioteca" &&
+        librarySubTab === "proyectos" &&
+        !insideCubeOpen;
+      document.body.classList.toggle("mobile-vinyl-wheel-locked", shouldLock);
+    };
+    syncWheelScrollLock();
+    window.addEventListener("resize", syncWheelScrollLock);
+    return () => {
+      window.removeEventListener("resize", syncWheelScrollLock);
+      document.body.classList.remove("mobile-vinyl-wheel-locked");
+    };
+  }, [tab, librarySubTab, insideCubeOpen]);
 
   const readStoredProjectInvites = (): Record<string, ProjectInviteRole> => {
     if (typeof window === "undefined") return {};
@@ -2382,6 +2421,446 @@ export default function App() {
                     animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
                     transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
                   >
+                    {/* ==================== UI MÓVIL ESTILO [untitled] (IDÉNTICA A IMG_3888.png EN CELULAR) ==================== */}
+                    <div className="untitled-mobile-project-view">
+                      <div className="untitled-mobile-topbar">
+                        <button
+                          type="button"
+                          className="untitled-icon-squircle"
+                          aria-label="Volver a Mis proyectos"
+                          onClick={() => {
+                            sfx.close();
+                            setProjectSearchOpen(false);
+                            setProjectSearchQuery("");
+                            setProjectMenuOpen(false);
+                            setMobileTrackMenuId(null);
+                            setInsideCubeOpen(false);
+                          }}
+                        >
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="15 18 9 12 15 6" />
+                          </svg>
+                        </button>
+
+                        <div className="untitled-top-right-group">
+                          <button
+                            type="button"
+                            className={`untitled-icon-squircle ${shareCopiedId === activeProject.id ? "is-active" : ""}`}
+                            aria-label="Invitar o compartir link del proyecto"
+                            onClick={() => {
+                              setProjectMenuOpen(false);
+                              handleCopyProjectLink(activeProject.id);
+                            }}
+                          >
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                            </svg>
+                          </button>
+
+                          <button
+                            type="button"
+                            className={`untitled-icon-squircle ${projectSearchOpen ? "is-active" : ""}`}
+                            aria-label="Buscar track en el proyecto"
+                            onClick={() => {
+                              sfx.tap();
+                              setProjectMenuOpen(false);
+                              setProjectSearchOpen((s) => !s);
+                              if (projectSearchOpen) setProjectSearchQuery("");
+                            }}
+                          >
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                              <circle cx="11" cy="11" r="7" />
+                              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                            </svg>
+                          </button>
+
+                          <button
+                            type="button"
+                            className={`untitled-icon-squircle ${projectMenuOpen ? "is-active" : ""}`}
+                            aria-label="Más opciones del proyecto"
+                            onClick={() => {
+                              sfx.tap();
+                              setProjectSearchOpen(false);
+                              setProjectMenuOpen((m) => !m);
+                            }}
+                          >
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                              <circle cx="5" cy="12" r="2" />
+                              <circle cx="12" cy="12" r="2" />
+                              <circle cx="19" cy="12" r="2" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+
+                      {projectSearchOpen && (
+                        <div className="untitled-mobile-search-bar">
+                          <input
+                            type="text"
+                            value={projectSearchQuery}
+                            onChange={(e) => setProjectSearchQuery(e.target.value)}
+                            placeholder="Buscar track, productor, BPM o Key..."
+                            className="untitled-mobile-search-input"
+                          />
+                          {projectSearchQuery && (
+                            <button
+                              type="button"
+                              className="untitled-search-clear"
+                              onClick={() => setProjectSearchQuery("")}
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      {projectMenuOpen && (
+                        <div className="untitled-mobile-menu-sheet">
+                          {canEditActive && (
+                            <>
+                              <button
+                                type="button"
+                                className="untitled-menu-item"
+                                onClick={() => {
+                                  setProjectMenuOpen(false);
+                                  setEditingProject(activeProject);
+                                }}
+                              >
+                                <span>✏️ Editar nombre y detalles</span>
+                              </button>
+                              <label className="untitled-menu-item">
+                                <span>🖼️ Cambiar portada (Artwork)</span>
+                                <input
+                                  type="file"
+                                  accept="image/*,image/gif"
+                                  hidden
+                                  onChange={(e) => {
+                                    const f = e.target.files?.[0];
+                                    if (f) {
+                                      handleUpdateProjectCover(
+                                        activeProject.id,
+                                        URL.createObjectURL(f)
+                                      );
+                                      setProjectMenuOpen(false);
+                                      e.target.value = "";
+                                    }
+                                  }}
+                                />
+                              </label>
+                              <label className="untitled-menu-item">
+                                <span>
+                                  🎬{" "}
+                                  {activeProject.videos.some((v) => Boolean(v.url))
+                                    ? "Cambiar Canvas (Video / GIF)"
+                                    : "Subir Canvas (Video / GIF)"}
+                                </span>
+                                <input
+                                  type="file"
+                                  accept="video/mp4,video/webm,image/gif,image/*,video/*"
+                                  hidden
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      handleUploadProjectVideo(activeProject.id, file);
+                                      setProjectMenuOpen(false);
+                                      e.target.value = "";
+                                    }
+                                  }}
+                                />
+                              </label>
+                            </>
+                          )}
+                          {activeIsMine && (
+                            <button
+                              type="button"
+                              className="untitled-menu-item"
+                              onClick={() => {
+                                sfx.tick();
+                                updateProjectMeta(activeProject.id, {
+                                  visibility:
+                                    activeProject.visibility === "public"
+                                      ? "private"
+                                      : "public",
+                                });
+                                setProjectMenuOpen(false);
+                              }}
+                            >
+                              <span>
+                                {activeProject.visibility === "public"
+                                  ? "🔒 Pasar proyecto a Privado"
+                                  : "🌐 Publicar proyecto en Inicio"}
+                              </span>
+                            </button>
+                          )}
+                          {!activeIsMine && (
+                            <button
+                              type="button"
+                              className="untitled-menu-item"
+                              onClick={() => {
+                                toggleSaveProject(activeProject.id);
+                                setProjectMenuOpen(false);
+                              }}
+                            >
+                              <span>
+                                {savedProjectIds.includes(activeProject.id)
+                                  ? "★ Quitar de tu Biblioteca"
+                                  : "+ Guardar en tu Biblioteca"}
+                              </span>
+                            </button>
+                          )}
+                          {activeIsMine && (
+                            <button
+                              type="button"
+                              className="untitled-menu-item danger"
+                              onClick={() => {
+                                setProjectMenuOpen(false);
+                                if (
+                                  window.confirm(
+                                    `¿Eliminar "${activeProject.title}"? No se puede deshacer.`
+                                  )
+                                ) {
+                                  handleDeleteProject(activeProject.id);
+                                }
+                              }}
+                            >
+                              <span>🗑️ Eliminar proyecto</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Portada cuadrada grande centrada */}
+                      <div className="untitled-mobile-cover-wrap">
+                        {activeProject.coverUrl ? (
+                          <img
+                            src={activeProject.coverUrl}
+                            alt={activeProject.title}
+                            className="untitled-mobile-cover-img"
+                          />
+                        ) : activeProject.videos.length > 0 && activeProject.videos[0].url ? (
+                          activeProject.videos[0].mediaType === "image" ||
+                          /^data:image\//i.test(activeProject.videos[0].url) ||
+                          /\.(gif|png|jpe?g|webp|avif)(\?|$)/i.test(activeProject.videos[0].url) ? (
+                            <img
+                              src={activeProject.videos[0].url}
+                              alt={activeProject.title}
+                              className="untitled-mobile-cover-img"
+                            />
+                          ) : (
+                            <video
+                              src={activeProject.videos[0].url}
+                              autoPlay
+                              loop
+                              muted
+                              playsInline
+                              className="untitled-mobile-cover-img"
+                            />
+                          )
+                        ) : (
+                          <div
+                            className="untitled-mobile-cover-fallback"
+                            style={{
+                              background: `linear-gradient(145deg, ${activeProject.c1} 0%, ${activeProject.c2} 100%)`,
+                            }}
+                          >
+                            <span>{activeProject.title.slice(0, 2).toUpperCase()}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Fila de Título + Subtítulo + Botón Play Blanco Squircle */}
+                      <div className="untitled-mobile-title-row">
+                        <div className="untitled-mobile-title-copy">
+                          <h1 className="untitled-mobile-title">{activeProject.title}</h1>
+                          <p className="untitled-mobile-subtitle">
+                            {activeProject.artist} · {activeProject.tracks.length}{" "}
+                            {activeProject.tracks.length === 1 ? "track" : "tracks"} ·{" "}
+                            {formatProjectTotalDuration(activeProject.tracks)}
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          className="untitled-mobile-play-btn"
+                          aria-label="Reproducir proyecto"
+                          onClick={() => {
+                            const isProjectPlaying =
+                              isPlaying &&
+                              activeProject.tracks.some((tr) => tr.id === currentTrack.id);
+                            if (isProjectPlaying) {
+                              togglePlay();
+                            } else if (activeProject.tracks[0]) {
+                              playTrack(activeProject.tracks[0], activeProject, false);
+                            }
+                          }}
+                        >
+                          {isPlaying &&
+                          activeProject.tracks.some((tr) => tr.id === currentTrack.id) ? (
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                              <rect x="6" y="5" width="4" height="14" rx="1.2" />
+                              <rect x="14" y="5" width="4" height="14" rx="1.2" />
+                            </svg>
+                          ) : (
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: 2 }}>
+                              <polygon points="6 4 20 12 6 20 6 4" />
+                            </svg>
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Botón ancho + Add tracks (idéntico a IMG_3888.png) */}
+                      {canEditActive ? (
+                        <label className="untitled-mobile-add-btn">
+                          <span>
+                            {uploadingTrackProjectId === activeProject.id
+                              ? "Analizando Key y BPM..."
+                              : "+ Add tracks"}
+                          </span>
+                          <input
+                            type="file"
+                            multiple
+                            accept=".wav,.mp3,.m4a,.flac,.aac,.ogg,.aiff,.alac,.opus,audio/*"
+                            hidden
+                            onChange={(e) => {
+                              if (e.target.files && e.target.files.length > 0) {
+                                void handleUploadMultipleProjectTracks(
+                                  activeProject.id,
+                                  e.target.files
+                                );
+                                e.target.value = "";
+                              }
+                            }}
+                          />
+                        </label>
+                      ) : (
+                        <button
+                          type="button"
+                          className="untitled-mobile-add-btn"
+                          onClick={() => toggleSaveProject(activeProject.id)}
+                        >
+                          <span>
+                            {savedProjectIds.includes(activeProject.id)
+                              ? "★ Guardado en Biblioteca"
+                              : "+ Guardar en Biblioteca"}
+                          </span>
+                        </button>
+                      )}
+
+                      {/* Lista de tracks numerada limpia */}
+                      <div className="untitled-mobile-tracklist">
+                        {activeProject.tracks
+                          .filter((t) => {
+                            if (!projectSearchQuery.trim()) return true;
+                            const q = projectSearchQuery.toLowerCase();
+                            return (
+                              t.title.toLowerCase().includes(q) ||
+                              t.artist.toLowerCase().includes(q) ||
+                              (t.prod && t.prod.toLowerCase().includes(q)) ||
+                              String(t.bpm).includes(q) ||
+                              t.key.toLowerCase().includes(q)
+                            );
+                          })
+                          .map((t, idx) => {
+                            const isCurrent = currentTrack.id === t.id;
+                            const menuOpen = mobileTrackMenuId === t.id;
+                            return (
+                              <div key={t.id} className="untitled-mobile-track-item">
+                                <div
+                                  className={`untitled-mobile-track-row ${
+                                    isCurrent ? "is-playing" : ""
+                                  }`}
+                                  onClick={() => playTrack(t, activeProject, false)}
+                                >
+                                  <span className="untitled-mobile-track-num">
+                                    {isCurrent && isPlaying ? "▶" : idx + 1}
+                                  </span>
+
+                                  <div className="untitled-mobile-track-info">
+                                    <b>{t.title}</b>
+                                    <span>
+                                      {t.artist}
+                                      {t.feat ? ` · ft. ${t.feat}` : ""} · {t.bpm} BPM · {t.key}
+                                    </span>
+                                  </div>
+
+                                  <div className="untitled-mobile-track-actions">
+                                    {activeProject.visibility === "public" && (
+                                      <span className="untitled-globe-badge" aria-hidden="true">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                                          <circle cx="12" cy="12" r="10" />
+                                          <line x1="2" y1="12" x2="22" y2="12" />
+                                          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                                        </svg>
+                                      </span>
+                                    )}
+                                    <button
+                                      type="button"
+                                      className="untitled-mobile-track-dots"
+                                      aria-label={`Opciones de ${t.title}`}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        sfx.tap();
+                                        setMobileTrackMenuId(menuOpen ? null : t.id);
+                                      }}
+                                    >
+                                      •••
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {menuOpen && (
+                                  <div
+                                    className="untitled-track-inline-menu"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <button
+                                      type="button"
+                                      onClick={async () => {
+                                        sfx.tap();
+                                        setMobileTrackMenuId(null);
+                                        const url =
+                                          t.customAudioUrl ||
+                                          customAudioMap[t.id] ||
+                                          (await resolveTrackAudioUrl(t.id));
+                                        await downloadTrackAudio(t.title, t.artist, url);
+                                      }}
+                                    >
+                                      ⬇ Descargar
+                                    </button>
+                                    {canEditActive && (
+                                      <>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            sfx.open();
+                                            setMobileTrackMenuId(null);
+                                            setEditingTrack(t);
+                                          }}
+                                        >
+                                          ✏️ Editar ({t.bpm} BPM · {t.key})
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className="danger"
+                                          onClick={() => {
+                                            sfx.tap();
+                                            setMobileTrackMenuId(null);
+                                            handleDeleteTrack(activeProject.id, t.id);
+                                          }}
+                                        >
+                                          🗑️ Eliminar
+                                        </button>
+                                      </>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+
                     {libraryLayoutMode === "inside" && (
                       <div className="cube-interior-back-bar">
                         <button

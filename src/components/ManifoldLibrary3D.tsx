@@ -808,12 +808,14 @@ export default function ManifoldLibrary3D({
     startX: number;
     startOff: number;
     moved: boolean;
+    justDragged: boolean;
   }>({
     dragging: false,
     startY: 0,
     startX: 0,
     startOff: 0,
     moved: false,
+    justDragged: false,
   });
 
   useEffect(() => {
@@ -852,46 +854,55 @@ export default function ManifoldLibrary3D({
 
   const renderQuickPills = () => (
     <div className="manifold-quick-pills">
-      {projects.map((p) => (
-        <div
-          key={p.id}
-          className={`quick-proj-pill-group ${p.id === selectedProjectId ? "on" : ""}`}
-        >
-          <button
-            type="button"
-            className={`quick-proj-pill ${p.id === selectedProjectId ? "on" : ""}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              sfx.tap();
-              const idx = projects.findIndex((item) => item.id === p.id);
-              if (idx >= 0) setArcOffset(idx);
-              onSelectProject(p);
-              if (onDiveIntoProject) {
-                sfx.open();
-                onDiveIntoProject(p);
-              }
-            }}
+      {projects.map((p) => {
+        const isCurrentSelected = p.id === activeProject?.id;
+        return (
+          <div
+            key={p.id}
+            className={`quick-proj-pill-group ${isCurrentSelected ? "on" : ""}`}
           >
-            <span className="pill-dot" style={{ background: p.c2 }} />
-            <b>{p.title}</b>
-          </button>
-          {onDeleteProject && (
             <button
               type="button"
-              className="pill-trash-btn"
-              title={`Eliminar proyecto ${p.title}`}
-              aria-label={`Eliminar proyecto ${p.title}`}
+              className={`quick-proj-pill ${isCurrentSelected ? "on" : ""}`}
               onClick={(e) => {
                 e.stopPropagation();
+                const idx = projects.findIndex((item) => item.id === p.id);
+                const alreadyCentered =
+                  isCurrentSelected && Math.abs(idx - arcOffset) < 0.35;
+                if (!alreadyCentered) {
+                  sfx.tick();
+                  if (idx >= 0) setArcOffset(idx);
+                  onSelectProject(p);
+                  return;
+                }
                 sfx.tap();
-                onDeleteProject(p.id);
+                if (onDiveIntoProject) {
+                  sfx.open();
+                  onDiveIntoProject(p);
+                }
               }}
             >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              <span className="pill-dot" style={{ background: p.c2 }} />
+              <b>{p.title}</b>
             </button>
-          )}
-        </div>
-      ))}
+            {onDeleteProject && (
+              <button
+                type="button"
+                className="pill-trash-btn"
+                title={`Eliminar proyecto ${p.title}`}
+                aria-label={`Eliminar proyecto ${p.title}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  sfx.tap();
+                  onDeleteProject(p.id);
+                }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              </button>
+            )}
+          </div>
+        );
+      })}
       {onOpenCreateProject && (
         <button
           type="button"
@@ -922,7 +933,7 @@ export default function ManifoldLibrary3D({
           <div className="manifold-title-and-switch">
             <div className="manifold-overlay-titles">
               <span className="mono-tag">MIS PROYECTOS // VINILOS 3D</span>
-              <h3>Arrastrá para mover · Seleccioná un vinilo</h3>
+              <h3>Deslizá la rueda · Tocá el vinilo central para abrir</h3>
             </div>
           </div>
 
@@ -967,6 +978,7 @@ export default function ManifoldLibrary3D({
           ) : (
             <div
               className="vinyl-fan-arc-viewport"
+              style={{ touchAction: "none" }}
               onWheel={(e) => {
                 if (projects.length <= 1) return;
                 if (Math.abs(e.deltaY) > 12) {
@@ -976,7 +988,7 @@ export default function ManifoldLibrary3D({
               onPointerDown={(e) => {
                 if (
                   (e.target as HTMLElement).closest(
-                    ".vinyl-fan-inspector-card, .vinyl-arc-step-controls, .vinyl-fan-sleeve-card"
+                    ".vinyl-fan-inspector-card, .vinyl-arc-step-controls"
                   )
                 ) {
                   return;
@@ -987,22 +999,25 @@ export default function ManifoldLibrary3D({
                   startX: e.clientX,
                   startOff: arcOffset,
                   moved: false,
+                  justDragged: false,
                 };
               }}
               onPointerMove={(e) => {
                 if (!arcDragRef.current.dragging) return;
                 const dy = e.clientY - arcDragRef.current.startY;
                 const dx = e.clientX - arcDragRef.current.startX;
-                const primaryDelta = Math.abs(dy) > Math.abs(dx) ? dy : dx;
-                if (Math.abs(primaryDelta) > 8) {
+                const primaryDelta = Math.abs(dy) >= Math.abs(dx) ? dy : dx;
+                if (Math.abs(primaryDelta) > 6) {
                   arcDragRef.current.moved = true;
+                  arcDragRef.current.justDragged = true;
                 }
                 if (arcDragRef.current.moved) {
+                  const sensitivity = isMobileViewport ? 56 : 82;
                   const nextOff = Math.max(
                     0,
                     Math.min(
                       projects.length - 1,
-                      arcDragRef.current.startOff - primaryDelta / 85
+                      arcDragRef.current.startOff - primaryDelta / sensitivity
                     )
                   );
                   setArcOffset(nextOff);
@@ -1019,11 +1034,23 @@ export default function ManifoldLibrary3D({
                   );
                   setArcOffset(snapped);
                   const targetProj = projects[snapped];
-                  if (targetProj && targetProj.id !== selectedProjectId) {
+                  if (targetProj) {
                     sfx.tick();
                     onSelectProject(targetProj);
                   }
+                  window.setTimeout(() => {
+                    arcDragRef.current.justDragged = false;
+                  }, 80);
                 }
+              }}
+              onPointerCancel={() => {
+                if (!arcDragRef.current.dragging) return;
+                arcDragRef.current.dragging = false;
+                const snapped = Math.max(
+                  0,
+                  Math.min(projects.length - 1, Math.round(arcOffset))
+                );
+                setArcOffset(snapped);
               }}
               onPointerLeave={() => {
                 if (!arcDragRef.current.dragging) return;
@@ -1069,19 +1096,19 @@ export default function ManifoldLibrary3D({
                 {projects.map((p, idx) => {
                   const delta = idx - arcOffset;
                   const absDelta = Math.abs(delta);
-                  const angleDeg = delta * (isMobileViewport ? 13 : 17.5);
+                  const angleDeg = delta * (isMobileViewport ? 14 : 17.5);
                   const angleRad = (angleDeg * Math.PI) / 180;
-                  const radiusX = isMobileViewport ? 105 : 270;
-                  const radiusY = isMobileViewport ? 128 : 275;
+                  const radiusX = isMobileViewport ? 115 : 270;
+                  const radiusY = isMobileViewport ? 136 : 275;
 
                   const tx =
                     (Math.cos(angleRad) - 1) * radiusX +
-                    (absDelta < 0.35 ? (isMobileViewport ? 10 : 26) : 0);
+                    (absDelta < 0.35 ? (isMobileViewport ? 14 : 26) : 0);
                   const ty = Math.sin(angleRad) * radiusY;
                   const rotZ = angleDeg * 0.78;
                   const scale = Math.max(0.76, 1 - absDelta * 0.065);
                   const zIndex = Math.round(30 - absDelta * 6);
-                  const isFocused = p.id === selectedProjectId;
+                  const isFocused = Math.round(arcOffset) === idx;
 
                   return (
                     <div
@@ -1097,12 +1124,24 @@ export default function ManifoldLibrary3D({
                           ? "none"
                           : `brightness(${Math.max(0.62, 0.88 - absDelta * 0.08).toFixed(2)})`,
                         pointerEvents: absDelta > 3.2 ? "none" : "auto",
+                        touchAction: "none",
                       }}
                       onClick={(e) => {
                         e.stopPropagation();
+                        if (arcDragRef.current.justDragged) {
+                          arcDragRef.current.justDragged = false;
+                          return;
+                        }
+                        const alreadyCentered = absDelta < 0.35 && p.id === activeProject?.id;
+                        if (!alreadyCentered) {
+                          // Si tocás un vinilo de arriba o de abajo, scrollea la rueda a esa posición sin abrirlo todavía
+                          sfx.tick();
+                          setArcOffset(idx);
+                          onSelectProject(p);
+                          return;
+                        }
+                        // Si ya está en la posición central y lo tocás, ahí entrás al proyecto
                         sfx.tap();
-                        setArcOffset(idx);
-                        onSelectProject(p);
                         if (onDiveIntoProject) {
                           sfx.open();
                           onDiveIntoProject(p);

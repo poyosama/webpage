@@ -1003,3 +1003,21 @@
    - Removidos `onUploadProjectVideo` y `onUploadProjectTrack` del `<ManifoldLibrary3D />` dentro de `tab === "perfil"`, dejando el showcase de `Mis Proyectos & Canvas` limpio y sin esa barra abajo.
 2. **Clickear cualquier proyecto en `Perfil` te mete directo al proyecto en `Biblioteca` (`src/components/App.tsx` + `src/components/ManifoldLibrary3D.tsx`):**
    - Conectado `onDiveIntoProject` en el `<ManifoldLibrary3D />` de `Perfil` (`setSelectedProjectId(proj.id); setLibrarySubTab("proyectos"); setInsideCubeOpen(true); navigate("biblioteca");`) y habilitado también en las píldoras superiores (`.quick-proj-pill`), para que al clickear cualquier sobre de vinilo, la tarjeta derecha del proyecto o las píldoras superiores en tu `Perfil` entres directo al interior de ese proyecto en `Biblioteca`.
+
+---
+
+### Turno 57 — UI de Abrir Proyecto en Celular Idéntica a `[untitled]` (`IMG_3888.png`) + Rueda de Vinilos Táctil sin Scroll de Página y con Scroll-a-Posición antes de Entrar
+**Pedidos del usuario (`juani`):**
+- *"quiero que la ui de abrir un proyecto en el celu se vea exactamente asi y que los proyectos sean mas faciles de acceder, que la pagina no scrollee, pero la rueda de vinilos si la puedas scrollear en el celu con el tactil, cuando tocas el proyecto que esta arriba no se abre de una sino que scrollea a esa posicion y vos depues entras"*
+
+**Implementación (`src/components/ManifoldLibrary3D.tsx`, `src/components/App.tsx`, `src/components/board-polish.css`):**
+1. **Rueda de Vinilos Táctil en Celular sin Scroll de Página + Tap-to-Scroll antes de Entrar (`ManifoldLibrary3D.tsx` + `App.tsx` + `board-polish.css`):**
+   - **Página bloqueada en la vista de rueda móvil (`body.mobile-vinyl-wheel-locked`):** Cuando estás en `Biblioteca` viendo la rueda de vinilos en el celu (`!insideCubeOpen`), la página entera queda bloqueada (`100dvh`, `overflow: hidden`, `overscroll-behavior: none`) para que nunca se mueva la página al pasar el dedo.
+   - **Rueda de vinilos 100% táctil (`touchAction: "none"`):** Ahora podés deslizar el dedo arriba/abajo directamente sobre los sobres de vinilo (`.vinyl-fan-sleeve-card`) o en cualquier parte del viewport para girar la rueda con suavidad y snap automático.
+   - **Tocar el proyecto de arriba/abajo scrollea a esa posición y después entrás:** Si tocás un vinilo que está arriba o abajo en la rueda (o una píldora superior no centrada), **no se abre de una**: la rueda gira hasta poner ese proyecto en la posición central (`setArcOffset(idx); onSelectProject(p)`). Y cuando tocás el vinilo que ya está centrado (o la tarjeta del proyecto), recién ahí entrás al proyecto (`onDiveIntoProject(p)`).
+2. **UI de Abrir un Proyecto en el Celu Idéntica a `[untitled]` (`IMG_3888.png` — `.untitled-mobile-project-view` en `App.tsx` + `board-polish.css`):**
+   - **Barra superior:** Botón squircle oscuro `<` a la izquierda para volver a la rueda, y 3 botones squircle oscuros a la derecha (`🔗` para abrir el modal de Invitación al EP, `🔍` para filtrar tracks del proyecto en vivo y `•••` con menú de opciones para editar nombre, cambiar portada, subir Canvas, alternar Privado/Público o eliminar).
+   - **Portada cuadrada grande centrada (`.untitled-mobile-cover-wrap`):** Tapa del proyecto en formato cuadrado grande con bordes redondeados (`18px`) y sombra profunda.
+   - **Fila de Título + Subtítulo + Botón Play Blanco Squircle (`52x52px`):** Título grande en blanco bold (`chickenNugget`), subtítulo en gris con duración total calculada (`poyoculiado · 6 tracks · 10m 33s`) y botón blanco squircle `▶` / `❚❚` a la derecha.
+   - **Botón ancho `+ Add tracks` (`.untitled-mobile-add-btn`):** Barra oscura de ancho completo (`height: 48px`, `border-radius: 14px`) justo debajo del título para subir múltiples archivos WAV/MP3 con detección automática de Key y BPM.
+   - **Lista de tracks limpia (`.untitled-mobile-tracklist`):** Numeración `1`, `2`, `3` a la izquierda, título en blanco + artista/BPM/Key en gris al centro, ícono de globo sutil si es público y botón `•••` a la derecha que despliega las acciones rápidas del track (`⬇ Descargar`, `✏️ Editar`, `🗑️ Eliminar`).
