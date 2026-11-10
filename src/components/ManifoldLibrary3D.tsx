@@ -1170,17 +1170,10 @@ export default function ManifoldLibrary3D({
                         className={`vinyl-fan-sleeve-body ${p.coverUrl ? "has-cover-art" : ""}`}
                         style={{
                           background: p.coverUrl
-                            ? `linear-gradient(180deg, rgba(9,9,11,0.38) 0%, rgba(9,9,11,0.05) 48%, rgba(9,9,11,0.62) 100%), url(${p.coverUrl}) center / cover no-repeat`
+                            ? `url(${p.coverUrl}) center / cover no-repeat`
                             : `linear-gradient(135deg, ${p.c1} 0%, ${p.c2} 135%)`,
                         }}
                       >
-                        <div className="vinyl-fan-spine-text">
-                          <span>{p.title}</span>
-                          <small>
-                            {p.artist.toUpperCase()} · {p.type.toUpperCase()} · {p.tracks.length} TRACKS
-                          </small>
-                        </div>
-
                         {!p.coverUrl && (
                           <div className="vinyl-fan-center-crest">
                             <div className="crest-ring">
@@ -1189,11 +1182,6 @@ export default function ManifoldLibrary3D({
                             </div>
                           </div>
                         )}
-
-                        <div className="vinyl-fan-corner-badge">
-                          <b>{p.artist}</b>
-                          <span>{isFocused ? "TOCÁ P/ ABRIR →" : p.year}</span>
-                        </div>
                       </div>
                     </div>
                   );
@@ -1202,7 +1190,7 @@ export default function ManifoldLibrary3D({
 
               {activeProject && (
                 <div
-                  className="vinyl-fan-inspector-card is-clickable-card"
+                  className="vinyl-fan-inspector-card vinyl-fan-clean-title-card is-clickable-card"
                   role="button"
                   tabIndex={0}
                   title={`Abrir ${activeProject.title}`}
@@ -1223,83 +1211,7 @@ export default function ManifoldLibrary3D({
                     }
                   }}
                 >
-                  <span className="mono-tag">
-                    {activeProject.type.toUpperCase()} · {activeProject.tracks.length}{" "}
-                    {activeProject.tracks.length === 1 ? "TRACK" : "TRACKS"}
-                  </span>
-                  <h2>{activeProject.title}</h2>
-                  <p className="vinyl-fan-artist-line">
-                    por <b>{activeProject.artist}</b>
-                    {activeProject.zone ? ` · ${activeProject.zone}` : ""}
-                  </p>
-                  {activeProject.description && (
-                    <p className="vinyl-fan-desc">{activeProject.description}</p>
-                  )}
-
-                  <div className="vinyl-fan-quick-tracks">
-                    {activeProject.tracks.slice(0, 4).map((tr, i) => (
-                      <div key={tr.id} className="vinyl-mini-track-pill">
-                        <span>0{i + 1} · </span>
-                        <b>{tr.title}</b>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div
-                    className="vinyl-fan-actions"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {onUpdateProjectCover && (
-                      <label
-                        className="apple-btn ghost"
-                        style={{ cursor: "pointer" }}
-                        title="Cambiar la tapa / portada del proyecto"
-                      >
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                          Cambiar portada
-                        </span>
-                        <input
-                          type="file"
-                          accept="image/*,image/gif"
-                          hidden
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              sfx.drop();
-                              const url = URL.createObjectURL(file);
-                              onUpdateProjectCover(activeProject.id, url);
-                              e.target.value = "";
-                            }
-                          }}
-                        />
-                      </label>
-                    )}
-                    {onDeleteProject && (
-                      <button
-                        type="button"
-                        className={`trash-icon-btn ${confirmDeleteProjectId === activeProject.id ? "confirm-delete-active" : ""}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          sfx.tap();
-                          if (confirmDeleteProjectId === activeProject.id) {
-                            onDeleteProject(activeProject.id);
-                            setConfirmDeleteProjectId(null);
-                          } else {
-                            setConfirmDeleteProjectId(activeProject.id);
-                          }
-                        }}
-                        title={
-                          confirmDeleteProjectId === activeProject.id
-                            ? "¿Confirmar eliminación? Tocá de nuevo para borrar"
-                            : "Eliminar proyecto"
-                        }
-                        aria-label="Eliminar proyecto"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                      </button>
-                    )}
-                  </div>
+                  <h2 className="vinyl-active-title">{activeProject.title}</h2>
                 </div>
               )}
             </div>

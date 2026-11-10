@@ -1110,3 +1110,19 @@
    - Antes las etiquetas `<img>` estaban sueltas como elementos independientes entre botones dentro de `.collage-line`, por lo que al hacer wrap de flexbox la tapa de un proyecto caía al final de una línea o arriba del proyecto siguiente.
    - Ahora cada proyecto es un bloque atómico `.collage-item` (`<button>` unificado) que agrupa obligatoriamente su portada a la izquierda (`<img className="collage-cover-thumb" />`) y el nombre del proyecto a la derecha (`<span className="roster-word">...</span>`). Si el bloque salta de línea, la portada y su nombre se mueven juntos sin desfasarse jamás.
 
+---
+
+### Turno 67 — Solo el Spin de Proyectos + Título limpio abajo de la tapa (`IMG_3901.png`)
+**Pedidos del usuario (`juani`):**
+- *"deja solo el spin de proyectos saca esa info de ahi si ya la tiene el proyecto"*
+- *"deja q de la info esa en el medio solo se vea el titulo pero abajo de la tapa"* (`IMG_3901.png`)
+
+**Implementación (`ManifoldLibrary3D.tsx`, `board-polish.css`):**
+1. **Rueda de vinilos / Spin 100% limpia:**
+   - Eliminados los badges y textos que tapaban la foto del sobre (`.vinyl-fan-corner-badge` con `poyo pizarro TOCÁ P/ ABRIR ->` y `.vinyl-fan-spine-text`), dejando ver la portada limpia en alta resolución.
+2. **Eliminación del box inspector duplicado:**
+   - Retirados los elementos redundantes de `.vinyl-fan-inspector-card` (`SINGLE · 0 TRACKS`, `por poyo pizarro · Mendoza`, `Cambiar portada`, `🗑️`, etc.) dado que toda esa metadata y acciones ya están adentro del proyecto al abrirlo.
+3. **Título minimalista abajo de la tapa:**
+   - La vista de vinilos ahora muestra únicamente el spin 3D y el título en tipografía bold blanca (`.vinyl-active-title`) ubicado limpio debajo del sobre activo (`abajo de la tapa`). Al tocar el vinilo o el título se abre la inmersión completa del proyecto.
+
+
