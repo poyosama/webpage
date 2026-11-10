@@ -1086,3 +1086,9 @@
 ### Turno 64 — Cambiar el ícono del acceso directo del iPhone
 **Pedido (`juani`):** *"quiero poder cambiar el icono del acceso directo en mi iphone"*.
 **Implementación (`AppIconPicker.tsx`, `App.tsx`):** en `Editar perfil` hay un selector de imagen que la recorta cuadrada (512px), la guarda en `localStorage` y reemplaza `<link rel="apple-touch-icon">` en cada carga. iOS lee ese ícono recién al "Agregar a inicio", así que hay que borrar el acceso viejo y volver a agregarlo. Incluye "Restaurar original".
+
+---
+
+### Turno 65 — Orden del collage de Inicio en celular (`IMG_3899.png`)
+**Pedido (`juani`):** *"y la organizacion del tablero ta fiera"*.
+**Implementación (`board-polish.css`):** el collage se cortaba por la derecha (`blabla`, `23 m…`, `AMORIO`) y las palabras eran casi invisibles. En <=720px ahora fluye como nube centrada (`display: contents` en las filas, `flex-wrap`), con texto legible, tapas de 38px y sin píldoras/etiquetas decorativas que ensuciaban.

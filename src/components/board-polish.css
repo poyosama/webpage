@@ -2550,3 +2550,50 @@ textarea,
     height: 9px !important;
   }
 }
+
+/* ==================== INICIO CELULAR v2: collage como "nube" ordenada que nunca se corta ==================== */
+@media (max-width: 720px) {
+  .corecore-stage .Roster-collage {
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 12px 12px !important;
+    padding: 0 6px !important;
+  }
+
+  /* Las filas se disuelven: todo fluye y salta de renglón solo, sin recortarse */
+  .corecore-stage .collage-line {
+    display: contents !important;
+  }
+
+  .corecore-stage .roster-word {
+    font-size: clamp(1.15rem, 5.6vw, 1.7rem) !important;
+    color: var(--ink-secondary, #d4d4d8) !important;
+    white-space: nowrap !important;
+  }
+
+  .corecore-stage .roster-word .inline-swatch {
+    padding: 2px 7px !important;
+    border-radius: 6px !important;
+    margin: 0 0 0 3px !important;
+  }
+
+  .corecore-stage .collage-cover-thumb {
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 9px !important;
+  }
+
+  /* Ruido decorativo que en pantallas chicas solo ensucia */
+  .corecore-stage .cluster-dots,
+  .corecore-stage .pixel-tag,
+  .corecore-stage .cutout-pill,
+  .corecore-stage .sup-tag {
+    display: none !important;
+  }
+
+  .corecore-stage .neon-spine {
+    opacity: 0.35 !important;
+  }
+}
