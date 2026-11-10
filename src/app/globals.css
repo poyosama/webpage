@@ -4293,22 +4293,29 @@ button {
 
 @media (max-width: 960px) {
   .vinyl-fan-arc-viewport {
-    grid-template-columns: 1fr;
-    height: auto;
-    min-height: 540px;
-    padding: 24px 16px 20px;
-    gap: 24px;
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    gap: 16px;
   }
 
   .vinyl-arc-step-controls {
-    top: 170px;
-    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    right: 12px;
+    left: auto;
   }
 
   .vinyl-fan-arc-wheel {
-    height: 320px;
+    height: 180px;
+    width: 260px;
     justify-content: center;
     padding-left: 0;
+    margin: 0 auto;
   }
 
   .vinyl-fan-sleeve-card {

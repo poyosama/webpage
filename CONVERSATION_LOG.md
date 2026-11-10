@@ -1125,4 +1125,31 @@
 3. **Título minimalista abajo de la tapa:**
    - La vista de vinilos ahora muestra únicamente el spin 3D y el título en tipografía bold blanca (`.vinyl-active-title`) ubicado limpio debajo del sobre activo (`abajo de la tapa`). Al tocar el vinilo o el título se abre la inmersión completa del proyecto.
 
+---
+
+### Turno 68 — Bloqueo de scroll global en todas las páginas excepto Inicio + Centrado de rueda de vinilos y título (`IMG_3905.png`)
+**Pedidos del usuario (`juani`):**
+1. *"por que se ve abajo?"* (`IMG_3905.png` mostrando la rueda de vinilos desplazada al fondo detrás del mini-player con el título "Singles" en un box gris arriba).
+2. *"quiero que quites el scroll de todas las paginas excepto la de inicio, tanto en web como en celular, que no se pueda scrollear y sea todo interfaz interactuable, si podes scrollear se tosquea el flow entero con las interacciones. tiene que ser una pagina estatica en ese sentido"*.
+
+**Diagnóstico (`IMG_3905.png`):**
+- La página web permitía scroll vertical en `html` y `body` en todas las pantallas. Al interactuar táctilmente con la rueda de vinilos o canvas, el gesto desplazaba la ventana hacia abajo.
+- Adicionalmente, `globals.css` tenía `min-height: 540px; height: auto` en `.vinyl-fan-arc-viewport` y `board-polish.css` forzaba `top: 36% !important` en `.vinyl-fan-arc-wheel` y `top: calc(36% + 172px) !important` en el título, mientras que `:root[data-theme="dark"] .vinyl-fan-inspector-card` le ponía fondo `#17171f` y borde gris.
+- En la cabecera de Biblioteca, `.library-clean` solo ocultaba el primer botón de `.seg-pills`, dejando `Guardados (0)` colgado arriba a la izquierda y empujando el contenido hacia abajo.
+
+**Implementación (`App.tsx`, `PullToRefresh.tsx`, `globals.css`, `board-polish.css`):**
+1. **Bloqueo total de scroll en todas las páginas excepto `Inicio` (`app-no-scroll`):**
+   - Agregado efecto en `src/components/App.tsx` que aplica `app-no-scroll` en `html` y `body` cuando `tab !== "inicio"`.
+   - Reglas estrictas en CSS: `overflow: hidden !important; height: 100dvh !important; max-height: 100dvh !important; overscroll-behavior: none !important; position: fixed !important; width: 100% !important;` tanto en desktop como en celulares.
+   - `.apple-shell` y `.ios-main` se bloquean a `100dvh` con padding justo para la navbar superior y el mini-player inferior, garantizando que el viewport central sea 100% interactivo y libre de rebotes o scrolls parásitos.
+   - En `Subir` (`dmg-section`) y `Perfil` (`profile-page`), el scroll está confinado exclusivamente al contenedor interno (`overflow-y: auto`), sin mover la ventana.
+   - `PullToRefresh.tsx` configurado para activarse única y exclusivamente en `tab === "inicio"`.
+2. **Centrado perfecto de la rueda de vinilos (`Biblioteca`):**
+   - Eliminados todos los `top: 36%`, `calc(36% + 172px)` y `min-height: 540px`.
+   - `.vinyl-fan-arc-viewport` ahora es un flex container centrado vertical y horizontalmente que ocupa el 100% del espacio visible.
+   - `.vinyl-fan-arc-wheel` está centrado en el medio de la pantalla con las tapas ancladas a `top: 50%; left: 50%` y coordenadas tangenciales en C.
+   - `.vinyl-fan-clean-title-card` fluye naturalmente justo debajo del sobre activo sin ningún box gris, fondo ni bordes (`background: transparent !important; border: none !important`), con tipografía SF Pro en blanco bold.
+   - Ocultada completamente la fila `.section-header-row` en modo `library-clean` para eliminar `Guardados (0)` y dejar la vista 100% inmaculada como en `image.jpg`.
+
+
 

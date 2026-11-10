@@ -21,7 +21,13 @@ export default function PullToRefresh() {
     if (!window.matchMedia("(pointer: coarse)").matches) return;
 
     const blocked = (el: EventTarget | null) => {
-      if (document.body.classList.contains("mobile-vinyl-wheel-locked")) return true;
+      if (
+        document.body.classList.contains("app-no-scroll") ||
+        document.documentElement.classList.contains("app-no-scroll") ||
+        document.body.classList.contains("mobile-vinyl-wheel-locked")
+      ) {
+        return true;
+      }
       let node = el as HTMLElement | null;
       while (node && node !== document.body) {
         if (

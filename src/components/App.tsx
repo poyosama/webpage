@@ -243,25 +243,20 @@ export default function App() {
     return `${mins}m ${String(secs).padStart(2, "0")}s`;
   };
 
-  // En el celu, cuando estás en la rueda de vinilos de Biblioteca (afuera del proyecto), bloqueamos el scroll de la página para que solo scrollee la rueda táctil
+  // Bloqueo total de scroll del navegador en todas las pantallas excepto "inicio"
+  // (evita que la pantalla se desplace o rebote al interactuar en web y celular)
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const syncWheelScrollLock = () => {
-      const isMob = window.innerWidth <= 720;
-      const shouldLock =
-        isMob &&
-        tab === "biblioteca" &&
-        librarySubTab === "proyectos" &&
-        !insideCubeOpen;
-      document.body.classList.toggle("mobile-vinyl-wheel-locked", shouldLock);
-    };
-    syncWheelScrollLock();
-    window.addEventListener("resize", syncWheelScrollLock);
+    const isAppTabLocked = tab !== "inicio";
+    document.documentElement.classList.toggle("app-no-scroll", isAppTabLocked);
+    document.body.classList.toggle("app-no-scroll", isAppTabLocked);
+    document.body.classList.toggle("mobile-vinyl-wheel-locked", isAppTabLocked);
     return () => {
-      window.removeEventListener("resize", syncWheelScrollLock);
+      document.documentElement.classList.remove("app-no-scroll");
+      document.body.classList.remove("app-no-scroll");
       document.body.classList.remove("mobile-vinyl-wheel-locked");
     };
-  }, [tab, librarySubTab, insideCubeOpen]);
+  }, [tab]);
 
   const readStoredProjectInvites = (): Record<string, ProjectInviteRole> => {
     if (typeof window === "undefined") return {};
