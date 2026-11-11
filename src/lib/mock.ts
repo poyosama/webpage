@@ -12,6 +12,8 @@ export type ProjectVideoClip = {
     | "halftone-cam";
   url?: string; // URL de video/gif/portada
   mediaType?: "video" | "image";
+  trimStartSec?: number; // Recorte inicio de video (In point en segundos)
+  trimEndSec?: number; // Recorte final de video (Out point en segundos)
   c1: string;
   c2: string;
 };
@@ -35,6 +37,11 @@ export type Track = {
   audioFreq: number;
   customAudioUrl?: string;
   coverUrl?: string;
+  videoUrl?: string;
+  videoTrimStart?: number;
+  videoTrimEnd?: number;
+  pitchShift?: number;
+  tempoMultiplier?: number;
 };
 
 export type ProjectType =

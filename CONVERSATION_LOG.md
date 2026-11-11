@@ -1506,4 +1506,61 @@
 3. **Verificación y Deploy:**
    - `npm run build` ejecutado con éxito (código de salida 0) sin errores de tipado ni compilación.
 
+---
+
+### Turno 82 — Calibración de Partículas, Corrección de Contraste Tipográfico y Pantalla de Edición del Track (Pitch, Tempo, Key y Trimmer de Video)
+**Pedido del usuario (`juani`):**
+- *"esto esta re loco tambien las particulas se vuelven locas y fondo negro letras negras?? como es eso ? y el boton cine no hace nada, sacalo. los detalles de la key y el bpm dejalos como textito abajo a la derecha en el reproductor. la funcionalidad del boton del nombre del proyecto (el que te lleva al proyecto arriba) dejalo para tocar y entrar al menu de edicion del track (el menu que deberia abrir y no abre el boton de la key y el bpm, ese menu lo vamos a hacer ahora en '1:')"*
+- *"1: el menu de edicion del track: tiene que ser una pantalla que te permita cambiar el pitch, acortar la duracion del video desde adelante y atras como editar con cualquier software. editar la key guardada (por si esta mal) cambiar el tempo en tiempo real por ahora eso"* (adjuntando captura `image.png`).
+
+**Diagnóstico sobre `image.png`:**
+1. **Partículas desbordadas ("se vuelven locas"):**
+   - El multiplicador de desplazamiento `MAX_DISP` estaba en `1.28` con dispersión aleatoria desmedida (`burstStrength` hasta `2.1`), provocando que con cada golpe de 808 las partículas salieran disparadas fuera de la pantalla.
+2. **Fondo negro con letras negras:**
+   - Cuando el tema general estaba en modo claro (`stage-light`), la regla `.perf-player.stage-light .perf-title` forzaba color `#09090b` por precedencia de CSS, mientras que `.perf-cinema-backdrop` imponía un fondo negro `#000000` al detectar portada o canvas. Resultado: letras negras sobre fondo negro azabache.
+3. **Botón "Cine" redundante:**
+   - Ocupaba espacio innecesario en la barra superior.
+4. **BPM y Key en el topbar:**
+   - Estorbaban arriba y debían reubicarse como un detalle sutil y limpio abajo a la derecha.
+5. **Acceso al Menú de Edición del Track:**
+   - El botón superior con el nombre del proyecto ahora abre directamente el estudio de edición del track.
+
+**Implementación técnica:**
+1. **Calibración y armonía de partículas 3D (`src/components/PerformativePlayer.tsx`):**
+   - Reducido `MAX_DISP` de `1.28` a `0.34 * mobileScale`, con impulso de 808 calibrado a `eightOhEight^0.9`.
+   - Disminuida la fuerza del estallido elástico `burstStrength` a `0.22 + rand * 0.45` y la onda sinusoidal armónica `wave` a `0.016`.
+   - Velocidad de rotación y balanceo atenuada para una cadencia hipnótica, elegante y fluida que late al compás del sub-grave sin volar caóticamente.
+2. **Garantía absoluta de contraste tipográfico (`board-polish.css`, `PerformativePlayer.tsx`):**
+   - Aplicada regla estricta: si `has-cinema-canvas` o `stage-dark` están activos, el título `.perf-title` y el autor `.perf-kicker` son SIEMPRE blanco puro `#ffffff` con sombra profunda `0 4px 28px rgba(0,0,0,0.95)`.
+   - Agregada la pseudo-clase `:not(.has-cinema-canvas)` en las reglas de `stage-light` para evitar colisiones.
+   - En `stage-light` sin video activo, el fondo del reproductor es blanco marfil `#f6f6f4` y las letras tinta profunda `#09090b`.
+3. **Eliminación del botón "Cine":**
+   - Removido completamente de la barra de acciones superiores.
+4. **BPM & Key como textito sutil abajo a la derecha:**
+   - Añadido el componente `.perf-bottom-meta-badge` al dock inferior derecho junto a las utilidades de audio (`{bpm} BPM · {key} ✎`).
+   - Al tocarlo abre también el menú de edición del track.
+5. **Píldora del Proyecto como botón de Edición:**
+   - La píldora superior del proyecto (`perf-project-pill`) ahora abre el menú de edición del track con ícono `✎`.
+6. **Nueva Pantalla / Menú de Edición del Track (`src/components/TrackStudioEditModal.tsx`):**
+   - **Cambiar el Pitch en tiempo real:**
+     - Slider interactivo de `-12` a `+12` semitonos con presets rápidos (`-12st`, `-5st`, `-2st`, `-1st`, `0st (Original)`, `+1st`, `+2st`, `+5st`, `+12st`).
+     - Modifica el tono instantáneamente en vivo mediante `sfx.setPitchSemitones` con varispeed HTML5 Audio sin detener la reproducción.
+   - **Cambiar el Tempo en tiempo real:**
+     - Slider continuo de `0.65x` a `1.35x` con presets (`Slowed`, `Original`, `Speed Up`, `Nightcore`).
+     - Recalcula el BPM efectivo en tiempo real y ajusta `sfx.setTempoMultiplier` al vuelo.
+   - **Editar la Key guardada:**
+     - Matriz táctil con las 12 notas cromáticas (`C`, `C#`, `D`, `D#`, `E`, `F`, `F#`, `G`, `G#`, `A`, `A#`, `B`).
+     - Selector de modalidad `Menor (m)` / `Mayor (Maj)`.
+     - Campo de texto libre para ingresar modalidades personalizadas (ej. `F#m`, `Db Maj`, modos dóricos, etc.).
+   - **Acortar la duración del Video Canvas (In / Out Trimmer):**
+     - Reproductor de video integrado con loop forzado entre el punto de entrada (`trimStartSec`) y el punto de salida (`trimEndSec`).
+     - Scrubber interactivo estilo NLE (Premiere / Final Cut / CapCut) con barra de filmstrip, handles de inicio/fin, cabezal de aguja en vivo y display digital de timecodes (`In: 00:02.4s · Out: 00:10.2s · Loop: 7.8s`).
+     - Botones de acción rápida: `[ Fijar In actual`, `Fijar Out actual ]` y `↺ Resetear recorte`.
+     - Soporta subir nuevo video canvas (MP4 / WebM) si el proyecto no contaba con uno.
+   - **Persistencia completa:**
+     - Handler `handleSaveTrackAndClip` en `App.tsx` que actualiza el track, sus recortes de video, pitch y tempo en el estado local de `projects` y lo sincroniza con Supabase.
+7. **Verificación y Deploy:**
+   - `npm run build` ejecutado y aprobado con código de salida 0 en Turbopack.
+
+
 

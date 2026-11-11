@@ -4,8 +4,9 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
-import { type Project, type Track } from "@/lib/mock";
+import { type Project, type ProjectVideoClip, type Track } from "@/lib/mock";
 import { sfx } from "@/lib/sfx";
+import TrackStudioEditModal from "./TrackStudioEditModal";
 
 export type VisualMode = "boids" | "ferro";
 export type RepeatMode = "off" | "all" | "one";
@@ -135,8 +136,8 @@ function HighResFlowParticles({
       const ry = hy / len + (Math.random() - 0.5) * 1.35;
       const rz = hz / len + (Math.random() - 0.5) * 1.35;
       const rLen = Math.hypot(rx, ry, rz) || 1;
-      // Magnitud variable por partícula para que el estallido del 808 tenga profundidad volumétrica
-      const burstStrength = 0.45 + Math.pow(Math.random(), 0.7) * 1.65;
+      // Magnitud controlada por partícula para que el estallido del 808 sea armónico y elegante
+      const burstStrength = 0.22 + Math.pow(Math.random(), 0.7) * 0.45;
       scatter[ix] = (rx / rLen) * burstStrength;
       scatter[ix + 1] = (ry / rLen) * burstStrength;
       scatter[ix + 2] = (rz / rLen) * burstStrength;
@@ -161,30 +162,30 @@ function HighResFlowParticles({
   const targetRef = useRef(0);
 
   useFrame(({ clock, pointer, size }, dt) => {
-    // En celular el latido se atenúa (pantalla chica = todo se ve mucho más exagerado)
+    // En celular el latido se atenúa para mantener elegancia visual
     const mobileScale = size.width <= 720 ? 0.38 : 1;
     // Señal pura de 808 (< 90Hz filtrada por hardware low-pass + detector de golpe sub-grave)
     const { eightOhEight } = sfx.sampleReactiveLevels();
     const clampedDt = Math.min(0.033, dt);
     const t = clock.elapsedTime;
 
-    // Click del usuario: mini pulso manual
+    // Click del usuario: mini pulso manual suave
     if (impulseSignal !== lastImpulseRef.current) {
       lastImpulseRef.current = impulseSignal;
-      targetRef.current = Math.max(targetRef.current, 0.55 * mobileScale);
+      targetRef.current = Math.max(targetRef.current, 0.22 * mobileScale);
     }
 
-    // Alta sensibilidad exclusiva para los 808: salta fuerte en cada golpe y vuelve limpio al terminar
-    const MAX_DISP = 1.28 * mobileScale;
-    const hitTarget = Math.pow(eightOhEight, 0.82) * MAX_DISP;
+    // Respuesta musical calibrada a los 808: pulso controlado que no dispersa caóticamente
+    const MAX_DISP = 0.34 * mobileScale;
+    const hitTarget = Math.pow(eightOhEight, 0.9) * MAX_DISP;
     if (hitTarget > targetRef.current) targetRef.current = hitTarget;
     // Decay elástico entre golpes de 808
-    targetRef.current *= Math.exp(-clampedDt * 7.8);
+    targetRef.current *= Math.exp(-clampedDt * 9.5);
     if (targetRef.current < 0.002) targetRef.current = 0;
 
-    // Suavizado attack ultra rápido (golpe de 808) / retorno elástico limpio a su lugar original (0)
+    // Suavizado attack rápido / retorno elástico limpio
     const cur = dispRef.current;
-    const k = targetRef.current > cur ? 38 : 9.5;
+    const k = targetRef.current > cur ? 30 : 12;
     let next = cur + (targetRef.current - cur) * Math.min(1, clampedDt * k);
     if (targetRef.current === 0 && next < 0.003) next = 0;
     dispRef.current = next;
@@ -192,8 +193,8 @@ function HighResFlowParticles({
 
     const pulseDisp = dispRef.current;
     if (matRef.current) {
-      const baseSize = isDarkStage ? 0.026 : 0.034;
-      matRef.current.size = baseSize * (1 + pulseDisp * 0.48 * mobileScale);
+      const baseSize = isDarkStage ? 0.024 : 0.030;
+      matRef.current.size = baseSize * (1 + pulseDisp * 0.28 * mobileScale);
     }
 
     const geo = pointsRef.current.geometry;
@@ -201,7 +202,7 @@ function HighResFlowParticles({
     const arr = attr.array as Float32Array;
 
     // Movimiento orgánico armónico sin divergencias numéricas ni saltos aleatorios
-    const waveT = t * 0.65;
+    const waveT = t * 0.55;
     for (let i = 0; i < count; i++) {
       const ix = i * 3;
       const hx = homePositions[ix];
@@ -210,19 +211,19 @@ function HighResFlowParticles({
       const phi = phases[i];
 
       // Ondulación armónica sutil sobre la posición madre fija
-      const wave = Math.sin(waveT + phi) * 0.055;
+      const wave = Math.sin(waveT + phi) * 0.016;
 
-      // Posición = Posición madre + Ondulación + Expansión pura de 808 (cuando pulseDisp -> 0 vuelve exacto a su lugar)
+      // Posición = Posición madre + Ondulación + Expansión pura de 808
       arr[ix] = hx + scatterDirs[ix] * pulseDisp + wave * 0.5;
       arr[ix + 1] = hy + scatterDirs[ix + 1] * pulseDisp + wave;
       arr[ix + 2] = hz + scatterDirs[ix + 2] * pulseDisp + wave * 0.35;
     }
     attr.needsUpdate = true;
 
-    // Rotación suave continua y fluida de todo el enjambre 3D
-    pointsRef.current.rotation.y += clampedDt * 0.09;
-    pointsRef.current.rotation.x = Math.sin(t * 0.15) * 0.04 - pointer.y * 0.12;
-    pointsRef.current.rotation.z = pointer.x * 0.08;
+    // Rotación suave continua y fluida del enjambre 3D
+    pointsRef.current.rotation.y += clampedDt * 0.035;
+    pointsRef.current.rotation.x = Math.sin(t * 0.1) * 0.025 - pointer.y * 0.05;
+    pointsRef.current.rotation.z = pointer.x * 0.04;
   });
 
   return (
@@ -595,6 +596,7 @@ export default function PerformativePlayer({
   onClose,
   onJumpToProject,
   onOpenEditTrack,
+  onSaveTrack,
   theme,
   onToggleTheme,
 }: {
@@ -623,6 +625,7 @@ export default function PerformativePlayer({
   onClose: () => void;
   onJumpToProject: (projectId: string) => void;
   onOpenEditTrack: () => void;
+  onSaveTrack?: (updatedTrack: Track, updatedClip?: ProjectVideoClip) => void;
   theme?: "dark" | "light";
   onToggleTheme?: () => void;
 }) {
@@ -630,6 +633,11 @@ export default function PerformativePlayer({
   const [mode, setMode] = useState<VisualMode>("boids");
   const [snippetClean, setSnippetClean] = useState(false);
   const [darkStage, setDarkStage] = useState(theme ? theme === "dark" : true);
+  const [studioModalOpen, setStudioModalOpen] = useState(false);
+
+  useEffect(() => {
+    sfx.initTrackModifiers(track.pitchShift ?? 0, track.tempoMultiplier ?? 1.0);
+  }, [track.id, track.pitchShift, track.tempoMultiplier]);
 
   useEffect(() => {
     if (theme) {
@@ -748,7 +756,7 @@ export default function PerformativePlayer({
               />
             ) : (
               <video
-                key={activeCanvasClip.url}
+                key={`${activeCanvasClip.url}-${track.videoTrimStart}-${track.videoTrimEnd}`}
                 src={activeCanvasClip.url}
                 className="perf-cinema-media"
                 autoPlay
@@ -757,7 +765,18 @@ export default function PerformativePlayer({
                 playsInline
                 disablePictureInPicture
                 onLoadedMetadata={(e) => {
+                  const tStart = track.videoTrimStart ?? activeCanvasClip?.trimStartSec ?? 0;
+                  if (tStart > 0) e.currentTarget.currentTime = tStart;
                   e.currentTarget.play().catch(() => {});
+                }}
+                onTimeUpdate={(e) => {
+                  const tStart = track.videoTrimStart ?? activeCanvasClip?.trimStartSec ?? 0;
+                  const tEnd = track.videoTrimEnd ?? activeCanvasClip?.trimEndSec;
+                  if (tEnd && tEnd > tStart && e.currentTarget.currentTime >= tEnd) {
+                    e.currentTarget.currentTime = tStart;
+                  } else if (e.currentTarget.currentTime < tStart) {
+                    e.currentTarget.currentTime = tStart;
+                  }
                 }}
               />
             )
@@ -837,48 +856,17 @@ export default function PerformativePlayer({
             className="mono-badge clickable-badge perf-project-pill"
             onMouseEnter={() => sfx.hover()}
             onClick={() => {
-              sfx.nav();
-              onJumpToProject(liveProject.id);
+              sfx.open();
+              setStudioModalOpen(true);
             }}
-            title={`Abrir proyecto ${liveProject.title}`}
+            title={`Editar track y proyecto: ${liveProject.title}`}
           >
             <span className="perf-project-pill-text">{liveProject.title}</span>
-            <span className="perf-project-pill-arrow" aria-hidden>↗</span>
+            <span className="perf-project-pill-arrow" aria-hidden>✎</span>
           </button>
-
-          {!isStandby && (
-          <button
-            type="button"
-            className="mono-badge clickable-badge perf-edit-track-badge"
-            onMouseEnter={() => sfx.hover()}
-            onClick={() => {
-              sfx.open();
-              onOpenEditTrack();
-            }}
-            title="Editar metadata del track"
-          >
-            <span>{track.bpm} BPM · {track.key} · Editar</span>
-          </button>
-          )}
         </div>
 
         <div className="perf-top-actions">
-          <button
-            type="button"
-            className={`pill-control perf-action-pill ${cinemaMode ? "active" : ""}`}
-            onMouseEnter={() => sfx.hover()}
-            onClick={() => {
-              sfx.tap();
-              setCinemaMode((c) => !c);
-            }}
-            title="Integrar Canvas del proyecto de fondo con las partículas en Modo Cine"
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <rect x="2" y="4" width="20" height="16" rx="3" />
-              <path d="M2 8h20M7 4v4M12 4v4M17 4v4" />
-            </svg>
-            <span>Cine</span>
-          </button>
           <button
             type="button"
             className={`pill-control perf-action-pill perf-theme-pill ${darkStage ? "active" : ""}`}
@@ -937,9 +925,27 @@ export default function PerformativePlayer({
           {!activeCoverUrl && <span>{track.glyph}</span>}
           <small>{liveProject.type}</small>
         </div>
-        <h1 className="perf-title">{track.title}</h1>
+        <h1
+          className="perf-title"
+          style={{
+            color: isDarkStage || isCinemaActive ? "#ffffff" : "#09090b",
+            textShadow:
+              isDarkStage || isCinemaActive
+                ? "0 4px 28px rgba(0, 0, 0, 0.9), 0 2px 8px rgba(0, 0, 0, 0.95)"
+                : "none",
+          }}
+        >
+          {track.title}
+        </h1>
         {!isStandby && (
-          <p className="perf-kicker">
+          <p
+            className="perf-kicker"
+            style={{
+              color: isDarkStage || isCinemaActive ? "rgba(255, 255, 255, 0.92)" : "#3f3f46",
+              textShadow:
+                isDarkStage || isCinemaActive ? "0 2px 14px rgba(0, 0, 0, 0.85)" : "none",
+            }}
+          >
             {track.artist} {track.feat ? `feat. ${track.feat}` : ""} — prod.{" "}
             {track.prod || track.artist}
           </p>
@@ -1346,8 +1352,22 @@ export default function PerformativePlayer({
               </div>
             </div>
 
-            {/* DERECHA: Visual Engine + Notas/Lyrics + Cola (Queue) + Volumen con Slider (Iconos SVG) */}
+            {/* DERECHA: BPM & Key textito + Visual Engine + Notas/Lyrics + Cola (Queue) + Volumen con Slider */}
             <div className="spotify-right-utilities">
+              <button
+                type="button"
+                className="perf-bottom-meta-badge"
+                onClick={() => {
+                  sfx.open();
+                  setStudioModalOpen(true);
+                }}
+                title="Editar pitch, tempo, key y video del track"
+              >
+                <span className="perf-bottom-meta-dot" />
+                <span className="perf-bottom-meta-text">{track.bpm} BPM · {track.key}</span>
+                <span className="perf-bottom-meta-pencil" aria-hidden>✎</span>
+              </button>
+
               <select
                 id="visual-engine-select"
                 className="apple-select compact-select"
@@ -1440,6 +1460,20 @@ export default function PerformativePlayer({
             </div>
           </div>
         </footer>
+      )}
+
+      {/* STUDIO // MENÚ DE EDICIÓN DEL TRACK (PITCH, TEMPO, KEY, VIDEO TRIMMER) */}
+      {studioModalOpen && (
+        <TrackStudioEditModal
+          track={track}
+          project={liveProject}
+          activeCanvasClip={activeCanvasClip}
+          onClose={() => setStudioModalOpen(false)}
+          onSaveTrack={(updatedTrack, updatedClip) => {
+            onSaveTrack?.(updatedTrack, updatedClip);
+            setStudioModalOpen(false);
+          }}
+        />
       )}
     </div>
   );

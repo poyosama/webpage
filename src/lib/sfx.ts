@@ -47,6 +47,34 @@ let virtualDurationSec = 174;
 let virtualPlaying = false;
 let lastProgressTick = 0;
 let playbackRate = 1.0;
+let currentPitchSemitones = 0;
+let currentTempoMultiplier = 1.0;
+
+function applyAudioPlaybackRateAndPitch() {
+  const pitchRatio = Math.pow(2, currentPitchSemitones / 12);
+  const totalRate = Math.max(0.3, Math.min(2.5, currentTempoMultiplier * pitchRatio));
+  playbackRate = currentTempoMultiplier;
+
+  if (currentAudioEl) {
+    if (Math.abs(currentPitchSemitones) > 0.05) {
+      // Varispeed pitch shift en tiempo real
+      try {
+        (currentAudioEl as unknown as { preservesPitch?: boolean }).preservesPitch = false;
+        (currentAudioEl as unknown as { mozPreservesPitch?: boolean }).mozPreservesPitch = false;
+        (currentAudioEl as unknown as { webkitPreservesPitch?: boolean }).webkitPreservesPitch = false;
+      } catch {}
+      currentAudioEl.playbackRate = totalRate;
+    } else {
+      // Solo cambio de tempo sin alterar el pitch
+      try {
+        (currentAudioEl as unknown as { preservesPitch?: boolean }).preservesPitch = true;
+        (currentAudioEl as unknown as { mozPreservesPitch?: boolean }).mozPreservesPitch = true;
+        (currentAudioEl as unknown as { webkitPreservesPitch?: boolean }).webkitPreservesPitch = true;
+      } catch {}
+      currentAudioEl.playbackRate = Math.max(0.5, Math.min(2.0, currentTempoMultiplier));
+    }
+  }
+}
 
 function ac(): AudioContext | null {
   if (typeof window === "undefined") return null;
@@ -238,13 +266,31 @@ export const sfx = {
     return muted ? 0 : volume;
   },
   setPlaybackRate(rate: number) {
-    playbackRate = Math.max(0.5, Math.min(1.5, rate));
-    if (currentAudioEl) {
-      currentAudioEl.playbackRate = playbackRate;
-    }
+    this.setTempoMultiplier(rate);
   },
   getPlaybackRate() {
-    return playbackRate;
+    return currentTempoMultiplier;
+  },
+  setPitchSemitones(semitones: number) {
+    currentPitchSemitones = Math.max(-12, Math.min(12, semitones));
+    applyAudioPlaybackRateAndPitch();
+    return currentPitchSemitones;
+  },
+  getPitchSemitones() {
+    return currentPitchSemitones;
+  },
+  setTempoMultiplier(multiplier: number) {
+    currentTempoMultiplier = Math.max(0.5, Math.min(2.0, multiplier));
+    applyAudioPlaybackRateAndPitch();
+    return currentTempoMultiplier;
+  },
+  getTempoMultiplier() {
+    return currentTempoMultiplier;
+  },
+  initTrackModifiers(pitchShift = 0, tempoMultiplier = 1.0) {
+    currentPitchSemitones = Math.max(-12, Math.min(12, pitchShift));
+    currentTempoMultiplier = Math.max(0.5, Math.min(2.0, tempoMultiplier));
+    applyAudioPlaybackRateAndPitch();
   },
   seek(sec: number) {
     const clamped = Math.max(0, Math.min(virtualDurationSec, sec));
@@ -348,7 +394,7 @@ export const sfx = {
         currentAudioEl.loop = false;
         currentAudioEl.muted = muted;
         currentAudioEl.volume = volume;
-        currentAudioEl.playbackRate = playbackRate;
+        applyAudioPlaybackRateAndPitch();
         if (resetTime || currentAudioEl.ended) {
           currentAudioEl.currentTime = 0;
         } else if (virtualCurrentSec > 0 && !Number.isNaN(virtualCurrentSec)) {
@@ -367,7 +413,7 @@ export const sfx = {
         currentAudioEl.loop = false;
         currentAudioEl.muted = muted;
         currentAudioEl.volume = volume;
-        currentAudioEl.playbackRate = playbackRate;
+        applyAudioPlaybackRateAndPitch();
         if (virtualCurrentSec > 0 && !resetTime) {
           currentAudioEl.currentTime = virtualCurrentSec;
         }

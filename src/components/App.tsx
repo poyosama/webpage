@@ -1356,6 +1356,34 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     sfx.drop();
   };
 
+  const handleSaveTrackAndClip = (updatedTrack: Track, updatedClip?: ProjectVideoClip) => {
+    setProjects((prev) =>
+      prev.map((p) => {
+        const hasTrack = p.tracks.some((t) => t.id === updatedTrack.id);
+        if (!hasTrack) return p;
+        const nextTracks = p.tracks.map((t) => (t.id === updatedTrack.id ? updatedTrack : t));
+        let nextVideos = p.videos;
+        if (updatedClip) {
+          if (p.videos && p.videos.some((v) => v.url === updatedClip.url)) {
+            nextVideos = p.videos.map((v) => (v.url === updatedClip.url ? updatedClip : v));
+          } else {
+            nextVideos = [updatedClip, ...(p.videos || [])];
+          }
+        }
+        const nextProj = { ...p, tracks: nextTracks, videos: nextVideos };
+        if (currentProject.id === p.id) setCurrentProject(nextProj);
+        if (googleConnected) {
+          saveProjectToSupabase(nextProj).catch(() => {});
+        }
+        return nextProj;
+      })
+    );
+    if (currentTrack.id === updatedTrack.id) {
+      setCurrentTrack(updatedTrack);
+      sfx.initTrackModifiers(updatedTrack.pitchShift ?? 0, updatedTrack.tempoMultiplier ?? 1.0);
+    }
+  };
+
   const handleUploadProjectTrack = async (projectId: string, file: File) => {
     setUploadingTrackProjectId(projectId);
     try {
@@ -4367,6 +4395,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                   setTab("biblioteca");
                 }}
                 onOpenEditTrack={() => setEditingTrack(currentTrack)}
+                onSaveTrack={handleSaveTrackAndClip}
                 theme={theme}
                 onToggleTheme={toggleTheme}
               />
