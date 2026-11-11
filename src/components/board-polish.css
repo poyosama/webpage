@@ -1449,7 +1449,7 @@ body.app-no-scroll .profile-page {
   /* 1. Barra superior sin los 54px muertos en navegadores móviles */
   .apple-shell {
     padding-top: calc(env(safe-area-inset-top, 0px) + 100px) !important;
-    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 96px) !important;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 64px) !important;
     padding-left: 10px !important;
     padding-right: 10px !important;
   }
@@ -1472,14 +1472,24 @@ body.app-no-scroll .profile-page {
     font-size: 0.75rem !important;
   }
 
-  /* 2. Dynamic Island Mini-Player en celular: ocultar slider de volumen (se usa botón físico) para darle 2x espacio al título y controles */
+  /* 2. Dynamic Island Mini-Player en celular: pegado a la barrita inferior sin padding bottom excesivo */
   .ios-mini-player-dock {
+    position: fixed !important;
+    bottom: max(6px, calc(env(safe-area-inset-bottom, 0px) * 0.45 + 3px)) !important;
+    left: 0 !important;
+    right: 0 !important;
+    padding: 0 8px !important;
     z-index: 160 !important;
+    display: flex !important;
+    justify-content: center !important;
+    pointer-events: none !important;
   }
 
   .ios-mini-player {
     width: calc(100vw - 16px) !important;
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 8px) !important;
+    max-width: 440px !important;
+    bottom: 0 !important;
+    margin: 0 auto !important;
     padding: 7px 12px !important;
     border-radius: 999px !important;
     grid-template-columns: minmax(0, 1fr) auto !important;

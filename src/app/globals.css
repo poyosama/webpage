@@ -4522,7 +4522,7 @@ button {
   }
 
   .ios-mini-player-dock {
-    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    bottom: max(6px, calc(env(safe-area-inset-bottom, 0px) * 0.45 + 3px));
   }
 }
 

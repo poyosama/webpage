@@ -1362,6 +1362,24 @@
    - El tamaño de partícula se expande sutilmente durante el salto para un efecto de micro-gotas volumétricas.
 4. **Interacción por click y contraste de color adaptable:**
    - Al tocar o hacer click en cualquier parte de la pantalla, se dispara un pulso de salto manual con sonido haptic (`sfx.tap()`).
-   - En modo oscuro (`isDarkStage`), las partículas lucen como destellos de luz plateados, blancos y cian iridiscente sobre el metal líquido oscuro.
-   - En modo claro (`!isDarkStage`), se adaptan a perlas de tinta oscura profunda (`#09090b` / `#18181b` / `#27272a`) de alto contraste sobre el fondo marfil.
+---
+
+### Turno 76 — Mini-Player Pegado a la Barrita Inferior en iPhone (Eliminación de Doble Safe-Area y Padding Muerto)
+**Pedido del usuario (`juani`):**
+- *"aca que el reproductor abajo se vea pegado a la barrita inferior no con un padding bottom"* (adjuntando captura `IMG_3908.png` en iPhone).
+
+**Diagnóstico sobre `IMG_3908.png`:**
+- En celular iOS, `.ios-mini-player-dock` tenía `bottom: calc(14px + env(safe-area-inset-bottom, 0px))` y dentro de él `.ios-mini-player` (con `position: relative`) tenía `bottom: calc(env(safe-area-inset-bottom, 0px) + 8px) !important;`.
+- El inset inferior de área segura (`safe-area-inset-bottom` ~34px) se estaba sumando **dos veces** consecutivas, más 22px de márgenes fijos.
+- Esto empujaba la píldora flotante del reproductor unos 90px hacia arriba (150px reales en la pantalla Retina del iPhone), dejándola flotando en medio de la pantalla con un hueco blanco gigante antes de la barrita negra inferior de inicio de iOS ("Home Indicator").
+
+**Implementación (`board-polish.css`, `globals.css`):**
+1. **Erradicación del doble offset de Safe-Area (`board-polish.css`):**
+   - Retirado el desplazamiento relativo de `.ios-mini-player`: ahora tiene `bottom: 0 !important; margin: 0 auto !important; max-width: 440px !important;`.
+2. **Anclaje ceñido a la barrita inferior (`board-polish.css`, `globals.css`):**
+   - `.ios-mini-player-dock` configurado en mobile a `bottom: max(6px, calc(env(safe-area-inset-bottom, 0px) * 0.45 + 3px)) !important;`.
+   - La píldora del reproductor queda ahora **pegada a la barrita inferior** (apenas 3 a 5px por encima del Home Indicator), luciendo compacta, nativa y perfectamente integrada a la interfaz de iOS.
+3. **Optimización de padding inferior del contenido:**
+   - Reducido el padding inferior de `.apple-shell` en mobile a `calc(env(safe-area-inset-bottom, 0px) + 64px)` para no dejar un espacio muerto gigante al scrollear hasta el final de `Inicio`.
+
 
