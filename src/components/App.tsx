@@ -276,6 +276,19 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   const [projectMenuOpen, setProjectMenuOpen] = useState<boolean>(false);
   const [mobileTrackMenuId, setMobileTrackMenuId] = useState<string | null>(null);
 
+  // Edición rápida / inline del título del proyecto directamente desde la vista del proyecto
+  const [editingTitleProjectId, setEditingTitleProjectId] = useState<string | null>(null);
+  const [inlineTitleValue, setInlineTitleValue] = useState<string>("");
+
+  const handleSaveInlineTitle = (projectId: string, newTitle: string) => {
+    const clean = newTitle.trim();
+    if (clean) {
+      updateProjectMeta(projectId, { title: clean });
+      sfx.drop();
+    }
+    setEditingTitleProjectId(null);
+  };
+
   const formatProjectTotalDuration = (tracksList: Track[]): string => {
     const totalSec = tracksList.reduce((acc, tr) => {
       if (typeof tr.durationSec === "number" && tr.durationSec > 0) {
@@ -2716,6 +2729,21 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                           <div className="untitled-mobile-menu-sheet">
                             {canEditActive && (
                               <>
+                                <button
+                                  type="button"
+                                  className="untitled-menu-item"
+                                  onClick={() => {
+                                    setProjectMenuOpen(false);
+                                    setEditingTitleProjectId(activeProject.id);
+                                    setInlineTitleValue(activeProject.title);
+                                  }}
+                                >
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M12 20h9" />
+                                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                                  </svg>
+                                  <span>Cambiar nombre</span>
+                                </button>
                                 <label className="untitled-menu-item">
                                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <line x1="12" y1="5" x2="12" y2="19" />
@@ -2947,7 +2975,78 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                       {/* Fila de Título + Subtítulo + Botón Play Blanco Squircle */}
                       <div className="untitled-mobile-title-row">
                         <div className="untitled-mobile-title-copy">
-                          <h1 className="untitled-mobile-title">{activeProject.title}</h1>
+                          {editingTitleProjectId === activeProject.id ? (
+                            <form
+                              className="inline-project-title-form mobile"
+                              onSubmit={(e) => {
+                                e.preventDefault();
+                                handleSaveInlineTitle(activeProject.id, inlineTitleValue);
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <input
+                                type="text"
+                                className="inline-project-title-input mobile"
+                                value={inlineTitleValue}
+                                autoFocus
+                                onFocus={(e) => e.target.select()}
+                                onChange={(e) => setInlineTitleValue(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Escape") setEditingTitleProjectId(null);
+                                }}
+                                onBlur={() => handleSaveInlineTitle(activeProject.id, inlineTitleValue)}
+                                placeholder="Nombre del proyecto..."
+                                maxLength={80}
+                              />
+                              <div className="inline-title-btn-group">
+                                <button
+                                  type="submit"
+                                  className="inline-title-confirm-btn"
+                                  title="Guardar nombre"
+                                  onMouseDown={(e) => e.preventDefault()}
+                                >
+                                  ✓
+                                </button>
+                                <button
+                                  type="button"
+                                  className="inline-title-cancel-btn"
+                                  onClick={() => setEditingTitleProjectId(null)}
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            </form>
+                          ) : (
+                            <div
+                              className={`untitled-mobile-title-wrap ${canEditActive ? "is-editable" : ""}`}
+                              onClick={() => {
+                                if (canEditActive) {
+                                  setEditingTitleProjectId(activeProject.id);
+                                  setInlineTitleValue(activeProject.title);
+                                }
+                              }}
+                              title={canEditActive ? "Tocá para cambiar el nombre del proyecto" : undefined}
+                            >
+                              <h1 className="untitled-mobile-title">{activeProject.title}</h1>
+                              {canEditActive && (
+                                <button
+                                  type="button"
+                                  className="inline-title-edit-trigger"
+                                  aria-label="Cambiar nombre del proyecto"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingTitleProjectId(activeProject.id);
+                                    setInlineTitleValue(activeProject.title);
+                                  }}
+                                >
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M12 20h9" />
+                                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                                  </svg>
+                                </button>
+                              )}
+                            </div>
+                          )}
                           <p className="untitled-mobile-subtitle">
                             {activeProject.artist} · {activeProject.tracks.length}{" "}
                             {activeProject.tracks.length === 1 ? "track" : "tracks"} ·{" "}
@@ -3422,17 +3521,25 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                                       onClick={() => setProjectMenuOpen(false)}
                                     />
                                     <div
-                                      className="untitled-mobile-menu-sheet"
-                                      style={{
-                                        position: "absolute",
-                                        top: 42,
-                                        right: 0,
-                                        width: 240,
-                                        zIndex: 150,
-                                      }}
+                                      className="untitled-mobile-menu-sheet desktop-popover-menu"
                                     >
                                       {canEditActive && (
                                         <>
+                                          <button
+                                            type="button"
+                                            className="untitled-menu-item"
+                                            onClick={() => {
+                                              setProjectMenuOpen(false);
+                                              setEditingTitleProjectId(activeProject.id);
+                                              setInlineTitleValue(activeProject.title);
+                                            }}
+                                          >
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                              <path d="M12 20h9" />
+                                              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                                            </svg>
+                                            <span>Cambiar nombre</span>
+                                          </button>
                                           <button
                                             type="button"
                                             className="untitled-menu-item"
@@ -3567,8 +3674,81 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                             </div>
 
                             <div className="inspector-title-row">
-                              <div>
-                                <h2 className="inspector-project-title">{activeProject.title}</h2>
+                              <div className="inspector-title-col">
+                                {editingTitleProjectId === activeProject.id ? (
+                                  <form
+                                    className="inline-project-title-form"
+                                    onSubmit={(e) => {
+                                      e.preventDefault();
+                                      handleSaveInlineTitle(activeProject.id, inlineTitleValue);
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <input
+                                      type="text"
+                                      className="inline-project-title-input"
+                                      value={inlineTitleValue}
+                                      autoFocus
+                                      onFocus={(e) => e.target.select()}
+                                      onChange={(e) => setInlineTitleValue(e.target.value)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Escape") setEditingTitleProjectId(null);
+                                      }}
+                                      onBlur={() => handleSaveInlineTitle(activeProject.id, inlineTitleValue)}
+                                      placeholder="Nombre del proyecto..."
+                                      maxLength={80}
+                                    />
+                                    <div className="inline-title-btn-group">
+                                      <button
+                                        type="submit"
+                                        className="inline-title-confirm-btn"
+                                        title="Guardar nombre (Enter)"
+                                        onMouseDown={(e) => e.preventDefault()}
+                                      >
+                                        ✓
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="inline-title-cancel-btn"
+                                        onClick={() => setEditingTitleProjectId(null)}
+                                        title="Cancelar (Esc)"
+                                      >
+                                        ✕
+                                      </button>
+                                    </div>
+                                  </form>
+                                ) : (
+                                  <div
+                                    className={`inspector-project-title-wrap ${canEditActive ? "is-editable" : ""}`}
+                                    onClick={() => {
+                                      if (canEditActive) {
+                                        setEditingTitleProjectId(activeProject.id);
+                                        setInlineTitleValue(activeProject.title);
+                                      }
+                                    }}
+                                    title={canEditActive ? "Hacé click para cambiar el nombre del proyecto" : undefined}
+                                  >
+                                    <h2 className="inspector-project-title">{activeProject.title}</h2>
+                                    {canEditActive && (
+                                      <button
+                                        type="button"
+                                        className="inline-title-edit-trigger"
+                                        aria-label="Cambiar nombre del proyecto"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setEditingTitleProjectId(activeProject.id);
+                                          setInlineTitleValue(activeProject.title);
+                                        }}
+                                        title="Cambiar nombre"
+                                      >
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                          <path d="M12 20h9" />
+                                          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                                        </svg>
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
                                 <span className="inspector-project-artist">
                                   {activeProject.artist}
                                   {activeProject.description ? ` · ${activeProject.description}` : ""}

@@ -1476,3 +1476,34 @@
 6. **Verificación:**
    - `npm run build` ejecutado y validado con éxito (código de salida 0) en Next.js Turbopack.
 
+---
+
+### Turno 81 — Corrección de Menú Desplegable de Proyecto y Edición Inline de Nombre de Proyecto ("modificandolo de ahi nomas")
+**Pedido del usuario (`juani`):**
+- *"mira ese desplegable esta re cogido, dejame cambiar el nombre del proyecto modificandolo de ahi nomas"* (adjuntando captura `image.png` en PC de escritorio).
+
+**Diagnóstico sobre `image.png`:**
+1. **Menú desplegable colapsado y transparente en desktop:**
+   - La hoja desplegable `.untitled-mobile-menu-sheet` y sus elementos `.untitled-menu-item` estaban envueltos exclusivamente en `@media (max-width: 720px)`.
+   - En pantallas de escritorio, el menú carecía de reglas de fondo, borde, sombra y display flex, lo que provocaba que todos los botones (`Editar detalles`, `Cambiar portada`, `Cambiar Canvas`, `Eliminar proyecto`) se mostraran como texto inline continuo y 100% transparente sobre el botón negro `▶ Reproducir`.
+2. **Falta de edición rápida del título del proyecto in-situ:**
+   - Para cambiar el nombre del proyecto, el usuario estaba obligado a abrir el modal completo de edición en lugar de poder tipearlo directamente en el encabezado.
+
+**Implementación (`src/components/App.tsx`, `src/components/board-polish.css`):**
+1. **Menú Desplegable Universal Apple Liquid Glass (`board-polish.css`, `App.tsx`):**
+   - Extraída la definición de `.untitled-mobile-menu-sheet`, `.untitled-menu-item`, `.untitled-menu-divider` y `.apple-popover-backdrop` a nivel raíz para que aplique con la misma elegancia tanto en desktop como en mobile.
+   - En Dark Mode: fondo `rgba(24, 24, 28, 0.96)`, `backdrop-filter: blur(28px) saturate(190%)`, borde sutil y sombra con radio de 20px.
+   - En Light Mode: fondo blanco lechoso de alto contraste `rgba(255, 255, 255, 0.96)`.
+   - Formato en columna vertical con espaciado limpio, íconos alineados a la izquierda y transiciones suaves en hover/active.
+   - Posicionado de forma no invasiva debajo del botón `...` (`desktop-popover-menu`), garantizando que jamás se mezcle con el botón de reproducción.
+2. **Edición Inline del Nombre de Proyecto ("modificandolo de ahi nomas"):**
+   - Agregado estado `editingTitleProjectId` e `inlineTitleValue` con guardado automático reactivo vía `updateProjectMeta`.
+   - Tanto en Desktop (`inspector-title-row`) como en Celular (`untitled-mobile-title-row`), el título ahora es interactivo:
+     - Al hacer click directamente sobre el título o en el ícono de lápiz `✎`, se transforma en un campo de texto editable en el mismo lugar (`inline-project-title-input`).
+     - Al presionar `Enter` o hacer click afuera (`onBlur`), se guarda el nuevo nombre al instante y se sincroniza en el estado y en la nube con sonido táctil háptico.
+     - Presionar `Escape` o el botón `✕` cancela la edición sin alterar el título anterior.
+   - Añadida además la opción `✎ Cambiar nombre` como primer ítem en el menú desplegable (`...`) para acceso rápido.
+3. **Verificación y Deploy:**
+   - `npm run build` ejecutado con éxito (código de salida 0) sin errores de tipado ni compilación.
+
+
