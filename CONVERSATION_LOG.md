@@ -1435,3 +1435,14 @@
 3. **Verificación de build:**
    - `npm run build` ejecutado y validado con éxito (código de salida 0) en Next.js 16.4.5 Turbopack.
 
+---
+
+### Turno 79 — Consulta sobre Cambio de Idioma en la App Antigravity sin Ctrl+Shift+P
+**Pedido del usuario (`juani`):**
+- *"como le cambio el idioma a la app de anti gravity sin el ctrl shift p"*
+
+**Respuesta y Guía:**
+- Se le brindaron las alternativas para cambiar el idioma sin usar el atajo de teclado:
+  1. **Vía Menú Superior (Mouse directo):** Clic arriba en `View` (Ver) -> `Command Palette...` (abre la misma paleta con el mouse) -> tipear `Configure Display Language` y elegir Español.
+  2. **Vía Panel de Extensiones (Método más visual y cómodo):** Clic en el ícono de los 4 cuadraditos de la barra lateral izquierda (`Extensions`), buscar `Spanish Language Pack for Visual Studio Code`, darle a `Install`, y cuando finalice cliquear el cartel que salta abajo a la derecha: `Change Language and Restart`.
+  3. **Vía Engranaje de Ajustes:** Clic en el ícono de engranaje ⚙️ abajo a la izquierda -> `Settings` -> buscar `locale`.
