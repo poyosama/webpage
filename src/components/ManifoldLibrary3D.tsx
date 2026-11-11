@@ -1212,7 +1212,35 @@ export default function ManifoldLibrary3D({
                     }
                   }}
                 >
-                  <h2 className="vinyl-active-title">{activeProject.title}</h2>
+                  <div className="vinyl-right-info-stack">
+                    <span className="vinyl-right-meta-pill">
+                      {activeProject.type.toUpperCase()} · {activeProject.tracks.length}{" "}
+                      {activeProject.tracks.length === 1 ? "TRACK" : "TRACKS"}
+                    </span>
+                    <h2 className="vinyl-active-title">{activeProject.title}</h2>
+                    {activeProject.artist && (
+                      <p className="vinyl-right-artist-name">{activeProject.artist}</p>
+                    )}
+                    <div className="vinyl-right-action-row">
+                      <span className="vinyl-right-enter-chip">
+                        Abrir proyecto
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.4"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden
+                        >
+                          <line x1="5" y1="12" x2="19" y2="12"></line>
+                          <polyline points="12 5 19 12 12 19"></polyline>
+                        </svg>
+                      </span>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

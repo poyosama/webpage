@@ -1424,13 +1424,30 @@ body.mobile-vinyl-wheel-locked .vinyl-fan-arc-viewport {
   max-height: 100% !important;
   touch-action: none !important;
   display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  justify-content: center !important;
   position: relative !important;
-  padding: 0 !important;
-  gap: 16px !important;
   overflow: hidden !important;
+}
+
+@media (max-width: 720px) {
+  body.app-no-scroll .vinyl-fan-arc-viewport,
+  body.mobile-vinyl-wheel-locked .vinyl-fan-arc-viewport {
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    gap: 14px !important;
+  }
+}
+
+@media (min-width: 721px) {
+  body.app-no-scroll .vinyl-fan-arc-viewport,
+  body.mobile-vinyl-wheel-locked .vinyl-fan-arc-viewport {
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    padding: 0 clamp(40px, 6vw, 100px) 0 clamp(60px, 8vw, 130px) !important;
+    gap: clamp(40px, 6vw, 90px) !important;
+  }
 }
 
 body.app-no-scroll .dmg-section,
@@ -2910,57 +2927,173 @@ body.app-no-scroll .profile-page {
   }
 }
 
-/* ==================== MODO VINILOS: SOLO SPIN + TÍTULO ABAJO DE LA TAPA ==================== */
+/* ==================== MODO VINILOS: DISCO A LA IZQUIERDA Y SHOWCASE/NOMBRE A LA DERECHA ==================== */
 .vinyl-fan-sleeve-body .vinyl-fan-corner-badge,
 .vinyl-fan-sleeve-body .vinyl-fan-spine-text {
   display: none !important;
 }
 
-:root[data-theme="dark"] .vinyl-fan-inspector-card.vinyl-fan-clean-title-card,
-:root[data-theme="light"] .vinyl-fan-inspector-card.vinyl-fan-clean-title-card,
+/* Base de la tarjeta de información a la derecha */
 .vinyl-fan-inspector-card.vinyl-fan-clean-title-card {
-  position: relative !important;
-  top: auto !important;
-  bottom: auto !important;
-  left: auto !important;
-  right: auto !important;
-  margin: 0 auto !important;
   background: transparent !important;
   background-color: transparent !important;
   border: none !important;
   box-shadow: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  padding: 8px 18px !important;
-  text-align: center !important;
   cursor: pointer !important;
   z-index: 50 !important;
-  max-width: 90vw !important;
   pointer-events: auto !important;
-  display: flex !important;
+}
+
+/* En PC y Tablet (> 720px): Rueda de vinilos fijada a la izquierda, Showcase del proyecto a la derecha */
+@media (min-width: 721px) {
+  .vinyl-fan-arc-wheel {
+    position: relative !important;
+    flex: 0 0 clamp(380px, 44vw, 540px) !important;
+    width: clamp(380px, 44vw, 540px) !important;
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    pointer-events: auto !important;
+  }
+
+  .vinyl-fan-sleeve-card {
+    position: absolute !important;
+    top: 50% !important;
+    left: clamp(20px, 3.5vw, 60px) !important;
+    margin-top: -95px !important;
+    margin-left: 0 !important;
+    width: 300px !important;
+    height: 190px !important;
+    transform-origin: -180px 50% !important;
+  }
+
+  :root[data-theme="dark"] .vinyl-fan-inspector-card.vinyl-fan-clean-title-card,
+  :root[data-theme="light"] .vinyl-fan-inspector-card.vinyl-fan-clean-title-card,
+  .vinyl-fan-inspector-card.vinyl-fan-clean-title-card {
+    position: relative !important;
+    flex: 1 1 auto !important;
+    max-width: min(600px, 48vw) !important;
+    top: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    right: auto !important;
+    margin: 0 !important;
+    padding: 12px 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    text-align: left !important;
+  }
+
+  .vinyl-right-info-stack {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    text-align: left !important;
+    gap: 10px !important;
+    width: 100% !important;
+  }
+
+  .vinyl-fan-clean-title-card .vinyl-active-title {
+    font-size: clamp(2.2rem, 4.4vw, 3.8rem) !important;
+    text-align: left !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+  }
+
+  .vinyl-right-action-row {
+    display: flex !important;
+    align-items: center !important;
+    margin-top: 12px !important;
+  }
+}
+
+/* En Celular (<= 720px): Rueda centrada arriba y título centrado abajo */
+@media (max-width: 720px) {
+  :root[data-theme="dark"] .vinyl-fan-inspector-card.vinyl-fan-clean-title-card,
+  :root[data-theme="light"] .vinyl-fan-inspector-card.vinyl-fan-clean-title-card,
+  .vinyl-fan-inspector-card.vinyl-fan-clean-title-card {
+    position: relative !important;
+    top: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    right: auto !important;
+    margin: 0 auto !important;
+    padding: 6px 14px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    max-width: 92vw !important;
+  }
+
+  .vinyl-right-info-stack {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+    gap: 6px !important;
+  }
+
+  .vinyl-fan-clean-title-card .vinyl-active-title {
+    font-size: clamp(1.4rem, 5.2vw, 2.2rem) !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .vinyl-right-action-row {
+    margin-top: 4px !important;
+  }
+}
+
+/* Tipografía y estilos de la tarjeta del proyecto */
+.vinyl-right-meta-pill {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif !important;
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+  display: inline-flex !important;
   align-items: center !important;
-  justify-content: center !important;
+  gap: 6px !important;
+  padding: 4px 10px !important;
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  color: rgba(255, 255, 255, 0.72) !important;
+}
+
+:root[data-theme="light"] .vinyl-right-meta-pill,
+[data-theme="light"] .vinyl-right-meta-pill {
+  background: rgba(0, 0, 0, 0.05) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  color: rgba(9, 9, 11, 0.65) !important;
 }
 
 .vinyl-fan-clean-title-card .vinyl-active-title {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif !important;
-  font-size: clamp(1.4rem, 5.2vw, 2.4rem) !important;
-  font-weight: 800 !important;
-  letter-spacing: -0.035em !important;
-  line-height: 1.12 !important;
-  color: var(--ink, #09090b) !important;
+  font-weight: 850 !important;
+  letter-spacing: -0.04em !important;
+  line-height: 1.05 !important;
   margin: 0 !important;
-  text-shadow: none !important;
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  transition: transform 0.16s ease, color 0.16s ease !important;
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), color 0.16s ease !important;
 }
 
 :root[data-theme="dark"] .vinyl-fan-clean-title-card .vinyl-active-title,
 [data-theme="dark"] .vinyl-fan-clean-title-card .vinyl-active-title {
   color: #ffffff !important;
-  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.85) !important;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.75) !important;
 }
 
 :root[data-theme="light"] .vinyl-fan-clean-title-card .vinyl-active-title,
@@ -2969,20 +3102,77 @@ body.app-no-scroll .profile-page {
   text-shadow: none !important;
 }
 
-:root[data-theme="dark"] .vinyl-fan-clean-title-card:hover .vinyl-active-title,
-[data-theme="dark"] .vinyl-fan-clean-title-card:hover .vinyl-active-title {
-  transform: translateY(-2px) scale(1.02) !important;
-  color: #ffffff !important;
-}
-
-:root[data-theme="light"] .vinyl-fan-clean-title-card:hover .vinyl-active-title,
-[data-theme="light"] .vinyl-fan-clean-title-card:hover .vinyl-active-title {
-  transform: translateY(-2px) scale(1.02) !important;
-  color: #09090b !important;
+.vinyl-fan-clean-title-card:hover .vinyl-active-title {
+  transform: translateX(4px) !important;
 }
 
 .vinyl-fan-clean-title-card:active .vinyl-active-title {
-  transform: scale(0.97) !important;
+  transform: scale(0.98) !important;
+}
+
+.vinyl-right-artist-name {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif !important;
+  font-size: clamp(1rem, 1.6vw, 1.35rem) !important;
+  font-weight: 550 !important;
+  letter-spacing: -0.015em !important;
+  line-height: 1.25 !important;
+  margin: 0 !important;
+}
+
+:root[data-theme="dark"] .vinyl-right-artist-name,
+[data-theme="dark"] .vinyl-right-artist-name {
+  color: rgba(255, 255, 255, 0.75) !important;
+}
+
+:root[data-theme="light"] .vinyl-right-artist-name,
+[data-theme="light"] .vinyl-right-artist-name {
+  color: rgba(9, 9, 11, 0.68) !important;
+}
+
+.vinyl-right-enter-chip {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 8px 18px !important;
+  border-radius: 999px !important;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif !important;
+  font-size: 0.82rem !important;
+  font-weight: 650 !important;
+  letter-spacing: -0.01em !important;
+  cursor: pointer !important;
+  transition: all 0.18s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+
+:root[data-theme="dark"] .vinyl-right-enter-chip,
+[data-theme="dark"] .vinyl-right-enter-chip {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+}
+
+:root[data-theme="light"] .vinyl-right-enter-chip,
+[data-theme="light"] .vinyl-right-enter-chip {
+  background: rgba(0, 0, 0, 0.05) !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  color: #09090b !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06) !important;
+}
+
+.vinyl-fan-clean-title-card:hover .vinyl-right-enter-chip {
+  background: #e11d48 !important;
+  border-color: #e11d48 !important;
+  color: #ffffff !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 20px rgba(225, 29, 72, 0.38) !important;
+}
+
+.vinyl-fan-clean-title-card:hover .vinyl-right-enter-chip svg {
+  transform: translateX(3px) !important;
+}
+
+.vinyl-right-enter-chip svg {
+  transition: transform 0.16s ease !important;
 }
 
 /* ==================== REPRODUCTOR PERFORMATIVO: MODO CLARO (STAGE-LIGHT APPLE LIQUID GLASS) ==================== */

@@ -1431,7 +1431,6 @@
    - Configurado `:root[data-theme="light"] .vinyl-fan-clean-title-card .vinyl-active-title` con color tinta profunda `color: #09090b !important;` y sin sombras pesadas (`text-shadow: none !important;`).
    - Mantenido en `:root[data-theme="dark"]` con `color: #ffffff !important;` y sombra lumínica difusa (`text-shadow: 0 4px 20px rgba(0, 0, 0, 0.85) !important;`).
 2. **Hover / active dinámicos:**
-   - En modo claro, el hover sutil eleva la escala manteniendo el contraste en `#09090b !important;`.
 3. **Verificación de build:**
    - `npm run build` ejecutado y validado con éxito (código de salida 0) en Next.js 16.4.5 Turbopack.
 
@@ -1446,3 +1445,34 @@
   1. **Vía Menú Superior (Mouse directo):** Clic arriba en `View` (Ver) -> `Command Palette...` (abre la misma paleta con el mouse) -> tipear `Configure Display Language` y elegir Español.
   2. **Vía Panel de Extensiones (Método más visual y cómodo):** Clic en el ícono de los 4 cuadraditos de la barra lateral izquierda (`Extensions`), buscar `Spanish Language Pack for Visual Studio Code`, darle a `Install`, y cuando finalice cliquear el cartel que salta abajo a la derecha: `Change Language and Restart`.
   3. **Vía Engranaje de Ajustes:** Clic en el ícono de engranaje ⚙️ abajo a la izquierda -> `Settings` -> buscar `locale`.
+
+---
+
+### Turno 80 — Rediseño del Modo Vinilos: Rueda en Arco a la Izquierda y Showcase con Nombre a la Derecha en PC/Desktop
+**Pedido del usuario (`juani`):**
+- *"eso ta feo cabron yo quiero a los vinilos a la izquierda y a la derecha que salga el nombre se entiende ???"* (adjuntando captura de pantalla `image.png` en PC de escritorio).
+
+**Diagnóstico sobre `image.png`:**
+- En la versión de escritorio de la Biblioteca (`/library` en modo Vinilos), la vista `.vinyl-fan-arc-viewport` tenía forzado `flex-direction: column !important; align-items: center !important; justify-content: center !important;`.
+- Esto causaba que la rueda de vinilos flotara en el centro de la pantalla y el título del proyecto activo (`Singles`) quedara confinado y apretado en el fondo inferior de la pantalla, en lugar de aprovechar el ancho de la pantalla panorámica.
+
+**Implementación (`src/components/ManifoldLibrary3D.tsx`, `src/components/board-polish.css`):**
+1. **Arquitectura responsive Side-by-Side en PC/Desktop (`@media (min-width: 721px)`):**
+   - `.vinyl-fan-arc-viewport` configurado en desktop a `flex-direction: row !important; align-items: center !important; justify-content: flex-start !important;` con espaciado respirable (`gap: clamp(40px, 6vw, 90px) !important; padding: 0 clamp(40px, 6vw, 100px) 0 clamp(60px, 8vw, 130px) !important;`).
+2. **Vinilos fijados a la izquierda (`.vinyl-fan-arc-wheel`):**
+   - El arco de vinilos se ancla a la izquierda (`flex: 0 0 clamp(380px, 44vw, 540px) !important`), con las tapas y sobres orbitando en curva vertical.
+   - El sobre activo se centra verticalmente con `top: 50% !important; margin-top: -95px !important; left: clamp(20px, 3.5vw, 60px) !important;`, dejando el disco asomando a la derecha hacia el showcase.
+3. **Showcase del Proyecto a la Derecha (`.vinyl-fan-clean-title-card`):**
+   - En lugar de un texto plano abajo, se ubica a la derecha a la altura del disco activo, con tipografía editorial Apple SF Pro:
+     - **Píldora de metadatos:** `{TYPE} · {N} TRACKS` (`.vinyl-right-meta-pill`).
+     - **Título display del proyecto:** tamaño monumental `clamp(2.2rem, 4.4vw, 3.8rem)` en negrita 850 (`.vinyl-active-title`).
+     - **Artista:** subtítulo elegante (`.vinyl-right-artist-name`).
+     - **Botón de acción interactivo:** píldora `Abrir proyecto →` (`.vinyl-right-enter-chip`) con micro-interacción de flecha y acento `#e11d48` en hover.
+   - Tanto tocar el título/tarjeta como tocar el vinilo activo abre el proyecto (`onDiveIntoProject`) con sonido táctil inmaculado.
+4. **Preservación de la experiencia móvil (<= 720px):**
+   - En smartphones la rueda se mantiene vertical y centrada sin desbordes de pantalla ni scrolls rotos.
+5. **Compatibilidad total con Modo Claro y Modo Oscuro:**
+   - Alto contraste en Light Mode (tinta `#09090b` profunda) y Dark Mode (blanco `#ffffff` con sombra lumínica).
+6. **Verificación:**
+   - `npm run build` ejecutado y validado con éxito (código de salida 0) en Next.js Turbopack.
+
