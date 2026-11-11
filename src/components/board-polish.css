@@ -2063,6 +2063,132 @@ body.app-no-scroll .profile-page {
     color: #ff453a !important;
   }
 
+  /* Adaptación Light Mode para la vista móvil de proyecto estilo untitled */
+  :root[data-theme="light"] .project-inspector-sheet {
+    background: #ffffff !important;
+  }
+
+  :root[data-theme="light"] .untitled-mobile-project-view {
+    background: #ffffff !important;
+    color: #09090b !important;
+  }
+
+  :root[data-theme="light"] .untitled-icon-squircle {
+    background: #f4f4f5 !important;
+    border-color: rgba(0, 0, 0, 0.08) !important;
+    color: #09090b !important;
+  }
+
+  :root[data-theme="light"] .untitled-icon-squircle:active,
+  :root[data-theme="light"] .untitled-icon-squircle.is-active {
+    background: #e4e4e7 !important;
+  }
+
+  :root[data-theme="light"] .untitled-mobile-search-bar {
+    background: #f4f4f5 !important;
+    border-color: rgba(0, 0, 0, 0.08) !important;
+  }
+
+  :root[data-theme="light"] .untitled-mobile-search-input {
+    color: #09090b !important;
+  }
+
+  :root[data-theme="light"] .untitled-mobile-search-input::placeholder {
+    color: #71717a !important;
+  }
+
+  :root[data-theme="light"] .untitled-search-clear {
+    color: #71717a !important;
+  }
+
+  :root[data-theme="light"] .untitled-mobile-menu-sheet {
+    background: rgba(255, 255, 255, 0.96) !important;
+    border-color: rgba(0, 0, 0, 0.12) !important;
+    box-shadow: 0 20px 48px -8px rgba(0, 0, 0, 0.18) !important;
+  }
+
+  :root[data-theme="light"] .untitled-menu-item {
+    color: #09090b !important;
+  }
+
+  :root[data-theme="light"] .untitled-menu-item svg {
+    color: #52525b !important;
+  }
+
+  :root[data-theme="light"] .untitled-menu-item:hover,
+  :root[data-theme="light"] .untitled-menu-item:active {
+    background: rgba(0, 0, 0, 0.06) !important;
+    color: #09090b !important;
+  }
+
+  :root[data-theme="light"] .untitled-menu-divider {
+    background: rgba(0, 0, 0, 0.08) !important;
+  }
+
+  :root[data-theme="light"] .untitled-mobile-title {
+    color: #09090b !important;
+  }
+
+  :root[data-theme="light"] .untitled-mobile-subtitle {
+    color: #52525b !important;
+  }
+
+  :root[data-theme="light"] .untitled-mobile-play-btn {
+    background: #09090b !important;
+    color: #ffffff !important;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.16) !important;
+  }
+
+  :root[data-theme="light"] .untitled-mobile-add-btn {
+    background: #f4f4f5 !important;
+    border-color: rgba(0, 0, 0, 0.08) !important;
+    color: #09090b !important;
+  }
+
+  :root[data-theme="light"] .untitled-mobile-add-btn:active {
+    background: #e4e4e7 !important;
+  }
+
+  :root[data-theme="light"] .untitled-mobile-track-row:active {
+    background: rgba(0, 0, 0, 0.05) !important;
+  }
+
+  :root[data-theme="light"] .untitled-mobile-track-num {
+    color: #71717a !important;
+  }
+
+  :root[data-theme="light"] .untitled-mobile-track-info b {
+    color: #09090b !important;
+  }
+
+  :root[data-theme="light"] .untitled-mobile-track-info span {
+    color: #52525b !important;
+  }
+
+  :root[data-theme="light"] .untitled-mobile-track-dots {
+    color: #52525b !important;
+  }
+
+  :root[data-theme="light"] .untitled-track-inline-menu {
+    background: rgba(255, 255, 255, 0.96) !important;
+    border-color: rgba(0, 0, 0, 0.12) !important;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.15) !important;
+  }
+
+  :root[data-theme="light"] .untitled-track-menu-btn {
+    color: #09090b !important;
+  }
+
+  :root[data-theme="light"] .untitled-track-menu-btn svg {
+    color: #52525b !important;
+  }
+
+  :root[data-theme="light"] .untitled-track-menu-btn:hover,
+  :root[data-theme="light"] .untitled-track-menu-btn:active {
+    background: rgba(0, 0, 0, 0.06) !important;
+    color: #09090b !important;
+  }
+
   /* 5. Reproductor Fullscreen (PerformativePlayer) — Apple Music iOS Liquid Glass en celular */
   .perf-modal-layer {
     position: fixed !important;

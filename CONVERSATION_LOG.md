@@ -1383,3 +1383,32 @@
    - Reducido el padding inferior de `.apple-shell` en mobile a `calc(env(safe-area-inset-bottom, 0px) + 64px)` para no dejar un espacio muerto gigante al scrollear hasta el final de `Inicio`.
 
 
+---
+
+### Turno 77 — Auditoría Integral de Contraste Light & Dark Mode en Todas las Pantallas
+**Pedido del usuario (`juani`):**
+- *"segui. tambien ciertas cositas que se siguen viendo mal con discrepancias entre el modo light y dark, arregla todo eso en todas las pantallas"*
+
+**Diagnóstico de discrepancias de tema:**
+1. **Variables faltantes en `:root`:**
+   - La variable `--bg-card` se utilizaba en `.create-project-form` y `.untitled-importer-card` pero nunca se había declarado en `:root[data-theme="dark"]` ni `:root[data-theme="light"]`, dejándolos sin fondo (transparentes) sobre el canvas WebGL.
+2. **Textos blanco sobre blanco en Dark Mode:**
+   - Varios componentes (`.row-snippet-btn`, `.collage-cta-pill`, `.dmg-file-btn`, `.socket-avatar`, `.wheel-slot-pill.on`) tenían `background: var(--ink)` pero `color: #ffffff` hardcodeado. Como en Dark Mode `--ink` es `#ffffff`, el texto quedaba blanco sobre fondo blanco (completamente invisible).
+3. **Instalador DMG (`Subir`) sin tema oscuro unificado:**
+   - La ventana `.dmg-window`, `.dmg-titlebar`, `.dmg-inspector`, `.dmg-field input`, los discos de tracks y el socket de perfil mantenían tonos de ventana macOS claros sin versión oscura coherente.
+4. **Vista de Proyecto Móvil (`board-polish.css`) hardcodeada a negro puro:**
+   - La hoja `.untitled-mobile-project-view` y sus componentes internos tenían `background: #0a0a0c !important` y textos blancos fijos, ignorando totalmente cuando el usuario seleccionaba el Modo Claro (Light Mode).
+
+**Implementación (`src/app/globals.css`, `src/components/board-polish.css`):**
+1. **Variables de Raíz (`globals.css`):**
+   - Declaradas `--bg-card` y `--shadow-card` en `:root[data-theme="dark"]` (`rgba(22, 22, 26, 0.94)`) y `:root[data-theme="light"]` (`rgba(255, 255, 255, 0.94)`).
+2. **Erradicación de Texto Blanco sobre Blanco (`globals.css`):**
+   - Se reemplazó el color de texto fijo `#ffffff` por `color: var(--bg)` en todos los elementos que usan `background: var(--ink)`, garantizando texto negro sobre blanco en Dark Mode y texto blanco sobre negro en Light Mode.
+   - Ajustadas las píldoras `.cutout-pill`, `.meta-chip`, `.sticker-chip` y los chips estáticos del strip superior para respetar el contraste exacto.
+3. **Soporte Dark Mode Completo en `Subir` DMG Installer (`globals.css`):**
+   - Estilos `:root[data-theme="dark"]` aplicados a `.dmg-window`, `.dmg-titlebar`, `.dmg-inspector`, `.dmg-field input`, `.dmg-arena`, `.track-prop-card`, `.prop-disc-hole`, `.dmg-profile-socket`, `.popped-project-dropzone` y `.wheel-slot-pill`.
+4. **Adaptación Light Mode para la Vista Móvil de Proyectos (`board-polish.css`):**
+   - Agregada suite completa de estilos para `:root[data-theme="light"]` en `.project-inspector-sheet`, `.untitled-mobile-project-view`, `.untitled-mobile-search-bar`, `.untitled-mobile-search-input`, `.untitled-mobile-track-row`, `.untitled-mobile-title`, `.untitled-mobile-subtitle`, `.untitled-mobile-play-btn`, `.untitled-mobile-add-btn` y menú modal.
+   - La vista de proyecto en celular ahora se adapta instantáneamente a blanco editorial con tipografías negras nítidas sin perder la vibra `[untitled]`.
+5. **Verificación y Deploy:**
+   - Verificado con `npm run build` sin errores de compilación ni TypeScript.
