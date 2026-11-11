@@ -1602,11 +1602,11 @@ body.app-no-scroll .profile-page {
     position: absolute !important;
     top: 50% !important;
     left: 50% !important;
-    margin-top: -76px !important;
-    margin-left: -120px !important;
-    width: 240px !important;
-    height: 152px !important;
-    transform-origin: -160px 50% !important;
+    margin-top: -95px !important;
+    margin-left: -95px !important;
+    width: 190px !important;
+    height: 190px !important;
+    transform-origin: -140px 50% !important;
     transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1),
       filter 0.28s ease,
       opacity 0.25s ease !important;
@@ -2969,10 +2969,10 @@ body.app-no-scroll .profile-page {
     position: absolute !important;
     top: 50% !important;
     left: clamp(20px, 3.5vw, 60px) !important;
-    margin-top: -95px !important;
+    margin-top: -125px !important;
     margin-left: 0 !important;
-    width: 300px !important;
-    height: 190px !important;
+    width: 250px !important;
+    height: 250px !important;
     transform-origin: -180px 50% !important;
   }
 

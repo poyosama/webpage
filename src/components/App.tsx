@@ -228,18 +228,36 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   const [customAudioMap, setCustomAudioMap] = useState<Record<string, string>>({});
 
   const onTrackEndedRef = useRef<() => void>(() => {});
+  const miniPlayerTouchRef = useRef<{ startY: number; startX: number } | null>(null);
 
   useEffect(() => {
+    if (!isPlaying) {
+      const st = sfx.getPlaybackState();
+      setMiniPlayback((prev) => {
+        const nextDur = st.durationSec || currentTrack.durationSec || 174;
+        if (Math.abs(prev.currentSec - st.currentSec) < 0.1 && prev.durationSec === nextDur) {
+          return prev;
+        }
+        return { currentSec: st.currentSec, durationSec: nextDur };
+      });
+      return;
+    }
     const id = window.setInterval(() => {
       const st = sfx.getPlaybackState();
-      setMiniPlayback({
-        currentSec: st.currentSec,
-        durationSec: st.durationSec || currentTrack.durationSec || 174,
+      setMiniPlayback((prev) => {
+        const nextDur = st.durationSec || currentTrack.durationSec || 174;
+        if (Math.abs(prev.currentSec - st.currentSec) < 0.25 && prev.durationSec === nextDur) {
+          return prev;
+        }
+        return {
+          currentSec: st.currentSec,
+          durationSec: nextDur,
+        };
       });
       if (st.ended && isPlaying) {
         onTrackEndedRef.current();
       }
-    }, 120);
+    }, 250);
     return () => clearInterval(id);
   }, [currentTrack.durationSec, isPlaying]);
 
@@ -4166,6 +4184,26 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 80, opacity: 0 }}
               transition={{ type: "spring", stiffness: 320, damping: 28 }}
+              onTouchStart={(e) => {
+                if (e.touches.length === 1) {
+                  miniPlayerTouchRef.current = {
+                    startY: e.touches[0].clientY,
+                    startX: e.touches[0].clientX,
+                  };
+                }
+              }}
+              onTouchEnd={(e) => {
+                if (miniPlayerTouchRef.current && e.changedTouches.length === 1) {
+                  const dy = e.changedTouches[0].clientY - miniPlayerTouchRef.current.startY;
+                  const dx = Math.abs(e.changedTouches[0].clientX - miniPlayerTouchRef.current.startX);
+                  // Deslizar hacia arriba en el mini-player (dy < -18px) lo abre inmediatamente
+                  if (dy < -18 && dx < Math.abs(dy) * 1.5) {
+                    sfx.open();
+                    setPlayerExpanded(true);
+                  }
+                }
+                miniPlayerTouchRef.current = null;
+              }}
               onClick={(e) => {
                 const t = e.target as HTMLElement;
                 if (t.closest("button") || t.closest("input")) return;

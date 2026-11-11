@@ -2215,18 +2215,27 @@ button {
 .perf-modal-layer {
   position: fixed !important;
   inset: 0 !important;
+  width: 100vw !important;
+  height: 100% !important;
+  height: 100dvh !important;
+  min-height: 100dvh !important;
+  background: #09090b !important;
   z-index: 800 !important;
+  overflow: hidden !important;
 }
 
 .perf-player {
   position: relative;
   width: 100%;
   height: 100%;
+  height: 100dvh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   padding: 24px clamp(18px, 3.5vw, 42px);
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 .perf-player.stage-light {
@@ -3391,7 +3400,9 @@ button {
 
   /* Reproductor 3D Fullscreen estilo Spotify iOS en iPhone */
   .perf-player {
-    padding: calc(16px + env(safe-area-inset-top, 0px)) 12px calc(14px + env(safe-area-inset-bottom, 0px));
+    padding: calc(12px + env(safe-area-inset-top, 0px)) 12px 0px !important;
+    height: 100dvh !important;
+    min-height: 100dvh !important;
   }
 
   .perf-topbar {
@@ -3867,8 +3878,8 @@ button {
 
 .vinyl-fan-sleeve-card {
   position: absolute;
-  width: 300px;
-  height: 190px;
+  width: 250px;
+  height: 250px;
   cursor: pointer;
   pointer-events: auto;
   transform-origin: -180px 50%;
@@ -3887,6 +3898,7 @@ button {
   position: relative;
   width: 100%;
   height: 100%;
+  aspect-ratio: 1 / 1;
   border-radius: 14px;
   padding: 16px 18px;
   color: #ffffff;
@@ -3912,9 +3924,9 @@ button {
   position: absolute;
   top: 50%;
   right: -46px;
-  width: 168px;
-  height: 168px;
-  margin-top: -84px;
+  width: 230px;
+  height: 230px;
+  margin-top: -115px;
   border-radius: 50%;
   background:
     repeating-radial-gradient(
@@ -4604,14 +4616,14 @@ button {
   }
 
   .vinyl-fan-sleeve-card {
-    width: 240px;
-    height: 152px;
+    width: 190px;
+    height: 190px;
   }
 
   .vinyl-fan-record-disc {
-    width: 132px;
-    height: 132px;
-    margin-top: -66px;
+    width: 174px;
+    height: 174px;
+    margin-top: -87px;
     right: -32px;
   }
 

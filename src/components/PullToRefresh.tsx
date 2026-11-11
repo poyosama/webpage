@@ -34,7 +34,7 @@ export default function PullToRefresh() {
       while (node && node !== document.body) {
         if (
           node.matches?.(
-            "input, textarea, select, [contenteditable='true'], .perf-player-expanded, .perf-waveform-scrubber"
+            "input, textarea, select, [contenteditable='true'], .perf-player-expanded, .perf-waveform-scrubber, .ios-mini-player-dock, .ios-mini-player, .performative-player, .dynamic-island, .manifold-3d-wrapper, .vinyl-fan-arc-viewport, .project-inspector-sheet, .library-bottom-actions"
           )
         ) {
           return true;
@@ -52,7 +52,14 @@ export default function PullToRefresh() {
       const touch = e.touches[0];
       const target = e.target;
 
-      // Si está tocando un campo de texto o scrubber del reproductor, no refrescar
+      // Pull-to-refresh solo debe iniciar si el dedo arranca en la franja superior (área de la barra de estado / header)
+      // Si toca más abajo de 110px (donde está el contenido, biblioteca o reproductor), nunca refrescar
+      if (touch.clientY > 110) {
+        startY.current = null;
+        return;
+      }
+
+      // Si está tocando un reproductor, campo de texto, controles o rueda, no refrescar
       if (isInteractiveInput(target)) {
         startY.current = null;
         return;
@@ -64,10 +71,10 @@ export default function PullToRefresh() {
         return;
       }
 
-      // En Biblioteca: si toca directamente la rueda de vinilos en el medio de la pantalla,
-      // dejamos que el gesto sea para rotar los vinilos, salvo que arranque en la zona superior (clientY <= 240)
-      const isVinylWheel = (target as HTMLElement | null)?.closest?.(".vinyl-fan-arc-wheel");
-      if (isVinylWheel && touch.clientY > 240) {
+      const isVinylWheel = (target as HTMLElement | null)?.closest?.(
+        ".vinyl-fan-arc-wheel, .vinyl-fan-arc-viewport, .ios-mini-player-dock, .ios-mini-player"
+      );
+      if (isVinylWheel) {
         startY.current = null;
         return;
       }
@@ -91,9 +98,9 @@ export default function PullToRefresh() {
     const onEnd = () => {
       if (startY.current === null) return;
       startY.current = null;
-      if (pullRef.current >= THRESHOLD * 0.5 + 6) {
+      if (pullRef.current >= THRESHOLD) {
         setRefreshing(true);
-        setPull(THRESHOLD * 0.6);
+        setPull(THRESHOLD * 0.7);
         window.setTimeout(() => window.location.reload(), 350);
       } else {
         setPull(0);

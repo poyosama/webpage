@@ -787,6 +787,21 @@ export default function ManifoldLibrary3D({
   const [confirmDeleteProjectId, setConfirmDeleteProjectId] = useState<string | null>(null);
   const [isMobileViewport, setIsMobileViewport] = useState<boolean>(false);
 
+  const [activeMode, setActiveMode] = useState<"wheel" | "grid">(
+    viewMode === "manifold" ? "grid" : "wheel"
+  );
+
+  useEffect(() => {
+    setActiveMode(viewMode === "manifold" ? "grid" : "wheel");
+  }, [viewMode]);
+
+  const activeCanvasClip = activeProject?.videos?.find((v) => Boolean(v.url)) || null;
+  const isCanvasImage = Boolean(
+    activeCanvasClip?.url &&
+      (activeCanvasClip.mediaType === "image" ||
+        /\.(gif|png|jpe?g|webp|avif)$/i.test(activeCanvasClip.url))
+  );
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     const updateMobile = () => setIsMobileViewport(window.innerWidth <= 720);
@@ -926,22 +941,209 @@ export default function ManifoldLibrary3D({
     : 0;
 
   return (
-    <div className={`manifold-3d-wrapper ${compact ? "is-compact" : ""}`}>
-      {/* ==================== MODO VINILOS 3D: COLECCIÓN EN ARCO FIJO ==================== */}
-      <div className="manifold-3d-canvas-stage vinyl-arc-stage">
+    <div
+      className={`manifold-3d-wrapper ${compact ? "is-compact" : ""} ${activeCanvasClip ? "has-library-canva" : ""}`}
+    >
+      {/* ==================== CANVA DE FONDO AMBIENTAL SI EL PROYECTO TIENE UNO ==================== */}
+      {activeCanvasClip?.url && (
+        <div className="library-canva-backdrop" aria-hidden>
+          {isCanvasImage ? (
+            <img
+              src={activeCanvasClip.url}
+              alt=""
+              className="library-canva-media"
+            />
+          ) : (
+            <video
+              key={activeCanvasClip.url}
+              src={activeCanvasClip.url}
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="library-canva-media"
+            />
+          )}
+          <div className="library-canva-vignette" />
+        </div>
+      )}
+
+      {/* ==================== STAGE PRINCIPAL DE BIBLIOTECA ==================== */}
+      <div
+        className={`manifold-3d-canvas-stage ${
+          activeMode === "wheel" ? "vinyl-arc-stage" : "catalog-grid-stage"
+        }`}
+      >
         <div className="manifold-stage-overlay-top">
           <div className="manifold-title-and-switch">
             <div className="manifold-overlay-titles">
-              <span className="mono-tag">MIS PROYECTOS // VINILOS 3D</span>
-              <h3>Deslizá la rueda · Tocá el vinilo central para abrir</h3>
+              <div className="library-view-switcher">
+                <button
+                  type="button"
+                  className={`library-mode-btn ${activeMode === "wheel" ? "active" : ""}`}
+                  onClick={() => {
+                    sfx.tap();
+                    setActiveMode("wheel");
+                    onChangeViewMode?.("disc-row");
+                  }}
+                  title="Vista rueda de vinilos"
+                >
+                  <span className="library-mode-icon">💿</span>
+                  <span>Rueda</span>
+                </button>
+                <button
+                  type="button"
+                  className={`library-mode-btn ${activeMode === "grid" ? "active" : ""}`}
+                  onClick={() => {
+                    sfx.tap();
+                    setActiveMode("grid");
+                    onChangeViewMode?.("manifold");
+                  }}
+                  title="Vista tapas [untitled]"
+                >
+                  <span className="library-mode-icon">⊞</span>
+                  <span>Tapas</span>
+                </button>
+              </div>
+
+              <span className="mono-tag">
+                {activeMode === "wheel"
+                  ? "MIS PROYECTOS // RUEDA DE VINILOS"
+                  : "MIS PROYECTOS // CATÁLOGO DE TAPAS"}
+              </span>
+              <h3>
+                {activeMode === "wheel"
+                  ? "Deslizá la rueda · Tocá el vinilo central para abrir"
+                  : "Tocá una portada para abrir el proyecto"}
+              </h3>
             </div>
           </div>
 
           {renderQuickPills()}
         </div>
 
-          {projects.length === 0 ? (
-            <div className="vinyl-fan-arc-viewport">
+        {activeMode === "grid" ? (
+          <div className="untitled-catalog-viewport">
+            {projects.length === 0 ? (
+              <div
+                className="manifold-empty-cluster-overlay"
+                style={{
+                  position: "relative",
+                  inset: "auto",
+                  transform: "none",
+                  margin: "40px auto",
+                  gridColumn: "1 / -1",
+                  pointerEvents: "auto",
+                  zIndex: 20,
+                }}
+              >
+                <span className="mono-tag">0 PROYECTOS // 0 TAPAS</span>
+                <h4>Todavía no cargaste ningún proyecto</h4>
+                <p>
+                  Tocá el botón <b>+</b> para crear tu primer proyecto.
+                </p>
+                {onOpenCreateProject && (
+                  <button
+                    type="button"
+                    className="apple-btn primary"
+                    style={{ pointerEvents: "auto", cursor: "pointer" }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      sfx.open();
+                      onOpenCreateProject();
+                    }}
+                  >
+                    + Crear mi primer Proyecto →
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="untitled-catalog-grid">
+                {projects.map((p) => {
+                  const isSelected = p.id === activeProject?.id;
+                  return (
+                    <div
+                      key={p.id}
+                      role="button"
+                      tabIndex={0}
+                      className={`untitled-catalog-card ${isSelected ? "is-selected" : ""}`}
+                      onClick={() => {
+                        sfx.tap();
+                        onSelectProject(p);
+                        if (onDiveIntoProject) {
+                          sfx.open();
+                          onDiveIntoProject(p);
+                        }
+                      }}
+                    >
+                      <div
+                        className="untitled-catalog-cover"
+                        style={{
+                          background: p.coverUrl
+                            ? `url(${p.coverUrl}) center / cover no-repeat`
+                            : `linear-gradient(135deg, ${p.c1} 0%, ${p.c2} 100%)`,
+                        }}
+                      >
+                        {!p.coverUrl && (
+                          <div className="untitled-catalog-placeholder-glyph">
+                            <span>{p.tracks[0]?.glyph || "01"}</span>
+                          </div>
+                        )}
+                        {onDeleteProject && (
+                          <button
+                            type="button"
+                            className="untitled-catalog-delete-btn"
+                            title={`Eliminar ${p.title}`}
+                            aria-label={`Eliminar ${p.title}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              sfx.tap();
+                              if (confirmDeleteProjectId === p.id) {
+                                onDeleteProject(p.id);
+                                setConfirmDeleteProjectId(null);
+                              } else {
+                                setConfirmDeleteProjectId(p.id);
+                              }
+                            }}
+                          >
+                            {confirmDeleteProjectId === p.id ? "✕" : "🗑️"}
+                          </button>
+                        )}
+                      </div>
+                      <div className="untitled-catalog-info">
+                        <h4 className="untitled-catalog-title">{p.title}</h4>
+                        <span className="untitled-catalog-meta">
+                          {p.artist || "poyo"} · {p.type.toUpperCase()} · {p.tracks.length}{" "}
+                          {p.tracks.length === 1 ? "track" : "tracks"}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {onOpenCreateProject && (
+                  <button
+                    type="button"
+                    className="untitled-catalog-card untitled-catalog-add-card"
+                    onClick={() => {
+                      sfx.open();
+                      onOpenCreateProject();
+                    }}
+                  >
+                    <div className="untitled-catalog-add-box">
+                      <span className="untitled-catalog-add-plus">+</span>
+                    </div>
+                    <div className="untitled-catalog-info">
+                      <h4 className="untitled-catalog-title">+ Crear Proyecto</h4>
+                      <span className="untitled-catalog-meta">Nuevo álbum, EP o Mixtape</span>
+                    </div>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        ) : projects.length === 0 ? (
+          <div className="vinyl-fan-arc-viewport">
               <div
                 className="manifold-empty-cluster-overlay"
                 style={{
@@ -1245,46 +1447,12 @@ export default function ManifoldLibrary3D({
               )}
             </div>
           )}
-        </div>
+      </div>
 
-      {activeProject && onUploadProjectVideo && (
-        <div className="project-video-folder-bar">
-          <div className="video-folder-left">
-            <span className="folder-icon">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
-            </span>
-            <div>
-              <b>Canva</b>
-            </div>
-          </div>
-
-          <div className="video-folder-clips">
-            {activeProject.videos.map((v) => (
-              <span key={v.id} className="video-clip-pill">
-                <i style={{ background: v.c2 }} />
-                <span className="video-clip-label">{v.label}</span>
-                {onRemoveProjectVideo && (
-                  <button
-                    type="button"
-                    className="video-clip-remove-btn"
-                    title={`Quitar ${v.label} del bloque`}
-                    aria-label={`Quitar ${v.label}`}
-                    onMouseEnter={() => sfx.hover()}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      sfx.tap();
-                      onRemoveProjectVideo(activeProject.id, v.id);
-                    }}
-                  >
-                    ✕
-                  </button>
-                )}
-              </span>
-            ))}
-          </div>
-
+      {activeProject && (
+        <div className="library-bottom-actions">
           {onUploadProjectTrack && (
-            <label className="apple-btn ghost upload-video-btn" onMouseEnter={() => sfx.hover()}>
+            <label className="apple-btn ghost library-action-btn" onMouseEnter={() => sfx.hover()}>
               <span>+ Subir track</span>
               <input
                 type="file"
@@ -1302,30 +1470,51 @@ export default function ManifoldLibrary3D({
             </label>
           )}
 
-          <label className="apple-btn primary upload-video-btn" onMouseEnter={() => sfx.hover()}>
-            <span>+ Subir Canvas</span>
-            <input
-              type="file"
-              accept="video/mp4,video/webm,image/gif,image/*,video/*"
-              hidden
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  sfx.drop();
-                  // Si el usuario en iPhone seleccionó un audio en este botón, lo mandamos a track
-                  if (
-                    onUploadProjectTrack &&
-                    (file.type.startsWith("audio/") || /\.(wav|mp3|m4a|flac|aac|ogg|aiff|alac)$/i.test(file.name))
-                  ) {
-                    onUploadProjectTrack(activeProject.id, file);
-                  } else if (onUploadProjectVideo) {
-                    onUploadProjectVideo(activeProject.id, file);
+          {onUploadProjectVideo && (
+            <label
+              className="apple-btn primary library-action-btn library-canvas-btn"
+              onMouseEnter={() => sfx.hover()}
+              title="Subir Canva (Video o Imagen)"
+            >
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+                <circle cx="9" cy="9" r="2" />
+                <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+              </svg>
+              <span>{activeCanvasClip ? "Cambiar Canva" : "Subir Canva"}</span>
+              <input
+                type="file"
+                accept="video/mp4,video/webm,image/gif,image/*,video/*"
+                hidden
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    sfx.drop();
+                    // Si el usuario en iPhone seleccionó un audio en este botón, lo mandamos a track
+                    if (
+                      onUploadProjectTrack &&
+                      (file.type.startsWith("audio/") || /\.(wav|mp3|m4a|flac|aac|ogg|aiff|alac)$/i.test(file.name))
+                    ) {
+                      onUploadProjectTrack(activeProject.id, file);
+                    } else if (onUploadProjectVideo) {
+                      onUploadProjectVideo(activeProject.id, file);
+                    }
+                    e.target.value = "";
                   }
-                  e.target.value = "";
-                }
-              }}
-            />
-          </label>
+                }}
+              />
+            </label>
+          )}
         </div>
       )}
     </div>

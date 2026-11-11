@@ -433,7 +433,7 @@ export default function LandingScene({
           style={{ pointerEvents: "none" }}
         >
           <color attach="background" args={["#070709"]} />
-          <MicroDiscsSwarm count={isMobile ? 7500 : 16000} />
+          <MicroDiscsSwarm count={isMobile ? 3800 : 7600} />
         </Canvas>
       </div>
 

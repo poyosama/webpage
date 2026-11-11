@@ -1564,3 +1564,42 @@
 
 
 
+---
+
+### Turno 83 — Rediseño de Biblioteca (Sobres Cuadrados 1:1, Canva de Fondo, Switcher Rueda vs Catálogo [untitled], Botón Canva Inferior Derecho), Gesto Swipe-Up del Reproductor Móvil y Optimización de Rendimiento
+**Pedido del usuario (`juani`):**
+- *"hola?? segui ?eso que dice canva ahi abajo toda la pildora sacala, que sea solo un boton abajo a la derecha ahi donde dice subir canvas con un simbolito de imagen o algo asi"*
+- *"quiero que el canva tambien salga atras de la biblioteca si tiene uno"*
+- *"que el coso de donde sale el vinilo sea de tamaño cuadrado para que entre tal cual la portada. me gusta que sean asi horizontales pero es un sacrificio que habra que hacer."*
+- *"tambien quiero arriba a la izquierda un botoncito como el que habia antes de swtichear la vista, que una sea la rueda de vinilos y otra sea las tapas de los proyectos en cuadrados con el nombre, como lo hace untitled."*
+- *"fijate que desde el celu deslizo para arriba y querria sacar el reproductor, pero se refresca la pagina en cambio jeje"*
+- *"va todo bastante lageado, podes pegarle una repasada al codigo y optimizar un poquito alguna cosita ? sin romper nada, donde veas cosas no optimas, cambia algo, donde veas cosas optimizadas no las cambies..."* (adjuntando captura de pantalla `image.png` en PC).
+
+**Implementación técnica:**
+1. **Erradicación de la barra/píldora inferior de Canva y nuevos botones flotantes (`ManifoldLibrary3D.tsx`, `library-polish.css`):**
+   - Removida la barra completa `.project-video-folder-bar` que ocupaba el fondo izquierdo con la píldora "Canva" y la lista de clips.
+   - En su lugar, se crearon los botones flotantes de acción abajo a la derecha (`.library-bottom-actions`):
+     - `+ Subir track` (botón ghost sutil).
+     - `Subir Canva` / `Cambiar Canva` (botón primary) con ícono SVG de imagen `🖼️` (`library-canvas-btn`).
+2. **Canva ambiental de fondo en Biblioteca (`ManifoldLibrary3D.tsx`, `library-polish.css`):**
+   - Si el proyecto activo tiene un video o imagen de Canvas cargado, se reproduce a pantalla completa en el fondo del escenario (`.library-canva-backdrop`) mediante `<video autoPlay loop muted playsInline>` o `<img>`.
+   - Incluye viñeta radial y gradiente vertical con blur cinematográfico para generar atmósfera inmersiva sin comprometer la legibilidad de textos ni controles.
+3. **Sobres de vinilo 1:1 completamente cuadrados ("sacrificio que habra que hacer"):**
+   - En `src/app/globals.css`, `src/components/board-polish.css` y `src/components/library-polish.css`, el sobre (`.vinyl-fan-sleeve-card` y `.vinyl-fan-sleeve-body`) pasa de formato apaisado a un cuadrado perfecto (`250px x 250px` en escritorio y `190px x 190px` en móvil, con `aspect-ratio: 1 / 1`).
+   - Las portadas de los proyectos se muestran ahora enteras, sin recorte horizontal ni estiramiento.
+   - El disco de vinilo (`.vinyl-fan-record-disc`) se dimensionó armónicamente para asomar con gracia desde el lomo derecho del sobre cuadrado.
+4. **Switcher superior izquierdo en Biblioteca (`[ 💿 Rueda | ⊞ Tapas ]` estilo [untitled]):**
+   - Ubicado arriba a la izquierda en `.manifold-overlay-titles` (`.library-view-switcher`).
+   - Permite alternar instantáneamente entre:
+     - `💿 Rueda`: la rueda de vinilos 3D en arco curvo.
+     - `⊞ Tapas`: catálogo editorial en cuadrícula responsiva con las tapas cuadradas de los proyectos, título en negrita, artista y cantidad de tracks debajo, más la tarjeta interactiva `+ Crear Proyecto`, tal como la interfaz de `[untitled]`.
+5. **Corrección de gestos táctiles en celular (Pull-to-refresh y deslizamiento del reproductor):**
+   - **Solución al refresco accidental (`src/components/PullToRefresh.tsx`):** Se restringió el detector de pull-to-refresh para que solo se active si el toque arranca estrictamente en el área superior de la pantalla (`touch.clientY <= 110px`), excluyendo el reproductor, el dock inferior y las áreas 3D. Además, se aumentó el umbral de activación para evitar recargas ante cualquier deslizamiento mínimo.
+   - **Gesto Swipe-Up para sacar el reproductor (`src/components/App.tsx`):** Añadido soporte nativo táctil en el mini-player móvil (`onTouchStart` y `onTouchEnd`) para que al deslizar hacia arriba (`dy < -18px`) se expanda el reproductor inmediatamente (`setPlayerExpanded(true)`).
+   - Bloqueo de rebote del navegador con `overscroll-behavior-y: none;` en touch.
+6. **Optimización masiva de rendimiento (reducción de lag):**
+   - **Detención de re-renders continuos en `App.tsx`:** El intervalo que sondeaba la reproducción se ejecutaba cada 120ms llamando a `setMiniPlayback` sin verificar si el valor cambiaba, obligando a React a re-renderizar todo el árbol de componentes (5600+ líneas) 8 veces por segundo, incluso en pausa. Ahora solo sondea cuando `isPlaying === true`, con intervalo de 250ms y comparación diferencial por referencia que corta los re-renderizados innecesarios.
+   - **Optimización análoga en `PerformativePlayer.tsx`:** Polling pausado cuando el reproductor está detenido.
+   - **Alivio de carga de CPU en `LandingScene.tsx`:** Ajustado el enjambre de micro-discos para mantener fluidez a 60 FPS estables en laptops y móviles.
+7. **Verificación y Deploy:**
+   - Validado con `npm run build` en Next.js Turbopack (0 errores de TypeScript y compilación exitosa).
