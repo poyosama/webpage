@@ -1382,7 +1382,6 @@
 3. **Optimización de padding inferior del contenido:**
    - Reducido el padding inferior de `.apple-shell` en mobile a `calc(env(safe-area-inset-bottom, 0px) + 64px)` para no dejar un espacio muerto gigante al scrollear hasta el final de `Inicio`.
 
-
 ---
 
 ### Turno 77 — Auditoría Integral de Contraste Light & Dark Mode en Todas las Pantallas
@@ -1412,3 +1411,27 @@
    - La vista de proyecto en celular ahora se adapta instantáneamente a blanco editorial con tipografías negras nítidas sin perder la vibra `[untitled]`.
 5. **Verificación y Deploy:**
    - Verificado con `npm run build` sin errores de compilación ni TypeScript.
+
+---
+
+### Turno 78 — Verificación de Cambios del Agente Previo, Diagnóstico de Captura iPhone (IMG_3909.png) y Corrección de Título de Vinilo Invisible en Modo Claro
+**Pedido del usuario (`juani`):**
+- *"Hubo otro agente asi que fijate"* (adjuntando captura `IMG_3909.png` en iPhone).
+
+**Auditoría de los commits del agente previo (`afb9cf2` y `0385e39`):**
+1. **Commit `afb9cf2` (Mini-Player iOS):** Alineó el mini-player móvil contra el Home Indicator de iOS, eliminando el doble padding/safe-area bottom. Quedó impecable y verificado en la captura `IMG_3909.png`.
+2. **Commit `0385e39` (Contraste Light/Dark):** Agregó estilos `:root[data-theme="light"]` a la hoja de proyecto móvil estilo `[untitled]`, DMG installer en Dark Mode y variables `--bg-card`.
+
+**Diagnóstico sobre `IMG_3909.png`:**
+- En la captura en iPhone con tema claro (`data-theme="light"`), el mini-player y el abanico de vinilos se visualizan correctamente, pero debajo de la tapa activa (`PERDÓN LA DEMORA`) no se veía el título del proyecto.
+- Al auditar `src/components/board-polish.css`, `.vinyl-fan-clean-title-card .vinyl-active-title` tenía hardcodeado `color: #ffffff !important;`. En modo claro, texto blanco sobre fondo marfil/blanco (`#f6f6f4`) resultaba 100% invisible.
+
+**Implementación (`board-polish.css`):**
+1. **Contraste dinámico según tema (`light` / `dark`):**
+   - Configurado `:root[data-theme="light"] .vinyl-fan-clean-title-card .vinyl-active-title` con color tinta profunda `color: #09090b !important;` y sin sombras pesadas (`text-shadow: none !important;`).
+   - Mantenido en `:root[data-theme="dark"]` con `color: #ffffff !important;` y sombra lumínica difusa (`text-shadow: 0 4px 20px rgba(0, 0, 0, 0.85) !important;`).
+2. **Hover / active dinámicos:**
+   - En modo claro, el hover sutil eleva la escala manteniendo el contraste en `#09090b !important;`.
+3. **Verificación de build:**
+   - `npm run build` ejecutado y validado con éxito (código de salida 0) en Next.js 16.4.5 Turbopack.
+

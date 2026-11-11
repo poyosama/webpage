@@ -2948,18 +2948,37 @@ body.app-no-scroll .profile-page {
   font-weight: 800 !important;
   letter-spacing: -0.035em !important;
   line-height: 1.12 !important;
-  color: #ffffff !important;
+  color: var(--ink, #09090b) !important;
   margin: 0 !important;
-  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.85) !important;
+  text-shadow: none !important;
   white-space: nowrap !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   transition: transform 0.16s ease, color 0.16s ease !important;
 }
 
-.vinyl-fan-clean-title-card:hover .vinyl-active-title {
+:root[data-theme="dark"] .vinyl-fan-clean-title-card .vinyl-active-title,
+[data-theme="dark"] .vinyl-fan-clean-title-card .vinyl-active-title {
+  color: #ffffff !important;
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.85) !important;
+}
+
+:root[data-theme="light"] .vinyl-fan-clean-title-card .vinyl-active-title,
+[data-theme="light"] .vinyl-fan-clean-title-card .vinyl-active-title {
+  color: #09090b !important;
+  text-shadow: none !important;
+}
+
+:root[data-theme="dark"] .vinyl-fan-clean-title-card:hover .vinyl-active-title,
+[data-theme="dark"] .vinyl-fan-clean-title-card:hover .vinyl-active-title {
   transform: translateY(-2px) scale(1.02) !important;
   color: #ffffff !important;
+}
+
+:root[data-theme="light"] .vinyl-fan-clean-title-card:hover .vinyl-active-title,
+[data-theme="light"] .vinyl-fan-clean-title-card:hover .vinyl-active-title {
+  transform: translateY(-2px) scale(1.02) !important;
+  color: #09090b !important;
 }
 
 .vinyl-fan-clean-title-card:active .vinyl-active-title {
