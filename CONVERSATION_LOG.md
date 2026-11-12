@@ -2103,4 +2103,23 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 4. **Verificación y Deploy:**
    - Compilación exitosa en Next.js Turbopack (`npm run build`, 0 errores).
 
+---
+
+### Turno 100 — Actualización y Sincronización Integral de AGENTS.md
+**Prompt del usuario:**
+- *"agents.md esta al dia ?"*
+
+**Implementación técnica aplicada:**
+1. **Auditoría y Actualización de `AGENTS.md`:**
+   - **Nombre de la web:** Actualizado a `"El tablero."` con punto verde esmeralda (`#10b981`).
+   - **Roster de artistas:** Incorporado `bbbrvno` (`@bbbrvno`) a la lista oficial de raperos de la escena.
+   - **Proyectos principales:** Corrección del título `AMORIO CLUB` (no "AMORIO CLUB 2"), adición de `blablabla` (EP de bbbrvno con portada oficial y tracklist real), y documentación de los links directos a Spotify (`spotifyUrl`).
+   - **Píldora Navbar:** Documentada la nueva escala ultra-compacta de 42px de alto (`top: 10px`, botones de 28px) y la coordinación de márgenes de 14px en tarjetas (`.project-inspector-sheet`, `.profile-page`, `.cp-page`) para cero solapamiento.
+   - **Inspector de Proyecto:** Documentado el reemplazo del antiguo spinner por el **Render de Estudio HD de vinilo** (tapa + disco con giro animado) + flex derecho con altura de tracks reducida (40px/fila) y botón `← Volver a mis proyectos` integrado.
+   - **Crear Proyecto:** Documentada la nueva posición de flujo natural `justify-content: flex-start`, botón `← Volver` integrado en la cabecera del formulario (`.cp-inline-back-pill`), inputs minimalistas y enjambre 3D de 28.000 partículas.
+   - **Persistencia, Audio y Privacidad:** Documentado el sistema de subida con fallback Base64 data URLs en Supabase, rewrites SPA en Next.js, pantalla 404 personalizada y calibración del reproductor de 808.
+2. **Verificación y Deploy:**
+   - Compilación exitosa en Next.js Turbopack (`npm run build`, 0 errores).
+
+
 
