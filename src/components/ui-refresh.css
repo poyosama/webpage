@@ -1566,3 +1566,82 @@ html:root body .edge-back-pill { display: none !important; }
   border: 0;
   font-size: 1rem;
 }
+
+/* ===================== EDITAR TRACK: compacto, Guardar siempre visible ===================== */
+html:root body .apple-modal-card.edit-track-card {
+  width: min(620px, calc(100vw - 24px)) !important;
+  max-width: min(620px, calc(100vw - 24px)) !important;
+  max-height: calc(var(--app-h, 100dvh) - 32px) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  padding: 16px 18px 0 !important;
+}
+.edit-track-card .modal-head { flex: none; margin-bottom: 10px !important; padding-bottom: 10px !important; }
+.edit-track-card .modal-head h3 { font-size: 1.05rem !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 420px; }
+html:root body .edit-track-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 8px 10px !important;
+  padding-bottom: 12px;
+}
+.edit-track-grid .et-title,
+.edit-track-grid .full,
+.edit-track-grid .et-color { grid-column: 1 / -1; }
+html:root body .edit-track-grid .modal-field span { font-size: 0.6rem !important; margin-bottom: 3px !important; }
+html:root body .edit-track-grid .modal-field input {
+  height: 36px !important;
+  padding: 0 10px !important;
+  font-size: 0.86rem !important;
+  border-radius: 10px !important;
+}
+.edit-track-grid .et-color { display: flex !important; align-items: center; gap: 12px; flex-direction: row !important; }
+.edit-track-grid .et-color span { margin: 0 !important; }
+.edit-track-grid .et-color .color-dots { margin: 0 !important; }
+.et-files { display: flex !important; flex-direction: row !important; gap: 8px; }
+.et-file-btn {
+  flex: 1;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--surface-secondary);
+  border: 1px solid var(--line);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.et-file-btn:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); }
+.et-file-btn img { width: 22px; height: 22px; border-radius: 5px; object-fit: cover; }
+html:root body .edit-track-card .modal-foot {
+  flex: none;
+  position: sticky;
+  bottom: 0;
+  margin: 0 -18px !important;
+  padding: 10px 18px calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+@media (max-width: 520px) {
+  html:root body .edit-track-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .edit-track-grid .et-title { grid-column: 1 / -1; }
+}
+html:root body .apple-modal-card .modal-form-grid.edit-track-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+@media (max-width: 520px) {
+  html:root body .apple-modal-card .modal-form-grid.edit-track-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+html:root body .et-file-btn span {
+  font-family: var(--font-sans), -apple-system, sans-serif !important;
+  font-size: 0.8rem !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  margin: 0 !important;
+  color: var(--ink) !important;
+}

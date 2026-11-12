@@ -6039,7 +6039,7 @@ function EditTrackModal({
       onClick={onClose}
     >
       <motion.div
-        className="apple-modal-card"
+        className="apple-modal-card edit-track-card"
         initial={{ scale: 0.94, y: 16 }}
         animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.94, y: 16 }}
@@ -6047,29 +6047,29 @@ function EditTrackModal({
       >
         <div className="modal-head">
           <div>
-            <span className="mono-tag">STUDIO INSPECTOR // EDITAR TRACK</span>
-            <h3>Editar metadata y versión del track</h3>
+            <span className="mono-tag">EDITAR TRACK</span>
+            <h3>{title || "Track"}</h3>
           </div>
           <button type="button" className="apple-btn ghost" onClick={onClose}>
             Cerrar
           </button>
         </div>
 
-        <div className="modal-form-grid">
-          <label className="modal-field">
-            <span>TÍTULO DEL TRACK</span>
+        <div className="modal-form-grid edit-track-grid">
+          <label className="modal-field et-title">
+            <span>TÍTULO</span>
             <input value={title} onChange={(e) => setTitle(e.target.value)} />
           </label>
           <label className="modal-field">
-            <span>ARTISTA PRINCIPAL</span>
+            <span>ARTISTA</span>
             <input value={artist} onChange={(e) => setArtist(e.target.value)} />
           </label>
           <label className="modal-field">
-            <span>FEATURING (OPCIONAL)</span>
+            <span>FEAT.</span>
             <input value={feat} onChange={(e) => setFeat(e.target.value)} placeholder="ej. eyebags" />
           </label>
           <label className="modal-field">
-            <span>PRODUCTOR (OPCIONAL)</span>
+            <span>PROD.</span>
             <input value={prod} onChange={(e) => setProd(e.target.value)} placeholder="ej. dorkke, Gonza2k..." />
           </label>
           <label className="modal-field">
@@ -6077,15 +6077,15 @@ function EditTrackModal({
             <input type="number" value={bpm} onChange={(e) => setBpm(Number(e.target.value))} />
           </label>
           <label className="modal-field">
-            <span>KEY (TONALIDAD)</span>
+            <span>KEY</span>
             <input value={musicalKey} onChange={(e) => setMusicalKey(e.target.value)} placeholder="ej. F#m" />
           </label>
           <label className="modal-field">
-            <span>NÚMERO DE VERSIÓN</span>
+            <span>VERSIÓN</span>
             <input type="number" value={version} onChange={(e) => setVersion(Number(e.target.value))} />
           </label>
-          <label className="modal-field">
-            <span>COLOR DEL DISCO / SELLO</span>
+          <label className="modal-field et-color">
+            <span>COLOR</span>
             <div className="color-dots">
               {["#e11d48", "#0284c7", "#ca8a04", "#65a30d", "#7e22ce", "#14b8a6"].map((col) => (
                 <button
@@ -6099,58 +6099,46 @@ function EditTrackModal({
             </div>
           </label>
 
-          <label className="modal-field full">
-            <span>PORTADA / IMAGEN INDIVIDUAL DEL TRACK</span>
-            <div style={{ display: "flex", gap: 14, alignItems: "center", marginTop: 6 }}>
-              {coverUrl ? (
-                <img
-                  src={coverUrl}
-                  alt={title}
-                  style={{ width: 56, height: 56, borderRadius: 8, objectFit: "cover", border: "1px solid rgba(255,255,255,0.2)" }}
-                />
-              ) : (
-                <div style={{ width: 56, height: 56, borderRadius: 8, background: "#1c1d24", display: "grid", placeItems: "center" }}>
-                  <DiscIcon size={24} />
-                </div>
-              )}
-              <div style={{ flex: 1 }}>
-                <input
-                  type="file"
-                  accept="image/*,.png,.jpg,.jpeg,.webp,.gif"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) setCoverUrl(URL.createObjectURL(f));
-                  }}
-                />
-                <small style={{ display: "block", color: "rgba(255,255,255,0.5)", marginTop: 4, fontSize: 11 }}>
-                  Esta imagen se muestra en su disco del spinner 3D y en el reproductor.
-                </small>
-              </div>
-            </div>
-          </label>
+          <div className="modal-field full et-files">
+            <label className="et-file-btn">
+              {coverUrl ? <img src={coverUrl} alt="" /> : <DiscIcon size={16} />}
+              <span>Cambiar portada</span>
+              <input
+                type="file"
+                hidden
+                accept="image/*,.png,.jpg,.jpeg,.webp,.gif"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) setCoverUrl(URL.createObjectURL(f));
+                }}
+              />
+            </label>
+            <label className="et-file-btn">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>
+              <span>Reemplazar audio</span>
+              <input
+                type="file"
+                hidden
+                accept=".wav,.mp3,.m4a,.flac,.aac,.ogg,.aiff,.alac,.opus,audio/wav,audio/x-wav,audio/wave,audio/mpeg,audio/mp3,audio/mp4,audio/x-m4a,audio/aac,audio/flac,application/octet-stream"
+                onChange={async (e) => {
+                  const f = e.target.files?.[0];
+                  if (f) {
+                    setCustomAudioUrl(URL.createObjectURL(f));
+                    const res = await analyzeAudioFile(f);
+                    setBpm(res.bpm);
+                    setMusicalKey(res.key);
+                  }
+                }}
+              />
+            </label>
+          </div>
 
           <label className="modal-field full">
-            <span>NOTAS DE SESIÓN / CAMBIOS DE MEZCLA</span>
+            <span>NOTAS</span>
             <input
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="ej. sub más seco, falta automatizar delay del outro..."
-            />
-          </label>
-          <label className="modal-field full">
-            <span>REEMPLAZAR ARCHIVO DE AUDIO (WAV / MP3 · DETECTA KEY Y BPM AUTOMÁTICO)</span>
-            <input
-              type="file"
-              accept=".wav,.mp3,.m4a,.flac,.aac,.ogg,.aiff,.alac,.opus,audio/wav,audio/x-wav,audio/wave,audio/mpeg,audio/mp3,audio/mp4,audio/x-m4a,audio/aac,audio/flac,application/octet-stream"
-              onChange={async (e) => {
-                const f = e.target.files?.[0];
-                if (f) {
-                  setCustomAudioUrl(URL.createObjectURL(f));
-                  const res = await analyzeAudioFile(f);
-                  setBpm(res.bpm);
-                  setMusicalKey(res.key);
-                }
-              }}
             />
           </label>
         </div>
@@ -6190,7 +6178,7 @@ function EditTrackModal({
                 })
               }
             >
-              Guardar cambios en el track
+              Guardar
             </button>
           </div>
         </div>

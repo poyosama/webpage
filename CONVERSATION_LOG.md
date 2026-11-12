@@ -2405,3 +2405,10 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 **Prompt del usuario:** créditos más chicos/abajo; ocultar la descripción (solo artistas); "Compartir" como ícono parecido al de Invitar; descarga como flechita con bandeja y más chica; BPM/Key sobran; "Agregar tracks" solo un + que se mezcle; sacar el cartel de "click afuera para volver" que aparece al dejar el mouse quieto; "Volver a Mis proyectos" → "Volver"; tocar la portada la abre en grande.
 
 **Cambios:** subtítulo solo con artistas; créditos 0.7rem en `--ink-muted`; íconos `row-icon-btn` (descargar con bandeja / compartir), Editar y basura más discretos; BPM/Key solo al pasar el mouse (ocultos en táctil); barra inferior = círculo "+" centrado; sin `title` en la capa de click-afuera y sin la píldora "‹ Volver" del borde (el click afuera sigue funcionando); botón "← Volver"; `DiscSpinner3D` acepta `onOpenCover` → lightbox de la portada (click en el disco sigue reproduciendo).
+
+---
+
+### Turno 126 — Modal "Editar track" compacto
+**Prompt del usuario:** el modal de editar la data del track es enorme y hay que scrollear para guardar; que sea menos aglomerado.
+
+**Cambios (`EditTrackModal` en `App.tsx` + `ui-refresh.css`):** título del modal = nombre del track; etiquetas cortas (Título, Artista, Feat., Prod., BPM, Key, Versión, Color, Notas); grilla de 3 columnas (2 en celu) con inputs de 36px; color en una línea; portada y audio como dos botones ("Cambiar portada" con miniatura / "Reemplazar audio", analiza Key/BPM igual que antes) en vez de inputs de archivo nativos; el cuerpo scrollea solo si hace falta y el pie (Eliminar · Cancelar · **Guardar**) queda fijo abajo. En 1200×650 entra completo.
