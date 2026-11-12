@@ -288,6 +288,8 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
   const [profileSettingsOpen, setProfileSettingsOpen] = useState<boolean>(false);
   const [profileAddMenuOpen, setProfileAddMenuOpen] = useState<boolean>(false);
+  // Hoja "Mover a otro proyecto" (menú de los 3 puntitos del track)
+  const [moveTrackSheet, setMoveTrackSheet] = useState<{ track: Track; sourceProjectId: string } | null>(null);
   const [googleConnected, setGoogleConnected] = useState<boolean>(false);
 
   // Landing Page con micro vinilos y referral invite (estilo HeySpace)
@@ -462,13 +464,15 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
         const leftThreshold = isDesktop ? 440 : 110;
         const exitTriggerX = isDesktop ? 360 : 85;
 
-        if (x < leftThreshold) {
+        // En celular arrastrar solo reordena adentro del proyecto
+        // (para mover a otro proyecto está "Mover a otro proyecto" en los 3 puntitos)
+        if (isDesktop && x < leftThreshold) {
           setIsOverLeftExitPortal(true);
         } else {
           setIsOverLeftExitPortal(false);
         }
 
-        if (x < exitTriggerX) {
+        if (isDesktop && x < exitTriggerX) {
           sfx.close();
           setInsideCubeOpen(false);
           setIsOverLeftExitPortal(false);
@@ -3762,6 +3766,21 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                                         </button>
                                         <button
                                           type="button"
+                                          className="untitled-track-menu-btn"
+                                          onClick={() => {
+                                            sfx.open();
+                                            setMobileTrackMenuId(null);
+                                            setMoveTrackSheet({ track: t, sourceProjectId: activeProject.id });
+                                          }}
+                                        >
+                                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M5 12h14" />
+                                            <path d="m13 6 6 6-6 6" />
+                                          </svg>
+                                          <span>Mover a otro proyecto</span>
+                                        </button>
+                                        <button
+                                          type="button"
                                           className="untitled-track-menu-btn danger"
                                           onClick={() => {
                                             sfx.tap();
@@ -5098,6 +5117,77 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
               sfx.drop();
             }}
           />
+        )}
+      </AnimatePresence>
+
+      {/* ==================== HOJA "MOVER A OTRO PROYECTO" (tapas: un toque y se mueve) ==================== */}
+      <AnimatePresence>
+        {moveTrackSheet && (
+          <UniversalPortal>
+            <motion.div
+              className="move-sheet-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setMoveTrackSheet(null)}
+            >
+              <motion.div
+                className="move-sheet"
+                role="dialog"
+                aria-label="Mover track a otro proyecto"
+                initial={{ y: 40, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 40, opacity: 0 }}
+                transition={{ type: "spring", stiffness: 380, damping: 32 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="move-sheet-grabber" aria-hidden />
+                <div className="move-sheet-head">
+                  <div>
+                    <span className="mono-tag">MOVER TRACK</span>
+                    <h3>
+                      Mover <b>{moveTrackSheet.track.title}</b> a…
+                    </h3>
+                  </div>
+                  <button type="button" className="pf-btn" onClick={() => setMoveTrackSheet(null)}>
+                    Cancelar
+                  </button>
+                </div>
+                {myProjects.filter((p) => p.id !== moveTrackSheet.sourceProjectId).length === 0 ? (
+                  <p className="move-sheet-empty">No tenés otros proyectos todavía.</p>
+                ) : (
+                  <div className="move-sheet-grid">
+                    {myProjects
+                      .filter((p) => p.id !== moveTrackSheet.sourceProjectId)
+                      .map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          className="move-sheet-item"
+                          onClick={() => {
+                            handleTransferTrackToProject(moveTrackSheet.sourceProjectId, moveTrackSheet.track.id, p.id);
+                            setMoveTrackSheet(null);
+                          }}
+                        >
+                          <span
+                            className="move-sheet-cover"
+                            style={{
+                              background: p.coverUrl
+                                ? `url(${p.coverUrl}) center / cover no-repeat`
+                                : `linear-gradient(135deg, ${p.c1} 0%, ${p.c2} 100%)`,
+                            }}
+                          />
+                          <b>{p.title}</b>
+                          <small>
+                            {p.tracks.length} {p.tracks.length === 1 ? "track" : "tracks"}
+                          </small>
+                        </button>
+                      ))}
+                  </div>
+                )}
+              </motion.div>
+            </motion.div>
+          </UniversalPortal>
         )}
       </AnimatePresence>
 

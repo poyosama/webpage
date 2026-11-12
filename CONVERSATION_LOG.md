@@ -2192,3 +2192,13 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 1. `ManifoldLibrary3D.tsx`: el switcher usa íconos SVG (disco / grilla) sin texto, con `aria-label` y `title`.
 2. `ui-refresh.css` (≤720px): el viewport de la rueda pasa a columna (vinilo → tarjeta → flechitas) con `padding` reservado arriba (switcher) y abajo (botones); flechitas en una píldora horizontal debajo de la tarjeta (◀ 1/6 ▶); "Subir track / Cambiar Canva" en una fila fija centrada abajo.
 3. La tarjeta tenía `z-index:20` porque `:root[data-theme] .vinyl-fan-inspector-card.vinyl-fan-clean-title-card` le ganaba en especificidad; ahora `html:root body .vinyl-fan-arc-viewport …` la deja en 500, opaca y con título `--ink`.
+
+---
+
+### Turno 108 — Mover tracks entre proyectos desde los 3 puntitos (celu: arrastre solo reordena)
+**Prompt del usuario:** en el celular el arrastre no sirve para mover a otro proyecto: dejarlo solo para reordenar adentro del proyecto; en los 3 puntitos poner "Mover", que muestre todos los proyectos como tapas y con un toque se mueva.
+
+**Implementación (`App.tsx` + `ui-refresh.css`):**
+1. Arrastre de tracks: en ≤720px se desactiva el "portal de salida" por la izquierda (antes al arrastrar a la izquierda salías a la biblioteca para soltar en otro proyecto); queda solo reordenar. En escritorio sigue igual.
+2. Menú `•••` del track: nueva opción **Mover a otro proyecto** (si se puede editar el proyecto).
+3. Hoja `move-sheet` (portal, bottom-sheet en celu / modal centrado en escritorio): grilla de tapas de `myProjects` sin el proyecto actual; un toque llama a `handleTransferTrackToProject` y cierra. Probado: el proyecto pasó de 6 a 5 tracks.
