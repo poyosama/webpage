@@ -1928,3 +1928,4 @@ html:root body .landing-explore-link {
 .liked-empty span { font-size: 2rem; color: #e11d48; line-height: 1; margin-bottom: 6px; }
 .liked-empty b { font-size: 0.95rem; color: var(--ink); }
 .liked-empty small { font-size: 0.8rem; max-width: 280px; }
+.liked-empty span { color: var(--ink) !important; }

@@ -2517,3 +2517,12 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 **Prompt del usuario:** no aparece el vinilo de me gusta (¿porque no tiene ninguno?).
 
 **Cambio:** `likedProject` existe siempre que haya sesión (antes solo con ≥1 ♥); primero en rueda y tapas. Vacío muestra "♥ Todavía no tenés me gusta · Tocá el corazón en el reproductor…" (web y celu).
+
+---
+
+### Turno 137 — Fix del control remoto "loco" + tapa negra de Tus me gusta
+**Prompt del usuario:** video: el mini-reproductor saltaba entre dos tracks/tiempos y entre play/pausa (en celu y PC); la tapa de Tus me gusta debe ser negra con corazón blanco (degradé/partículas), no el degradé violeta.
+
+**Diagnóstico:** los dos dispositivos sonaban a la vez y cada uno tomaba al otro como "activo" al recibir su `state` con `isPlaying`; además el efecto de progreso con `isPlaying=false` seguía escribiendo el tiempo local y el dispositivo que pasaba a control remoto no se pausaba.
+
+**Fix:** `remotePlayer.ts`: un `state` ajeno solo te convierte en control remoto si este dispositivo NO está sonando y no sigue a nadie; si ya lo sigue, solo actualiza. `App.tsx`: al pasar a control remoto se pausa el audio local; el efecto de progreso (rama pausada) no escribe cuando se controla a otro. Tapa: SVG negro con degradé radial gris, halo, ~100 partículas blancas y corazón blanco; colores del proyecto en negro/gris.

@@ -112,8 +112,16 @@ export function useRemotePlayer({
     ch.on("broadcast", { event: "state" }, ({ payload }) => {
       const s = payload as RemoteState;
       if (!s || s.deviceId === myDeviceId) return;
-      // el que manda estado sonando pasa a ser el activo
-      if (s.isPlaying || activeRef.current === s.deviceId) {
+      // Ya lo seguimos: actualizar lo que muestra el control remoto
+      if (activeRef.current === s.deviceId) {
+        setRemoteState(s);
+        return;
+      }
+      // Si ESTE dispositivo está sonando, no se lo cede a nadie por un simple "state"
+      // (solo con claim / transfer explícitos). Evita que dos dispositivos se pisen.
+      const mine = getLocalRef.current();
+      if (mine?.isPlaying) return;
+      if (s.isPlaying && !activeRef.current) {
         setActiveDeviceId(s.deviceId);
         setRemoteState(s);
       }
