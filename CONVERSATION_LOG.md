@@ -2389,3 +2389,12 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 - `src/app/privacidad/page.tsx` y `src/app/terminos/page.tsx` (+ `src/components/legal/LegalPage.tsx`, `legal.css`): páginas estáticas en `eltablero.blog/privacidad` y `/terminos` (datos de Google usados: nombre, correo y foto; contenido subido; Supabase/Vercel; borrar cuenta desde Ajustes; revocar acceso en Google; contacto Instagram @quetablero).
 - Landing: links "Privacidad · Términos" abajo (Google exige que la página principal enlace la política).
 - Pendiente del usuario: configurar Branding en Google Cloud Console, verificar el dominio en Search Console y enviar a verificación (guía paso a paso en el chat).
+
+---
+
+### Turno 124 — Diagnóstico de la base real: faltan migraciones (los links de invitación no funcionan todavía)
+**Prompt del usuario:** ¿los invite links funcionan si se los mando a los panas? ¿la pantalla de Google sale con mi dominio o el de Supabase?
+
+**Diagnóstico contra la base real (REST con la anon key):** no existe `profiles.invite_codes`, ni la RPC `validate_invite_code`, ni `projects.is_public`, ni `saved_projects` → no se corrió ninguna migración (ni la vieja `migration_visibility.sql`). Resultado: los pases generados solo viven en el navegador de quien los crea y el link le da "no válido" a cualquier otro.
+
+**Fix:** `supabase/APLICAR_TODO.sql` = migration_visibility + migration_invites + migration_sharing + migration_account, en orden. Probado en Postgres 16 local sobre una base igual a prod (sin `is_public`): corre sin errores, idempotente (2 corridas), admin `jpizarrograndinetti@gmail.com` ilimitado y pases válidos para anónimos. Pendiente: que el usuario lo pegue en Supabase > SQL Editor > Run.
