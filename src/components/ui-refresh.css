@@ -379,3 +379,39 @@
 :root body .untitled-catalog-cover {
   box-shadow: 0 6px 16px -8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
+
+/* ===================== INICIO (desktop): tablero + nombre entran en la primera pantalla =====================
+   Todo escala con el alto de la ventana (vh) para que apenas entrás se vea el board
+   completo y "El tablero." abajo; la tira de portadas queda debajo, scrolleando. */
+@media (min-width: 721px) {
+  :root body .secondstory-strip-card {
+    padding: clamp(10px, 1.6vh, 18px) clamp(14px, 1.8vw, 22px) !important;
+  }
+  :root body .strip-top-meta { margin-bottom: 0 !important; }
+  :root body .corecore-stage {
+    min-height: 0 !important;
+    padding: clamp(2px, 0.8vh, 8px) 10px !important;
+  }
+  :root body .corecore-stage .Roster-collage { gap: clamp(0px, 0.5vh, 4px) !important; }
+  :root body .corecore-stage .collage-line {
+    flex-wrap: nowrap !important;
+    gap: clamp(8px, 1.4vh, 14px) clamp(14px, 2vw, 28px) !important;
+  }
+  :root body .corecore-stage .roster-word {
+    font-size: clamp(1.3rem, 6.6vh, 3rem) !important;
+    line-height: 1.08 !important;
+  }
+  :root body .corecore-stage .collage-cover-thumb {
+    width: clamp(26px, 5.6vh, 48px) !important;
+    height: clamp(26px, 5.6vh, 48px) !important;
+  }
+  :root body .corecore-stage .cutout-pill,
+  :root body .corecore-stage .pixel-tag { font-size: clamp(0.62rem, 1.7vh, 0.78rem) !important; }
+  :root body .secondstory-mega-footer {
+    padding: clamp(2px, 1vh, 10px) 0 clamp(2px, 0.6vh, 6px) !important;
+  }
+  :root body .mega-display-title {
+    font-size: clamp(2.6rem, 12.5vh, 5.8rem) !important;
+    line-height: 0.95 !important;
+  }
+}
