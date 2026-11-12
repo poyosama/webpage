@@ -1998,3 +1998,40 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
    - Formatos generados en alta fidelidad: 1024x1024 (`apple-touch-icon.png`), 512x512 (`icon.png`) y 192x192 (`icon-192.png`).
 6. **Verificación y Deploy:**
    - Compilación exitosa con Next.js Turbopack (`npm run build`, 0 errores en TypeScript y rutas).
+
+### Turno 96 — Compactación y Desahogo del Inspector de Proyecto (Equilibrio entre 100% y 67% Zoom sin Letras Pequeñas)
+**Prompt del usuario:**
+- *"se sigue viendo demasiado crammed, bajale el zoom o el tamaño al flex de la derecha, mira te mando con mucho zoom es como se ve en 100%, la segunda imagen esta en 67% y se ve bastante mejor pero las letras y tal estan pequeñas. solucionalo de alguna forma"* (adjuntó `image.png` a 100% y `image_2.png` a 67%).
+
+**Diagnóstico visual de las capturas:**
+1. En `image.png` (100% zoom):
+   - El contenedor general y la tarjeta del inspector ocupaban más altura que la ventana efectiva del navegador (~650px disponibles entre barra de tareas, pestañas de Chrome y reproductor Dynamic Island).
+   - El flex derecho `.inspector-tracklist` tenía márgenes, paddings (16px/20px) y alturas de cabecera excesivas (~115px), más filas de track de 58px cada una.
+   - Como resultado, solo se visualizaban 3 canciones, la 4ª quedaba cortada, la 5ª y la caja de subir tracks quedaban ocultas bajo el borde de la pantalla, dando una sensación de asfixia ("crammed").
+2. En `image_2.png` (67% zoom del navegador):
+   - Al reducir el zoom al 67%, la tarjeta encajaba a la perfección: entraban las 5 canciones completas, el botón de subir tracks y los bordes redondeados inferiores con holgura respecto al reproductor.
+   - Sin embargo, como el zoom del navegador escala todo por igual al 67%, la tipografía y los botones se volvieron diminutos e incómodos para la lectura.
+
+**Implementación técnica aplicada:**
+1. **Contención y Enmarcado Editorial del Stage (`src/components/board-polish.css`):**
+   - Se estableció un ancho máximo contenido `max-width: 1040px !important; margin: 0 auto !important;` en `.inspector-unified-stage` y `.project-inspector-sheet`. Ahora en monitores anchos la información no se desparrama por toda la pantalla, manteniendo los botones de acción cerca de los títulos y recreando la composición armónica de la captura al 67%.
+   - Se ajustó el padding del stage a `clamp(10px, 1.4vw, 16px) clamp(14px, 1.8vw, 22px)` para eliminar espacios muertos verticales.
+2. **Compactación Proporcional del Flex Derecho (`.inspector-tracklist`) (`src/components/board-polish.css`):**
+   - Padding interior optimizado a `12px 16px 14px !important;` con `border-radius: 20px !important;` y `gap: 8px !important;`.
+   - **Cabecera aerodinámica:**
+     - Badges de estado (`WIP`, `tracks`, `Privado`, `Volver`): reducidos a `height: 26px !important; padding: 3px 9px !important; font-size: 0.72rem !important;`.
+     - Título del proyecto: ajustado a `font-size: clamp(1.25rem, 1.7vw, 1.55rem) !important; line-height: 1.08;` para un impacto tipográfico moderno y proporcionado sin devorarse el espacio vertical.
+     - Botón `▶ Reproducir`: estilizado en píldora compacta `height: 30px !important; padding: 5px 13px !important; font-size: 0.78rem !important;`.
+3. **Filas de Tracks de Alta Densidad y 100% Legibles (`.clean-track-row`) (`src/components/board-polish.css`):**
+   - Altura de fila reducida de 58px a 40px (`padding: 5px 8px !important; min-height: 40px !important; gap: 8px !important;`).
+   - Carátula miniatura calibrada a `30px x 30px` con bordes redondeados suaves.
+   - **Tipografía nítida y legible (sin letras pequeñas):** título del track a `0.84rem` (13.5px) con peso bold 600, subtítulo/prod a `0.72rem` (11.5px) y chips de BPM/Key a `0.67rem`.
+   - Botones de acción (`⬇`, `Editar`, `🗑️`): compactados a `24px x 24px` / `height: 24px`.
+   - Con este ahorro de 18px por canción, un proyecto de 5 temas ahorra 90px de altura pura, permitiendo ver todos los tracks completos sin necesidad de scrollear.
+4. **Caja Inferior de Agregar Tracks (`.inspector-bottom-add-bar`) (`src/components/board-polish.css`):**
+   - Rediseñada a `padding: 6px 12px !important; border-radius: 10px !important; min-height: 38px !important; margin-top: 6px !important;`.
+   - Círculo con `+` optimizado a 22px con tipografía de 0.85rem.
+5. **Media Query Especial para Pantallas de Laptops (Viewport <= 840px de alto):**
+   - En pantallas con altura compacta, el vinilo escala suavemente a `clamp(125px, 12vw, 155px)`, el scroll de tracks se limita a `clamp(160px, 34vh, 250px)` y los paddings se reducen para garantizar que la tarjeta nunca quede tapada por el reproductor Dynamic Island.
+6. **Verificación y Deploy:**
+   - Compilación exitosa con Next.js Turbopack (`npm run build`, 0 errores).

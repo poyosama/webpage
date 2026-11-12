@@ -164,8 +164,12 @@ textarea,
 
 /* ==================== UNIFIED PROJECT INSPECTOR (CANVAS BEHIND + VINYL RENDER + TITLE & TRACKS) ==================== */
 .project-inspector-sheet {
-  padding: 6px 18px 24px !important;
+  padding: 4px 16px 14px !important;
   margin-top: 0 !important;
+  display: flex !important;
+  justify-content: center !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 .cube-interior-back-bar {
@@ -174,13 +178,22 @@ textarea,
 
 .inspector-unified-stage {
   position: relative;
-  border-radius: 28px !important;
+  border-radius: 24px !important;
   overflow: hidden !important;
-  padding: clamp(14px, 1.8vw, 22px) clamp(18px, 2.4vw, 28px) !important;
+  padding: clamp(10px, 1.4vw, 16px) clamp(14px, 1.8vw, 22px) !important;
   background: var(--surface);
   border: 1px solid var(--line);
   isolation: isolate;
   margin-top: 0 !important;
+  max-width: 1040px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.12);
+}
+
+:root[data-theme="dark"] .inspector-unified-stage {
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.5);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 .inspector-unified-stage.has-canvas-bg {
@@ -246,8 +259,8 @@ textarea,
   position: relative;
   z-index: 3;
   display: grid;
-  grid-template-columns: minmax(210px, 300px) 1fr;
-  gap: clamp(16px, 2.4vw, 32px);
+  grid-template-columns: minmax(170px, 220px) 1fr !important;
+  gap: clamp(14px, 2vw, 24px) !important;
   align-items: center;
   margin-top: 0 !important;
 }
@@ -257,13 +270,13 @@ textarea,
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 6px 28px 6px 4px;
-  min-height: 220px;
+  padding: 4px 20px 4px 0 !important;
+  min-height: 180px !important;
 }
 
 .vinyl-render-stage {
   position: relative;
-  width: clamp(170px, 17vw, 220px);
+  width: clamp(140px, 15vw, 180px) !important;
   aspect-ratio: 1 / 1;
   cursor: pointer;
   transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
@@ -500,30 +513,31 @@ textarea,
 .inspector-unified-stage .inspector-tracklist {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px !important;
   background: rgba(14, 14, 19, 0.94);
   backdrop-filter: blur(24px) saturate(160%);
   -webkit-backdrop-filter: blur(24px) saturate(160%);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45);
-  border-radius: 28px !important;
-  padding: 16px 20px 20px !important;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
+  border-radius: 20px !important;
+  padding: 12px 16px 14px !important;
   min-width: 0;
   overflow: hidden !important;
+  box-sizing: border-box !important;
 }
 
 :root[data-theme="light"] .inspector-unified-stage .inspector-tracklist {
-  background: rgba(255, 255, 255, 0.96);
-  border-color: rgba(15, 15, 17, 0.12);
-  box-shadow: 0 16px 40px rgba(15, 15, 17, 0.08);
-  border-radius: 28px !important;
+  background: rgba(255, 255, 255, 0.97);
+  border-color: rgba(15, 15, 17, 0.1);
+  box-shadow: 0 12px 32px rgba(15, 15, 17, 0.06);
+  border-radius: 20px !important;
 }
 
 .inspector-project-head {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding-bottom: 12px;
+  gap: 6px !important;
+  padding-bottom: 8px !important;
   border-bottom: 1px solid var(--line);
 }
 
@@ -531,14 +545,14 @@ textarea,
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 6px !important;
   flex-wrap: wrap;
 }
 
 .inspector-top-badges-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px !important;
   flex-wrap: wrap;
   flex: 1;
   min-width: 0;
@@ -547,14 +561,14 @@ textarea,
 .compact-back-pill-btn {
   display: inline-flex !important;
   align-items: center !important;
-  gap: 6px !important;
-  padding: 5px 12px !important;
-  height: 29px !important;
+  gap: 5px !important;
+  padding: 4px 10px !important;
+  height: 26px !important;
   border-radius: 999px !important;
   background: #18181b !important;
   border: 1px solid rgba(255, 255, 255, 0.16) !important;
   color: #ffffff !important;
-  font-size: 0.74rem !important;
+  font-size: 0.72rem !important;
   font-weight: 700 !important;
   cursor: pointer !important;
   flex-shrink: 0 !important;
@@ -576,35 +590,58 @@ textarea,
   transform: scale(0.96) !important;
 }
 
+.inspector-top-badges-row .meta-pill-static,
+.inspector-top-badges-row .visibility-toggle {
+  height: 26px !important;
+  padding: 3px 9px !important;
+  font-size: 0.72rem !important;
+  border-radius: 999px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
 .inspector-top-badges-row .project-editable-meta-bar {
   margin-bottom: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .inspector-compact-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px !important;
   flex-wrap: wrap;
 }
 
 .compact-pill-btn {
-  padding: 5px 11px !important;
-  font-size: 0.74rem !important;
+  padding: 4px 9px !important;
+  height: 26px !important;
+  font-size: 0.72rem !important;
   border-radius: 999px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+}
+
+.inspector-compact-actions .untitled-icon-squircle {
+  width: 26px !important;
+  height: 26px !important;
+  border-radius: 8px !important;
 }
 
 .inspector-title-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  gap: 10px !important;
   flex-wrap: wrap;
 }
 
 .inspector-project-title {
-  font-size: clamp(1.4rem, 2.3vw, 1.95rem);
-  font-weight: 800;
-  letter-spacing: -0.035em;
+  font-size: clamp(1.25rem, 1.7vw, 1.55rem) !important;
+  font-weight: 750 !important;
+  letter-spacing: -0.03em;
   line-height: 1.08;
   margin: 0;
   color: var(--ink);
@@ -612,21 +649,164 @@ textarea,
 
 .inspector-project-artist {
   display: block;
-  font-size: 0.86rem;
+  font-size: 0.8rem !important;
   font-weight: 500;
   color: var(--ink-secondary);
-  margin-top: 3px;
+  margin-top: 1px !important;
+}
+
+.inspector-title-ctas {
+  display: flex;
+  align-items: center;
+  gap: 6px !important;
+}
+
+.inspector-title-ctas .apple-btn {
+  height: 30px !important;
+  padding: 5px 13px !important;
+  font-size: 0.78rem !important;
+  border-radius: 999px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
 }
 
 .inspector-tracks-list-scroll {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  max-height: clamp(330px, 46vh, 460px) !important;
-  overflow-y: auto;
-  padding-right: 4px;
-  padding-bottom: 6px;
-  border-radius: 16px;
+  gap: 2px !important;
+  max-height: clamp(200px, 42vh, 340px) !important;
+  overflow-y: auto !important;
+  padding-right: 4px !important;
+  padding-bottom: 2px !important;
+  border-radius: 10px !important;
+}
+
+/* Filas de track ultracompactas pero 100% legibles */
+.inspector-tracklist .clean-track-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 5px 8px !important;
+  border-radius: 8px !important;
+  min-height: 40px !important;
+  border-bottom: 1px solid var(--line) !important;
+  transition: background 0.15s ease, transform 0.15s ease !important;
+}
+
+.inspector-tracklist .clean-track-row:last-child {
+  border-bottom: none !important;
+}
+
+.inspector-tracklist .clean-track-row:hover {
+  background: rgba(128, 128, 140, 0.08) !important;
+}
+
+.inspector-tracklist .clean-track-row.is-playing {
+  background: rgba(225, 29, 72, 0.08) !important;
+}
+
+:root[data-theme="light"] .inspector-tracklist .clean-track-row.is-playing {
+  background: rgba(225, 29, 72, 0.06) !important;
+}
+
+.inspector-tracklist .track-drag-handle {
+  width: 14px !important;
+  height: 14px !important;
+  padding: 0 !important;
+}
+
+.inspector-tracklist .inspector-track-num {
+  font-size: 0.72rem !important;
+  font-family: var(--font-mono), monospace !important;
+  width: 16px !important;
+  text-align: center !important;
+  color: var(--ink-muted) !important;
+  flex-shrink: 0 !important;
+}
+
+.inspector-tracklist .track-row-art-wrap {
+  width: 30px !important;
+  height: 30px !important;
+  border-radius: 6px !important;
+  overflow: hidden !important;
+  flex-shrink: 0 !important;
+}
+
+.inspector-tracklist .track-row-img-thumb {
+  width: 30px !important;
+  height: 30px !important;
+  object-fit: cover !important;
+}
+
+.inspector-tracklist .row-main {
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+.inspector-tracklist .row-main b {
+  font-size: 0.84rem !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.015em !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  display: block !important;
+}
+
+.inspector-tracklist .row-main span {
+  font-size: 0.72rem !important;
+  line-height: 1.15 !important;
+  color: var(--ink-secondary) !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  display: block !important;
+}
+
+.inspector-tracklist .row-pills {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  flex-shrink: 0 !important;
+}
+
+.inspector-tracklist .meta-chip {
+  padding: 2px 6px !important;
+  font-size: 0.67rem !important;
+  border-radius: 5px !important;
+}
+
+.inspector-tracklist .row-inline-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  flex-shrink: 0 !important;
+}
+
+.inspector-tracklist .row-snippet-btn {
+  height: 24px !important;
+  padding: 0 8px !important;
+  font-size: 0.7rem !important;
+  border-radius: 6px !important;
+  font-weight: 600 !important;
+}
+
+.inspector-tracklist .trash-icon-btn,
+.inspector-tracklist .track-download-btn {
+  width: 24px !important;
+  height: 24px !important;
+  border-radius: 6px !important;
+  display: grid !important;
+  place-items: center !important;
+  font-size: 0.72rem !important;
+  padding: 0 !important;
+}
+
+.inspector-tracklist .trash-icon-btn svg {
+  width: 12px !important;
+  height: 12px !important;
 }
 
 /* ==================== OPTIMIZACIÓN MOBILE / iPHONE ==================== */
@@ -885,59 +1065,85 @@ textarea,
 }
 
 .inspector-bottom-add-bar {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--line);
+  margin-top: 6px !important;
+  padding-top: 6px !important;
+  border-top: 1px dashed var(--line) !important;
 }
 
 .inspector-bottom-add-tracks-btn {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 11px 16px;
-  border-radius: 14px;
-  border: 1.5px dashed var(--line-strong);
-  background: rgba(128, 128, 140, 0.12);
-  cursor: pointer;
-  transition: transform 0.16s ease, background 0.16s ease, border-color 0.16s ease;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  width: 100% !important;
+  padding: 6px 12px !important;
+  border-radius: 10px !important;
+  border: 1px dashed var(--line-strong) !important;
+  background: rgba(128, 128, 140, 0.08) !important;
+  cursor: pointer !important;
+  transition: transform 0.16s ease, background 0.16s ease, border-color 0.16s ease !important;
 }
 
 .inspector-bottom-add-tracks-btn:hover {
-  background: rgba(128, 128, 140, 0.2);
-  border-color: var(--ink);
-  transform: translateY(-1px);
+  background: rgba(128, 128, 140, 0.16) !important;
+  border-color: var(--ink) !important;
+  transform: translateY(-1px) !important;
 }
 
 .inspector-bottom-add-tracks-btn .add-plus-circle {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: var(--ink);
-  color: var(--bg);
-  display: grid;
-  place-items: center;
-  font-size: 1.05rem;
-  font-weight: 700;
-  flex-shrink: 0;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  background: var(--ink) !important;
+  color: var(--bg) !important;
+  display: grid !important;
+  place-items: center !important;
+  font-size: 0.85rem !important;
+  font-weight: 700 !important;
+  flex-shrink: 0 !important;
 }
 
 .inspector-bottom-add-tracks-btn .add-tracks-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  text-align: left;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1px !important;
+  text-align: left !important;
 }
 
 .inspector-bottom-add-tracks-btn .add-tracks-copy b {
-  font-size: 0.84rem;
-  font-weight: 700;
-  color: var(--ink);
+  font-size: 0.78rem !important;
+  font-weight: 650 !important;
+  color: var(--ink) !important;
 }
 
 .inspector-bottom-add-tracks-btn .add-tracks-copy small {
-  font-size: 0.72rem;
-  color: var(--ink-secondary);
+  font-size: 0.68rem !important;
+  color: var(--ink-secondary) !important;
+}
+
+/* Optimización extra para pantallas de laptop o viewport vertical compacto (<= 840px) */
+@media (min-width: 821px) and (max-height: 840px) {
+  .project-inspector-sheet {
+    padding: 2px 14px 8px !important;
+  }
+  .inspector-unified-stage {
+    padding: 8px 14px !important;
+  }
+  .inspector-unified-stage .inspector-split {
+    gap: 14px !important;
+  }
+  .vinyl-render-stage {
+    width: clamp(125px, 12vw, 155px) !important;
+  }
+  .inspector-unified-stage .inspector-tracklist {
+    padding: 9px 12px !important;
+    gap: 5px !important;
+  }
+  .inspector-project-title {
+    font-size: 1.35rem !important;
+  }
+  .inspector-tracks-list-scroll {
+    max-height: clamp(160px, 34vh, 250px) !important;
+  }
 }
 
 /* ==================== CONTRASTE Y LEGIBILIDAD EN MIS PROYECTOS / BIBLIOTECA ==================== */
