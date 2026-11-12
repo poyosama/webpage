@@ -89,28 +89,6 @@ const PRODUCER_DROP_KINDS: ("Todos" | ProducerDropKind)[] = [
   "Catálogo de Beats",
 ];
 
-const BOARD_ITEMS: {
-  id: string;
-  alt?: string;
-  title: string;
-  cover: string;
-  before: string;
-  mark: string;
-  after: string;
-  color: string;
-  type: string;
-  artist: string;
-}[] = [
-  { id: "la-plaga", title: "LA PLAGA", cover: "/covers/la-plaga.png", before: "LA ", mark: "PLAGA", after: "", color: "coral", type: "mixtape", artist: "eyebags" },
-  { id: "blablabla", title: "blablabla", cover: "/covers/blablabla.png", before: "bla", mark: "blabla", after: "", color: "red", type: "ep", artist: "bbbrvno" },
-  { id: "perdon-la-demora", title: "PERDÓN LA DEMORA", cover: "/covers/perdon-la-demora.png", before: "PERDÓN ", mark: "LA DEMORA", after: "", color: "cyan", type: "mixtape", artist: "Tizianolased" },
-  { id: "chickennugget", title: "chickenNugget", cover: "/covers/chickennugget.png", before: "chicken", mark: "Nugget", after: "", color: "gold", type: "ep", artist: "poyo · dorkke" },
-  { id: "esto-es-estar-en-sonido", title: "ESTO ES ESTAR EN SONIDO", cover: "/covers/esto-es-estar-en-sonido.png", before: "", mark: "ESTO ES ESTAR", after: " EN SONIDO", color: "blue", type: "lp", artist: "V4lentin0" },
-  { id: "ma7ias", title: "#MA7IAS", cover: "/covers/ma7ias.png", before: "", mark: "#MA7IAS", after: "", color: "lime", type: "lp", artist: "Ma7imza" },
-  { id: "love2hate", title: "Love2Hate", cover: "/covers/love2hate.png", before: "Love", mark: "2Hate", after: "", color: "purple", type: "ep", artist: "Icylucki" },
-  { id: "amorio-club", alt: "amorio-club-2", title: "AMORIO CLUB", cover: "/covers/amorio-club.png", before: "", mark: "AMORIO CLUB", after: "", color: "red", type: "ep", artist: "Máximo" },
-];
-
 const PRODUCER_KIND_LABEL: Record<string, string> = {
   Beatpost: "Beats",
   Soundkit: "Soundkits",
@@ -2044,6 +2022,17 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     );
   };
 
+  // Click en un proyecto del tablero: abre su Spotify; si no tiene link, lo reproduce
+  const openBoardProject = (p?: Project) => {
+    if (!p) return;
+    sfx.tap();
+    if (p.spotifyUrl) {
+      window.open(p.spotifyUrl, "_blank", "noopener,noreferrer");
+    } else if (p.tracks[0]) {
+      playTrack(p.tracks[0], p, false);
+    }
+  };
+
   const hasGuestInviteAccess = Boolean(selectedProjectId && projectInvites[selectedProjectId]);
 
   if (!authChecked) return <div className="auth-splash" aria-hidden />;
@@ -2232,48 +2221,192 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                   <span className="spine-badge-static">El tablero.</span>
                 </div>
 
-                {/* 1º: EL TABLERO — grilla ordenada de proyectos. Click = abre en Spotify (o reproduce si no hay link) */}
-                <div className="board-grid" role="list">
-                  {BOARD_ITEMS.map((it) => {
-                    const p = findProjectById(it.id) || (it.alt ? findProjectById(it.alt) : undefined);
-                    const typeLabel = p ? p.type.toLowerCase() : it.type;
-                    const artistLabel = p ? p.artist : it.artist;
-                    return (
+                {/* 1º: EL RUIDO EN EL MEDIO DE LA PANTALLA (TIPOGRAFÍA LIMPIA Y UNIFICADA + TAPAS REALES) */}
+                <div className="corecore-stage">
+                  <div className="neon-spine" aria-hidden />
+
+                  <div className="Roster-collage">
+                    {/* Fila 1: LA PLAGA (eyebags) + blablabla (bbbrvno) */}
+                    <div className="collage-line">
+                      <span className="cluster-dots">
+                        <i style={{ background: "#e11d48" }} />
+                        <i style={{ background: "#0284c7" }} />
+                        <i style={{ background: "#ca8a04" }} />
+                      </span>
+                      <span className="pixel-tag coral-badge">MIXTAPE // 01</span>
                       <button
-                        key={it.id}
                         type="button"
-                        role="listitem"
-                        className="board-tile"
-                        title={p?.spotifyUrl ? `Abrir ${it.title} en Spotify` : `Reproducir ${it.title}`}
+                        className="collage-item clean-editorial-word"
                         onMouseEnter={() => sfx.hover()}
                         onClick={() => {
-                          sfx.tap();
-                          if (p?.spotifyUrl) {
-                            window.open(p.spotifyUrl, "_blank", "noopener,noreferrer");
-                          } else if (p && p.tracks[0]) {
-                            playTrack(p.tracks[0], p, false);
-                          }
+                          const p = findProjectById("la-plaga");
+                          openBoardProject(p);
                         }}
                       >
-                        <img src={it.cover} alt="" className="board-tile-cover" loading="lazy" />
-                        <span className="board-tile-text">
-                          <span className="board-tile-word">
-                            {it.before}
-                            <mark className={`board-swatch ${it.color}`}>{it.mark}</mark>
-                            {it.after}
-                          </span>
-                          <small>
-                            {typeLabel} · {artistLabel}
-                          </small>
+                        <img
+                          src="/covers/la-plaga.png"
+                          alt="LA PLAGA"
+                          className="collage-cover-thumb"
+                        />
+                        <span className="roster-word">
+                          LA <span className="inline-swatch coral">PLAGA</span>
                         </span>
-                        <span className="board-tile-go" aria-hidden>
-                          {p?.spotifyUrl ? "↗" : "▶"}
-                        </span>
+                        <sup className="sup-tag">mixtape · eyebags</sup>
                       </button>
-                    );
-                  })}
-                </div>
 
+                      <button
+                        type="button"
+                        className="collage-item clean-editorial-word"
+                        onMouseEnter={() => sfx.hover()}
+                        onClick={() => {
+                          const p = findProjectById("blablabla");
+                          openBoardProject(p);
+                        }}
+                      >
+                        <img
+                          src="/covers/blablabla.png"
+                          alt="blablabla"
+                          className="collage-cover-thumb"
+                        />
+                        <span className="roster-word">
+                          bla<span className="inline-swatch red">blabla</span>
+                        </span>
+                        <sup className="sup-tag">ep · bbbrvno</sup>
+                      </button>
+                      <span className="cutout-pill">Mendoza</span>
+                    </div>
+
+                    {/* Fila 2: PERDÓN LA DEMORA (Tizianolased) */}
+                    <div className="collage-line">
+                      <button
+                        type="button"
+                        className="collage-item clean-editorial-word"
+                        onMouseEnter={() => sfx.hover()}
+                        onClick={() => {
+                          const p = findProjectById("perdon-la-demora");
+                          openBoardProject(p);
+                        }}
+                      >
+                        <img
+                          src="/covers/perdon-la-demora.png"
+                          alt="PERDÓN LA DEMORA"
+                          className="collage-cover-thumb"
+                        />
+                        <span className="roster-word">
+                          PERDÓN <span className="inline-swatch cyan">LA DEMORA</span>
+                        </span>
+                        <sup className="sup-tag">mixtape · Tizianolased</sup>
+                      </button>
+                      <span className="cutout-pill dark">8 tracks · 23 min</span>
+                    </div>
+
+                    {/* Fila 3: chickenNugget (poyo · dorkke) + ESTO ES ESTAR EN SONIDO (V4lentin0) */}
+                    <div className="collage-line">
+                      <button
+                        type="button"
+                        className="collage-item clean-editorial-word"
+                        onMouseEnter={() => sfx.hover()}
+                        onClick={() => {
+                          const p = findProjectById("chickennugget");
+                          openBoardProject(p);
+                        }}
+                      >
+                        <img
+                          src="/covers/chickennugget.png"
+                          alt="chickenNugget"
+                          className="collage-cover-thumb"
+                        />
+                        <span className="roster-word">
+                          chicken<span className="inline-swatch gold">Nugget</span>
+                        </span>
+                        <sup className="sup-tag">ep · poyo × dorkke</sup>
+                      </button>
+
+                      <button
+                        type="button"
+                        className="collage-item clean-editorial-word"
+                        onMouseEnter={() => sfx.hover()}
+                        onClick={() => {
+                          const p = findProjectById("esto-es-estar-en-sonido");
+                          openBoardProject(p);
+                        }}
+                      >
+                        <img
+                          src="/covers/esto-es-estar-en-sonido.png"
+                          alt="ESTO ES ESTAR EN SONIDO"
+                          className="collage-cover-thumb"
+                        />
+                        <span className="roster-word">
+                          <span className="inline-swatch blue">ESTO ES ESTAR</span> EN SONIDO
+                        </span>
+                        <sup className="sup-tag">lp · V4lentin0</sup>
+                      </button>
+                    </div>
+
+                    {/* Fila 4: #MA7IAS (Ma7imza) + Love2Hate (Icylucki) + AMORIO CLUB 2 (Máximo) */}
+                    <div className="collage-line">
+                      <button
+                        type="button"
+                        className="collage-item clean-editorial-word"
+                        onMouseEnter={() => sfx.hover()}
+                        onClick={() => {
+                          const p = findProjectById("ma7ias");
+                          openBoardProject(p);
+                        }}
+                      >
+                        <img
+                          src="/covers/ma7ias.png"
+                          alt="#MA7IAS"
+                          className="collage-cover-thumb"
+                        />
+                        <span className="roster-word">
+                          <span className="inline-swatch lime">#MA7IAS</span>
+                        </span>
+                        <sup className="sup-tag">lp · Ma7imza</sup>
+                      </button>
+
+                      <button
+                        type="button"
+                        className="collage-item clean-editorial-word"
+                        onMouseEnter={() => sfx.hover()}
+                        onClick={() => {
+                          const p = findProjectById("love2hate");
+                          openBoardProject(p);
+                        }}
+                      >
+                        <img
+                          src="/covers/love2hate.png"
+                          alt="Love2Hate"
+                          className="collage-cover-thumb"
+                        />
+                        <span className="roster-word">
+                          Love<span className="inline-swatch purple">2Hate</span>
+                        </span>
+                        <sup className="sup-tag">ep · Icylucki</sup>
+                      </button>
+
+                      <button
+                        type="button"
+                        className="collage-item clean-editorial-word"
+                        onMouseEnter={() => sfx.hover()}
+                        onClick={() => {
+                          const p = findProjectById("amorio-club") || findProjectById("amorio-club-2");
+                          openBoardProject(p);
+                        }}
+                      >
+                        <img
+                          src="/covers/amorio-club.png"
+                          alt="AMORIO CLUB"
+                          className="collage-cover-thumb"
+                        />
+                        <span className="roster-word">
+                          <span className="inline-swatch red">AMORIO CLUB</span>
+                        </span>
+                        <sup className="sup-tag">ep · Máximo</sup>
+                      </button>
+                    </div>
+                  </div>
+                </div>
 
                 {/* 2º: NOMBRE DE LA WEB ("El tablero.") */}
                 <div className="secondstory-mega-footer">

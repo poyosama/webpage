@@ -2117,3 +2117,12 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 4. **Perfil:** botones `Editar perfil` / `Invitar` / ajustes finos; "Mis proyectos" con botón `+` que despliega `Crear proyecto` o `Subir tracks`; se quitaron las pastillas con nombres (`ManifoldLibrary3D` no renderiza título + pills en modo `compact`); sin fondo de canva negro.
 5. **Crear proyecto:** `Privado`/`Público` con SVG de candado y planeta (monocromo, heredan `currentColor`); contenedor siempre `flex-start` debajo de la píldora.
 6. **Logo:** `public/brand/logo-el-tablero*.svg|png` (wordmark "El tablero." en Inter Display Bold, tracking apretado, trazado a curvas). Principal con espacio mínimo ("Eltablero", como pidió) y variante `-spaced`; versiones negra, blanca y blanca sobre negro.
+
+---
+
+### Turno 101 — Se restaura el collage de Inicio (ahora clickeable) + fix scroll del perfil
+**Prompt del usuario:** el tablero "tal cual estaba antes" (cluster colorido) pero con los proyectos clickeables; en el perfil las invitaciones de abajo no se llegaban a ver.
+
+**Implementación:**
+1. **`App.tsx`:** se restauró el collage original (`Roster-collage`) del commit `91db6e6` y se eliminó la grilla `BOARD_ITEMS`. Los clicks ahora llaman a `openBoardProject(p)`: abre `spotifyUrl` en pestaña nueva y, si el proyecto no tiene link, reproduce el primer track.
+2. **`ui-refresh.css`:** el body queda bloqueado (`app-no-scroll`) y el scroll es interno; `.profile-page`, `.dmg-section` y `.cp-page` pasan a `overflow-y:auto` con `padding-bottom:104px` para que el mini-reproductor no tape el final (invitaciones). `.apple-shell` usa `--nav-clear` también en el modo bloqueado.
