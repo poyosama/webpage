@@ -324,6 +324,8 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       setPlayerOnlyMode(localStorage.getItem("eltablero_player_mode") === "1");
     } catch {}
   }, []);
+  // Portada en grande (lightbox)
+  const [coverLightbox, setCoverLightbox] = useState<{ url?: string; title: string; c1?: string; c2?: string } | null>(null);
   // Toast "Movido a …" con partículas
   const [moveToast, setMoveToast] = useState<{ key: number; title: string; coverUrl?: string; c1?: string; c2?: string } | null>(null);
   // Hoja "Mover a otro proyecto" (menú de los 3 puntitos del track)
@@ -3405,7 +3407,6 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                   <>
                     <div
                       className="inspector-outside-dismiss-layer"
-                      title="Click afuera para volver a Mis proyectos"
                       onClick={() => {
                         sfx.close();
                         setInsideCubeOpen(false);
@@ -3414,7 +3415,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                     <button
                       type="button"
                       className="inspector-left-edge-sensor"
-                      title="Llevá el cursor al borde izquierdo o hacé click para volver"
+                      aria-label="Volver"
                       onClick={() => {
                         sfx.close();
                         setInsideCubeOpen(false);
@@ -4279,6 +4280,15 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                           currentTrackId={currentTrack.id}
                           onPlayTrack={(tr, pr) => playTrack(tr, pr, false)}
                           onDeleteTrack={canEditActive ? handleDeleteTrack : undefined}
+                          onOpenCover={() => {
+                            sfx.open();
+                            setCoverLightbox({
+                              url: activeProject.coverUrl,
+                              title: activeProject.title,
+                              c1: activeProject.c1,
+                              c2: activeProject.c2,
+                            });
+                          }}
                         />
 
                         <div className="inspector-tracklist">
@@ -4293,10 +4303,10 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                                       sfx.close();
                                       setInsideCubeOpen(false);
                                     }}
-                                    title="Volver a Mis proyectos"
+                                    aria-label="Volver a Mis proyectos"
                                   >
                                     <span className="back-arrow-icon">←</span>
-                                    <span>Volver a Mis proyectos</span>
+                                    <span>Volver</span>
                                   </button>
                                 )}
                                 <div className="project-editable-meta-bar">
@@ -4689,10 +4699,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                                     )}
                                   </div>
                                 )}
-                                <span className="inspector-project-artist">
-                                  {activeProject.artist}
-                                  {activeProject.description ? ` · ${activeProject.description}` : ""}
-                                </span>
+                                <span className="inspector-project-artist">{activeProject.artist}</span>
                               </div>
                               <div className="inspector-title-ctas">
                                 {!activeIsMine && (
@@ -4799,7 +4806,8 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                                   <div className="row-inline-actions">
                                     <button
                                       type="button"
-                                      className="row-snippet-btn track-download-btn"
+                                      className="row-icon-btn"
+                                      aria-label={`Descargar ${t.title}`}
                                       title={`Descargar ${t.title}`}
                                       onClick={async (e) => {
                                         e.stopPropagation();
@@ -4811,20 +4819,21 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                                         await downloadTrackAudio(t.title, t.artist, url);
                                       }}
                                     >
-                                      ⬇
+                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4v11" /><polyline points="7 10 12 15 17 10" /><path d="M5 19h14" /></svg>
                                     </button>
                                     {activeIsMine && (
                                       <button
                                         type="button"
-                                        className="row-snippet-btn"
+                                        className="row-icon-btn"
                                         title={`Compartir ${t.title}`}
+                                        aria-label={`Compartir ${t.title}`}
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           sfx.open();
                                           setInvitingTrack({ projectId: activeProject.id, track: t });
                                         }}
                                       >
-                                        Compartir
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" /></svg>
                                       </button>
                                     )}
                                     {!canEditActive && trackInvites[t.id] === "edit" && (
@@ -4873,16 +4882,16 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                           {/* Botón inferior siempre visible para agregar tracks al proyecto */}
                           {canEditActive && (
                             <div className="inspector-bottom-add-bar">
-                              <label className="inspector-bottom-add-tracks-btn">
-                                <span className="add-plus-circle">+</span>
-                                <div className="add-tracks-copy">
-                                  <b>
-                                    {uploadingTrackProjectId === activeProject.id
-                                      ? "Analizando Key y BPM de los tracks..."
-                                      : "+ Agregar tracks al proyecto"}
-                                  </b>
-                                  <small>WAV · MP3 · Detecta Key y BPM automáticamente</small>
-                                </div>
+                              <label
+                                className={`inspector-bottom-add-tracks-btn is-minimal ${
+                                  uploadingTrackProjectId === activeProject.id ? "is-busy" : ""
+                                }`}
+                                title="Agregar tracks (WAV · MP3)"
+                                aria-label="Agregar tracks al proyecto"
+                              >
+                                <span className="add-plus-circle">
+                                  {uploadingTrackProjectId === activeProject.id ? "…" : "+"}
+                                </span>
                                 <input
                                   type="file"
                                   multiple
@@ -5724,6 +5733,43 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
               </UniversalPortal>
             );
           })()}
+      </AnimatePresence>
+
+      {/* ==================== PORTADA EN GRANDE ==================== */}
+      <AnimatePresence>
+        {coverLightbox && (
+          <UniversalPortal>
+            <motion.div
+              className="cover-lightbox"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setCoverLightbox(null)}
+            >
+              <motion.div
+                className="cover-lightbox-art"
+                initial={{ scale: 0.86, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.92, opacity: 0 }}
+                transition={{ type: "spring", stiffness: 320, damping: 28 }}
+                style={
+                  coverLightbox.url
+                    ? undefined
+                    : { background: `linear-gradient(135deg, ${coverLightbox.c1 || "#141418"}, ${coverLightbox.c2 || "#2d2f3d"})` }
+                }
+              >
+                {coverLightbox.url ? (
+                  <img src={coverLightbox.url} alt={coverLightbox.title} />
+                ) : (
+                  <strong>{coverLightbox.title}</strong>
+                )}
+              </motion.div>
+              <button type="button" className="cover-lightbox-close" aria-label="Cerrar" onClick={() => setCoverLightbox(null)}>
+                ✕
+              </button>
+            </motion.div>
+          </UniversalPortal>
+        )}
       </AnimatePresence>
 
       {/* ==================== TOAST "MOVIDO A …" CON PARTÍCULAS ==================== */}

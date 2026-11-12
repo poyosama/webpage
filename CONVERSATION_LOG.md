@@ -2398,3 +2398,10 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 **Diagnóstico contra la base real (REST con la anon key):** no existe `profiles.invite_codes`, ni la RPC `validate_invite_code`, ni `projects.is_public`, ni `saved_projects` → no se corrió ninguna migración (ni la vieja `migration_visibility.sql`). Resultado: los pases generados solo viven en el navegador de quien los crea y el link le da "no válido" a cualquier otro.
 
 **Fix:** `supabase/APLICAR_TODO.sql` = migration_visibility + migration_invites + migration_sharing + migration_account, en orden. Probado en Postgres 16 local sobre una base igual a prod (sin `is_public`): corre sin errores, idempotente (2 corridas), admin `jpizarrograndinetti@gmail.com` ilimitado y pases válidos para anónimos. Pendiente: que el usuario lo pegue en Supabase > SQL Editor > Run.
+
+---
+
+### Turno 125 — Vista de proyecto (web) más limpia
+**Prompt del usuario:** créditos más chicos/abajo; ocultar la descripción (solo artistas); "Compartir" como ícono parecido al de Invitar; descarga como flechita con bandeja y más chica; BPM/Key sobran; "Agregar tracks" solo un + que se mezcle; sacar el cartel de "click afuera para volver" que aparece al dejar el mouse quieto; "Volver a Mis proyectos" → "Volver"; tocar la portada la abre en grande.
+
+**Cambios:** subtítulo solo con artistas; créditos 0.7rem en `--ink-muted`; íconos `row-icon-btn` (descargar con bandeja / compartir), Editar y basura más discretos; BPM/Key solo al pasar el mouse (ocultos en táctil); barra inferior = círculo "+" centrado; sin `title` en la capa de click-afuera y sin la píldora "‹ Volver" del borde (el click afuera sigue funcionando); botón "← Volver"; `DiscSpinner3D` acepta `onOpenCover` → lightbox de la portada (click en el disco sigue reproduciendo).

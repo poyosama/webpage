@@ -9,12 +9,15 @@ export default function DiscSpinner3D({
   currentTrackId,
   onPlayTrack,
   compact = false,
+  onOpenCover,
 }: {
   project: Project;
   currentTrackId?: string;
   onPlayTrack: (track: Track, project: Project) => void;
   onDeleteTrack?: (projectId: string, trackId: string) => void;
   compact?: boolean;
+  /** Tocar la portada la abre en grande (el disco sigue reproduciendo) */
+  onOpenCover?: () => void;
 }) {
   const tracks = project.tracks;
   const activeTrack =
@@ -114,7 +117,18 @@ export default function DiscSpinner3D({
         </div>
 
         {/* Sobre / Portada principal del proyecto */}
-        <div className="vinyl-render-sleeve">
+        <div
+          className={`vinyl-render-sleeve ${onOpenCover ? "is-zoomable" : ""}`}
+          onClick={
+            onOpenCover
+              ? (e) => {
+                  e.stopPropagation();
+                  onOpenCover();
+                }
+              : undefined
+          }
+          title={onOpenCover ? "Ver portada" : undefined}
+        >
           {coverUrl ? (
             <img
               src={coverUrl}

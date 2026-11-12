@@ -1438,3 +1438,131 @@ html:root body .perf-modal-layer { background: transparent !important; }
 }
 .landing-legal-links a { color: rgba(255, 255, 255, 0.6); text-decoration: none; }
 .landing-legal-links a:hover { color: #fff; }
+
+/* =====================================================================
+   VISTA DE PROYECTO (web): menos data, íconos chicos, portada clickeable
+   ===================================================================== */
+/* Créditos chiquitos y bajados */
+html:root body .inspector-tracklist .row-main b { font-size: 0.9rem; }
+html:root body .inspector-tracklist .row-main span {
+  font-size: 0.7rem !important;
+  color: var(--ink-muted) !important;
+  opacity: 0.85;
+  margin-top: 1px;
+}
+/* BPM / Key: solo aparecen al pasar el mouse por el track */
+html:root body .inspector-tracklist .row-pills {
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+html:root body .inspector-tracklist .clean-track-row:hover .row-pills,
+html:root body .inspector-tracklist .clean-track-row.is-playing .row-pills { opacity: 1; }
+@media (hover: none) {
+  html:root body .inspector-tracklist .row-pills { display: none !important; }
+}
+/* Botones de fila: íconos chicos que se mezclan */
+.row-icon-btn {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--ink-secondary);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.row-icon-btn:hover { background: var(--surface-secondary); color: var(--ink); }
+html:root body .inspector-tracklist .row-inline-actions { gap: 2px !important; align-items: center; }
+html:root body .inspector-tracklist .row-inline-actions .row-snippet-btn {
+  height: 26px !important;
+  padding: 0 9px !important;
+  font-size: 0.72rem !important;
+  font-weight: 600;
+  color: var(--ink-secondary) !important;
+  background: transparent !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+}
+html:root body .inspector-tracklist .row-inline-actions .row-snippet-btn:hover { color: var(--ink) !important; background: var(--surface-secondary) !important; }
+html:root body .inspector-tracklist .trash-icon-btn { opacity: 0.55; }
+html:root body .inspector-tracklist .trash-icon-btn:hover { opacity: 1; }
+
+/* "Agregar tracks": solo un + en el medio que se mezcla con el entorno */
+html:root body .inspector-bottom-add-bar { background: transparent !important; border: 0 !important; padding: 6px 0 !important; }
+html:root body .inspector-bottom-add-tracks-btn.is-minimal {
+  width: 100% !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  padding: 6px !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  cursor: pointer;
+}
+html:root body .inspector-bottom-add-tracks-btn.is-minimal .add-plus-circle {
+  width: 34px !important;
+  height: 34px !important;
+  display: grid !important;
+  place-items: center !important;
+  border-radius: 50% !important;
+  font-size: 1.2rem !important;
+  font-weight: 400 !important;
+  line-height: 1 !important;
+  color: var(--ink-muted) !important;
+  background: transparent !important;
+  border: 1px solid var(--line) !important;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease, scale 0.2s ease;
+}
+html:root body .inspector-bottom-add-tracks-btn.is-minimal:hover .add-plus-circle {
+  color: var(--ink) !important;
+  border-color: var(--line-strong) !important;
+  background: var(--surface-secondary) !important;
+  scale: 1.06;
+}
+html:root body .inspector-bottom-add-tracks-btn.is-busy .add-plus-circle { animation: tbBreath 1.2s ease-in-out infinite; }
+
+/* Volver haciendo click afuera sigue andando, pero sin carteles */
+html:root body .edge-back-pill { display: none !important; }
+
+/* Portada clickeable + vista en grande */
+.vinyl-render-sleeve.is-zoomable { cursor: zoom-in; }
+.cover-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 950;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.82);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  cursor: zoom-out;
+}
+.cover-lightbox-art {
+  width: min(86vw, 80vh, 720px);
+  aspect-ratio: 1 / 1;
+  border-radius: 14px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.8);
+}
+.cover-lightbox-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cover-lightbox-art strong { color: #fff; font-size: 1.6rem; letter-spacing: -0.03em; }
+.cover-lightbox-close {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 16px);
+  right: 16px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  border: 0;
+  font-size: 1rem;
+}
