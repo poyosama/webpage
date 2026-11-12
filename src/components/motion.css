@@ -1,0 +1,138 @@
+/* =====================================================================
+   MOTION — animaciones para todas las interacciones.
+   Reglas:
+   - Se usan las propiedades sueltas `scale` / `translate` (no `transform`),
+     así no pisan los transform inline (rueda de vinilos) ni los hovers existentes.
+   - Las transiciones van con :where() (especificidad 0): si un componente ya
+     define su transición, gana la suya.
+   - Entradas con fill-mode `backwards`: al terminar no queda nada aplicado.
+   ===================================================================== */
+:root {
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ---------- 1. Feedback táctil en todo lo tocable ---------- */
+:where(button, [role="button"], a, summary, label[for], .pf-btn, .apple-btn, .board-tile, .collage-item,
+  .clean-track-row, .untitled-mobile-track-row, .filmstrip-thumb, .artist-dir-row, .invite-code-card) {
+  transition: scale 0.22s var(--ease-spring), background-color 0.2s ease, color 0.2s ease,
+    border-color 0.2s ease, box-shadow 0.25s ease, opacity 0.2s ease, filter 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+:where(button, [role="button"], a, summary, .pf-btn, .apple-btn, .board-tile, .collage-item,
+  .filmstrip-thumb):active:not(:disabled) {
+  scale: 0.95;
+  transition-duration: 0.08s;
+}
+/* superficies grandes: hundido más sutil */
+:where(.clean-track-row, .untitled-mobile-track-row, .untitled-catalog-card, .vinyl-fan-sleeve-card,
+  .vinyl-fan-inspector-card, .artist-dir-row, .invite-code-card, .ios-mini-player):active {
+  scale: 0.985;
+}
+:where(button, [role="button"]):disabled { transition: opacity 0.2s ease; }
+
+/* Hover con lift suave solo donde hay mouse */
+@media (hover: hover) {
+  :where(.pf-btn, .board-tile, .filmstrip-thumb, .collage-item):hover { translate: 0 -1px; }
+  :where(.collage-item):hover .collage-cover-thumb { scale: 1.08; }
+  .collage-cover-thumb { transition: scale 0.3s var(--ease-spring); }
+}
+
+/* Foco de inputs */
+:where(input, textarea, select) {
+  transition: border-color 0.2s ease, box-shadow 0.25s ease, background-color 0.2s ease;
+}
+
+/* Cambio de tema claro/oscuro suave */
+:where(body, .apple-card, .ios-navbar, .profile-hero-card, .secondstory-strip-card, .ios-mini-player,
+  .manifold-3d-wrapper, .pf-menu, .apple-modal-card, .ios-seg-control) {
+  transition: background-color 0.35s ease, color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
+}
+
+/* ---------- 2. Entradas ---------- */
+@keyframes tbRise {
+  from { opacity: 0; translate: 0 10px; }
+  to { opacity: 1; translate: 0 0; }
+}
+@keyframes tbFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes tbPop {
+  from { opacity: 0; scale: 0.92; translate: 0 -4px; }
+  to { opacity: 1; scale: 1; translate: 0 0; }
+}
+@keyframes tbCoverIn {
+  from { opacity: 0; scale: 0.9; }
+  to { opacity: 1; scale: 1; }
+}
+@keyframes tbVinylOut {
+  from { translate: -40px 0; opacity: 0; }
+  to { translate: 0 0; opacity: 1; }
+}
+
+/* Listas: aparecen en cascada */
+.untitled-mobile-track-row,
+.clean-track-row,
+.untitled-catalog-card,
+.filmstrip-thumb,
+.collage-line,
+.artist-dir-row,
+.invite-code-card,
+.producer-drops-grid > *,
+.profile-hero-card,
+.pf-section-head,
+.profile-invites-bottom-section {
+  animation: tbRise 0.5s var(--ease-out) backwards;
+}
+:is(.untitled-mobile-track-row, .clean-track-row, .untitled-catalog-card, .filmstrip-thumb, .collage-line,
+  .artist-dir-row, .invite-code-card, .producer-drops-grid > *):nth-child(2) { animation-delay: 0.04s; }
+:is(.untitled-mobile-track-row, .clean-track-row, .untitled-catalog-card, .filmstrip-thumb, .collage-line,
+  .artist-dir-row, .invite-code-card, .producer-drops-grid > *):nth-child(3) { animation-delay: 0.08s; }
+:is(.untitled-mobile-track-row, .clean-track-row, .untitled-catalog-card, .filmstrip-thumb, .collage-line,
+  .artist-dir-row, .invite-code-card, .producer-drops-grid > *):nth-child(4) { animation-delay: 0.12s; }
+:is(.untitled-mobile-track-row, .clean-track-row, .untitled-catalog-card, .filmstrip-thumb, .collage-line,
+  .artist-dir-row, .invite-code-card, .producer-drops-grid > *):nth-child(5) { animation-delay: 0.16s; }
+:is(.untitled-mobile-track-row, .clean-track-row, .untitled-catalog-card, .filmstrip-thumb, .collage-line,
+  .artist-dir-row, .invite-code-card, .producer-drops-grid > *):nth-child(6) { animation-delay: 0.2s; }
+:is(.untitled-mobile-track-row, .clean-track-row, .untitled-catalog-card, .filmstrip-thumb, .collage-line,
+  .artist-dir-row, .invite-code-card, .producer-drops-grid > *):nth-child(7) { animation-delay: 0.24s; }
+:is(.untitled-mobile-track-row, .clean-track-row, .untitled-catalog-card, .filmstrip-thumb, .collage-line,
+  .artist-dir-row, .invite-code-card, .producer-drops-grid > *):nth-child(n + 8) { animation-delay: 0.28s; }
+.pf-section-head { animation-delay: 0.06s; }
+.profile-invites-bottom-section { animation-delay: 0.2s; }
+
+/* Adentro del proyecto: la tapa entra y el vinilo sale de atrás */
+.project-view-vinyl-stage .vinyl-fan-sleeve-body { animation: tbCoverIn 0.55s var(--ease-spring) backwards; }
+.project-view-vinyl-stage .vinyl-fan-record-disc { animation: tbVinylOut 0.7s var(--ease-out) 0.15s backwards; }
+.untitled-mobile-title-row,
+.inspector-title-row { animation: tbRise 0.5s var(--ease-out) 0.08s backwards; }
+.untitled-mobile-add-btn { animation: tbRise 0.5s var(--ease-out) 0.14s backwards; }
+
+/* Menús desplegables, popovers y modales */
+.pf-menu { transform-origin: top right; animation: tbPop 0.2s var(--ease-spring); }
+.pf-menu button { animation: tbFade 0.25s ease backwards; }
+.pf-menu button:nth-child(2) { animation-delay: 0.04s; }
+.pf-menu button:nth-child(3) { animation-delay: 0.08s; }
+.inline-project-title-form { animation: tbFade 0.18s ease; }
+.apple-modal-backdrop { animation: tbFade 0.2s ease; }
+
+/* Botón de play: respira mientras suena */
+@keyframes tbBreath {
+  0%, 100% { scale: 1; }
+  50% { scale: 1.04; }
+}
+.untitled-mobile-play-btn.is-playing,
+.mini-play-btn.is-playing { animation: tbBreath 1.6s ease-in-out infinite; }
+
+/* ---------- 3. Accesibilidad: sin movimiento si el sistema lo pide ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0s !important;
+    transition-duration: 0.01ms !important;
+  }
+}

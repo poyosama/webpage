@@ -2167,3 +2167,18 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 5. **Doble toque:** en iOS el primer toque dispara `:hover` (el botón de basura pasaba de `opacity:0` a `1` y la tarjeta se levantaba) y recién el 2º hace click.
 
 **Fix (`ui-refresh.css`):** navbar `height:auto` en ≤720px y `padding-top` móvil `safe-area + 98px` también con scroll bloqueado; overrides de escritorio acotados a ≥721px; collage con `white-space: normal` y tamaños `5.2vw`; tarjeta del vinilo `z-index:500` con fondo casi opaco y colores `--ink`; grilla de Tapas 2 columnas `minmax(0,1fr)`; `@media (hover: none)` neutraliza transforms de hover y deja la basura siempre visible; tile "+" con colores según haya canva o no.
+
+---
+
+### Turno 106 — Tapa completa adentro del proyecto (celu) + animaciones en todas las interacciones
+**Prompt del usuario:** adentro del proyecto la tapa se veía recortada; pedir animaciones para TODAS las interacciones posibles.
+
+**Implementación:**
+1. **Tapa del proyecto (celu, `ui-refresh.css`):** `.untitled-mobile-project-view` es flex-columna con alto fijo y achicaba el escenario (`flex-shrink`) a ~118px, recortando la tapa y el botón "+ Add tracks". Ahora los hijos no se achican, la tapa es cuadrada (`min(210px, 54vw)`) y el vinilo asoma por la derecha.
+2. **`src/components/motion.css` (nuevo, importado después de `ui-refresh.css`):**
+   - Feedback táctil en todo lo tocable (`scale: .95` al presionar, `.985` en superficies grandes) usando las propiedades sueltas `scale`/`translate` para no pisar los `transform` inline de la rueda ni los hovers existentes; transiciones con `:where()` (especificidad 0).
+   - Hover con lift solo con mouse; zoom de tapitas del collage; foco de inputs y cambio de tema suaves.
+   - Entradas en cascada (`tbRise`, fill `backwards`) para tracks, tarjetas, tira de portadas, filas del collage, artistas, pases y drops; tapa que entra + vinilo que sale de atrás adentro del proyecto; menús `+`/ajustes con pop.
+   - Botón de play (`is-playing`) que respira mientras suena.
+   - `prefers-reduced-motion` desactiva todo.
+3. Fix: en el perfil el wrapper tiene `has-library-canva` (canva oculto) y el tile "+ Crear" quedaba blanco sobre blanco; ahora usa colores del tema.

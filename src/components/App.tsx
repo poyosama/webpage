@@ -56,6 +56,7 @@ import { InviteFriendsModal, WelcomeInviteModal } from "./InviteFriendsModal";
 import { analyzeAudioFile, downloadTrackAudio } from "@/lib/audioAnalysis";
 import "./board-polish.css";
 import "./ui-refresh.css";
+import "./motion.css";
 
 const MacInstallerUpload = dynamic(() => import("./MacInstallerUpload"), { ssr: false });
 const DiscSpinner3D = dynamic(() => import("./DiscSpinner3D"), { ssr: false });
@@ -3546,7 +3547,9 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
 
                         <button
                           type="button"
-                          className="untitled-mobile-play-btn"
+                          className={`untitled-mobile-play-btn ${
+                            isPlaying && activeProject.tracks.some((tr) => tr.id === currentTrack.id) ? "is-playing" : ""
+                          }`}
                           aria-label="Reproducir proyecto"
                           onClick={() => {
                             const isProjectPlaying =
@@ -4854,7 +4857,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                 </button>
                 <button
                   type="button"
-                  className="mini-play-btn"
+                  className={`mini-play-btn ${isPlaying ? "is-playing" : ""}`}
                   onClick={togglePlay}
                   aria-label="Reproducir o pausar"
                 >
