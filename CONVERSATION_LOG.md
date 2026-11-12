@@ -2221,3 +2221,13 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 1. Arrastre de tracks: en ≤720px se desactiva el "portal de salida" por la izquierda (antes al arrastrar a la izquierda salías a la biblioteca para soltar en otro proyecto); queda solo reordenar. En escritorio sigue igual.
 2. Menú `•••` del track: nueva opción **Mover a otro proyecto** (si se puede editar el proyecto).
 3. Hoja `move-sheet` (portal, bottom-sheet en celu / modal centrado en escritorio): grilla de tapas de `myProjects` sin el proyecto actual; un toque llama a `handleTransferTrackToProject` y cierra. Probado: el proyecto pasó de 6 a 5 tracks.
+
+---
+
+### Turno 109 — Slider para la rueda, scroll en Tapas y pases ilimitados verificados por servidor
+**Prompt del usuario:** que la píldora con flechitas de la biblioteca sea un slider que mueva la rueda al deslizar; en Tapas no se puede scrollear en el celu (con muchos proyectos); confirmar que los pases infinitos son SOLO para su cuenta.
+
+**Implementación:**
+1. **Slider (`ManifoldLibrary3D.tsx` + `ui-refresh.css`):** `input[type=range]` (`step 0.01`) dentro de `.vinyl-arc-step-controls`: mientras deslizás mueve `arcOffset` en continuo (con tick al cruzar cada proyecto) y al soltar encastra y selecciona el proyecto. En celu reemplaza las flechitas (thumb blanco estilo iOS, track con relleno); en escritorio quedan las flechitas.
+2. **Tapas scrolleable:** el escenario `.catalog-grid-stage` no estaba limitado en alto (solo lo estaba el de la rueda) y crecía con el contenido; ahora toma el alto disponible y `.untitled-catalog-viewport` scrollea adentro (`overflow-y:auto`, `touch-action: pan-y`, sin barra). El resto de la app sigue sin scroll de página.
+3. **Pases ilimitados:** antes se decidía con `meProfile.email` (editable/falsificable desde el navegador). Ahora `verifyUnlimitedInvites()` usa `supabase.auth.getUser()` (valida el JWT contra el servidor de Auth, proveedor Google) tanto para mostrar el modo ilimitado como dentro de `generateExtraInvitesForUser`.

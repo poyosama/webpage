@@ -42,6 +42,22 @@ export function hasUnlimitedInvites(email?: string | null): boolean {
   return !!e && UNLIMITED_INVITE_EMAILS.includes(e);
 }
 
+/**
+ * Chequeo verificado: pregunta al servidor de Auth de Supabase (getUser valida el JWT),
+ * así no alcanza con editar el email del perfil local o el localStorage.
+ */
+export async function verifyUnlimitedInvites(): Promise<boolean> {
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data?.user) return false;
+    const provider = (data.user.app_metadata as { provider?: string } | undefined)?.provider;
+    if (provider && provider !== "google") return false;
+    return hasUnlimitedInvites(data.user.email);
+  } catch {
+    return false;
+  }
+}
+
 /** Genera una cadena alfanumérica corta y limpia de 6 caracteres */
 function generateCleanCodeSlug(): string {
   const chars = "23456789abcdefghjkmnpqrstuvwxyz";
@@ -244,6 +260,12 @@ export async function generateExtraInvitesForUser(
   userName: string,
   count = 1
 ): Promise<InviteCodeItem[]> {
+  // Solo cuentas verificadas por el servidor de Auth pueden saltarse el límite
+  if (!(await verifyUnlimitedInvites())) {
+    return Object.values(readGlobalRegistry())
+      .filter((x) => x.creatorId === userId)
+      .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+  }
   const cleanHandle = userHandle.startsWith("@") ? userHandle : `@${userHandle || "artista"}`;
   const registry = readGlobalRegistry();
   const now = new Date().toISOString();
