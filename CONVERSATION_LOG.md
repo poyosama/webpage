@@ -1965,3 +1965,36 @@ despues te sigo diciendo mas cositas q faltan pero lo mas importante por ahora e
    - Animación de pulsación sutil para el track actualmente en reproducción (`@keyframes trackPlayGlow`).
 5. **Verificación y Deploy:**
    - Compilación limpia con Next.js Turbopack (`npm run build`, 0 errores en TypeScript y empaquetado).
+
+### Turno 95 — Integración del Botón Volver adentro del Inspector, Rediseño del Flex Inferior, Zoom Calibrado para Ver Más Canciones y Retorno a "El tablero." con Nuevos Íconos de iOS
+**Prompt del usuario:**
+- *"aca el volver a mis proyectos lo podrias poner adentro del flex de abajo y llevar todo un poco mas arriba, bajarle al zoom para que se vean mas canciones y redondear el flex por la parte de abajo asi se ve bien bonito
+de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios que esto conlleva, hasta en el icon de la app en ios"* (adjuntó captura `image.png`).
+
+**Implementación técnica aplicada:**
+1. **Integración de "← Volver a Mis proyectos" adentro de la Tarjeta del Inspector (`src/components/App.tsx`, `src/components/board-polish.css`):**
+   - Se removió la barra flotante exterior `.cube-interior-back-bar`, eliminando más de 70px de espacio muerto superior y permitiendo que todo el contenedor del inspector suba directamente a la altura de la barra superior.
+   - Se integró el botón `.compact-back-pill-btn` (`← Volver a Mis proyectos`) directamente dentro de la fila superior `.inspector-top-badges-row` / `.inspector-top-badges-left` de la tarjeta de tracks.
+   - El botón fue estilizado como una píldora translúcida squircle elegante con micro-interacción al hacer hover y click (`border-radius: 999px; backdrop-filter: blur(12px)`).
+2. **Calibración de Zoom y Altura de Tracks para Ver Más Canciones (`src/components/board-polish.css`):**
+   - Se redujo el ancho y escala del vinilo de la izquierda (`.vinyl-render-stage`, `.vinyl-showcase-render`) de `268px` a `clamp(170px, 17vw, 220px)`, ganando un 20% de superficie horizontal útil.
+   - Se amplió la altura del contenedor con scroll `.inspector-tracks-list-scroll` de `clamp(240px, 32vh, 320px)` a `clamp(330px, 46vh, 460px)`, permitiendo ver entre 7 y 9 canciones simultáneamente sin necesidad de scrollear.
+   - Se compactó la cabecera `.inspector-header` y los márgenes verticales para maximizar el área visible de canciones.
+3. **Redondeo Limpio de la Parte Inferior de la Tarjeta (`src/components/board-polish.css`):**
+   - Se aplicó `border-radius: 28px !important; overflow: hidden !important;` tanto en `.inspector-unified-stage` como en `.inspector-tracklist`, resolviendo el corte recto antiestético visible en `image.png` y otorgando un acabado curvo suave y editorial en ambas esquinas inferiores.
+   - Se le otorgó `border-radius: 16px;` y `padding-bottom: 6px;` al contenedor interno de tracks para que el scroll fluya respetando la curvatura inferior.
+4. **Restitución Global del Nombre "El tablero." en toda la Plataforma y Metadata:**
+   - Actualizados títulos y copys de "board." a "El tablero." en:
+     - `src/app/layout.tsx` (`title: "El tablero."`, `appleWebApp.title: "El tablero."`)
+     - `public/manifest.json` (`name: "El tablero."`, `short_name: "El tablero."`)
+     - `src/components/App.tsx` (Navbar brand, headers de inicio, modales de perfil, autenticación y visibilidad de proyectos)
+     - `src/components/CreateProjectScreen.tsx` (Texto predeterminado "El tablero." y pre-carga tipográfica)
+     - `src/components/LandingScene.tsx` (Generador de partículas 3D, títulos de inicio y modal de acceso anticipado)
+     - `src/app/not-found.tsx` (Pantalla 404)
+     - `src/components/InviteFriendsModal.tsx` (Modales de invitaciones exclusivas y bienvenida)
+     - `src/lib/mock.ts`, `src/lib/invites.ts` y `src/lib/supabase.ts` (Datos mock, mensajes de servidor e invitaciones)
+5. **Regeneración de Íconos Nativos para iOS y PWA (`public/apple-touch-icon.png`, `public/icon.png`, `public/icon-192.png`):**
+   - Generados mediante script Python con tipografía LiberationSans-Bold sobre fondo negro mate (`#09090b`), con el texto `"El tablero"` centrado en blanco puro y el punto distintivo en verde esmeralda (`#10b981`) alineado milimétricamente con la línea base de la tipografía.
+   - Formatos generados en alta fidelidad: 1024x1024 (`apple-touch-icon.png`), 512x512 (`icon.png`) y 192x192 (`icon-192.png`).
+6. **Verificación y Deploy:**
+   - Compilación exitosa con Next.js Turbopack (`npm run build`, 0 errores en TypeScript y rutas).

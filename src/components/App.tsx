@@ -2052,7 +2052,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
           onClick={() => navigate("inicio")}
         >
           <span className="brand-dot" />
-          <strong>board.</strong>
+          <strong>El tablero.</strong>
         </button>
 
         <nav className="ios-seg-control" aria-label="Navegación principal">
@@ -2198,8 +2198,8 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
             <div className="explore-page">
               <section className="secondstory-strip-card">
                 <div className="strip-top-meta">
-                  <span>BOARD. // UG SCENE</span>
-                  <span className="spine-badge-static">board.</span>
+                  <span>EL TABLERO // UG SCENE</span>
+                  <span className="spine-badge-static">El tablero.</span>
                 </div>
 
                 {/* 1º: EL RUIDO EN EL MEDIO DE LA PANTALLA (TIPOGRAFÍA LIMPIA Y UNIFICADA + TAPAS REALES) */}
@@ -2389,12 +2389,12 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                   </div>
                 </div>
 
-                {/* 2º: NOMBRE DE LA WEB ("board.") */}
+                {/* 2º: NOMBRE DE LA WEB ("El tablero.") */}
                 <div className="secondstory-mega-footer">
                   <p className="micro-editorial-copy">
                     Tus proyectos. Tu identidad. Tu gente. Tu música.
                   </p>
-                  <h1 className="mega-display-title">board.</h1>
+                  <h1 className="mega-display-title">El tablero.</h1>
                 </div>
 
                 {/* 3º: TIRA HORIZONTAL DE MINIPORTADAS (con tapas reales y sin scrollbar fantasma) */}
@@ -2599,8 +2599,8 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                 <div className="apple-card">
                   <div className="card-head card-head-with-filter">
                     <div>
-                      <span className="mono-tag">ARTISTAS // ROTACIÓN DE BOARD.</span>
-                      <h3>Artistas en board.</h3>
+                      <span className="mono-tag">ARTISTAS // ROTACIÓN DE EL TABLERO</span>
+                      <h3>Artistas en El tablero</h3>
                     </div>
                     <div className="seg-pills artist-sort-pills">
                       {(["recientes", "populares"] as const).map((k) => (
@@ -3763,72 +3763,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                       </div>
                     </div>
 
-                    {libraryLayoutMode === "inside" && (
-                      <div className="cube-interior-back-bar">
-                        <button
-                          type="button"
-                          className="apple-btn primary"
-                          onClick={() => {
-                            sfx.close();
-                            setInsideCubeOpen(false);
-                          }}
-                        >
-                          ← Volver a Mis proyectos
-                        </button>
 
-                        <div className="manifold-quick-pills">
-                          {myProjects.map((p) => {
-                            const active = p.id === activeProject.id;
-                            return (
-                              <div
-                                key={p.id}
-                                className={`quick-proj-pill-group ${active ? "on" : ""}`}
-                              >
-                                <button
-                                  type="button"
-                                  className={`quick-proj-pill ${active ? "on" : ""}`}
-                                  onClick={() => {
-                                    sfx.tap();
-                                    setSelectedProjectId(p.id);
-                                  }}
-                                >
-                                  <span
-                                    className="pill-dot"
-                                    style={{ background: p.c2 }}
-                                  />
-                                  <b>{p.title}</b>
-                                  <small>{p.tracks.length}d</small>
-                                </button>
-                                {meProfile.id && p.artistId === meProfile.id && (
-                                  <button
-                                    type="button"
-                                    className="pill-trash-btn"
-                                    title={`Eliminar proyecto ${p.title}`}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDeleteProject(p.id);
-                                    }}
-                                  >
-                                    <TrashIcon />
-                                  </button>
-                                )}
-                              </div>
-                            );
-                          })}
-                          <button
-                            type="button"
-                            className="quick-proj-pill add-project-plus-pill"
-                            onClick={() => {
-                              sfx.open();
-                              navigate("crear-proyecto");
-                            }}
-                            title="Crear un nuevo proyecto"
-                          >
-                            <b>+</b>
-                          </button>
-                        </div>
-                      </div>
-                    )}
 
                     <div
                       className={`inspector-unified-stage ${
@@ -3914,13 +3849,28 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                         <div className="inspector-tracklist">
                           <div className="inspector-project-head">
                             <div className="inspector-top-badges-row">
-                              <div className="project-editable-meta-bar">
-                                <div className="meta-pill-static">
-                                  <b>{activeProject.type}</b>
-                                </div>
-                                <div className="meta-pill-static">
-                                  <b>{activeProject.tracks.length} tracks</b>
-                                </div>
+                              <div className="inspector-top-badges-left">
+                                {libraryLayoutMode === "inside" && (
+                                  <button
+                                    type="button"
+                                    className="compact-back-pill-btn"
+                                    onClick={() => {
+                                      sfx.close();
+                                      setInsideCubeOpen(false);
+                                    }}
+                                    title="Volver a Mis proyectos"
+                                  >
+                                    <span className="back-arrow-icon">←</span>
+                                    <span>Volver a Mis proyectos</span>
+                                  </button>
+                                )}
+                                <div className="project-editable-meta-bar">
+                                  <div className="meta-pill-static">
+                                    <b>{activeProject.type}</b>
+                                  </div>
+                                  <div className="meta-pill-static">
+                                    <b>{activeProject.tracks.length} tracks</b>
+                                  </div>
                                 {activeIsMine ? (
                                   <button
                                     type="button"
@@ -3979,6 +3929,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                                   </>
                                 )}
                               </div>
+                            </div>
 
                               <div className="inspector-compact-actions" style={{ position: "relative" }}>
                                 {canEditActive && (
@@ -4698,7 +4649,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                   <div className="profile-invite-banner-left">
                     <span className="invite-banner-icon">🎟️</span>
                     <div className="invite-banner-text">
-                      <b>Invitaciones exclusivas a board.</b>
+                      <b>Invitaciones exclusivas a El tablero.</b>
                       <p>Tenés 3 códigos cada 2 semanas para sumar a tus artistas y productores de confianza.</p>
                     </div>
                   </div>
@@ -5702,7 +5653,7 @@ function EditProfileModal({
             <span>USUARIO (@HANDLE ÚNICO)</span>
             <input value={handle} onChange={(e) => setHandle(e.target.value)} placeholder="@tu_handle" />
             <small style={{ color: "var(--ink-secondary)", fontSize: "0.68rem", marginTop: 3 }}>
-              Único e irrepetible: solo vos podés usarlo en board.
+              Único e irrepetible: solo vos podés usarlo en El tablero.
             </small>
           </label>
           <label className="modal-field">
@@ -5746,7 +5697,7 @@ function EditProfileModal({
                 </b>
                 <small>
                   {googleConnected
-                    ? "Tus canciones y proyectos se respaldan automáticamente en la nube de board."
+                    ? "Tus canciones y proyectos se respaldan automáticamente en la nube de El tablero."
                     : "Vinculá tu cuenta para sincronizar tus proyectos entre todos tus dispositivos."}
                 </small>
               </div>
@@ -5885,7 +5836,7 @@ function GoogleAuthModal({
     const res = await onSaveProfile({ name, handle, email });
     setLoading(false);
     if (res.success) {
-      setMsg("¡Perfil y @handle guardados en board. con éxito!");
+      setMsg("¡Perfil y @handle guardados en El tablero. con éxito!");
       setMsgType("success");
       sfx.drop();
     } else {
@@ -5916,7 +5867,7 @@ function GoogleAuthModal({
             </span>
             <h3 style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <GoogleCircleIcon size={22} />
-              {connected ? "Sesión iniciada" : "Ingreso a board."}
+              {connected ? "Sesión iniciada" : "Ingreso a El tablero."}
             </h3>
           </div>
           <button type="button" className="apple-btn ghost" onClick={onClose}>
@@ -5960,7 +5911,7 @@ function GoogleAuthModal({
                 <div>
                   <b>✓ Pase VIP de invitación verificado</b>
                   <div style={{ fontSize: "0.74rem", opacity: 0.85, marginTop: 2 }}>
-                    Invitado por {verifiedInvite.creatorHandle || "@board"} · Código: {verifiedInvite.code}
+                    Invitado por {verifiedInvite.creatorHandle || "@quetablero"} · Código: {verifiedInvite.code}
                   </div>
                 </div>
                 <span style={{ fontSize: "1.1rem" }}>🎟️</span>
@@ -5979,7 +5930,7 @@ function GoogleAuthModal({
               >
                 <div style={{ fontWeight: 600 }}>Miembros existentes</div>
                 <div style={{ fontSize: "0.74rem", color: "var(--ink-secondary)", marginTop: 2, marginBottom: 8 }}>
-                  Si ya tenías cuenta creada en board., ingresá directo con tu cuenta de Google.
+                  Si ya tenías cuenta creada en El tablero., ingresá directo con tu cuenta de Google.
                 </div>
                 <button
                   type="button"
@@ -6003,7 +5954,7 @@ function GoogleAuthModal({
                   Acceso exclusivo por invitación
                 </span>
                 <span>
-                  board. es una plataforma privada. Para registrarte como artista o productor necesitás un link o código de invitación de un miembro.
+                  El tablero. es una plataforma privada. Para registrarte como artista o productor necesitás un link o código de invitación de un miembro.
                 </span>
                 <div className="auth-invite-input-row">
                   <input
@@ -6049,7 +6000,7 @@ function GoogleAuthModal({
                     marginTop: 4,
                   }}
                 >
-                  ¿Ya tenías cuenta en board.? Iniciar sesión directo
+                  ¿Ya tenías cuenta en El tablero.? Iniciar sesión directo
                 </button>
               </div>
             )}
@@ -6220,7 +6171,7 @@ function InviteProjectModal({
               <small>
                 {project.visibility === "private"
                   ? "Nadie más puede ver este proyecto salvo a quien le pases un link de invitación abajo."
-                  : "Visible para todos en el Inicio de board."}
+                  : "Visible para todos en el Inicio de El tablero."}
               </small>
             </div>
             <div className="seg-pills">

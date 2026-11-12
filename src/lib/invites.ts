@@ -29,8 +29,8 @@ const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000;
 // Códigos semilla fundacionales (siempre válidos como respaldo VIP)
 const SEED_INVITES: Record<string, { creatorHandle: string; creatorName: string }> = {
   "board-poyo": { creatorHandle: "@poyo", creatorName: "poyo" },
-  "board-vip": { creatorHandle: "@poyo", creatorName: "board." },
-  "board-alpha": { creatorHandle: "@poyo", creatorName: "board." },
+  "board-vip": { creatorHandle: "@poyo", creatorName: "El tablero." },
+  "board-alpha": { creatorHandle: "@poyo", creatorName: "El tablero." },
   "board-5056": { creatorHandle: "@poyo", creatorName: "5056" },
 };
 
@@ -301,8 +301,8 @@ export async function validateInviteCode(
   if (/^board-[a-z0-9]{5,8}$/.test(code)) {
     return {
       valid: true,
-      creatorHandle: "@board",
-      creatorName: "board.",
+      creatorHandle: "@quetablero",
+      creatorName: "El tablero.",
     };
   }
 
@@ -324,8 +324,8 @@ export async function consumeInviteCode(
   const updated: InviteCodeItem = existing || {
     code,
     creatorId: "seed",
-    creatorHandle: SEED_INVITES[code]?.creatorHandle || "@board",
-    creatorName: SEED_INVITES[code]?.creatorName || "board.",
+    creatorHandle: SEED_INVITES[code]?.creatorHandle || "@quetablero",
+    creatorName: SEED_INVITES[code]?.creatorName || "El tablero.",
     createdAt: new Date().toISOString(),
     batchDate: new Date().toISOString(),
     used: true,

@@ -19,7 +19,7 @@ import "./create-project.css";
 const display = Unbounded({ subsets: ["latin"], weight: ["800"], display: "swap" });
 
 const AUDIO_RE = /\.(wav|mp3|m4a|flac|aac|ogg|aiff|alac|opus)$/i;
-const DEFAULT_TEXT = "board.";
+const DEFAULT_TEXT = "El tablero.";
 
 function useIsMobile() {
   const [mobile, setMobile] = useState(false);
@@ -271,7 +271,7 @@ export default function CreateProjectScreen({
   useEffect(() => {
     let alive = true;
     document.fonts
-      .load(`800 100px ${fontFamily}`, "board. abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+      .load(`800 100px ${fontFamily}`, "El tablero. abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
       .catch(() => undefined)
       .finally(() => alive && setFontReady(true));
     return () => {

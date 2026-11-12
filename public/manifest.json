@@ -1,6 +1,6 @@
 {
-  "name": "board.",
-  "short_name": "board.",
+  "name": "El tablero.",
+  "short_name": "El tablero.",
   "description": "Tus proyectos. Tu identidad. Tu gente. Tu música.",
   "start_url": "/",
   "display": "standalone",

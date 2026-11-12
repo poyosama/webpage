@@ -38,7 +38,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "board.",
+  title: "El tablero.",
   description:
     "Tus proyectos. Tu identidad. Tu gente. Tu música. Entorno 3D Manifold y reproductor de partículas para la escena.",
   manifest: "/manifest.json",
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    title: "board.",
+    title: "El tablero.",
     statusBarStyle: "black-translucent",
   },
 };
