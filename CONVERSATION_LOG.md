@@ -2136,3 +2136,10 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 1. `.inline-project-title-input` hereda fuente/tamaño/peso/tracking de `.inspector-project-title` (y `.untitled-mobile-title` en celu) con márgenes negativos que compensan padding+borde: no cambia la fuente ni se corre el layout al editar.
 2. Tapa seleccionada: aro fino con separación (`--surface` + 3.5px de `--ink` al 65%) en lugar del marco negro grueso; sombras de las tapas más suaves.
 3. Íconos: `public/apple-touch-icon.png` (1024), `public/icon.png` / `src/app/icon.png` (512), `public/icon-192.png` con el wordmark apilado "El / tablero." en blanco sobre `#09090b`; `favicon.ico` (16/32/48) usa "El." porque "tablero." no se lee a 16px. `resources/icon.png` (1024) queda listo para `@capacitor/assets` / AppIcon de Xcode.
+
+---
+
+### Turno 103 — Tablero de Inicio más compacto (board + nombre en la primera pantalla)
+**Prompt del usuario:** achicar un cachito el tablero para ver, apenas se entra, el board y el nombre de la web abajo.
+
+**Implementación (`ui-refresh.css`, solo ≥721px):** tamaños del collage escalan con el alto de la ventana (`vh`): `roster-word` `clamp(1.3rem, 6.6vh, 3rem)`, tapitas `5.6vh`, título gigante `12.5vh`; filas `nowrap` (la píldora "Mendoza" ya no rompe a otra línea); paddings del stage/card/footer reducidos. En 1093×490 el board + "El tablero." terminan en y≈355, por encima del mini-reproductor. Celu sin cambios.
