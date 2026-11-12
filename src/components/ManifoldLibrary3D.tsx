@@ -1738,7 +1738,7 @@ export default function ManifoldLibrary3D({
       </div>
 
       {activeProject && activeMode === "wheel" && (
-        <div className="library-bottom-actions">
+        <div className={`library-bottom-actions ${activeProject?.id?.startsWith("__") ? "is-hidden" : ""}`}>
           {onUploadProjectTrack && (
             <label className="apple-btn ghost library-action-btn" onMouseEnter={() => sfx.hover()}>
               <span>+ Subir track</span>

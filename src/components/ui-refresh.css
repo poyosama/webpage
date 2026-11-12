@@ -1929,3 +1929,25 @@ html:root body .landing-explore-link {
 .liked-empty b { font-size: 0.95rem; color: var(--ink); }
 .liked-empty small { font-size: 0.8rem; max-width: 280px; }
 .liked-empty span { color: var(--ink) !important; }
+
+/* Biblioteca (celu): "Subir track / Subir Canva" en el flujo, debajo del slider (no detrás del reproductor) */
+.library-bottom-actions.is-hidden { display: none !important; }
+@media (max-width: 720px) {
+  html:root body .library-bottom-actions {
+    position: static !important;
+    order: 4;
+    margin: 4px auto 0 !important;
+    width: 100%;
+    pointer-events: auto !important;
+  }
+  html:root body .vinyl-fan-arc-viewport,
+  html:root body.app-no-scroll .vinyl-fan-arc-viewport,
+  html:root body.mobile-vinyl-wheel-locked .vinyl-fan-arc-viewport {
+    padding-bottom: 12px !important;
+  }
+  /* el aviso "Sonando en…" agranda el dock: dejar ese lugar libre */
+  html:root body:has(.remote-banner) .apple-shell,
+  html:root body.app-no-scroll:has(.remote-banner) .apple-shell {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 112px) !important;
+  }
+}

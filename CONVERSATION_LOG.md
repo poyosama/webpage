@@ -2526,3 +2526,10 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 **Diagnóstico:** los dos dispositivos sonaban a la vez y cada uno tomaba al otro como "activo" al recibir su `state` con `isPlaying`; además el efecto de progreso con `isPlaying=false` seguía escribiendo el tiempo local y el dispositivo que pasaba a control remoto no se pausaba.
 
 **Fix:** `remotePlayer.ts`: un `state` ajeno solo te convierte en control remoto si este dispositivo NO está sonando y no sigue a nadie; si ya lo sigue, solo actualiza. `App.tsx`: al pasar a control remoto se pausa el audio local; el efecto de progreso (rama pausada) no escribe cuando se controla a otro. Tapa: SVG negro con degradé radial gris, halo, ~100 partículas blancas y corazón blanco; colores del proyecto en negro/gris.
+
+---
+
+### Turno 138 — Biblioteca (celu): botones de abajo pisados por el reproductor
+**Prompt del usuario:** en la rueda, abajo al medio se superponen "Subir track / Subir Canva" con "Sonando en…" y el mini-reproductor.
+
+**Fix:** `.library-bottom-actions` deja de ser `absolute` en celu (queda en el flujo, encima del reproductor); con el aviso "Sonando en…" el `apple-shell` reserva 112 px abajo; los botones se ocultan en proyectos virtuales ("Tus me gusta"). Verificado en 390×780: botones 670–704, reproductor 716.
