@@ -1005,10 +1005,14 @@ export default function ManifoldLibrary3D({
                 setActiveMode("wheel");
                 onChangeViewMode?.("disc-row");
               }}
-              title="Vista rueda de vinilos"
+              title="Rueda de vinilos"
+              aria-label="Rueda de vinilos"
             >
-              <span className="library-mode-icon">💿</span>
-              <span>Rueda</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" />
+                <circle cx="12" cy="12" r="2.6" />
+                <path d="M12 6.2a5.8 5.8 0 0 1 5.8 5.8" opacity="0.55" />
+              </svg>
             </button>
             <button
               type="button"
@@ -1019,10 +1023,15 @@ export default function ManifoldLibrary3D({
                 setActiveMode("grid");
                 onChangeViewMode?.("manifold");
               }}
-              title="Vista tapas [untitled]"
+              title="Tapas"
+              aria-label="Tapas"
             >
-              <span className="library-mode-icon">⊞</span>
-              <span>Tapas</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinejoin="round" aria-hidden="true">
+                <rect x="3.5" y="3.5" width="7" height="7" rx="1.6" />
+                <rect x="13.5" y="3.5" width="7" height="7" rx="1.6" />
+                <rect x="3.5" y="13.5" width="7" height="7" rx="1.6" />
+                <rect x="13.5" y="13.5" width="7" height="7" rx="1.6" />
+              </svg>
             </button>
           </div>
         )}

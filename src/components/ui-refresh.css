@@ -592,3 +592,117 @@
 :root body .manifold-3d-wrapper.is-compact.has-library-canva .untitled-catalog-add-plus,
 :root body .manifold-3d-wrapper.is-compact.has-library-canva .untitled-catalog-title { color: var(--ink) !important; text-shadow: none !important; }
 :root body .manifold-3d-wrapper.is-compact.has-library-canva .untitled-catalog-meta { color: var(--ink-muted) !important; }
+
+/* ===== Switcher Rueda / Tapas: una sola píldora con 2 íconos ===== */
+:root body .library-top-left-switcher {
+  padding: 3px !important;
+  gap: 2px !important;
+  border-radius: 999px !important;
+}
+:root body .library-mode-btn {
+  width: 34px !important;
+  height: 28px !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 999px !important;
+}
+:root body .library-mode-btn svg { display: block; }
+
+/* ===== Biblioteca rueda (celu): columna limpia vinilo → info → controles, nada encimado ===== */
+@media (max-width: 720px) {
+  :root body .vinyl-fan-arc-viewport,
+  :root body.app-no-scroll .vinyl-fan-arc-viewport,
+  :root body.mobile-vinyl-wheel-locked .vinyl-fan-arc-viewport {
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 50px 12px 64px !important; /* arriba: switcher · abajo: botones Subir */
+  }
+  :root body .vinyl-fan-arc-wheel {
+    order: 1;
+    flex: 0 0 auto !important;
+    height: clamp(200px, 32vh, 240px) !important;
+  }
+  :root body .vinyl-fan-inspector-card.vinyl-fan-clean-title-card {
+    order: 2;
+    margin: 0 !important;
+    width: min(320px, 100%) !important;
+    max-width: 100% !important;
+  }
+  /* Flechitas: abajo, horizontales y chiquitas (ya no tapan el vinilo) */
+  :root body .vinyl-arc-step-controls {
+    order: 3;
+    position: static !important;
+    transform: none !important;
+    top: auto !important;
+    right: auto !important;
+    display: inline-flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 3px !important;
+    height: auto !important;
+    width: auto !important;
+    border-radius: 999px !important;
+    background: var(--surface) !important;
+    border: 1px solid var(--line) !important;
+    box-shadow: none !important;
+  }
+  :root body .vinyl-arc-step-controls .vinyl-step-btn {
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 0.6rem !important;
+    rotate: -90deg; /* ▲▼ → ◀ ▶ */
+  }
+  :root body .vinyl-arc-step-controls .vinyl-step-counter {
+    font-size: 0.7rem !important;
+    color: var(--ink-secondary) !important;
+    min-width: 34px;
+    text-align: center;
+  }
+  /* Botones Subir track / Subir Canva: fila fija abajo, centrada */
+  :root body .library-bottom-actions {
+    position: absolute !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 12px !important;
+    top: auto !important;
+    display: flex !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    z-index: 510 !important;
+    pointer-events: none;
+  }
+  :root body .library-bottom-actions > * { pointer-events: auto; }
+  :root body .library-bottom-actions .library-action-btn {
+    height: 34px !important;
+    padding: 0 14px !important;
+    font-size: 0.8rem !important;
+  }
+}
+@media (max-width: 720px) {
+  /* más especificidad que :root[data-theme] .vinyl-fan-inspector-card.vinyl-fan-clean-title-card */
+  html:root body .vinyl-fan-arc-viewport .vinyl-fan-inspector-card.vinyl-fan-clean-title-card {
+    z-index: 500 !important;
+    background: color-mix(in srgb, var(--surface) 95%, transparent) !important;
+    border: 1px solid var(--line) !important;
+    opacity: 1 !important;
+    filter: none !important;
+  }
+  html:root body .vinyl-fan-arc-viewport .vinyl-fan-clean-title-card .vinyl-active-title {
+    color: var(--ink) !important;
+    -webkit-text-fill-color: var(--ink) !important;
+    text-shadow: none !important;
+    opacity: 1 !important;
+  }
+}
+@media (max-width: 720px) {
+  html:root body .vinyl-fan-arc-viewport .vinyl-fan-inspector-card.vinyl-fan-clean-title-card::before,
+  html:root body .vinyl-fan-arc-viewport .vinyl-fan-inspector-card.vinyl-fan-clean-title-card::after { display: none !important; }
+  html:root body .vinyl-fan-arc-viewport .vinyl-fan-inspector-card.vinyl-fan-clean-title-card {
+    box-shadow: 0 10px 30px -14px rgba(0, 0, 0, 0.45) !important;
+  }
+}
