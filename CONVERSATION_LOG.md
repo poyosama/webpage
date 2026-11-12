@@ -2412,3 +2412,12 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 **Prompt del usuario:** el modal de editar la data del track es enorme y hay que scrollear para guardar; que sea menos aglomerado.
 
 **Cambios (`EditTrackModal` en `App.tsx` + `ui-refresh.css`):** título del modal = nombre del track; etiquetas cortas (Título, Artista, Feat., Prod., BPM, Key, Versión, Color, Notas); grilla de 3 columnas (2 en celu) con inputs de 36px; color en una línea; portada y audio como dos botones ("Cambiar portada" con miniatura / "Reemplazar audio", analiza Key/BPM igual que antes) en vez de inputs de archivo nativos; el cuerpo scrollea solo si hace falta y el pie (Eliminar · Cancelar · **Guardar**) queda fijo abajo. En 1200×650 entra completo.
+
+---
+
+### Turno 127 — Modales por delante del reproductor y de la vista del proyecto
+**Prompt del usuario:** al tocar compartir dentro del proyecto no pasaba nada y el modal aparecía recién al volver al Inicio, con Cerrar/Guardar fuera de pantalla; los menús que se abren desde el reproductor aparecen detrás (en la biblioteca).
+
+**Diagnóstico:** `.apple-modal-backdrop` tenía `z-index: 80`, debajo de la vista del proyecto (145, portal en body), del mini-reproductor (160) y del reproductor grande (800). Además el modal no tenía alto máximo.
+
+**Fix (`ui-refresh.css`):** escala de capas documentada (proyecto 145 · mini 160 · reproductor 800 · modales/hojas/menús 1000 · portada en grande 1100 · toasts 1200); backdrop `fixed` con scroll interno; `.apple-modal-card` con `max-height` = alto real − safe areas y `overflow-y: auto`. Texto de visibilidad corregido ("Solo lo ven vos y quien tenga un link." / "Lo ve todo El tablero.") y basado en `!== "public"`. Verificado: "Invitar" desde adentro del proyecto en celu abre el modal encima (z 1000).

@@ -1645,3 +1645,32 @@ html:root body .et-file-btn span {
   margin: 0 !important;
   color: var(--ink) !important;
 }
+
+/* =====================================================================
+   CAPAS: todo menú / modal / hoja va POR DELANTE del reproductor grande (800)
+   y de la vista del proyecto (145). Orden:
+   vista proyecto 145 · mini-reproductor 160 · reproductor grande 800
+   · modales y hojas 1000 · portada en grande 1100 · toasts 1200
+   ===================================================================== */
+html:root body .apple-modal-backdrop,
+html:root body .apple-modal-backdrop:has(.invite-friends-modal-card),
+html:root body .move-sheet-backdrop,
+html:root body .pf-menu-scrim { z-index: 1000 !important; }
+html:root body .pf-menu { z-index: 1001 !important; }
+html:root body .cover-lightbox { z-index: 1100 !important; }
+html:root body .move-toast { z-index: 1200 !important; }
+
+/* Ningún modal más alto que la pantalla: el contenido scrollea adentro y los botones se ven */
+html:root body .apple-modal-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) 12px calc(env(safe-area-inset-bottom, 0px) + 12px) !important;
+}
+html:root body .apple-modal-card {
+  max-height: calc(var(--app-h, 100dvh) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 24px) !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  margin: auto !important;
+}

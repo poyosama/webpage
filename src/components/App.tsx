@@ -7122,9 +7122,9 @@ function InviteProjectModal({
             <div className="invite-visibility-copy">
               <b>Visibilidad del {project.type}</b>
               <small>
-                {project.visibility === "private"
-                  ? "Nadie más puede ver este proyecto salvo a quien le pases un link de invitación abajo."
-                  : "Visible para todos en el Inicio de El tablero."}
+                {project.visibility !== "public"
+                  ? "Solo lo ven vos y quien tenga un link."
+                  : "Lo ve todo El tablero."}
               </small>
             </div>
             <div className="seg-pills">
