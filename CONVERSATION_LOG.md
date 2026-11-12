@@ -2493,3 +2493,13 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 **Implementación:**
 - `supabase/migration_collab.sql` (+ al final de `APLICAR_TODO.sql`): `project_members.is_coauthor`, `added_by`; RPCs `add_project_collaborator(proyecto, @handle, rol, coautor)` (solo dueño; busca por handle sin importar mayúsculas/@), `list_project_collaborators`, `remove_project_collaborator` (dueño, o uno mismo para salirse), `coauthors_for_projects` (para armar "poyo · dorkke"; los coautores de proyectos públicos los ve cualquiera). Probado en Postgres local: un extraño no puede sumar, handle inexistente da error, el coautor ve y edita el proyecto privado, nadie más lo ve, público muestra el coautor, al sacarlo deja de verlo.
 - Cliente: `Project.coauthors` (solo para mostrar, no se guarda) + `projectArtistLabel()` en el inspector, subtítulo de celu, catálogo y tarjeta del vinilo. El colaborador `edit` ya recibía el proyecto en su Biblioteca/Perfil vía membresías (`project_members`). Modal de compartir del proyecto (dueño): sección **Colaboradores** con @usuario + rol (Coautor / Puede editar / Solo escuchar), lista y ✕ para sacar.
+
+---
+
+### Turno 134 — Control remoto entre dispositivos (tipo Spotify Connect)
+**Prompt del usuario:** controlar desde el celu lo que suena en la compu (volumen, pasar, elegir canción) y viceversa.
+
+**Implementación:**
+- `src/lib/remotePlayer.ts` (`useRemotePlayer`): canal Supabase Realtime `player:<userId>` con presencia (cada dispositivo: id persistente + nombre "iPhone"/"Mac"/…) y broadcast: `state` (el que suena publica cada 2 s), `cmd` (toggle/next/prev/seek/volume/play_track/transfer) y `claim` (otro empezó a sonar → este se pausa). Sin tablas.
+- `App.tsx`: si este dispositivo controla a otro, `playTrack`/`togglePlay`/`stepTrack`/`handleVolumeChange`/scrubber mandan órdenes; el mini-reproductor refleja lo que suena allá (polling local apagado). Al empezar a sonar localmente hace `claim`. Botón de dispositivos en el mini-reproductor (si hay 2+), hoja "¿Dónde suena?" para pasar la música (con posición) o traerla, y banner verde "Sonando en Mac".
+- Probado: Realtime real del proyecto (dos clientes en Chromium): presencia mutua, orden "next" recibida y estado recibido. El flujo completo con dos dispositivos logueados queda para probar en vivo.

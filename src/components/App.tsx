@@ -22,6 +22,7 @@ import {
   type Track,
 } from "@/lib/mock";
 import { sfx } from "@/lib/sfx";
+import { useRemotePlayer, type RemoteCommand } from "@/lib/remotePlayer";
 import type { QueueEntry, RepeatMode } from "./PerformativePlayer";
 import {
   supabase,
@@ -268,6 +269,12 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   const [customAudioMap, setCustomAudioMap] = useState<Record<string, string>>({});
 
   const onTrackEndedRef = useRef<() => void>(() => {});
+  // Control remoto: si este dispositivo controla a otro, las acciones se mandan por el canal en vivo
+  const remoteCtlRef = useRef<{
+    controlling: boolean;
+    send: (cmd: RemoteCommand) => void;
+    claim: () => void;
+  }>({ controlling: false, send: () => {}, claim: () => {} });
   const guestPreviewEndRef = useRef<() => void>(() => {});
   const miniPlayerTouchRef = useRef<{ startY: number; startX: number } | null>(null);
 
@@ -284,6 +291,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       return;
     }
     const id = window.setInterval(() => {
+      if (remoteCtlRef.current.controlling) return; // el progreso lo manda el otro dispositivo
       const st = sfx.getPlaybackState();
       setMiniPlayback((prev) => {
         const nextDur = st.durationSec || currentTrack.durationSec || 174;
@@ -1322,6 +1330,14 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     null;
 
   const playTrack = (track: Track, project: Project, openFull = false) => {
+    if (remoteCtlRef.current.controlling) {
+      remoteCtlRef.current.send({ action: "play_track", trackId: track.id, projectId: project.id });
+      setCurrentTrack(track);
+      setCurrentProject(project);
+      if (openFull) setPlayerExpanded(true);
+      return;
+    }
+    remoteCtlRef.current.claim();
     const isDifferentTrack = track.id !== currentTrack.id;
     if (!isDifferentTrack && isPlaying) {
       if (openFull) setPlayerExpanded(true);
@@ -1364,6 +1380,12 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   };
 
   const togglePlay = () => {
+    if (remoteCtlRef.current.controlling) {
+      remoteCtlRef.current.send({ action: "toggle" });
+      setIsPlaying((v) => !v);
+      return;
+    }
+    if (!isPlaying) remoteCtlRef.current.claim();
     if (isPlaying) {
       setIsPlaying(false);
       sfx.pause();
@@ -1405,6 +1427,11 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   };
 
   const handleVolumeChange = (nextVol: number) => {
+    if (remoteCtlRef.current.controlling) {
+      remoteCtlRef.current.send({ action: "volume", value: nextVol });
+      setVolume(nextVol);
+      return;
+    }
     const clamped = Math.max(0, Math.min(1, nextVol));
     setVolume(clamped);
     if (clamped > 0 && muted) {
@@ -1510,6 +1537,10 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   }, []);
 
   const stepTrack = (dir: 1 | -1) => {
+    if (remoteCtlRef.current.controlling) {
+      remoteCtlRef.current.send({ action: dir === 1 ? "next" : "prev" });
+      return;
+    }
     // Si va hacia adelante y hay canciones en la cola del usuario, reproducir la primera de la cola
     if (dir === 1 && userQueue.length > 0) {
       const [nextItem, ...rest] = userQueue;
@@ -1530,6 +1561,119 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     const nextIdx = (idx + dir + list.length) % list.length;
     const nextTrack = list[nextIdx] || list[0];
     playTrack(nextTrack, currentProject, playerExpanded);
+  };
+
+  // ==================== CONTROL REMOTO ENTRE DISPOSITIVOS ====================
+  const findTrackAnywhere = (trackId: string, projectId?: string): { track: Track; project: Project } | null => {
+    const pool = [...projects, ...DEMO_PROJECTS];
+    const proj = (projectId && pool.find((p) => p.id === projectId)) || pool.find((p) => p.tracks.some((t) => t.id === trackId));
+    const track = proj?.tracks.find((t) => t.id === trackId);
+    return proj && track ? { track, project: proj } : null;
+  };
+  const remote = useRemotePlayer({
+    userId: googleConnected ? meProfile.id : null,
+    getLocalState: () =>
+      currentTrack.id === "standby-track"
+        ? null
+        : {
+            trackId: currentTrack.id,
+            projectId: currentProject.id,
+            title: currentTrack.title,
+            artist: currentTrack.artist,
+            cover: currentTrack.coverUrl || currentProject.coverUrl,
+            isPlaying,
+            position: sfx.getPlaybackState().currentSec || 0,
+            duration: miniPlayback.durationSec,
+            volume,
+          },
+    onCommand: (cmd) => {
+      switch (cmd.action) {
+        case "toggle":
+          togglePlay();
+          break;
+        case "next":
+          stepTrack(1);
+          break;
+        case "prev":
+          stepTrack(-1);
+          break;
+        case "seek":
+          sfx.seek(cmd.sec);
+          break;
+        case "volume":
+          handleVolumeChange(cmd.value);
+          break;
+        case "pause_local":
+          if (isPlaying) {
+            setIsPlaying(false);
+            sfx.pause();
+            sfx.pauseGroove();
+          }
+          break;
+        case "play_track":
+        case "transfer": {
+          const found = findTrackAnywhere(cmd.trackId, cmd.projectId);
+          if (!found) break;
+          if (found.track.id !== currentTrack.id || !isPlaying) playTrack(found.track, found.project, false);
+          if (cmd.action === "transfer") {
+            const pos = cmd.position;
+            window.setTimeout(() => sfx.seek(pos), 400);
+            if (!cmd.playing) window.setTimeout(() => togglePlay(), 450);
+          }
+          break;
+        }
+      }
+      window.setTimeout(() => remote.publishNow(), 600);
+    },
+  });
+  remoteCtlRef.current = { controlling: remote.controlling, send: remote.sendCmd, claim: remote.claim };
+  const [devicePickerOpen, setDevicePickerOpen] = useState(false);
+  const activeRemoteDevice = remote.devices.find((d) => d.deviceId === remote.activeDeviceId);
+
+  // Controlando otro dispositivo: el mini-reproductor muestra lo que suena allá
+  useEffect(() => {
+    const rs = remote.remoteState;
+    if (!remote.controlling || !rs) return;
+    const found = findTrackAnywhere(rs.trackId, rs.projectId);
+    if (found && found.track.id !== currentTrack.id) {
+      setCurrentTrack(found.track);
+      setCurrentProject(found.project);
+    }
+    setIsPlaying(rs.isPlaying);
+    const drift = rs.isPlaying ? (Date.now() - rs.at) / 1000 : 0;
+    setMiniPlayback({ currentSec: Math.min(rs.duration || 0, rs.position + drift), durationSec: rs.duration || 1 });
+    setVolume(rs.volume);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [remote.remoteState, remote.controlling]);
+
+  const transferPlayback = (deviceId: string) => {
+    sfx.tap();
+    setDevicePickerOpen(false);
+    if (deviceId === remote.myDeviceId) {
+      // traer la música acá, desde donde iba
+      const rs = remote.remoteState;
+      remote.transferTo(deviceId, null);
+      if (rs) {
+        const found = findTrackAnywhere(rs.trackId, rs.projectId);
+        if (found) {
+          remoteCtlRef.current.controlling = false;
+          playTrack(found.track, found.project, false);
+          window.setTimeout(() => sfx.seek(rs.position + (rs.isPlaying ? (Date.now() - rs.at) / 1000 : 0)), 400);
+        }
+      }
+      return;
+    }
+    const pos = sfx.getPlaybackState().currentSec || 0;
+    remote.transferTo(deviceId, {
+      trackId: currentTrack.id,
+      projectId: currentProject.id,
+      position: pos,
+      playing: isPlaying || currentTrack.id !== "standby-track",
+    });
+    if (isPlaying) {
+      sfx.pause();
+      sfx.pauseGroove();
+    }
   };
 
   // Widget nativo de iPhone / Android (pantalla de bloqueo, Control Center, AirPods):
@@ -5357,6 +5501,19 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       <AnimatePresence>
         {!playerExpanded && (
           <div className="ios-mini-player-dock">
+            {remote.controlling && activeRemoteDevice && (
+              <button
+                type="button"
+                className="remote-banner"
+                onClick={() => {
+                  sfx.open();
+                  setDevicePickerOpen(true);
+                }}
+              >
+                <span className="remote-banner-dot" />
+                Sonando en {activeRemoteDevice.name}
+              </button>
+            )}
             <motion.div
               className="ios-mini-player"
               initial={{ y: 80, opacity: 0 }}
@@ -5407,7 +5564,8 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                   onChange={(e) => {
                     const sec = Number(e.target.value);
                     setMiniPlayback((prev) => ({ ...prev, currentSec: sec }));
-                    sfx.seek(sec);
+                    if (remoteCtlRef.current.controlling) remoteCtlRef.current.send({ action: "seek", sec });
+                    else sfx.seek(sec);
                   }}
                   className="mini-scrubber-input"
                   aria-label="Progreso del track"
@@ -5535,6 +5693,21 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                   style={{ ["--fill" as string]: `${(muted ? 0 : volume) * 100}%` }}
                   aria-label="Volumen"
                 />
+                {remote.devices.length > 1 && (
+                  <button
+                    type="button"
+                    className={`mini-device-btn ${remote.controlling ? "is-remote" : ""}`}
+                    aria-label="Elegir dispositivo"
+                    title="Dispositivos"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      sfx.open();
+                      setDevicePickerOpen(true);
+                    }}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="4" width="13" height="10" rx="2" /><rect x="15" y="9" width="6" height="11" rx="1.5" /><path d="M7 18h5" /></svg>
+                  </button>
+                )}
                 <button
                   type="button"
                   className="mini-expand-btn"
@@ -5879,6 +6052,67 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
               </UniversalPortal>
             );
           })()}
+      </AnimatePresence>
+
+      {/* ==================== DISPOSITIVOS (control remoto) ==================== */}
+      <AnimatePresence>
+        {devicePickerOpen && (
+          <UniversalPortal>
+            <motion.div
+              className="move-sheet-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setDevicePickerOpen(false)}
+            >
+              <motion.div
+                className="move-sheet device-sheet"
+                initial={{ y: 40, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 40, opacity: 0 }}
+                transition={{ type: "spring", stiffness: 380, damping: 32 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="move-sheet-grabber" aria-hidden />
+                <div className="move-sheet-head">
+                  <div>
+                    <span className="mono-tag">DISPOSITIVOS</span>
+                    <h3>¿Dónde suena?</h3>
+                  </div>
+                </div>
+                <ul className="device-list">
+                  {remote.devices.map((d) => {
+                    const isActive = remote.activeDeviceId ? d.deviceId === remote.activeDeviceId : d.isMe;
+                    return (
+                      <li key={d.deviceId}>
+                        <button
+                          type="button"
+                          className={`device-item ${isActive ? "is-active" : ""}`}
+                          onClick={() => {
+                            if (isActive) {
+                              setDevicePickerOpen(false);
+                              return;
+                            }
+                            transferPlayback(d.deviceId);
+                          }}
+                        >
+                          <span className="device-icon" aria-hidden>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="4" width="13" height="10" rx="2" /><rect x="15" y="9" width="6" height="11" rx="1.5" /><path d="M7 18h5" /></svg>
+                          </span>
+                          <span className="device-meta">
+                            <b>{d.isMe ? `Este dispositivo (${d.name})` : d.name}</b>
+                            <small>{isActive ? (isPlaying ? "Sonando acá" : "Activo") : "Tocá para pasar la música acá"}</small>
+                          </span>
+                          {isActive && <span className="device-eq" aria-hidden><i /><i /><i /></span>}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </motion.div>
+            </motion.div>
+          </UniversalPortal>
+        )}
       </AnimatePresence>
 
       {/* ==================== PORTADA EN GRANDE ==================== */}
