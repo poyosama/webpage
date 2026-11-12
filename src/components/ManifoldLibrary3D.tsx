@@ -1027,6 +1027,7 @@ export default function ManifoldLibrary3D({
           </div>
         )}
 
+        {!compact && (
         <div className="manifold-stage-overlay-top">
           <div className="manifold-title-and-switch">
             <div className="manifold-overlay-titles">
@@ -1045,6 +1046,7 @@ export default function ManifoldLibrary3D({
 
           {renderQuickPills()}
         </div>
+        )}
 
         {activeMode === "grid" ? (
           <div className="untitled-catalog-viewport">

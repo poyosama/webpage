@@ -2123,3 +2123,16 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 
 
 
+
+---
+
+### Turno 100 — Emprolijado general (píldora, Inicio, Perfil, Biblioteca, Crear proyecto) + logo
+**Prompt del usuario:** lista larga de cambios por pantalla (se sentía tosco en web/iPhone, revisar light/dark y legibilidad, achicar la píldora superior, Inicio sin apretujar y con links a Spotify, `@poyo` lleva al perfil, Google escondido en settings, Perfil compacto con menú `+`, Biblioteca sin recorte en los vinilos, íconos candado/planeta, y al final un logo minimalista "El tablero." + "me gustó con poquito espacio").
+
+**Implementación:**
+1. **`src/components/ui-refresh.css` (nuevo, importado último desde `App.tsx`):** tokens `--nav-top/--nav-h/--nav-clear`; píldora de 38px sin sombra/línea borrosa; `.apple-shell` arranca siempre debajo de la píldora (se anulan los parches de `margin-top` por pantalla); estilos de `board-grid`, botones finos `pf-*`, menús desplegables, perfil compacto y catálogo del perfil que entra completo con nombres; máscara de la rueda de vinilos movida al viewport (con fade horizontal) para eliminar el recorte duro a la izquierda.
+2. **Inicio (`App.tsx`):** el collage apretado se reemplazó por una grilla ordenada y data-driven (`BOARD_ITEMS`); click en un proyecto abre su `spotifyUrl` (si no tiene, reproduce). Filtros de productores renombrados: `Beats · Soundkits · Drumkits · Loopkits · Catálogos` (solo etiquetas, la data no cambia).
+3. **Navegación:** el botón `@poyo` y la pestaña de perfil ahora van directo al perfil. El modal de Google quedó dentro del perfil, en un menú de ajustes (engranaje) con ícono de Google.
+4. **Perfil:** botones `Editar perfil` / `Invitar` / ajustes finos; "Mis proyectos" con botón `+` que despliega `Crear proyecto` o `Subir tracks`; se quitaron las pastillas con nombres (`ManifoldLibrary3D` no renderiza título + pills en modo `compact`); sin fondo de canva negro.
+5. **Crear proyecto:** `Privado`/`Público` con SVG de candado y planeta (monocromo, heredan `currentColor`); contenedor siempre `flex-start` debajo de la píldora.
+6. **Logo:** `public/brand/logo-el-tablero*.svg|png` (wordmark "El tablero." en Inter Display Bold, tracking apretado, trazado a curvas). Principal con espacio mínimo ("Eltablero", como pidió) y variante `-spaced`; versiones negra, blanca y blanca sobre negro.

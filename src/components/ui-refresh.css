@@ -1,0 +1,329 @@
+/* =====================================================================
+   UI REFRESH — cargado ÚLTIMO (después de board/library/create-project).
+   Tokens de layout únicos para que ninguna pantalla vuelva a quedar
+   debajo de la píldora superior.
+   ===================================================================== */
+:root {
+  --nav-top: 8px;
+  --nav-h: 38px;
+  --nav-clear: 60px; /* top + alto de píldora + aire */
+}
+
+/* ---------- Píldora superior: más finita, sin sombra "bug" ---------- */
+:root body .ios-navbar {
+  top: var(--nav-top);
+  height: var(--nav-h);
+  padding: 3px 8px 3px 12px;
+  gap: 8px;
+  box-shadow: 0 0 0 0.5px var(--line), 0 4px 14px -8px rgba(0, 0, 0, 0.22);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  backdrop-filter: blur(18px) saturate(160%);
+}
+:root body .ios-navbar::before,
+:root body .ios-navbar::after {
+  display: none;
+}
+:root body .ios-brand-title strong { font-size: 0.96rem; }
+:root body .ios-seg-control button {
+  height: 26px;
+  padding: 3px 12px;
+  font-size: 0.76rem;
+}
+:root body .ios-icon-btn {
+  height: 26px;
+  padding: 3px 9px;
+  font-size: 0.72rem;
+}
+:root body .ios-icon-btn svg { width: 13px; height: 13px; }
+
+/* Todas las pantallas arrancan debajo de la píldora, sin parches por página */
+:root body .apple-shell { padding-top: var(--nav-clear); }
+:root body .explore-page,
+:root body .dmg-section,
+:root body .profile-page,
+:root body .cp-page,
+:root body .profile-hero-card { margin-top: 0 !important; }
+
+/* Legibilidad mínima de textos secundarios en ambos temas */
+:root[data-theme="light"] .mono-tag { color: #52525b; }
+:root[data-theme="dark"] .mono-tag { color: #b4b4bd; }
+
+/* ===================== INICIO: EL TABLERO ORDENADO ===================== */
+.board-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  padding: 10px 0 6px;
+}
+.board-tile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px 10px 10px;
+  min-width: 0;
+  text-align: left;
+  border-radius: 16px;
+  background: var(--surface-secondary);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s, background 0.2s;
+}
+.board-tile:hover {
+  transform: translateY(-2px);
+  border-color: var(--line-strong);
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+.board-tile:active { transform: scale(0.98); }
+.board-tile-cover {
+  width: 56px;
+  height: 56px;
+  flex: none;
+  border-radius: 11px;
+  object-fit: cover;
+  box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.35);
+}
+.board-tile-text {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+.board-tile-word {
+  font-size: 0.98rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+}
+.board-tile small {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.66rem;
+  color: var(--ink-muted);
+  text-transform: lowercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.board-tile-go {
+  margin-left: auto;
+  flex: none;
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+  opacity: 0.7;
+}
+.board-swatch {
+  padding: 0 5px;
+  border-radius: 5px;
+  color: #fff;
+  background: #2563eb;
+}
+.board-swatch.coral { background: #e11d48; }
+.board-swatch.red { background: #dc2626; }
+.board-swatch.cyan { background: #06b6d4; color: #06222a; }
+.board-swatch.gold { background: #facc15; color: #2b2100; }
+.board-swatch.blue { background: #2563eb; }
+.board-swatch.lime { background: #16a34a; }
+.board-swatch.purple { background: #9333ea; }
+
+@media (max-width: 1000px) {
+  .board-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 520px) {
+  .board-grid { grid-template-columns: 1fr; gap: 8px; }
+  .board-tile-cover { width: 50px; height: 50px; }
+}
+
+/* ===================== PERFIL: COMPACTO ===================== */
+:root body .profile-hero-card {
+  padding: 14px 18px 12px !important;
+  border-radius: 20px !important;
+}
+:root body .profile-hero-top {
+  display: flex !important;
+  align-items: center !important;
+  gap: 14px !important;
+  flex-wrap: nowrap !important;
+}
+:root body .profile-avatar-large {
+  width: 56px !important;
+  height: 56px !important;
+  min-width: 56px;
+  border-radius: 16px !important;
+  font-size: 1.3rem !important;
+}
+:root body .profile-main-copy { flex: 1 1 auto; min-width: 0; }
+:root body .profile-main-copy h1 {
+  font-size: 1.25rem !important;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+  margin: 2px 0 0 !important;
+}
+:root body .profile-main-copy h1 em {
+  font-style: normal;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--ink-muted);
+}
+:root body .profile-main-copy p { font-size: 0.82rem; margin-top: 2px; color: var(--ink-secondary); }
+:root body .profile-cta-col { margin-left: auto; flex: none; }
+:root body .profile-actions-row {
+  display: flex !important;
+  align-items: center;
+  gap: 6px !important;
+}
+:root body .profile-metrics-bar {
+  display: flex !important;
+  gap: 24px !important;
+  margin-top: 10px !important;
+  padding-top: 9px !important;
+  border-top: 1px solid var(--line);
+}
+:root body .profile-metrics-bar b { font-size: 1rem !important; }
+:root body .profile-metrics-bar span { font-size: 0.6rem !important; margin-left: 6px; }
+:root body .profile-metrics-bar > div { display: flex; align-items: baseline; gap: 2px; }
+
+/* Botones finos estilo Apple */
+.pf-btn {
+  height: 28px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 550;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  background: var(--surface-secondary);
+  border: 1px solid var(--line);
+  white-space: nowrap;
+  transition: background 0.15s, transform 0.12s;
+}
+.pf-btn:hover { background: color-mix(in srgb, var(--ink) 9%, transparent); }
+.pf-btn:active { transform: scale(0.96); }
+.pf-btn.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.pf-btn.primary:hover { background: var(--ink); opacity: 0.88; }
+.pf-btn.icon { width: 28px; padding: 0; }
+.pf-btn.icon.solid { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+.pf-menu-wrap { position: relative; display: inline-flex; }
+.pf-menu-scrim { position: fixed; inset: 0; z-index: 140; }
+.pf-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 141;
+  min-width: 176px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-float);
+}
+.pf-menu button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--ink);
+  text-align: left;
+}
+.pf-menu button:hover { background: var(--surface-secondary); }
+
+.pf-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 14px 4px 8px;
+}
+.pf-section-head h2 {
+  font-size: 1rem;
+  font-weight: 650;
+  letter-spacing: -0.025em;
+}
+
+/* Catálogo del perfil: entra completo en pantalla, con nombres */
+:root body .profile-manifold-showcase { margin-top: 0 !important; }
+:root body .manifold-3d-wrapper.is-compact { min-height: 0 !important; height: auto !important; }
+:root body .manifold-3d-wrapper.is-compact .manifold-3d-canvas-stage {
+  min-height: 0 !important;
+  height: auto !important;
+}
+:root body .manifold-3d-wrapper.is-compact .untitled-catalog-viewport {
+  padding: 12px 14px 14px !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+:root body .manifold-3d-wrapper.is-compact .untitled-catalog-grid {
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)) !important;
+  gap: 12px 10px !important;
+}
+:root body .manifold-3d-wrapper.is-compact .untitled-catalog-info { padding-top: 6px !important; }
+:root body .manifold-3d-wrapper.is-compact .untitled-catalog-title { font-size: 0.8rem !important; }
+:root body .manifold-3d-wrapper.is-compact .untitled-catalog-meta { font-size: 0.64rem !important; }
+.profile-invites-bottom-section { margin-top: 12px; }
+
+/* ===================== BIBLIOTECA: RUEDA SIN RECORTE ===================== */
+:root body .vinyl-fan-arc-wheel {
+  /* el recorte duro venía de la máscara sobre una caja que empezaba a 120px */
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+:root body .vinyl-fan-arc-viewport {
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 7%, #000 100%),
+    linear-gradient(to bottom, transparent 0, #000 16%, #000 84%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 7%, #000 100%),
+    linear-gradient(to bottom, transparent 0, #000 16%, #000 84%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+/* el switcher Rueda/Tapas respira debajo de la píldora */
+:root body .library-top-left-switcher { top: 12px !important; left: 16px !important; }
+
+/* ===================== PANTALLA SUBIR ===================== */
+:root body .dmg-section { padding-top: 6px; }
+
+/* ===================== CREAR PROYECTO ===================== */
+:root body .cp-page { height: auto !important; min-height: calc(100vh - var(--nav-clear) - 90px) !important; overflow: visible !important; }
+:root body .cp-content {
+  justify-content: flex-start !important;
+  padding: 8px 16px 24px !important;
+  min-height: 0;
+}
+:root body .cp-card { margin-top: 0; }
+.cp-card .seg-pills button { display: inline-flex; align-items: center; gap: 6px; }
+
+@media (max-width: 720px) {
+  :root { --nav-clear: 58px; }
+  :root body .profile-hero-top { flex-wrap: wrap !important; }
+  :root body .profile-cta-col { margin-left: 0; width: 100%; }
+  :root body .profile-actions-row { justify-content: flex-start; }
+}
+
+/* Perfil: sin canva de fondo (era un bloque negro en modo claro) */
+:root body .manifold-3d-wrapper.is-compact .library-canva-backdrop { display: none !important; }
+:root body .manifold-3d-wrapper.is-compact {
+  background: var(--surface) !important;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  overflow: hidden;
+}
+:root body .manifold-3d-wrapper.is-compact .untitled-catalog-title,
+:root body .manifold-3d-wrapper.is-compact .untitled-catalog-meta { color: var(--ink) !important; }
+:root body .manifold-3d-wrapper.is-compact .untitled-catalog-meta { color: var(--ink-muted) !important; }
+:root body .manifold-3d-wrapper.is-compact .untitled-catalog-add-box { background: var(--surface-secondary) !important; border: 1px dashed var(--line-strong) !important; }
+:root body .manifold-3d-wrapper.is-compact .untitled-catalog-add-plus { color: var(--ink) !important; }
+:root body .manifold-3d-wrapper.is-compact .untitled-catalog-title,
+:root body .manifold-3d-wrapper.is-compact .untitled-catalog-meta,
+:root body .manifold-3d-wrapper.is-compact .untitled-catalog-cover { text-shadow: none !important; }
+:root body .manifold-3d-wrapper.is-compact .untitled-catalog-info { filter: none !important; }
