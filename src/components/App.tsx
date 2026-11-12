@@ -2683,7 +2683,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                       </button>
                     </div>
 
-                    {/* Fila 4: #MA7IAS (Ma7imza) + Love2Hate (Icylucki) + AMORIO CLUB 2 (Máximo) */}
+                    {/* Fila 4: #MA7IAS (Ma7imza) + Love2Hate (Icylucki) + EL DE LA X (Máximo) */}
                     <div className="collage-line">
                       <button
                         type="button"
@@ -2735,12 +2735,12 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                         }}
                       >
                         <img
-                          src="/covers/amorio-club.png"
-                          alt="AMORIO CLUB"
+                          src="/covers/el-de-la-x.png"
+                          alt="EL DE LA X"
                           className="collage-cover-thumb"
                         />
                         <span className="roster-word">
-                          <span className="inline-swatch red">AMORIO CLUB</span>
+                          <span className="inline-swatch red">EL DE LA X</span>
                         </span>
                         <sup className="sup-tag">ep · Máximo</sup>
                       </button>
@@ -5043,8 +5043,24 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                                   setAuthModalOpen(true);
                                 }}
                               >
-                                <GoogleCircleIcon size={15} />
-                                <span>Cuenta de Google</span>
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>
+                                <span>Ajustes de cuenta</span>
+                              </button>
+                              <button
+                                type="button"
+                                role="menuitem"
+                                className="danger"
+                                onClick={async () => {
+                                  setProfileSettingsOpen(false);
+                                  try {
+                                    await supabase.auth.signOut();
+                                  } catch {}
+                                  setGoogleConnected(false);
+                                  sfx.drop();
+                                }}
+                              >
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>
+                                <span>Cerrar sesión</span>
                               </button>
                             </div>
                           </>
@@ -6546,6 +6562,8 @@ function GoogleAuthModal({
   onSaveProfile: (updated: { name: string; handle: string; email?: string }) => Promise<{ success: boolean; error?: string }>;
   onSignOut: () => void;
 }) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteText, setDeleteText] = useState("");
   const [email, setEmail] = useState(profile.email || "");
   const [name, setName] = useState(profile.name);
   const [handle, setHandle] = useState(profile.handle);
@@ -6660,11 +6678,11 @@ function GoogleAuthModal({
         <div className="modal-head">
           <div>
             <span className="mono-tag">
-              {connected ? "CUENTA" : "ACCESO EXCLUSIVO"}
+              {connected ? "AJUSTES" : "SUSCRIPCIÓN"}
             </span>
             <h3 style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <GoogleCircleIcon size={22} />
-              {connected ? "Sesión iniciada" : "Ingreso a El tablero."}
+              {!connected && <GoogleCircleIcon size={22} />}
+              {connected ? "Ajustes de cuenta" : "Suscribirme a El tablero."}
             </h3>
           </div>
           <button type="button" className="apple-btn ghost" onClick={onClose}>
@@ -6681,6 +6699,7 @@ function GoogleAuthModal({
                   <b style={{ fontSize: "0.92rem", wordBreak: "break-all" }}>{profile.email || email}</b>
                   <span className="google-verified-tag">Verificado ✓</span>
                 </div>
+                <small style={{ color: "var(--ink-muted)", fontSize: "0.74rem" }}>Cuenta de Google conectada</small>
               </div>
             </div>
           </div>
@@ -6850,12 +6869,71 @@ function GoogleAuthModal({
               </button>
               <button
                 type="button"
-                className="apple-btn ghost danger-trash-btn"
+                className="apple-btn ghost"
                 onClick={onSignOut}
                 style={{ justifyContent: "center", marginTop: 4 }}
               >
-                Cerrar sesión de Google
+                Cerrar sesión
               </button>
+              <div className="account-danger-zone">
+                {!confirmDelete ? (
+                  <button type="button" className="account-delete-link" onClick={() => setConfirmDelete(true)}>
+                    Borrar cuenta
+                  </button>
+                ) : (
+                  <>
+                    <p>
+                      Se borran tu perfil, tus proyectos, tracks y canvas. No se puede deshacer. Escribí <b>BORRAR</b> para
+                      confirmar.
+                    </p>
+                    <input
+                      value={deleteText}
+                      onChange={(e) => setDeleteText(e.target.value)}
+                      placeholder="BORRAR"
+                      autoCapitalize="characters"
+                    />
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button
+                        type="button"
+                        className="apple-btn ghost"
+                        style={{ flex: 1, justifyContent: "center" }}
+                        onClick={() => {
+                          setConfirmDelete(false);
+                          setDeleteText("");
+                        }}
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        className="apple-btn account-delete-btn"
+                        style={{ flex: 1, justifyContent: "center" }}
+                        disabled={deleteText.trim().toUpperCase() !== "BORRAR" || loading}
+                        onClick={async () => {
+                          setLoading(true);
+                          const { error } = await supabase.rpc("delete_my_account");
+                          setLoading(false);
+                          if (error) {
+                            setMsg(
+                              /could not find|does not exist|schema cache/i.test(error.message)
+                                ? "Borrar cuenta necesita la actualización del servidor (migración pendiente)."
+                                : `No se pudo borrar la cuenta: ${error.message}`
+                            );
+                            setMsgType("error");
+                            return;
+                          }
+                          try {
+                            localStorage.removeItem("eltablero_fast_snapshot_v2");
+                          } catch {}
+                          onSignOut();
+                        }}
+                      >
+                        {loading ? "Borrando…" : "Borrar mi cuenta"}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             </>
           ) : (
             <button
