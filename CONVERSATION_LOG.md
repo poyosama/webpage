@@ -2533,3 +2533,12 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 **Prompt del usuario:** en la rueda, abajo al medio se superponen "Subir track / Subir Canva" con "Sonando en…" y el mini-reproductor.
 
 **Fix:** `.library-bottom-actions` deja de ser `absolute` en celu (queda en el flujo, encima del reproductor); con el aviso "Sonando en…" el `apple-shell` reserva 112 px abajo; los botones se ocultan en proyectos virtuales ("Tus me gusta"). Verificado en 390×780: botones 670–704, reproductor 716.
+
+---
+
+### Turno 139 — Scroll dentro del proyecto en iPhone + tapa animada de Tus me gusta
+**Prompt del usuario:** sigue sin poder scrollear dentro de los proyectos; la tapa de Tus me gusta debería tener partículas animadas "en 3D", no una imagen fija con puntos.
+
+**Diagnóstico scroll:** con toque real simulado (CDP `dispatchTouchEvent`; el `synthesizeScrollGesture` no sirve en este entorno) la vista scrolleaba en Chromium, pero había dos contenedores con scroll anidados (`.project-inspector-sheet` y `.untitled-mobile-project-view`) más un `transform: translateZ(0)` en la hoja — combinación que iOS Safari no scrollea. **Fix (≤720px):** la hoja es el único scroller (`overflow-y:auto`, `-webkit-overflow-scrolling: touch`, `touch-action: pan-y`, sin transform); la vista interna `overflow: visible`, alto automático y espacio abajo para el reproductor. Verificado: swipe con dedo mueve la hoja.
+
+**Tapa:** SVG animado (SMIL, funciona como imagen en todos lados): fondo negro con degradé y halo que respira, corazón blanco que late (doble latido), 3 anillos de partículas orbitando inclinados con tamaño/opacidad según pasen adelante o atrás (efecto 3D) y destellos.

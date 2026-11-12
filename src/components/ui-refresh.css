@@ -1951,3 +1951,28 @@ html:root body .landing-explore-link {
     padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 112px) !important;
   }
 }
+
+/* ===== Celu (iOS Safari): UN solo contenedor con scroll en la vista del proyecto ===== */
+@media (max-width: 720px) {
+  html:root body .project-inspector-sheet {
+    transform: none !important;
+    will-change: auto !important;
+    backface-visibility: visible !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior-y: contain;
+    touch-action: pan-y !important;
+    height: var(--app-h, 100dvh) !important;
+    max-height: var(--app-h, 100dvh) !important;
+  }
+  html:root body .project-inspector-sheet .untitled-mobile-project-view {
+    overflow: visible !important;
+    height: auto !important;
+    min-height: var(--app-h, 100dvh) !important;
+    max-height: none !important;
+    transform: none !important;
+    touch-action: pan-y !important;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 110px) !important;
+  }
+}
