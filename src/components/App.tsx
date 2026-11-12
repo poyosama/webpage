@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useDragControls, useMotionValue, useTransform, animate } from "framer-motion";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import PullToRefresh from "./PullToRefresh";
@@ -2128,6 +2128,25 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     } else if (p.tracks[0]) {
       playTrack(p.tracks[0], p, false);
     }
+  };
+
+  // Deslizar hacia abajo el reproductor grande para achicarlo al mini (como Spotify / [untitled])
+  const playerDragControls = useDragControls();
+  const playerDragY = useMotionValue(0);
+  const playerDragScale = useTransform(playerDragY, [0, 400], [1, 0.92]);
+  const playerDragRadius = useTransform(playerDragY, [0, 160], [0, 32]);
+  const startPlayerSwipe = (e: React.PointerEvent) => {
+    const t = e.target as HTMLElement;
+    // No robar el gesto a sliders, campos de texto ni listas que scrollean (cola, letras)
+    if (
+      t.closest(
+        'input, textarea, select, [contenteditable="true"], .spotify-queue-drawer, .spotify-options-sheet, .spotify-sheet-list, .queue-section, [data-no-swipe]'
+      )
+    )
+      return;
+    const scroller = t.closest("[data-scroll], .perf-scroll") as HTMLElement | null;
+    if (scroller && scroller.scrollTop > 0) return;
+    playerDragControls.start(e);
   };
 
   const togglePlayerOnlyMode = () => {
@@ -5111,6 +5130,26 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: "100%" }}
               transition={{ type: "spring", stiffness: 280, damping: 30 }}
+              onAnimationStart={() => playerDragY.set(0)}
+            >
+            <motion.div
+              className="perf-swipe-layer"
+              style={{ y: playerDragY, scale: playerDragScale, borderRadius: playerDragRadius }}
+              drag="y"
+              dragListener={false}
+              dragControls={playerDragControls}
+              dragConstraints={{ top: 0, bottom: 0 }}
+              dragElastic={{ top: 0, bottom: 0.9 }}
+              dragMomentum={false}
+              onPointerDown={startPlayerSwipe}
+              onDragEnd={(_, info) => {
+                if (info.offset.y > 130 || info.velocity.y > 650) {
+                  sfx.close();
+                  setPlayerExpanded(false);
+                } else {
+                  animate(playerDragY, 0, { type: "spring", stiffness: 420, damping: 34 });
+                }
+              }}
             >
               <PerformativePlayer
                 track={currentTrack}
@@ -5159,6 +5198,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                 theme={theme}
                 onToggleTheme={toggleTheme}
               />
+            </motion.div>
             </motion.div>
           </UniversalPortal>
         )}

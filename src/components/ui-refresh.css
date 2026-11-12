@@ -1201,3 +1201,15 @@ html:root body.mobile-vinyl-wheel-locked .apple-shell {
     padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 76px) !important;
   }
 }
+
+/* Capa interna del reproductor grande que sigue el dedo al deslizar hacia abajo */
+.perf-swipe-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #09090b;
+  transform-origin: 50% 0%;
+  will-change: transform;
+}
+/* Mientras se desliza se ve la app de atrás (la capa interna tiene el fondo del reproductor) */
+html:root body .perf-modal-layer { background: transparent !important; }

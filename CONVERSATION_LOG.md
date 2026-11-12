@@ -2286,3 +2286,14 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 **Prompt del usuario:** "INCREÍBLE" (franja negra resuelta); hacer la píldora del reproductor un poco más alta (estaba encima de la barrita del home del iPhone).
 
 **Fix (`ui-refresh.css`, ≤720px):** `.ios-mini-player-dock` con `bottom: max(12px, safe-area-inset-bottom − 4px)` (antes ~22% del safe-area) y `padding-bottom` de las pantallas `safe-area + 76px` para que el contenido no quede tapado.
+
+---
+
+### Turno 115 — Deslizar hacia abajo el reproductor para achicarlo (estilo Spotify / [untitled] / SoundCloud)
+**Prompt del usuario:** poder deslizar de arriba hacia abajo en cualquier parte del reproductor grande para que se achique al mini de abajo y seguir explorando la app.
+
+**Implementación (`App.tsx` + `ui-refresh.css`):**
+- `.perf-modal-layer` (capa externa) sigue animando la entrada/salida; adentro una capa `.perf-swipe-layer` con `drag="y"` de framer-motion que sigue el dedo (`useMotionValue`), se achica (`scale 1→0.92`) y redondea (`radius 0→32`) mientras baja. La capa externa ahora es transparente: se ve la app detrás.
+- El gesto arranca con `useDragControls` solo si no tocaste un `input`/slider, campo de texto, la cola o la hoja de opciones (no rompe la barra de progreso ni el volumen).
+- Soltar con más de 130 px o un tirón rápido (>650 px/s) → se achica al mini; si no, vuelve con un spring.
+- Probado: arrastre corto vuelve, arrastre sobre la barra de progreso no cierra, arrastre largo cierra. (Se detectó y corrigió que poner el drag en la misma capa que la animación de entrada dejaba el reproductor fuera de pantalla.)
