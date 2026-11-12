@@ -43,6 +43,12 @@ import {
   hydrateProjectsAudioInBackground,
   makeProjectInviteToken,
   verifyProjectInviteToken,
+  createProjectShareToken,
+  redeemProjectShareToken,
+  getProjectShareByToken,
+  fetchMyShareMemberships,
+  saveSharedTrackMeta,
+  isLegacyInviteToken,
   type ProjectInviteRole,
 } from "@/lib/supabase";
 import {
@@ -312,6 +318,10 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   const [uploadingTrackProjectId, setUploadingTrackProjectId] = useState<string | null>(null);
   // Invitaciones a proyectos privados ("listen" = Solo escuchar, "edit" = Permitir editar el proyecto)
   const [projectInvites, setProjectInvites] = useState<Record<string, ProjectInviteRole>>({});
+  // Permisos por TRACK (links de compartir un solo track): trackId → "listen" | "edit"
+  const [trackInvites, setTrackInvites] = useState<Record<string, ProjectInviteRole>>({});
+  // Modal "Compartir track"
+  const [invitingTrack, setInvitingTrack] = useState<{ projectId: string; track: Track } | null>(null);
   const [invitingProjectId, setInvitingProjectId] = useState<string | null>(null);
   // Estados de la vista móvil estilo [untitled] adentro del proyecto
   const [projectSearchOpen, setProjectSearchOpen] = useState<boolean>(false);
@@ -599,7 +609,13 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       const pId = decodeURIComponent(path.replace("/project/", "")).trim();
       if (pId) {
         const inviteParam = new URLSearchParams(window.location.search).get("invite");
-        const verifiedRole = verifyProjectInviteToken(pId, inviteParam);
+        // Links nuevos (token aleatorio del servidor): se canjean al iniciar sesión o se escuchan sin login
+        if (inviteParam && !isLegacyInviteToken(inviteParam)) {
+          try {
+            sessionStorage.setItem("eltablero_pending_share", inviteParam);
+          } catch {}
+        }
+        const verifiedRole = isLegacyInviteToken(inviteParam) ? verifyProjectInviteToken(pId, inviteParam) : null;
         if (verifiedRole) {
           storedInvites[pId] = verifiedRole;
           try {
@@ -959,11 +975,37 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
 
       setCommunityArtists(profiles);
       if (savedIds.length) setSavedProjectIds((prev) => Array.from(new Set([...prev, ...savedIds])));
-      if (allProjs) {
-        const storedInvites = readStoredProjectInvites();
-        // Privacidad estilo [untitled]: un proyecto privado SOLO lo ve su creador o quien recibió el link de Invitación
+      // Link de compartir pendiente (proyecto o track): la cuenta queda como miembro y se recargan los proyectos
+      let projsForSession = allProjs;
+      let pendingShare: string | null = null;
+      try {
+        pendingShare = sessionStorage.getItem("eltablero_pending_share");
+      } catch {}
+      if (pendingShare) {
+        const redeemed = await redeemProjectShareToken(pendingShare);
+        try {
+          sessionStorage.removeItem("eltablero_pending_share");
+        } catch {}
+        if (redeemed && redeemed !== "missing") {
+          projsForSession = (await fetchUserProjectsFromSupabase()) || allProjs;
+          setSelectedProjectId(redeemed.projectId);
+          setInsideCubeOpen(true);
+        }
+      }
+      const memberships = await fetchMyShareMemberships(u.id);
+      if (memberships) {
+        setProjectInvites((prev) => ({ ...prev, ...memberships.projects }));
+        setTrackInvites(memberships.tracks);
+      }
+
+      if (projsForSession) {
+        const allProjs = projsForSession;
+        const storedInvites = { ...readStoredProjectInvites(), ...(memberships?.projects || {}) };
+        const sharedIds = new Set(memberships?.projectIdsWithAccess || []);
+        // Privacidad estilo [untitled]: un proyecto privado SOLO lo ve su creador o quien recibió un link
         const visible = allProjs.filter(
-          (p) => p.artistId === u.id || p.visibility === "public" || Boolean(storedInvites[p.id])
+          (p) =>
+            p.artistId === u.id || p.visibility === "public" || Boolean(storedInvites[p.id]) || sharedIds.has(p.id)
         );
         const sigs: Record<string, string> = {};
         visible.forEach((p) => (sigs[p.id] = JSON.stringify(p)));
@@ -1023,6 +1065,28 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
         setAuthChecked(true);
         // Si entró por un link directo /project/:id?invite=... sin sesión iniciada, cargar el proyecto invitado
         if (typeof window !== "undefined" && window.location.pathname.startsWith("/project/")) {
+          // Link nuevo: escuchar sin iniciar sesión lo que permite el link (proyecto entero o un track)
+          let pendingShare: string | null = null;
+          try {
+            pendingShare = sessionStorage.getItem("eltablero_pending_share");
+          } catch {}
+          if (pendingShare) {
+            const shared = await getProjectShareByToken(pendingShare);
+            if (shared && shared !== "missing" && alive) {
+              const proj = shared.project;
+              syncedSigRef.current = { [proj.id]: JSON.stringify(proj) };
+              setProjects([proj]);
+              setProjectInvites({ [proj.id]: "listen" });
+              setSelectedProjectId(proj.id);
+              setInsideCubeOpen(true);
+              setCloudReady(true);
+              void hydrateProjectsAudioInBackground([proj], (trackId, audioUrl) => {
+                if (!alive) return;
+                setCustomAudioMap((prev) => (prev[trackId] === audioUrl ? prev : { ...prev, [trackId]: audioUrl }));
+              });
+              return;
+            }
+          }
           const storedInvites = readStoredProjectInvites();
           const allProjs = await fetchUserProjectsFromSupabase();
           if (allProjs && alive) {
@@ -1737,6 +1801,16 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
           false
         );
       }
+    }
+    // Editor de un solo track (sin permiso sobre el proyecto): se guarda solo esa fila en la nube
+    const ownerProj = projects.find((p) => p.tracks.some((t) => t.id === updatedTrack.id));
+    if (
+      ownerProj &&
+      trackInvites[updatedTrack.id] === "edit" &&
+      !(meProfile.id && ownerProj.artistId === meProfile.id) &&
+      projectInvites[ownerProj.id] !== "edit"
+    ) {
+      void saveSharedTrackMeta(updatedTrack, ownerProj.id);
     }
     setEditingTrack(null);
     sfx.drop();
@@ -3902,6 +3976,34 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                                       </svg>
                                       <span>Descargar audio</span>
                                     </button>
+                                    {activeIsMine && (
+                                      <button
+                                        type="button"
+                                        className="untitled-track-menu-btn"
+                                        onClick={() => {
+                                          sfx.open();
+                                          setMobileTrackMenuId(null);
+                                          setInvitingTrack({ projectId: activeProject.id, track: t });
+                                        }}
+                                      >
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" /></svg>
+                                        <span>Compartir track</span>
+                                      </button>
+                                    )}
+                                    {!canEditActive && trackInvites[t.id] === "edit" && (
+                                      <button
+                                        type="button"
+                                        className="untitled-track-menu-btn"
+                                        onClick={() => {
+                                          sfx.open();
+                                          setMobileTrackMenuId(null);
+                                          setEditingTrack(t);
+                                        }}
+                                      >
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>
+                                        <span>Editar ({t.bpm} BPM · {t.key})</span>
+                                      </button>
+                                    )}
                                     {canEditActive && (
                                       <>
                                         <button
@@ -4546,10 +4648,10 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                                   </div>
                                   <div
                                     className="row-pills"
-                                    title={canEditActive ? "Tocá para editar Key y BPM" : undefined}
-                                    style={canEditActive ? { cursor: "pointer" } : undefined}
+                                    title={canEditActive || trackInvites[t.id] === "edit" ? "Tocá para editar Key y BPM" : undefined}
+                                    style={canEditActive || trackInvites[t.id] === "edit" ? { cursor: "pointer" } : undefined}
                                     onClick={(e) => {
-                                      if (!canEditActive) return;
+                                      if (!canEditActive && trackInvites[t.id] !== "edit") return;
                                       e.stopPropagation();
                                       setEditingTrack(t);
                                     }}
@@ -4574,6 +4676,32 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                                     >
                                       ⬇
                                     </button>
+                                    {activeIsMine && (
+                                      <button
+                                        type="button"
+                                        className="row-snippet-btn"
+                                        title={`Compartir ${t.title}`}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          sfx.open();
+                                          setInvitingTrack({ projectId: activeProject.id, track: t });
+                                        }}
+                                      >
+                                        Compartir
+                                      </button>
+                                    )}
+                                    {!canEditActive && trackInvites[t.id] === "edit" && (
+                                      <button
+                                        type="button"
+                                        className="row-snippet-btn"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setEditingTrack(t);
+                                        }}
+                                      >
+                                        Editar
+                                      </button>
+                                    )}
                                     {canEditActive && (
                                       <>
                                         <button
@@ -5237,10 +5365,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
           <InviteProjectModal
             project={invitingProject}
             isOwner={Boolean(meProfile.id && invitingProject.artistId === meProfile.id)}
-            canShareEdit={Boolean(
-              (meProfile.id && invitingProject.artistId === meProfile.id) ||
-                projectInvites[invitingProject.id] === "edit"
-            )}
+            canShareEdit={Boolean(meProfile.id && invitingProject.artistId === meProfile.id)}
             onToggleVisibility={(nextVis) => {
               sfx.tick();
               updateProjectMeta(invitingProject.id, { visibility: nextVis });
@@ -5254,6 +5379,26 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
             onClose={() => setInvitingProjectId(null)}
           />
         )}
+      </AnimatePresence>
+
+      {/* ==================== MODAL "COMPARTIR TRACK" ==================== */}
+      <AnimatePresence>
+        {invitingTrack &&
+          (() => {
+            const proj = projects.find((p) => p.id === invitingTrack.projectId);
+            if (!proj) return null;
+            return (
+              <InviteProjectModal
+                project={proj}
+                track={invitingTrack.track}
+                isOwner={Boolean(meProfile.id && proj.artistId === meProfile.id)}
+                canShareEdit={Boolean(meProfile.id && proj.artistId === meProfile.id)}
+                onToggleVisibility={() => {}}
+                onCopiedLink={() => {}}
+                onClose={() => setInvitingTrack(null)}
+              />
+            );
+          })()}
       </AnimatePresence>
 
       {/* ==================== MODAL "EDITAR PERFIL" ==================== */}
@@ -6482,6 +6627,7 @@ function GoogleAuthModal({
 /* ==================== COMPONENTE: MODAL INVITACIÓN AL EP / PROYECTO (ESTILO [untitled]) ==================== */
 function InviteProjectModal({
   project,
+  track,
   isOwner,
   canShareEdit,
   onToggleVisibility,
@@ -6489,6 +6635,8 @@ function InviteProjectModal({
   onClose,
 }: {
   project: Project;
+  /** Si viene, el link es SOLO para este track */
+  track?: Track;
   isOwner: boolean;
   canShareEdit: boolean;
   onToggleVisibility: (nextVisibility: "private" | "public") => void;
@@ -6497,8 +6645,37 @@ function InviteProjectModal({
 }) {
   const [copiedRole, setCopiedRole] = useState<ProjectInviteRole | null>(null);
   const origin = typeof window !== "undefined" ? window.location.origin : "https://eltablero.blog";
-  const listenUrl = `${origin}/project/${project.id}?invite=${makeProjectInviteToken(project.id, "listen")}`;
-  const editUrl = `${origin}/project/${project.id}?invite=${makeProjectInviteToken(project.id, "edit")}`;
+  const legacyUrl = (role: ProjectInviteRole) =>
+    `${origin}/project/${project.id}?invite=${makeProjectInviteToken(project.id, role)}`;
+  // Links del servidor (token aleatorio, revocable). Mientras cargan / si el servidor no tiene la migración: links viejos
+  const [links, setLinks] = useState<{ listen: string; edit: string } | null>(null);
+  const [linkError, setLinkError] = useState("");
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const listenTok = await createProjectShareToken(project.id, track?.id || null, "listen");
+      const editTok = canShareEdit ? await createProjectShareToken(project.id, track?.id || null, "edit") : null;
+      if (!alive) return;
+      if (listenTok === "missing" || editTok === "missing") {
+        if (track) setLinkError("Compartir un solo track necesita la actualización del servidor (migración pendiente).");
+        setLinks({ listen: legacyUrl("listen"), edit: legacyUrl("edit") });
+        return;
+      }
+      if (!listenTok) {
+        setLinkError("No se pudo generar el link. Probá de nuevo en un rato.");
+        return;
+      }
+      const mk = (tok: string | null) => (tok ? `${origin}/project/${project.id}?invite=${tok}` : "");
+      setLinks({ listen: mk(listenTok), edit: mk(editTok) });
+    })();
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project.id, track?.id, canShareEdit]);
+  const listenUrl = links?.listen || "";
+  const editUrl = links?.edit || "";
+  const scope = track ? "track" : project.type;
 
   const copyInvite = (role: ProjectInviteRole, url: string) => {
     sfx.tick();
@@ -6529,8 +6706,8 @@ function InviteProjectModal({
       >
         <div className="modal-head">
           <div>
-            <span className="mono-tag">INVITACIÓN PRIVADA // EL TABLERO.</span>
-            <h3>Invitación al {project.type}</h3>
+            <span className="mono-tag">{track ? "COMPARTIR TRACK" : "INVITACIÓN PRIVADA"} // EL TABLERO.</span>
+            <h3>{track ? `Compartir "${track.title}"` : `Invitación al ${project.type}`}</h3>
           </div>
           <button type="button" className="apple-btn ghost" onClick={onClose}>
             Cerrar
@@ -6546,9 +6723,11 @@ function InviteProjectModal({
             </div>
           )}
           <div className="invite-project-meta">
-            <b>{project.title}</b>
+            <b>{track ? track.title : project.title}</b>
             <span>
-              {project.artist} · {project.tracks.length} {project.tracks.length === 1 ? "track" : "tracks"}
+              {track
+                ? `${track.artist} · de ${project.title}`
+                : `${project.artist} · ${project.tracks.length} ${project.tracks.length === 1 ? "track" : "tracks"}`}
             </span>
           </div>
           <div className={`invite-privacy-badge ${project.visibility === "public" ? "public" : "private"}`}>
@@ -6556,7 +6735,9 @@ function InviteProjectModal({
           </div>
         </div>
 
-        {isOwner && (
+        {linkError && <p className="invite-link-error">{linkError}</p>}
+
+        {isOwner && !track && (
           <div className="invite-visibility-bar">
             <div className="invite-visibility-copy">
               <b>Visibilidad del {project.type}</b>
@@ -6592,20 +6773,22 @@ function InviteProjectModal({
               <span className="invite-role-tag listen">SOLO LECTURA · ESCUCHA</span>
               <h4>🎧 Solo escuchar</h4>
               <p>
-                Quien abra este link de invitación al {project.type} puede ver y escuchar el proyecto privado,
-                descargar los tracks y guardarlo en su biblioteca, pero no puede modificar nada.
+                {track
+                  ? "Quien abra este link puede escuchar y descargar SOLO este track (aunque el proyecto sea privado), pero no puede modificar nada."
+                  : `Quien abra este link de invitación al ${project.type} puede ver y escuchar el proyecto privado, descargar los tracks y guardarlo en su biblioteca, pero no puede modificar nada.`}
               </p>
             </div>
             <div className="invite-url-row">
               <input
                 type="text"
                 readOnly
-                value={listenUrl}
+                value={listenUrl || "Generando link…"}
                 onClick={(e) => e.currentTarget.select()}
                 className="invite-url-input"
               />
               <button
                 type="button"
+                disabled={!listenUrl}
                 className={`apple-btn primary invite-copy-btn ${copiedRole === "listen" ? "copied" : ""}`}
                 onClick={() => copyInvite("listen", listenUrl)}
               >
@@ -6615,26 +6798,28 @@ function InviteProjectModal({
           </div>
 
           {/* OPCIÓN 2: PERMITIR EDITAR EL PROYECTO */}
-          {canShareEdit && (
+          {canShareEdit && (!track || !linkError) && (
             <div className="invite-option-card edit">
               <div className="invite-option-top">
                 <span className="invite-role-tag edit">COLABORADOR · PERMISO DE EDICIÓN</span>
-                <h4>✏️ Permitir editar el proyecto</h4>
+                <h4>✏️ {track ? "Permitir editar este track" : "Permitir editar el proyecto"}</h4>
                 <p>
-                  Quien abra este link entra con permisos para editar el {project.type}: puede subir tracks
-                  nuevos, editar Key y BPM, cambiar el Artwork o el Canvas y editar la info del proyecto.
+                  {track
+                    ? "Quien abra este link puede editar SOLO este track (nombre, feat, prod, Key y BPM). No ve ni toca el resto del proyecto."
+                    : `Quien abra este link entra con permisos para editar el ${scope}: puede subir tracks nuevos, editar Key y BPM, cambiar el Artwork o el Canvas y editar la info del proyecto.`}
                 </p>
               </div>
               <div className="invite-url-row">
                 <input
                   type="text"
                   readOnly
-                  value={editUrl}
+                  value={editUrl || "Generando link…"}
                   onClick={(e) => e.currentTarget.select()}
                   className="invite-url-input"
                 />
                 <button
                   type="button"
+                  disabled={!editUrl}
                   className={`apple-btn ghost invite-copy-btn edit-btn ${copiedRole === "edit" ? "copied" : ""}`}
                   onClick={() => copyInvite("edit", editUrl)}
                 >
