@@ -2403,7 +2403,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     // No robar el gesto a sliders, campos de texto ni listas que scrollean (cola, letras)
     if (
       t.closest(
-        'input, textarea, select, [contenteditable="true"], .spotify-queue-drawer, .spotify-options-sheet, .spotify-sheet-list, .queue-section, [data-no-swipe]'
+        'button, a, label, [role="button"], input, textarea, select, [contenteditable="true"], .spotify-queue-drawer, .spotify-options-sheet, .spotify-sheet-list, .queue-section, [data-no-swipe]'
       )
     )
       return;

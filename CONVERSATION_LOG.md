@@ -2451,3 +2451,10 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 **Diagnóstico (web, 1200×650):** la lista tenía scroll propio pero en una cajita de 221 px sin barra visible, y la página está bloqueada → la ruedita fuera de esa cajita no hacía nada; además el panel se pasaba del área (581 px en 516) y el "+" quedaba detrás del reproductor.
 
 **Fix:** `.project-inspector-sheet` y `.inspector-unified-stage` acotados al alto del área (flex, `max-height: 100%`); la lista ocupa todo el alto restante con barrita fina visible; `onWheel` en `.inspector-tracklist` reenvía la ruedita a la lista aunque el mouse esté sobre el título. En celu: `touch-action: pan-y` explícito en la hoja del proyecto. Probado: 9 tracks, panel dentro del área, ruedita sobre el título mueve la lista.
+
+---
+
+### Turno 131 — Fix: el ♥ no respondía en el reproductor grande
+**Prompt del usuario:** no aparecen los me gusta (+ pedidos: control remoto entre dispositivos, colaboradores, pases máx 5 con expiración, links/códigos, sesión persistente).
+
+**Diagnóstico:** el gesto de deslizar el reproductor (`startPlayerSwipe` → `dragControls.start`) arrancaba aunque tocaras un botón y se comía el click → el ♥ nunca llamaba a `onToggleLike`. **Fix:** el gesto ignora `button, a, label, [role=button]`. Probado: ♥ se pone verde y queda en `eltablero_likes_<id>`.
