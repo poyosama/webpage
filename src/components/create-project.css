@@ -1,13 +1,17 @@
 .cp-page {
   position: relative;
-  min-height: 100dvh;
+  height: 100% !important;
+  min-height: 0 !important;
   width: 100%;
-  overflow: hidden;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
   color: var(--ink);
+  display: flex;
+  flex-direction: column;
 }
 
 .cp-stage {
-  position: absolute;
+  position: fixed !important;
   inset: 0;
   z-index: 0;
   pointer-events: none;
@@ -23,25 +27,28 @@
 .cp-content {
   position: relative;
   z-index: 1;
-  min-height: 100dvh;
+  width: 100%;
+  min-height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-end;
-  padding: 88px 16px 40px;
-  gap: 16px;
+  justify-content: center !important;
+  padding: 32px 16px 115px !important;
+  box-sizing: border-box;
+  gap: 12px;
 }
 
 .cp-back {
   position: absolute;
-  top: 84px;
+  top: 18px;
   left: 20px;
   background: none;
   border: 0;
   color: var(--ink-secondary);
-  font-size: 15px;
+  font-size: 14px;
   cursor: pointer;
   transition: color 0.2s, transform 0.2s;
+  z-index: 10;
 }
 .cp-back:hover {
   color: var(--ink);
@@ -50,21 +57,23 @@
 
 .cp-card {
   width: 100%;
-  max-width: 520px;
+  max-width: 480px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 24px;
-  border-radius: 28px;
-  background: color-mix(in srgb, var(--bg) 62%, transparent);
+  gap: 10px;
+  padding: 18px 22px;
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--bg) 75%, transparent);
   border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
   -webkit-backdrop-filter: blur(28px) saturate(1.4);
   backdrop-filter: blur(28px) saturate(1.4);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.1);
+  box-sizing: border-box;
 }
 
 .cp-title {
-  margin: 0 0 4px;
-  font-size: 20px;
+  margin: 0;
+  font-size: 18px;
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--ink);
@@ -73,13 +82,13 @@
 .cp-input {
   width: 100%;
   box-sizing: border-box;
-  padding: 14px 16px;
+  padding: 9px 13px;
   font: inherit;
-  font-size: 15px;
+  font-size: 13.5px;
   color: var(--ink);
   background: color-mix(in srgb, var(--ink) 7%, transparent);
   border: 1px solid transparent;
-  border-radius: 14px;
+  border-radius: 12px;
   outline: none;
   transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
 }
@@ -89,49 +98,53 @@
 .cp-input:focus {
   border-color: var(--ink);
   background: color-mix(in srgb, var(--ink) 10%, transparent);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--ink) 10%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink) 10%, transparent);
 }
 .cp-input-lg {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
-  padding: 16px;
+  padding: 11px 14px;
 }
 
 .cp-tiles {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+  gap: 8px;
 }
 .cp-tile {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
 }
 .cp-label {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--ink-secondary);
-  padding-left: 4px;
+  padding-left: 2px;
 }
 
 .cp-drop {
   flex: 1;
-  min-height: 96px;
+  min-height: 72px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 12px 8px;
+  gap: 5px;
+  padding: 8px 6px;
   text-align: center;
-  font-size: 12px;
-  line-height: 1.25;
+  font-size: 11px;
+  line-height: 1.2;
   color: var(--ink-secondary);
   border: 1px dashed color-mix(in srgb, var(--ink) 28%, transparent);
-  border-radius: 16px;
+  border-radius: 14px;
   cursor: pointer;
   transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+.cp-drop svg {
+  width: 20px;
+  height: 20px;
 }
 .cp-drop:hover,
 .cp-drop.on {
@@ -178,12 +191,12 @@
 .cp-colors {
   display: flex;
   justify-content: center;
-  gap: 12px;
-  padding: 4px 0;
+  gap: 10px;
+  padding: 2px 0;
 }
 .cp-colors button {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   padding: 0;
   border-radius: 50%;
   border: 2px solid transparent;
@@ -196,15 +209,24 @@
 
 .cp-submit {
   width: 100%;
-  padding: 15px;
+  padding: 12px 16px;
   font: inherit;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   color: var(--bg);
   background: var(--ink);
   border: 0;
   border-radius: 999px;
   cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
+  transition: transform 0.15s, opacity 0.15s, box-shadow 0.15s;
+}
+.cp-submit:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.22);
+}
+.cp-submit:active {
+  transform: scale(0.98);
 }
 
 @media (max-width: 560px) {

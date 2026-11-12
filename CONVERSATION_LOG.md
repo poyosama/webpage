@@ -1769,6 +1769,30 @@
 4. **Verificación y Deploy:**
    - Compilación exitosa con Next.js Turbopack (`npm run build`, 0 errores de TypeScript).
 
+---
+
+### Turno 89 — Centrado Ergonómico y Espacio Libre de Tarjeta en Pantalla "Crear Proyecto"
+**Pedido del usuario (`juani`):**
+- *"y mira esto se sigue viendo asi, no logro llegar a crear un proyecto en la pc porque esta muy abajo xd"* (adjunta captura mostrando la tarjeta de crear proyecto empujada al fondo de la pantalla y el botón submit "Crear proyecto" tapado por el Dynamic Island / Reproductor).
+
+**Implementación técnica aplicada (`create-project.css`, `board-polish.css`):**
+1. **Centrado Vertical y Separación del Reproductor Flotante (`create-project.css`):**
+   - Se corrigió `.cp-content` reemplazando `justify-content: flex-end` (que empujaba la tarjeta contra el piso de la ventana) por `justify-content: center !important;`.
+   - Se añadió un padding inferior de seguridad `padding: 32px 16px 115px !important;` para que el reproductor flotante Dynamic Island nunca tape ni roce el botón de acción principal.
+   - El botón `← Volver` (`.cp-back`) se reubicó en `top: 18px; left: 20px; z-index: 10;`.
+2. **Compactación Ergonómica de la Tarjeta `.cp-card` (`create-project.css`):**
+   - Ancho máximo ajustado a `480px` con padding de `18px 22px` y `border-radius: 24px`.
+   - Inputs de texto (`.cp-input` y `.cp-input-lg`) ajustados en altura y padding (`9px 13px` y `11px 14px`).
+   - Casillas de upload (`.cp-drop`) compactadas a `min-height: 72px` con íconos de `20px` y textos proporcionales.
+   - Botón de submit (`.cp-submit` "Crear proyecto") optimizado a `12px 16px`, fuente `15px` negrita, con sombra sutil y efecto activo al presionar.
+   - La tarjeta entera ahora mide apenas ~330px de alto, flotando nítida y perfectamente a la vista en cualquier pantalla de monitor o notebook.
+3. **Contenedor con Scroll Habilitado (`create-project.css`, `board-polish.css`):**
+   - Se integró `.cp-page` dentro de `body.app-no-scroll .cp-page` con `flex: 1 1 auto; height: 100%; overflow-y: auto !important; -webkit-overflow-scrolling: touch;`.
+   - El canvas 3D de las partículas sentientes (`.cp-stage`) se fijó a `position: fixed !important; inset: 0;`, manteniendo el enjambre de partículas en el fondo sin desplazarse ni cortarse.
+4. **Verificación y Deploy:**
+   - Compilación exitosa con Next.js Turbopack (`npm run build`, 0 errores).
+
+
 
 
 
