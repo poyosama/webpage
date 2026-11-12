@@ -544,3 +544,51 @@
   border-color: rgba(255, 255, 255, 0.4) !important;
 }
 :root body .manifold-3d-wrapper.has-library-canva .untitled-catalog-add-plus { color: #fff !important; }
+
+/* ===== Adentro del proyecto (celu): tapa CUADRADA completa con el vinilo asomando ===== */
+@media (max-width: 720px) {
+  :root body .project-view-vinyl-stage {
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    padding: 6px 0 18px !important;
+    overflow: visible !important;
+    justify-content: center !important;
+    flex: 0 0 auto !important; /* el contenedor es flex-columna con alto fijo: no achicar la tapa */
+  }
+  :root body .untitled-mobile-project-view > * { flex-shrink: 0 !important; }
+  :root body .project-view-vinyl-stage .vinyl-fan-sleeve-card {
+    width: min(210px, 54vw) !important;
+    height: min(210px, 54vw) !important;
+    aspect-ratio: 1 / 1;
+    max-height: none !important;
+    margin-right: min(56px, 14vw) !important; /* deja lugar al vinilo que asoma */
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+  :root body .project-view-vinyl-stage .vinyl-fan-sleeve-card::before,
+  :root body .project-view-vinyl-stage .vinyl-fan-sleeve-card::after { display: none !important; }
+  :root body .project-view-vinyl-stage .vinyl-fan-sleeve-body {
+    width: 100% !important;
+    height: 100% !important;
+    background-size: cover !important;
+    background-position: center !important;
+    border-radius: 14px !important;
+    box-shadow: 0 18px 40px -12px rgba(0, 0, 0, 0.45), 0 0 0 1px var(--line) !important;
+  }
+  :root body .project-view-vinyl-stage .vinyl-fan-record-disc {
+    width: min(196px, 50vw) !important;
+    height: min(196px, 50vw) !important;
+    margin-top: calc(-1 * min(196px, 50vw) / 2) !important;
+    right: calc(-1 * min(60px, 15vw)) !important;
+    transform: none !important;
+  }
+}
+/* Perfil (compacto): el canva está oculto, así que el tile "+" usa colores del tema */
+:root body .manifold-3d-wrapper.is-compact.has-library-canva .untitled-catalog-add-box {
+  background: var(--surface-secondary) !important;
+  border: 1.5px dashed var(--line-strong) !important;
+}
+:root body .manifold-3d-wrapper.is-compact.has-library-canva .untitled-catalog-add-plus,
+:root body .manifold-3d-wrapper.is-compact.has-library-canva .untitled-catalog-title { color: var(--ink) !important; text-shadow: none !important; }
+:root body .manifold-3d-wrapper.is-compact.has-library-canva .untitled-catalog-meta { color: var(--ink-muted) !important; }
