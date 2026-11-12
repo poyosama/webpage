@@ -2450,7 +2450,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
               <section className="explore-bottom-grid">
                 <div className="apple-card">
                   <div className="card-head">
-                    <span className="mono-tag">PROYECTOS // ROTACIÓN DE BOARD.</span>
+                    <span className="mono-tag">PROYECTOS // ROTACIÓN DE EL TABLERO.</span>
                     <h3>Lo último subido & Rotación</h3>
                   </div>
                   <div className="track-list-clean">
@@ -2797,7 +2797,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                   <span className="mono-tag">
                     {meProfile.accountType === "oyente"
                       ? "COLECCIÓN PERSONAL // GUARDADOS"
-                      : "BIBLIOTECA 3D // BOARD."}
+                      : "BIBLIOTECA 3D // EL TABLERO."}
                   </span>
                   <h1 className="editorial-h1">
                     {meProfile.accountType === "oyente" ? "Guardados" : "Mis Proyectos"}
@@ -4556,7 +4556,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                           sfx.open();
                           setInviteFriendsModalOpen(true);
                         }}
-                        title="Invitaciones exclusivas a board (3 pases disponibles)"
+                        title="Invitaciones exclusivas a El tablero (3 pases disponibles)"
                       >
                         <span>🎟️ Invitar amigos</span>
                       </button>
@@ -5542,7 +5542,7 @@ function EditProfileModal({
       >
         <div className="modal-head">
           <div>
-            <span className="mono-tag">PERFIL // BOARD.</span>
+            <span className="mono-tag">PERFIL // EL TABLERO.</span>
             <h3>Editar identidad del artista</h3>
           </div>
           <button type="button" className="apple-btn ghost" onClick={onClose}>
@@ -5621,7 +5621,7 @@ function EditProfileModal({
 
           {/* TIPO DE CUENTA: ARTISTA / OYENTE */}
           <div className="modal-field full">
-            <span>TIPO DE CUENTA EN BOARD.</span>
+            <span>TIPO DE CUENTA EN EL TABLERO.</span>
             <div className="seg-pills" style={{ marginTop: 6 }}>
               <button
                 type="button"
@@ -6030,7 +6030,7 @@ function GoogleAuthModal({
             <input value={name} onChange={(e) => setName(e.target.value)} />
           </label>
           <label className="modal-field">
-            <span>@HANDLE ÚNICO EN BOARD.</span>
+            <span>@HANDLE ÚNICO EN EL TABLERO.</span>
             <input
               value={handle}
               onChange={(e) => setHandle(e.target.value)}
@@ -6137,7 +6137,7 @@ function InviteProjectModal({
       >
         <div className="modal-head">
           <div>
-            <span className="mono-tag">INVITACIÓN PRIVADA // BOARD.</span>
+            <span className="mono-tag">INVITACIÓN PRIVADA // EL TABLERO.</span>
             <h3>Invitación al {project.type}</h3>
           </div>
           <button type="button" className="apple-btn ghost" onClick={onClose}>

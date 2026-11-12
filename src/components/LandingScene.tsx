@@ -523,7 +523,7 @@ export default function LandingScene({
                 <input
                   value={inviteCode}
                   onChange={(e) => setInviteCode(e.target.value)}
-                  placeholder="BOARD-UG-2026"
+                  placeholder="TABLERO-UG-2026"
                   required
                   autoFocus
                 />

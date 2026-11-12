@@ -179,7 +179,7 @@ export default function MacInstallerUpload({
     <section className="dmg-section">
       <div className="section-header-row">
         <div>
-          <span className="mono-tag">SUBIR BATCH // BOARD.</span>
+          <span className="mono-tag">SUBIR BATCH // EL TABLERO.</span>
           <h1 className="editorial-h1">Subir Archivos WAV a tu Proyecto</h1>
           <p style={{ color: "var(--ink-secondary)", fontSize: "0.88rem", marginTop: 4 }}>
             Arrastrá uno o muchos archivos de audio. Se arman los vinilitos y los instalás con un solo gesto hacia arriba.

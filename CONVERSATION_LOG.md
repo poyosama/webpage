@@ -2035,3 +2035,20 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
    - En pantallas con altura compacta, el vinilo escala suavemente a `clamp(125px, 12vw, 155px)`, el scroll de tracks se limita a `clamp(160px, 34vh, 250px)` y los paddings se reducen para garantizar que la tarjeta nunca quede tapada por el reproductor Dynamic Island.
 6. **Verificación y Deploy:**
    - Compilación exitosa con Next.js Turbopack (`npm run build`, 0 errores).
+
+### Turno 97 — Actualización del Logo y Favicon de la Página a "El tablero."
+**Prompt del usuario:**
+- *"y el logo tambien cambialo que diga El tablero. en el icono de ios ya lo dice pero creo que en la pagina no jeje"*
+
+**Implementación técnica aplicada:**
+1. **Regeneración Total del Favicon y Logo de Pestaña del Navegador (`src/app/favicon.ico`, `public/favicon.ico`, `src/app/icon.png`):**
+   - El archivo binario `src/app/favicon.ico` aún conservaba el renderizado viejo que decía `"board."` con un punto verde, motivo por el cual en las pestañas de Chrome y en la barra superior del navegador se seguía viendo el logo antiguo.
+   - Se generó un nuevo set multi-resolución de favicons `.ico` (16x16, 32x32, 48x48 y 64x64) y PNGs de alta fidelidad (`src/app/icon.png`, `public/icon.png`, `public/icon-192.png`, `public/apple-touch-icon.png`) con fondo negro mate `#09090b`, tipografía LiberationSans-Bold en blanco puro diciendo `"El tablero"` y el punto en verde esmeralda (`#10b981`) alineado milimétricamente al pie.
+   - En `src/app/layout.tsx` se vinculó explícitamente tanto `shortcut: "/favicon.ico"` como `icon: [{ url: "/favicon.ico" }, { url: "/icon.png" }]` para que ningún navegador mantenga en caché el ícono anterior.
+2. **Reemplazo Integral de Etiquetas y Menciones Restantes en la Web:**
+   - Actualizadas todas las referencias en badges y modales que aún contenían `"BOARD."`:
+     - `src/components/App.tsx`: `PROYECTOS // ROTACIÓN DE EL TABLERO.`, `BIBLIOTECA 3D // EL TABLERO.`, `PERFIL // EL TABLERO.`, `TIPO DE CUENTA EN EL TABLERO.`, `@HANDLE ÚNICO EN EL TABLERO.`, `INVITACIÓN PRIVADA // EL TABLERO.`.
+     - `src/components/MacInstallerUpload.tsx`: `SUBIR BATCH // EL TABLERO.`.
+     - `src/components/LandingScene.tsx`: `placeholder="TABLERO-UG-2026"`.
+3. **Verificación y Deploy:**
+   - Compilación exitosa en Next.js Turbopack (`npm run build`, 0 errores).
