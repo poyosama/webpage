@@ -522,6 +522,12 @@ export default function LandingScene({
         )}
       </div>
 
+      <footer className="landing-legal-links">
+        <a href="/privacidad">Privacidad</a>
+        <span>·</span>
+        <a href="/terminos">Términos</a>
+      </footer>
+
       {inviteModalOpen && (
         <div className="apple-modal-backdrop" onClick={() => setInviteModalOpen(false)}>
           <div className="apple-modal-card narrow" onClick={(e) => e.stopPropagation()}>

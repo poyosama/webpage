@@ -2379,3 +2379,13 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 - Entorno `webpage`: se habilitaron `open.spotify.com`, `i.scdn.co`, `image-cdn-fa.spotifycdn.com` e `image-cdn-ak.spotifycdn.com`. Se bajaron las tapas oficiales 640×640 de Spotify (oEmbed → versión `b273`) de los 8 proyectos y reemplazaron `public/covers/*.png` (EL DE LA X ahora con su tapa real; se borró `amorio-club.png`).
 - Landing: subtítulo "SUSCRIPCIÓN GRATIS · POR INVITACIÓN"; modal "Es gratis. Solo necesitás un pase."; banner del link "✓ Te invitó poyo (@poyo). Tu pase es válido."
 - Modal de cuenta sin sesión y bienvenida por link: textos largos reemplazados por "Es gratis…".
+
+---
+
+### Turno 123 — Páginas de Privacidad y Términos para verificar la marca en Google
+**Prompt del usuario:** hacer la opción 1 (verificación de marca de Google para que el login muestre "El tablero." en vez del dominio de Supabase); no sabe usar Cloud Console.
+
+**Implementación:**
+- `src/app/privacidad/page.tsx` y `src/app/terminos/page.tsx` (+ `src/components/legal/LegalPage.tsx`, `legal.css`): páginas estáticas en `eltablero.blog/privacidad` y `/terminos` (datos de Google usados: nombre, correo y foto; contenido subido; Supabase/Vercel; borrar cuenta desde Ajustes; revocar acceso en Google; contacto Instagram @quetablero).
+- Landing: links "Privacidad · Términos" abajo (Google exige que la página principal enlace la política).
+- Pendiente del usuario: configurar Branding en Google Cloud Console, verificar el dominio en Search Console y enviar a verificación (guía paso a paso en el chat).
