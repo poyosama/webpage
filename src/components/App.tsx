@@ -55,6 +55,7 @@ import {
 import { InviteFriendsModal, WelcomeInviteModal } from "./InviteFriendsModal";
 import { analyzeAudioFile, downloadTrackAudio } from "@/lib/audioAnalysis";
 import "./board-polish.css";
+import "./ui-refresh.css";
 
 const MacInstallerUpload = dynamic(() => import("./MacInstallerUpload"), { ssr: false });
 const DiscSpinner3D = dynamic(() => import("./DiscSpinner3D"), { ssr: false });
@@ -87,6 +88,37 @@ const PRODUCER_DROP_KINDS: ("Todos" | ProducerDropKind)[] = [
   "Loopkit",
   "Catálogo de Beats",
 ];
+
+const BOARD_ITEMS: {
+  id: string;
+  alt?: string;
+  title: string;
+  cover: string;
+  before: string;
+  mark: string;
+  after: string;
+  color: string;
+  type: string;
+  artist: string;
+}[] = [
+  { id: "la-plaga", title: "LA PLAGA", cover: "/covers/la-plaga.png", before: "LA ", mark: "PLAGA", after: "", color: "coral", type: "mixtape", artist: "eyebags" },
+  { id: "blablabla", title: "blablabla", cover: "/covers/blablabla.png", before: "bla", mark: "blabla", after: "", color: "red", type: "ep", artist: "bbbrvno" },
+  { id: "perdon-la-demora", title: "PERDÓN LA DEMORA", cover: "/covers/perdon-la-demora.png", before: "PERDÓN ", mark: "LA DEMORA", after: "", color: "cyan", type: "mixtape", artist: "Tizianolased" },
+  { id: "chickennugget", title: "chickenNugget", cover: "/covers/chickennugget.png", before: "chicken", mark: "Nugget", after: "", color: "gold", type: "ep", artist: "poyo · dorkke" },
+  { id: "esto-es-estar-en-sonido", title: "ESTO ES ESTAR EN SONIDO", cover: "/covers/esto-es-estar-en-sonido.png", before: "", mark: "ESTO ES ESTAR", after: " EN SONIDO", color: "blue", type: "lp", artist: "V4lentin0" },
+  { id: "ma7ias", title: "#MA7IAS", cover: "/covers/ma7ias.png", before: "", mark: "#MA7IAS", after: "", color: "lime", type: "lp", artist: "Ma7imza" },
+  { id: "love2hate", title: "Love2Hate", cover: "/covers/love2hate.png", before: "Love", mark: "2Hate", after: "", color: "purple", type: "ep", artist: "Icylucki" },
+  { id: "amorio-club", alt: "amorio-club-2", title: "AMORIO CLUB", cover: "/covers/amorio-club.png", before: "", mark: "AMORIO CLUB", after: "", color: "red", type: "ep", artist: "Máximo" },
+];
+
+const PRODUCER_KIND_LABEL: Record<string, string> = {
+  Beatpost: "Beats",
+  Soundkit: "Soundkits",
+  Drumkit: "Drumkits",
+  Loopkit: "Loopkits",
+  "Catálogo de Beats": "Catálogos",
+};
+const kindLabel = (k: string) => PRODUCER_KIND_LABEL[k] || k;
 
 const STORAGE_PROJECTS_KEY = "eltablero_real_projects_v1";
 const STORAGE_PROFILE_KEY = "eltablero_real_profile_v1";
@@ -275,6 +307,8 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [editProfileOpen, setEditProfileOpen] = useState<boolean>(false);
   const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
+  const [profileSettingsOpen, setProfileSettingsOpen] = useState<boolean>(false);
+  const [profileAddMenuOpen, setProfileAddMenuOpen] = useState<boolean>(false);
   const [googleConnected, setGoogleConnected] = useState<boolean>(false);
 
   // Landing Page con micro vinilos y referral invite (estilo HeySpace)
@@ -2079,11 +2113,6 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                 className={isActive ? "active" : ""}
                 onMouseEnter={() => sfx.hover()}
                 onClick={() => {
-                  if (id === "perfil" && !googleConnected) {
-                    sfx.open();
-                    setAuthModalOpen(true);
-                    return;
-                  }
                   if (id === "biblioteca") {
                     setInsideCubeOpen(false);
                     if (meProfile.accountType === "oyente") setLibrarySubTab("guardados");
@@ -2131,9 +2160,10 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
             className="ios-icon-btn"
             style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
             onMouseEnter={() => sfx.hover()}
+            aria-label="Ir a mi perfil"
             onClick={() => {
-              sfx.open();
-              setAuthModalOpen(true);
+              sfx.tap();
+              navigate("perfil");
             }}
           >
             {googleConnected ? (
@@ -2202,192 +2232,48 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                   <span className="spine-badge-static">El tablero.</span>
                 </div>
 
-                {/* 1º: EL RUIDO EN EL MEDIO DE LA PANTALLA (TIPOGRAFÍA LIMPIA Y UNIFICADA + TAPAS REALES) */}
-                <div className="corecore-stage">
-                  <div className="neon-spine" aria-hidden />
-
-                  <div className="Roster-collage">
-                    {/* Fila 1: LA PLAGA (eyebags) + blablabla (bbbrvno) */}
-                    <div className="collage-line">
-                      <span className="cluster-dots">
-                        <i style={{ background: "#e11d48" }} />
-                        <i style={{ background: "#0284c7" }} />
-                        <i style={{ background: "#ca8a04" }} />
-                      </span>
-                      <span className="pixel-tag coral-badge">MIXTAPE // 01</span>
+                {/* 1º: EL TABLERO — grilla ordenada de proyectos. Click = abre en Spotify (o reproduce si no hay link) */}
+                <div className="board-grid" role="list">
+                  {BOARD_ITEMS.map((it) => {
+                    const p = findProjectById(it.id) || (it.alt ? findProjectById(it.alt) : undefined);
+                    const typeLabel = p ? p.type.toLowerCase() : it.type;
+                    const artistLabel = p ? p.artist : it.artist;
+                    return (
                       <button
+                        key={it.id}
                         type="button"
-                        className="collage-item clean-editorial-word"
+                        role="listitem"
+                        className="board-tile"
+                        title={p?.spotifyUrl ? `Abrir ${it.title} en Spotify` : `Reproducir ${it.title}`}
                         onMouseEnter={() => sfx.hover()}
                         onClick={() => {
-                          const p = findProjectById("la-plaga");
-                          if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
+                          sfx.tap();
+                          if (p?.spotifyUrl) {
+                            window.open(p.spotifyUrl, "_blank", "noopener,noreferrer");
+                          } else if (p && p.tracks[0]) {
+                            playTrack(p.tracks[0], p, false);
+                          }
                         }}
                       >
-                        <img
-                          src="/covers/la-plaga.png"
-                          alt="LA PLAGA"
-                          className="collage-cover-thumb"
-                        />
-                        <span className="roster-word">
-                          LA <span className="inline-swatch coral">PLAGA</span>
+                        <img src={it.cover} alt="" className="board-tile-cover" loading="lazy" />
+                        <span className="board-tile-text">
+                          <span className="board-tile-word">
+                            {it.before}
+                            <mark className={`board-swatch ${it.color}`}>{it.mark}</mark>
+                            {it.after}
+                          </span>
+                          <small>
+                            {typeLabel} · {artistLabel}
+                          </small>
                         </span>
-                        <sup className="sup-tag">mixtape · eyebags</sup>
-                      </button>
-
-                      <button
-                        type="button"
-                        className="collage-item clean-editorial-word"
-                        onMouseEnter={() => sfx.hover()}
-                        onClick={() => {
-                          const p = findProjectById("blablabla");
-                          if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
-                        }}
-                      >
-                        <img
-                          src="/covers/blablabla.png"
-                          alt="blablabla"
-                          className="collage-cover-thumb"
-                        />
-                        <span className="roster-word">
-                          bla<span className="inline-swatch red">blabla</span>
+                        <span className="board-tile-go" aria-hidden>
+                          {p?.spotifyUrl ? "↗" : "▶"}
                         </span>
-                        <sup className="sup-tag">ep · bbbrvno</sup>
                       </button>
-                      <span className="cutout-pill">Mendoza</span>
-                    </div>
-
-                    {/* Fila 2: PERDÓN LA DEMORA (Tizianolased) */}
-                    <div className="collage-line">
-                      <button
-                        type="button"
-                        className="collage-item clean-editorial-word"
-                        onMouseEnter={() => sfx.hover()}
-                        onClick={() => {
-                          const p = findProjectById("perdon-la-demora");
-                          if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
-                        }}
-                      >
-                        <img
-                          src="/covers/perdon-la-demora.png"
-                          alt="PERDÓN LA DEMORA"
-                          className="collage-cover-thumb"
-                        />
-                        <span className="roster-word">
-                          PERDÓN <span className="inline-swatch cyan">LA DEMORA</span>
-                        </span>
-                        <sup className="sup-tag">mixtape · Tizianolased</sup>
-                      </button>
-                      <span className="cutout-pill dark">8 tracks · 23 min</span>
-                    </div>
-
-                    {/* Fila 3: chickenNugget (poyo · dorkke) + ESTO ES ESTAR EN SONIDO (V4lentin0) */}
-                    <div className="collage-line">
-                      <button
-                        type="button"
-                        className="collage-item clean-editorial-word"
-                        onMouseEnter={() => sfx.hover()}
-                        onClick={() => {
-                          const p = findProjectById("chickennugget");
-                          if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
-                        }}
-                      >
-                        <img
-                          src="/covers/chickennugget.png"
-                          alt="chickenNugget"
-                          className="collage-cover-thumb"
-                        />
-                        <span className="roster-word">
-                          chicken<span className="inline-swatch gold">Nugget</span>
-                        </span>
-                        <sup className="sup-tag">ep · poyo × dorkke</sup>
-                      </button>
-
-                      <button
-                        type="button"
-                        className="collage-item clean-editorial-word"
-                        onMouseEnter={() => sfx.hover()}
-                        onClick={() => {
-                          const p = findProjectById("esto-es-estar-en-sonido");
-                          if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
-                        }}
-                      >
-                        <img
-                          src="/covers/esto-es-estar-en-sonido.png"
-                          alt="ESTO ES ESTAR EN SONIDO"
-                          className="collage-cover-thumb"
-                        />
-                        <span className="roster-word">
-                          <span className="inline-swatch blue">ESTO ES ESTAR</span> EN SONIDO
-                        </span>
-                        <sup className="sup-tag">lp · V4lentin0</sup>
-                      </button>
-                    </div>
-
-                    {/* Fila 4: #MA7IAS (Ma7imza) + Love2Hate (Icylucki) + AMORIO CLUB 2 (Máximo) */}
-                    <div className="collage-line">
-                      <button
-                        type="button"
-                        className="collage-item clean-editorial-word"
-                        onMouseEnter={() => sfx.hover()}
-                        onClick={() => {
-                          const p = findProjectById("ma7ias");
-                          if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
-                        }}
-                      >
-                        <img
-                          src="/covers/ma7ias.png"
-                          alt="#MA7IAS"
-                          className="collage-cover-thumb"
-                        />
-                        <span className="roster-word">
-                          <span className="inline-swatch lime">#MA7IAS</span>
-                        </span>
-                        <sup className="sup-tag">lp · Ma7imza</sup>
-                      </button>
-
-                      <button
-                        type="button"
-                        className="collage-item clean-editorial-word"
-                        onMouseEnter={() => sfx.hover()}
-                        onClick={() => {
-                          const p = findProjectById("love2hate");
-                          if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
-                        }}
-                      >
-                        <img
-                          src="/covers/love2hate.png"
-                          alt="Love2Hate"
-                          className="collage-cover-thumb"
-                        />
-                        <span className="roster-word">
-                          Love<span className="inline-swatch purple">2Hate</span>
-                        </span>
-                        <sup className="sup-tag">ep · Icylucki</sup>
-                      </button>
-
-                      <button
-                        type="button"
-                        className="collage-item clean-editorial-word"
-                        onMouseEnter={() => sfx.hover()}
-                        onClick={() => {
-                          const p = findProjectById("amorio-club") || findProjectById("amorio-club-2");
-                          if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
-                        }}
-                      >
-                        <img
-                          src="/covers/amorio-club.png"
-                          alt="AMORIO CLUB"
-                          className="collage-cover-thumb"
-                        />
-                        <span className="roster-word">
-                          <span className="inline-swatch red">AMORIO CLUB</span>
-                        </span>
-                        <sup className="sup-tag">ep · Máximo</sup>
-                      </button>
-                    </div>
-                  </div>
+                    );
+                  })}
                 </div>
+
 
                 {/* 2º: NOMBRE DE LA WEB ("El tablero.") */}
                 <div className="secondstory-mega-footer">
@@ -2697,7 +2583,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                           setProducerFilter(k);
                         }}
                       >
-                        {k}
+                        {kindLabel(k)}
                       </button>
                     ))}
                   </div>
@@ -2722,7 +2608,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                               className="producer-kind-badge"
                               style={{ background: drop.accent }}
                             >
-                              {drop.kind}
+                              {kindLabel(drop.kind)}
                             </span>
                             <span className="mono-tag">{drop.itemsCountLabel}</span>
                             <button
@@ -4541,25 +4427,62 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                     <div className="profile-actions-row">
                       <button
                         type="button"
-                        className="apple-btn primary profile-action-btn-half"
+                        className="pf-btn primary"
                         onClick={() => {
                           sfx.open();
                           setEditProfileOpen(true);
                         }}
                       >
-                        Editar Perfil &amp; Identidad
+                        Editar perfil
                       </button>
                       <button
                         type="button"
-                        className="apple-btn ghost profile-action-btn-half profile-invite-half-btn"
+                        className="pf-btn"
                         onClick={() => {
                           sfx.open();
                           setInviteFriendsModalOpen(true);
                         }}
                         title="Invitaciones exclusivas a El tablero (3 pases disponibles)"
                       >
-                        <span>🎟️ Invitar amigos</span>
+                        Invitar
                       </button>
+                      <div className="pf-menu-wrap">
+                        <button
+                          type="button"
+                          className="pf-btn icon"
+                          aria-label="Ajustes del perfil"
+                          aria-expanded={profileSettingsOpen}
+                          onClick={() => {
+                            sfx.tap();
+                            setProfileSettingsOpen((v) => !v);
+                            setProfileAddMenuOpen(false);
+                          }}
+                        >
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <circle cx="12" cy="12" r="3" />
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                          </svg>
+                        </button>
+                        {profileSettingsOpen && (
+                          <>
+                            <div className="pf-menu-scrim" onClick={() => setProfileSettingsOpen(false)} />
+                            <div className="pf-menu" role="menu">
+                              <button
+                                type="button"
+                                role="menuitem"
+                                onClick={() => {
+                                  setProfileSettingsOpen(false);
+                                  sfx.open();
+                                  setAuthModalOpen(true);
+                                }}
+                              >
+                                <GoogleCircleIcon size={15} />
+                                <span>Cuenta de Google</span>
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -4584,27 +4507,37 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
 
               {/* ==================== 1. MIS PROYECTOS & CANVAS (ANTES DE INVITACIONES) ==================== */}
               <section className="profile-manifold-showcase">
-                <div className="section-header-row">
-                  <div>
-                    <h2 className="editorial-h2">
-                      Mis Proyectos &amp; Canvas
-                    </h2>
-                  </div>
-                  <div className="row-actions">
+                <div className="pf-section-head">
+                  <h2>Mis proyectos</h2>
+                  <div className="pf-menu-wrap">
                     <button
                       type="button"
-                      className="apple-btn primary"
-                      onClick={() => navigate("crear-proyecto")}
+                      className="pf-btn icon solid"
+                      aria-label="Agregar"
+                      aria-expanded={profileAddMenuOpen}
+                      onClick={() => {
+                        sfx.tap();
+                        setProfileAddMenuOpen((v) => !v);
+                        setProfileSettingsOpen(false);
+                      }}
                     >
-                      + Crear Proyecto
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+                        <path d="M12 5v14M5 12h14" />
+                      </svg>
                     </button>
-                    <button
-                      type="button"
-                      className="apple-btn ghost"
-                      onClick={() => navigate("subir")}
-                    >
-                      + Subir tracks
-                    </button>
+                    {profileAddMenuOpen && (
+                      <>
+                        <div className="pf-menu-scrim" onClick={() => setProfileAddMenuOpen(false)} />
+                        <div className="pf-menu" role="menu">
+                          <button type="button" role="menuitem" onClick={() => { setProfileAddMenuOpen(false); sfx.open(); navigate("crear-proyecto"); }}>
+                            <span>Crear proyecto</span>
+                          </button>
+                          <button type="button" role="menuitem" onClick={() => { setProfileAddMenuOpen(false); sfx.open(); navigate("subir"); }}>
+                            <span>Subir tracks</span>
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
 
