@@ -2320,3 +2320,14 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 - Perfiles de artistas (directorio o nombre del artista): hoja con avatar, rol, bio y primeros 5 tracks escuchables (+3 bloqueados).
 - Preview de 25 s (`GUEST_PREVIEW_SEC`): el polling pausa y muestra "Escuchaste los primeros 25 segundos…". Sin descargas ni modo reproductor. Se cargan proyectos públicos y perfiles desde Supabase.
 - Probado: 10 filas / 5 bloqueadas, reproduce, corta a los 25 s, CTA en filas bloqueadas y Biblioteca, vuelta a la landing con modal.
+
+---
+
+### Turno 119 — "EL DE LA X" en vez de AMORIO CLUB + Ajustes de cuenta en la ruedita del perfil
+**Prompts del usuario:** (1) en la ruedita del perfil: "Ajustes de cuenta" (sin lo de Google en el menú) y "Cerrar sesión"; adentro de Ajustes: Google/correo verificado, nombre y handle, cerrar sesión y abajo borrar cuenta. (2) Tapas HD de los proyectos (mandadas como imágenes en el chat) y cambiar "AMORIO CLUB" por "EL DE LA X".
+
+**Implementación:**
+1. Ruedita → menú con **Ajustes de cuenta** y **Cerrar sesión** (rojo). Modal "Ajustes de cuenta": tarjeta de Google con correo verificado, nombre, @handle, guardar, **Cerrar sesión** y zona **Borrar cuenta** (hay que escribir BORRAR).
+2. `supabase/migration_account.sql`: RPC `delete_my_account()` (security definer, solo a sí mismo; borra proyectos, perfil y `auth.users` → cascada). Probado en Postgres local (borra usuario/proyectos/tracks; anónimo sin permiso). Sin la migración el modal avisa.
+3. `mock.ts` (id `amorio-club` se mantiene por compatibilidad): título **EL DE LA X**, Album 2026, Máximo · prod. maxwaydm, tracklist real de Spotify (EL DE LA X, MERCEDES, MI PARTE feat. Ma7imza, MÍNIMO, DEWACHIN, LOS CHORROS, NUNCA VAS A SER DE LOS FIEROS, L&M; 22 min 6 s); collage del Inicio y perfil de Máximo actualizados; `AGENTS.md` actualizado.
+4. **Tapas HD pendientes:** las imágenes pegadas en el chat no llegan como archivos al entorno; `public/covers/el-de-la-x.png` es por ahora copia de la tapa vieja. Hay que subir los archivos (repo `public/covers/` con los mismos nombres).

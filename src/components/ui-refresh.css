@@ -1365,3 +1365,35 @@ html:root body .perf-modal-layer { background: transparent !important; }
   border: 1px solid var(--line);
 }
 .clean-track-row.is-guest-locked > * { pointer-events: none; }
+
+/* Menú de la ruedita y zona de borrar cuenta */
+.pf-menu button.danger { color: #e11d48; }
+.account-danger-zone {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.account-danger-zone p { font-size: 0.78rem; line-height: 1.45; color: var(--ink-secondary); }
+.account-danger-zone input {
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-secondary);
+  color: var(--ink);
+  letter-spacing: 0.08em;
+}
+.account-delete-link {
+  align-self: center;
+  font-size: 0.78rem;
+  color: #e11d48;
+  background: none;
+  border: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.account-delete-btn { background: #e11d48 !important; color: #fff !important; border-color: #e11d48 !important; }
+.account-delete-btn:disabled { opacity: 0.4; }

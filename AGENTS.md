@@ -22,7 +22,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   - `ESTO ES ESTAR EN SONIDO` (LP · `V4lentin0` · 9 tracks · `/covers/esto-es-estar-en-sonido.png`)
   - `Love2Hate` (EP · `Icylucki` · 3 tracks · `/covers/love2hate.png`)
   - `LA PLAGA` (Mixtape · `eyebags`)
-  - `AMORIO CLUB 2` (EP · `Máximo`)
+  - `EL DE LA X` (Album · `Máximo` · 8 tracks · `/covers/el-de-la-x.png`)
 - **Páginas del MVP (en orden en la píldora superior: `Inicio · Subir · Biblioteca · @poyo`):**
   1. `Inicio`:
      - 1º el ruido visual en el medio de la pantalla (collage editorial con fuente unificada sin deformar letras, miniaturas de las tapas reales y sin etiquetas cruzadas), 2º el nombre gigante `El tablero` con `"Tus proyectos. Tu identidad. Tu gente. Tu música."`, y 3º la tira horizontal de miniportadas con las tapas reales sin scrollbar fantasma.
