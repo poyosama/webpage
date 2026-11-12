@@ -38,6 +38,21 @@ const SEED_INVITES: Record<string, { creatorHandle: string; creatorName: string 
   "board-5056": { creatorHandle: "@poyo", creatorName: "5056" },
 };
 
+/**
+ * Saca el código de lo que la persona pegue: el link entero, el código solo, con mayúsculas,
+ * espacios o texto alrededor ("Te paso mi pase: https://…/invite/board-k3m9qa").
+ */
+export function extractInviteCode(raw: string | null | undefined): string {
+  const txt = (raw || "").trim();
+  const m = txt.match(/board-[a-z0-9]{4,10}/i);
+  if (m) return m[0].toLowerCase();
+  return txt
+    .replace(/^https?:\/\/[^/]+\/(invite\/)?/i, "")
+    .replace(/[/?#].*$/, "")
+    .trim()
+    .toLowerCase();
+}
+
 /** Cuentas (email de Google) con pases de invitación ilimitados */
 const UNLIMITED_INVITE_EMAILS = ["jpizarrograndinetti@gmail.com"];
 
@@ -194,7 +209,9 @@ async function legacy_getOrGenerateUserInvites(
   }
 
   return {
-    codes: unlimited ? userCodes : userCodes.slice(0, 6), // Muestra los códigos activos más recientes
+    codes: userCodes
+      .filter((c) => !c.used && Date.now() - new Date(c.createdAt).getTime() < TWO_WEEKS_MS)
+      .slice(0, 5), // solo vigentes, máx. 5
     canGenerateNewBatch,
     daysUntilNextBatch,
   };
@@ -267,13 +284,17 @@ async function legacy_generateExtraInvitesForUser(
   // Solo cuentas verificadas por el servidor de Auth pueden saltarse el límite
   if (!(await legacy_verifyUnlimitedInvites())) {
     return Object.values(readGlobalRegistry())
-      .filter((x) => x.creatorId === userId)
+      .filter((x) => x.creatorId === userId && !x.used)
       .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
   }
   const cleanHandle = userHandle.startsWith("@") ? userHandle : `@${userHandle || "artista"}`;
   const registry = readGlobalRegistry();
   const now = new Date().toISOString();
-  const n = Math.max(1, Math.min(20, Math.floor(count)));
+  const n = Math.max(1, Math.min(5, Math.floor(count)));
+  // la tanda nueva reemplaza a los pases sin usar de antes
+  for (const [k, v] of Object.entries(registry)) {
+    if (v.creatorId === userId && !v.used) delete registry[k];
+  }
 
   for (let i = 0; i < n; i++) {
     let code = generateCleanCodeSlug();
@@ -291,7 +312,7 @@ async function legacy_generateExtraInvitesForUser(
   writeGlobalRegistry(registry);
 
   const all = Object.values(registry)
-    .filter((x) => x.creatorId === userId)
+    .filter((x) => x.creatorId === userId && !x.used)
     .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
 
   // Persistencia en segundo plano: los códigos ya quedaron en el registro local
@@ -446,7 +467,7 @@ export function getPendingInviteCode(): string | null {
 export function setPendingInviteCode(code: string) {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(PENDING_INVITE_KEY, code.trim().toLowerCase());
+    localStorage.setItem(PENDING_INVITE_KEY, extractInviteCode(code));
   } catch {}
 }
 
@@ -505,11 +526,26 @@ function rowToItem(r: InviteRow): InviteCodeItem {
 }
 
 async function fetchMyServerCodes(userId: string): Promise<InviteCodeItem[] | null> {
-  const { data, error } = await supabase
+  // Solo los pases vigentes: sin usar, sin reemplazar y dentro de los 14 días (máx. 5)
+  let { data, error } = await supabase
     .from("invite_codes")
     .select("*")
     .eq("creator_id", userId)
-    .order("created_at", { ascending: false });
+    .eq("used", false)
+    .eq("revoked", false)
+    .gt("expires_at", new Date().toISOString())
+    .order("created_at", { ascending: false })
+    .limit(5);
+  if (error && /revoked|expires_at/i.test(error.message || "")) {
+    // migración vieja sin vencimiento
+    ({ data, error } = await supabase
+      .from("invite_codes")
+      .select("*")
+      .eq("creator_id", userId)
+      .eq("used", false)
+      .order("created_at", { ascending: false })
+      .limit(5));
+  }
   if (error) {
     if (isMissingRpc(error)) serverMode = false;
     return null;
@@ -563,7 +599,7 @@ export async function getOrGenerateUserInvites(
       const latest = codes[0] ? new Date(codes[0].createdAt).getTime() : 0;
       const since = Date.now() - latest;
       return {
-        codes: unlimited ? codes : codes.slice(0, 6),
+        codes: codes.slice(0, 5),
         canGenerateNewBatch: codes.length === 0 || since >= TWO_WEEKS_MS,
         daysUntilNextBatch: Math.max(0, Math.ceil((TWO_WEEKS_MS - since) / 86400000)),
       };
@@ -603,7 +639,7 @@ export async function generateExtraInvitesForUser(
 export async function validateInviteCode(
   rawCode: string
 ): Promise<{ valid: boolean; creatorHandle?: string; creatorName?: string; error?: string }> {
-  const code = (rawCode || "").trim().toLowerCase();
+  const code = extractInviteCode(rawCode);
   if (!code) return { valid: false, error: "Ingresá un código de invitación." };
   if (serverMode !== false) {
     const { data, error } = await supabase.rpc("validate_invite_code", { p_code: code });
@@ -632,7 +668,7 @@ export async function consumeInviteCode(
   newUserId: string,
   newUserHandle: string
 ): Promise<"ok" | "invalid" | "legacy"> {
-  const code = (rawCode || "").trim().toLowerCase();
+  const code = extractInviteCode(rawCode);
   if (serverMode !== false) {
     const { data, error } = await supabase.rpc("consume_invite_code", { p_code: code });
     if (!error) {

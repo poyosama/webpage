@@ -31,6 +31,12 @@ create table if not exists public.invite_codes (
   used_by_handle text,
   used_at timestamptz
 );
+-- Vencimiento (14 días) y reemplazo al generar una tanda nueva
+alter table public.invite_codes add column if not exists expires_at timestamptz;
+alter table public.invite_codes add column if not exists revoked boolean not null default false;
+update public.invite_codes set expires_at = created_at + interval '14 days' where expires_at is null;
+alter table public.invite_codes alter column expires_at set default (now() + interval '14 days');
+
 create index if not exists invite_codes_creator_idx on public.invite_codes (creator_id, created_at desc);
 create index if not exists invite_codes_used_by_idx on public.invite_codes (used_by);
 
@@ -112,7 +118,7 @@ begin
   end if;
 
   if unlimited then
-    n := greatest(1, least(coalesce(p_count, 1), 20));
+    n := 5; -- tanda de 5 (la lista nunca pasa de 5)
   else
     select max(created_at) into latest from public.invite_codes where creator_id = uid;
     if latest is not null and latest > now() - interval '14 days' then
@@ -123,12 +129,16 @@ begin
 
   select p.handle, p.name into v_handle, v_name from public.profiles p where p.id = uid;
 
+  -- La tanda nueva reemplaza a la anterior: los pases sin usar quedan inválidos
+  update public.invite_codes set revoked = true
+   where creator_id = uid and used = false and revoked = false;
+
   for i in 1..n loop
     loop
       v_code := public.invite_new_slug();
       begin
-        insert into public.invite_codes (code, creator_id, creator_handle, creator_name)
-        values (v_code, uid, v_handle, v_name);
+        insert into public.invite_codes (code, creator_id, creator_handle, creator_name, expires_at)
+        values (v_code, uid, v_handle, v_name, now() + interval '14 days');
         exit;
       exception when unique_violation then
         -- colisión (muy improbable): probar otro código
@@ -137,7 +147,10 @@ begin
   end loop;
 
   return query
-    select * from public.invite_codes where creator_id = uid order by created_at desc, code;
+    select * from public.invite_codes
+     where creator_id = uid and used = false and revoked = false and expires_at > now()
+     order by created_at desc, code
+     limit 5;
 end;
 $$;
 
@@ -154,6 +167,8 @@ begin
   select * into r from public.invite_codes where code = lower(trim(p_code));
   if not found then
     return query select false, null::text, null::text, 'El código de invitación no existe o es incorrecto.'::text;
+  elsif r.revoked or r.expires_at <= now() then
+    return query select false, r.creator_handle, r.creator_name, 'Este pase venció. Pedile uno nuevo a quien te invitó.'::text;
   elsif r.used then
     return query select false, r.creator_handle, r.creator_name,
       ('Este código de invitación ya fue utilizado' ||
@@ -187,6 +202,8 @@ begin
      set used = true, used_by = uid, used_by_handle = v_handle, used_at = now()
    where code = lower(trim(p_code))
      and used = false
+     and revoked = false
+     and expires_at > now()
      and creator_id is distinct from uid;
   return found;
 end;

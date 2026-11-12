@@ -9,11 +9,89 @@ export const SUPABASE_ANON_KEY =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
   "sb_publishable_UvC4vGCFOnN0FGbRAux0nw_wneVnyhC";
 
+// ==================== SESIÓN QUE SOBREVIVE: localStorage + copia en cookies ====================
+// En iPhone el localStorage de una web (o de la app de la pantalla de inicio) se puede borrar.
+// Guardamos además la sesión en cookies de 400 días (partida en pedazos de <4 KB) y si el
+// localStorage aparece vacío, la sesión se recupera de las cookies.
+const COOKIE_CHUNK = 3000;
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 400;
+
+function readCookie(name: string): string | null {
+  if (typeof document === "undefined") return null;
+  const m = document.cookie.match(new RegExp("(?:^|; )" + name.replace(/[.$?*|{}()[\]\\/+^]/g, "\\$&") + "=([^;]*)"));
+  return m ? m[1] : null;
+}
+function writeCookie(name: string, value: string, maxAge: number) {
+  if (typeof document === "undefined") return;
+  const secure = typeof location !== "undefined" && location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `${name}=${value}; Max-Age=${maxAge}; Path=/; SameSite=Lax${secure}`;
+}
+function cookieKey(key: string) {
+  return `et_${key.replace(/[^a-zA-Z0-9]/g, "_")}`;
+}
+function clearCookieChunks(key: string) {
+  const base = cookieKey(key);
+  for (let i = 0; i < 12; i++) {
+    if (readCookie(`${base}_${i}`) === null && i > 0) break;
+    writeCookie(`${base}_${i}`, "", 0);
+  }
+  writeCookie(`${base}_n`, "", 0);
+}
+
+const resilientStorage = {
+  getItem(key: string): string | null {
+    let v: string | null = null;
+    try {
+      v = localStorage.getItem(key);
+    } catch {}
+    if (v) return v;
+    // localStorage vacío: reconstruir desde las cookies
+    const base = cookieKey(key);
+    const n = Number(readCookie(`${base}_n`) || 0);
+    if (!n) return null;
+    let joined = "";
+    for (let i = 0; i < n; i++) {
+      const part = readCookie(`${base}_${i}`);
+      if (part === null) return null;
+      joined += part;
+    }
+    try {
+      const restored = decodeURIComponent(joined);
+      try {
+        localStorage.setItem(key, restored);
+      } catch {}
+      return restored;
+    } catch {
+      return null;
+    }
+  },
+  setItem(key: string, value: string) {
+    try {
+      localStorage.setItem(key, value);
+    } catch {}
+    if (!/auth-token/.test(key)) return;
+    const enc = encodeURIComponent(value);
+    const base = cookieKey(key);
+    clearCookieChunks(key);
+    const parts = Math.ceil(enc.length / COOKIE_CHUNK);
+    if (parts > 12) return; // sesión demasiado grande para cookies: queda solo en localStorage
+    for (let i = 0; i < parts; i++) writeCookie(`${base}_${i}`, enc.slice(i * COOKIE_CHUNK, (i + 1) * COOKIE_CHUNK), COOKIE_MAX_AGE);
+    writeCookie(`${base}_n`, String(parts), COOKIE_MAX_AGE);
+  },
+  removeItem(key: string) {
+    try {
+      localStorage.removeItem(key);
+    } catch {}
+    clearCookieChunks(key);
+  },
+};
+
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
+    storage: typeof window !== "undefined" ? resilientStorage : undefined,
   },
 });
 

@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { sfx } from "@/lib/sfx";
 import { supabase } from "@/lib/supabase";
-import { validateInviteCode, setPendingInviteCode } from "@/lib/invites";
+import { validateInviteCode, setPendingInviteCode, extractInviteCode } from "@/lib/invites";
 
 const VINYL_PALETTE = [
   "#ffffff", // Blanco puro
@@ -423,11 +423,7 @@ export default function LandingScene({
     e.preventDefault();
     setErrorMsg("");
 
-    const clean = inviteCode
-      .trim()
-      .toLowerCase()
-      .replace(/^https?:\/\/[^/]+\/(invite\/)?/, "")
-      .replace(/\/+$/, "");
+    const clean = extractInviteCode(inviteCode);
 
     setLoading(true);
     const res = await validateInviteCode(clean);
@@ -579,6 +575,15 @@ export default function LandingScene({
                 <input
                   value={inviteCode}
                   onChange={(e) => setInviteCode(e.target.value)}
+                  onPaste={(e) => {
+                    // Si pegan el link entero (o un texto con el código adentro), queda solo el código
+                    const pasted = e.clipboardData.getData("text");
+                    const code = extractInviteCode(pasted);
+                    if (code && code !== pasted.trim()) {
+                      e.preventDefault();
+                      setInviteCode(code);
+                    }
+                  }}
                   placeholder="board-xxxxxx o el link de invitación"
                   required
                   autoFocus

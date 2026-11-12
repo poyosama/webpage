@@ -2472,3 +2472,15 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 **Prompt del usuario:** no aparecen los me gusta (+ pedidos: control remoto entre dispositivos, colaboradores, pases máx 5 con expiración, links/códigos, sesión persistente).
 
 **Diagnóstico:** el gesto de deslizar el reproductor (`startPlayerSwipe` → `dragControls.start`) arrancaba aunque tocaras un botón y se comía el click → el ♥ nunca llamaba a `onToggleLike`. **Fix:** el gesto ignora `button, a, label, [role=button]`. Probado: ♥ se pone verde y queda en `eltablero_likes_<id>`.
+
+---
+
+### Turno 132 — Pases (máx. 5, vencen a los 14 días), pegar link/código, sesión que no se pierde
+**Prompts del usuario:** la lista de pases tiene que ser de máx. 5; generar 5 nuevos reemplaza a los anteriores; se consumen al usarse y vencen a los 14 días. Un amigo pegó el link entero en el campo del código y no le andaba. La app de la pantalla de inicio no mantiene la sesión (cookies).
+
+**Cambios:**
+- `migration_invites.sql` (+ `APLICAR_TODO.sql` regenerado): columnas `expires_at` (14 días) y `revoked`; `create_invite_codes` genera 5 para el admin y revoca los pases sin usar de antes; devuelve solo vigentes (máx. 5); `validate`/`consume` rechazan vencidos/reemplazados ("Este pase venció…"). Probado en Postgres local.
+- `invites.ts`: lista solo vigentes (máx. 5) en servidor y en el fallback local (que también reemplaza la tanda). `extractInviteCode()` saca `board-xxxxxx` de cualquier texto (link entero, mayúsculas, texto alrededor); usado en landing (también al pegar), modal de Google, validar y gastar.
+- `InviteFriendsModal`: un botón "Generar 5 pases nuevos"; además de "Copiar link", botón "Código" que copia solo el código.
+- `supabase.ts`: storage propio para la sesión: localStorage + copia en cookies de 400 días partidas en pedazos; si el localStorage se borra, la sesión se reconstruye desde las cookies; al cerrar sesión se borran. Probado con document/localStorage simulados.
+- Nota: el link del amigo fallaba principalmente porque la base todavía no tiene `APLICAR_TODO.sql` (los pases solo existen en el navegador de quien los genera).

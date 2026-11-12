@@ -56,6 +56,7 @@ import {
   consumeInviteCode,
   canCreateProfile,
   getPendingInviteCode,
+  extractInviteCode,
   setPendingInviteCode,
   getOrGenerateUserInvites,
 } from "@/lib/invites";
@@ -6756,8 +6757,8 @@ function GoogleAuthModal({
     const res = await validateInviteCode(inviteCodeInput);
     setCheckingInvite(false);
     if (res.valid) {
-      setVerifiedInvite({ code: inviteCodeInput.trim().toLowerCase(), creatorHandle: res.creatorHandle });
-      setPendingInviteCode(inviteCodeInput.trim().toLowerCase());
+      setVerifiedInvite({ code: extractInviteCode(inviteCodeInput), creatorHandle: res.creatorHandle });
+      setPendingInviteCode(extractInviteCode(inviteCodeInput));
       sfx.drop();
     } else {
       setInviteError(res.error || "Código inválido o ya utilizado.");

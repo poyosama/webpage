@@ -59,6 +59,23 @@ export function InviteFriendsModal({ profile, onClose }: InviteFriendsModalProps
     };
   }, [profile.id, profile.handle, profile.name, unlimited]);
 
+  const [copiedCodeOnly, setCopiedCodeOnly] = useState<string | null>(null);
+  const handleCopyCode = async (code: string) => {
+    sfx.tap();
+    try {
+      await navigator.clipboard.writeText(code);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = code;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+    setCopiedCodeOnly(code);
+    setTimeout(() => setCopiedCodeOnly((cur) => (cur === code ? null : cur)), 2500);
+  };
+
   const handleCopy = async (code: string) => {
     sfx.tap();
     const url = buildInviteUrl(code);
@@ -140,12 +157,12 @@ export function InviteFriendsModal({ profile, onClose }: InviteFriendsModalProps
           {unlimited ? (
             <>
               El tablero. es una plataforma exclusiva para artistas y productores. Tu cuenta tiene{" "}
-              <b>pases de invitación ilimitados</b>: generá los que quieras. Cada link es de un solo uso y se gasta cuando alguien se suscribe con él.
+              <b>pases ilimitados</b>. Cada tanda trae 5 y reemplaza a la anterior. Cada pase es de un solo uso y vence a los 14 días.
             </>
           ) : (
             <>
               El tablero. es una plataforma exclusiva para artistas y productores. Tenés{" "}
-              <b>3 códigos de invitación cada 2 semanas</b>. Cada link es de un solo uso y se gasta cuando alguien se suscribe con él.
+              <b>3 pases cada 2 semanas</b>. Cada pase es de un solo uso y vence a los 14 días.
             </>
           )}
         </p>
@@ -201,6 +218,15 @@ export function InviteFriendsModal({ profile, onClose }: InviteFriendsModalProps
                         </>
                       )}
                     </button>
+                    {!inv.used && (
+                      <button
+                        type="button"
+                        className="apple-btn ghost compact invite-copy-btn invite-copy-code-btn"
+                        onClick={() => handleCopyCode(inv.code)}
+                      >
+                        {copiedCodeOnly === inv.code ? "✓ Código" : "Código"}
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -215,17 +241,9 @@ export function InviteFriendsModal({ profile, onClose }: InviteFriendsModalProps
                 type="button"
                 className="apple-btn primary"
                 disabled={generating}
-                onClick={() => handleGenerateExtra(1)}
-              >
-                {generating ? "Generando..." : "+ Generar pase"}
-              </button>
-              <button
-                type="button"
-                className="apple-btn ghost"
-                disabled={generating}
                 onClick={() => handleGenerateExtra(5)}
               >
-                + 5 pases
+                {generating ? "Generando..." : "Generar 5 pases nuevos"}
               </button>
             </div>
           ) : (
