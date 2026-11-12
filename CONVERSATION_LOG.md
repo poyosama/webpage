@@ -2126,3 +2126,13 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 **Implementación:**
 1. **`App.tsx`:** se restauró el collage original (`Roster-collage`) del commit `91db6e6` y se eliminó la grilla `BOARD_ITEMS`. Los clicks ahora llaman a `openBoardProject(p)`: abre `spotifyUrl` en pestaña nueva y, si el proyecto no tiene link, reproduce el primer track.
 2. **`ui-refresh.css`:** el body queda bloqueado (`app-no-scroll`) y el scroll es interno; `.profile-page`, `.dmg-section` y `.cp-page` pasan a `overflow-y:auto` con `padding-bottom:104px` para que el mini-reproductor no tape el final (invitaciones). `.apple-shell` usa `--nav-clear` también en el modo bloqueado.
+
+---
+
+### Turno 102 — Tipografía del título al editar, selección de tapas, íconos con el logo
+**Prompt del usuario:** uniformar la fuente del título del proyecto entre ver/editar; usar el logo como ícono de la página (web + iPhone); consulta sobre App Store sin Mac; selección de tapa en el perfil "feita".
+
+**Implementación (`ui-refresh.css` + assets):**
+1. `.inline-project-title-input` hereda fuente/tamaño/peso/tracking de `.inspector-project-title` (y `.untitled-mobile-title` en celu) con márgenes negativos que compensan padding+borde: no cambia la fuente ni se corre el layout al editar.
+2. Tapa seleccionada: aro fino con separación (`--surface` + 3.5px de `--ink` al 65%) en lugar del marco negro grueso; sombras de las tapas más suaves.
+3. Íconos: `public/apple-touch-icon.png` (1024), `public/icon.png` / `src/app/icon.png` (512), `public/icon-192.png` con el wordmark apilado "El / tablero." en blanco sobre `#09090b`; `favicon.ico` (16/32/48) usa "El." porque "tablero." no se lee a 16px. `resources/icon.png` (1024) queda listo para `@capacitor/assets` / AppIcon de Xcode.
