@@ -340,14 +340,18 @@ async function triggerGoogleOAuth(): Promise<string | null> {
 }
 
 export default function LandingScene({
+  onEnterAsGuest,
+  autoOpenSubscribe = false,
   onOpenGoogleAuth,
   onSetAccountRole,
 }: {
   onEnterAsGuest?: () => void;
+  /** Volviendo del modo explorar con "Suscribirme": abre directo el modal */
+  autoOpenSubscribe?: boolean;
   onOpenGoogleAuth?: () => void;
   onSetAccountRole?: (role: "artista" | "oyente") => void;
 }) {
-  const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [inviteModalOpen, setInviteModalOpen] = useState(autoOpenSubscribe);
   const [inviteCode, setInviteCode] = useState("");
   const [chosenRole, setChosenRole] = useState<"artista" | "oyente">("artista");
   const [errorMsg, setErrorMsg] = useState("");
@@ -482,6 +486,12 @@ export default function LandingScene({
             {loading ? "Conectando..." : "Ya estoy suscrito"}
           </button>
         </div>
+
+        {onEnterAsGuest && (
+          <button type="button" className="landing-explore-link" onClick={() => { sfx.tap(); onEnterAsGuest(); }}>
+            Explorar sin suscribirme →
+          </button>
+        )}
 
         {errorMsg && !inviteModalOpen && (
           <small style={{ color: "#e11d48", marginTop: 10, fontSize: "0.78rem" }}>{errorMsg}</small>

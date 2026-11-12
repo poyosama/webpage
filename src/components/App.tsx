@@ -97,6 +97,11 @@ const PRODUCER_DROP_KINDS: ("Todos" | ProducerDropKind)[] = [
   "Catálogo de Beats",
 ];
 
+/** Segundos que puede escuchar alguien que todavía no se suscribió */
+const GUEST_PREVIEW_SEC = 25;
+/** Tracks destacados que se pueden escuchar sin suscribirse */
+const GUEST_FREE_TRACKS = 5;
+
 const PRODUCER_KIND_LABEL: Record<string, string> = {
   Beatpost: "Beats",
   Soundkit: "Soundkits",
@@ -246,6 +251,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   const [customAudioMap, setCustomAudioMap] = useState<Record<string, string>>({});
 
   const onTrackEndedRef = useRef<() => void>(() => {});
+  const guestPreviewEndRef = useRef<() => void>(() => {});
   const miniPlayerTouchRef = useRef<{ startY: number; startX: number } | null>(null);
 
   useEffect(() => {
@@ -275,6 +281,10 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       if (st.ended && isPlaying) {
         onTrackEndedRef.current();
       }
+      // Sin suscripción: preview de 25 segundos
+      if (isGuestRef.current && st.currentSec >= GUEST_PREVIEW_SEC) {
+        guestPreviewEndRef.current();
+      }
     }, 250);
     return () => clearInterval(id);
   }, [currentTrack.durationSec, isPlaying]);
@@ -295,6 +305,12 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
   const [profileSettingsOpen, setProfileSettingsOpen] = useState<boolean>(false);
   const [profileAddMenuOpen, setProfileAddMenuOpen] = useState<boolean>(false);
+  // Explorar sin suscribirse: Inicio con el tablero borroneado, 5 tracks y previews de 25 s
+  const [guestMode, setGuestMode] = useState<boolean>(false);
+  const [guestCta, setGuestCta] = useState<string | null>(null);
+  const [guestArtist, setGuestArtist] = useState<ArtistProfile | null>(null);
+  const [landingAutoSubscribe, setLandingAutoSubscribe] = useState<boolean>(false);
+  const isGuestRef = useRef(false);
   // Modo reproductor: solo Biblioteca + reproductor (sin la parte de red social)
   const [playerOnlyMode, setPlayerOnlyMode] = useState<boolean>(false);
   useEffect(() => {
@@ -2045,6 +2061,10 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   };
 
   const navigateToProject = (projId: string) => {
+    if (isGuestRef.current) {
+      setGuestCta("Suscribite para abrir los proyectos completos.");
+      return;
+    }
     sfx.open();
     setSelectedProjectId(projId);
     setLibrarySubTab("proyectos");
@@ -2055,6 +2075,15 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   const navigateToArtist = (artistName: string) => {
     sfx.tap();
     const clean = (artistName || "").trim().toLowerCase();
+    // Sin suscripción: se abre el perfil del artista en modo explorar
+    if (isGuestRef.current) {
+      const prof = [...communityArtists, ...SCENE_ARTISTS].find(
+        (a) => a.name.toLowerCase() === clean || a.handle.toLowerCase().replace("@", "") === clean.replace("@", "")
+      );
+      if (prof) setGuestArtist(prof);
+      else setGuestCta("Suscribite para ver los perfiles completos de la escena.");
+      return;
+    }
     const isMe =
       clean === "poyo" ||
       clean.includes("poyo") ||
@@ -2204,6 +2233,55 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     }
   };
 
+  const isGuest = !googleConnected && guestMode && !hasGuestInviteAccessEarly();
+  isGuestRef.current = isGuest;
+  guestPreviewEndRef.current = () => {
+    if (!isPlaying) return;
+    setIsPlaying(false);
+    sfx.pause();
+    sfx.pauseGroove();
+    setGuestCta("Escuchaste los primeros 25 segundos. Suscribite para escuchar los tracks completos.");
+  };
+  const openSubscribe = () => {
+    setGuestCta(null);
+    setGuestArtist(null);
+    if (isPlaying) {
+      setIsPlaying(false);
+      sfx.pause();
+      sfx.pauseGroove();
+    }
+    setGuestMode(false);
+    setLandingAutoSubscribe(true);
+  };
+  // En modo explorar solo existe Inicio (cualquier navegación interna vuelve acá)
+  useEffect(() => {
+    if (isGuest && tab !== "inicio") {
+      setTab("inicio");
+      setInsideCubeOpen(false);
+      setGuestCta("Suscribite para entrar a la Biblioteca, los proyectos y tu perfil.");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isGuest, tab]);
+
+  // Datos públicos para explorar sin cuenta (proyectos públicos y perfiles)
+  useEffect(() => {
+    if (!isGuest) return;
+    let alive = true;
+    void Promise.all([fetchUserProjectsFromSupabase(), fetchCommunityProfilesFromSupabase()]).then(([projs, profs]) => {
+      if (!alive) return;
+      if (projs) setProjects(projs.filter((p) => p.visibility === "public"));
+      if (profs && profs.length) setCommunityArtists(profs);
+    });
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isGuest]);
+
+  // (definido acá para poder usarlo antes del early-return de la landing)
+  function hasGuestInviteAccessEarly() {
+    return Boolean(selectedProjectId && projectInvites[selectedProjectId]);
+  }
   // Deslizar hacia abajo el reproductor grande para achicarlo al mini (como Spotify / [untitled])
   const playerDragControls = useDragControls();
   const playerDragY = useMotionValue(0);
@@ -2249,10 +2327,16 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   const hasGuestInviteAccess = Boolean(selectedProjectId && projectInvites[selectedProjectId]);
 
   if (!authChecked) return <div className="auth-splash" aria-hidden />;
-  if (!googleConnected && !hasGuestInviteAccess) {
+  if (!googleConnected && !hasGuestInviteAccess && !guestMode) {
     return (
       <>
         <LandingScene
+          autoOpenSubscribe={landingAutoSubscribe}
+          onEnterAsGuest={() => {
+            setLandingAutoSubscribe(false);
+            setGuestMode(true);
+            setTab("inicio");
+          }}
           onOpenGoogleAuth={() => setAuthModalOpen(true)}
           onSetAccountRole={(role) => {
             try {
@@ -2320,6 +2404,12 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                 className={isActive ? "active" : ""}
                 onMouseEnter={() => sfx.hover()}
                 onClick={() => {
+                  if (isGuest && id !== "inicio") {
+                    sfx.tap();
+                    if (id === "perfil") openSubscribe();
+                    else setGuestCta(id === "subir" ? "Suscribite para subir tus proyectos y tracks." : "Suscribite para tener tu Biblioteca.");
+                    return;
+                  }
                   if (id === "biblioteca") {
                     setInsideCubeOpen(false);
                     if (meProfile.accountType === "oyente") setLibrarySubTab("guardados");
@@ -2342,6 +2432,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
 
         <div className="ios-nav-right">
           {/* Modo reproductor: solo Biblioteca + reproductor */}
+          {!isGuest && (
           <button
             type="button"
             className={`ios-icon-btn player-mode-btn ${playerOnlyMode ? "is-on" : ""}`}
@@ -2356,6 +2447,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
               <path d="M10 8.6v6.8l5.4-3.4z" fill="currentColor" stroke="none" />
             </svg>
           </button>
+          )}
 
           {/* Theme Toggle Button (Dark / Light) */}
           <button
@@ -2383,9 +2475,13 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
             className="ios-icon-btn"
             style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
             onMouseEnter={() => sfx.hover()}
-            aria-label="Ir a mi perfil"
+            aria-label={isGuest ? "Suscribirme" : "Ir a mi perfil"}
             onClick={() => {
               sfx.tap();
+              if (isGuest) {
+                openSubscribe();
+                return;
+              }
               navigate("perfil");
             }}
           >
@@ -2456,7 +2552,17 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                 </div>
 
                 {/* 1º: EL RUIDO EN EL MEDIO DE LA PANTALLA (TIPOGRAFÍA LIMPIA Y UNIFICADA + TAPAS REALES) */}
-                <div className="corecore-stage">
+                <div className={`corecore-stage ${isGuest ? "is-guest-locked" : ""}`}>
+                  {isGuest && (
+                    <button type="button" className="guest-lock-overlay" onClick={openSubscribe}>
+                      <span className="guest-lock-icon" aria-hidden>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="11" width="16" height="10" rx="2.5" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
+                      </span>
+                      <b>El tablero es para suscritos</b>
+                      <small>Suscribite para ver la escena completa</small>
+                      <span className="guest-lock-cta">Suscribirme</span>
+                    </button>
+                  )}
                   <div className="neon-spine" aria-hidden />
 
                   <div className="Roster-collage">
@@ -2661,6 +2767,10 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                       className="filmstrip-thumb"
                       onMouseEnter={() => sfx.hover()}
                       onClick={() => {
+                        if (isGuest) {
+                          setGuestCta("Suscribite para abrir los proyectos completos.");
+                          return;
+                        }
                         setSelectedProjectId(p.id);
                         setLibrarySubTab("proyectos");
                         setInsideCubeOpen(true);
@@ -2712,12 +2822,19 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                       .slice(0, 10)
                       .map(({ track, proj }, i) => {
                           const active = currentTrack.id === track.id;
+                          const locked = isGuest && i >= GUEST_FREE_TRACKS;
                           return (
                             <div
                               key={track.id}
-                              className={`clean-track-row ${active ? "is-playing" : ""}`}
+                              className={`clean-track-row ${active ? "is-playing" : ""} ${locked ? "is-guest-locked" : ""}`}
                               onMouseEnter={() => sfx.hover()}
-                              onClick={() => playTrack(track, proj, false)}
+                              onClick={() => {
+                                if (locked) {
+                                  setGuestCta(`Suscribite para escuchar los ${boardProjects.reduce((n, pp) => n + pp.tracks.length, 0)} tracks de la escena.`);
+                                  return;
+                                }
+                                playTrack(track, proj, false);
+                              }}
                             >
                               <span className="row-num">{String(i + 1).padStart(2, "0")}</span>
                               <div
@@ -2800,6 +2917,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                                     </svg>
                                   </a>
                                 )}
+                                {!isGuest && (
                                 <button
                                   type="button"
                                   className="row-snippet-btn track-download-btn"
@@ -2816,6 +2934,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                                 >
                                   ⬇
                                 </button>
+                                )}
                                 {((meProfile.id && proj.artistId === meProfile.id) ||
                                   projectInvites[proj.id] === "edit") && (
                                   <>
@@ -2879,6 +2998,10 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                           className="artist-dir-item"
                           onMouseEnter={() => sfx.hover()}
                           onClick={() => {
+                            if (isGuest) {
+                              setGuestArtist(a);
+                              return;
+                            }
                             const found = owned[0];
                             if (found) {
                               setSelectedProjectId(found.id);
@@ -2932,7 +3055,13 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
               </section>
 
               {/* ==================== ROTACIÓN DE PRODUCTORES (Abajo de proyectos y artistas) ==================== */}
-              <section className="apple-card producer-drops-section">
+              <section className={`apple-card producer-drops-section ${isGuest ? "is-guest-locked" : ""}`}>
+                {isGuest && (
+                  <button type="button" className="guest-lock-overlay compact" onClick={openSubscribe}>
+                    <b>Kits y beats para suscritos</b>
+                    <span className="guest-lock-cta">Suscribirme</span>
+                  </button>
+                )}
                 <div className="producer-drops-header">
                   <div>
                     <span className="mono-tag">ROTACIÓN DE PRODUCTORES</span>
@@ -5440,6 +5569,137 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
             }}
           />
         )}
+      </AnimatePresence>
+
+      {/* ==================== MODO EXPLORAR: "SUSCRIBITE" ==================== */}
+      <AnimatePresence>
+        {isGuest && guestCta && (
+          <UniversalPortal>
+            <motion.div
+              className="move-sheet-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setGuestCta(null)}
+            >
+              <motion.div
+                className="move-sheet guest-cta-sheet"
+                initial={{ y: 40, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 40, opacity: 0 }}
+                transition={{ type: "spring", stiffness: 380, damping: 32 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="move-sheet-grabber" aria-hidden />
+                <span className="guest-lock-icon big" aria-hidden>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="11" width="16" height="10" rx="2.5" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
+                </span>
+                <h3>Suscribite a El tablero.</h3>
+                <p>{guestCta}</p>
+                <div className="guest-cta-actions">
+                  <button type="button" className="pf-btn primary" onClick={openSubscribe}>
+                    Suscribirme
+                  </button>
+                  <button type="button" className="pf-btn" onClick={() => setGuestCta(null)}>
+                    Seguir explorando
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          </UniversalPortal>
+        )}
+      </AnimatePresence>
+
+      {/* ==================== MODO EXPLORAR: PERFIL DE ARTISTA (primeros 5 tracks) ==================== */}
+      <AnimatePresence>
+        {isGuest && guestArtist &&
+          (() => {
+            const a = guestArtist;
+            const owned = boardProjects.filter(
+              (p) => p.artistId === a.id || p.artist.toLowerCase().includes(a.name.toLowerCase())
+            );
+            const rows = owned.flatMap((p) => p.tracks.map((t) => ({ t, p })));
+            return (
+              <UniversalPortal>
+                <motion.div
+                  className="move-sheet-backdrop"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setGuestArtist(null)}
+                >
+                  <motion.div
+                    className="move-sheet guest-artist-sheet"
+                    initial={{ y: 40, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: 40, opacity: 0 }}
+                    transition={{ type: "spring", stiffness: 380, damping: 32 }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="move-sheet-grabber" aria-hidden />
+                    <div className="guest-artist-head">
+                      <div className="guest-artist-avatar" style={{ background: a.color }}>
+                        {a.avatarUrl ? <img src={a.avatarUrl} alt={a.name} /> : a.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <span className="mono-tag">{[a.role, a.zone].filter(Boolean).join(" · ") || "ARTISTA"}</span>
+                        <h3>
+                          {a.name} <em>{a.handle}</em>
+                        </h3>
+                        {a.bio && <p>{a.bio}</p>}
+                      </div>
+                    </div>
+                    {rows.length === 0 ? (
+                      <p className="move-sheet-empty">Todavía no publicó tracks.</p>
+                    ) : (
+                      <div className="guest-artist-tracks">
+                        {rows.slice(0, GUEST_FREE_TRACKS + 3).map(({ t, p }, i) => {
+                          const locked = i >= GUEST_FREE_TRACKS;
+                          const active = currentTrack.id === t.id && isPlaying;
+                          return (
+                            <button
+                              key={t.id}
+                              type="button"
+                              className={`guest-artist-track ${locked ? "is-guest-locked" : ""} ${active ? "is-playing" : ""}`}
+                              onClick={() => {
+                                if (locked) {
+                                  setGuestArtist(null);
+                                  setGuestCta(`Suscribite para escuchar todo lo de ${a.name}.`);
+                                  return;
+                                }
+                                playTrack(t, p, false);
+                              }}
+                            >
+                              <span
+                                className="guest-artist-track-art"
+                                style={{
+                                  background: p.coverUrl
+                                    ? `url(${p.coverUrl}) center / cover no-repeat`
+                                    : `linear-gradient(135deg, ${t.c1}, ${t.c2})`,
+                                }}
+                              >
+                                {locked ? "🔒" : active ? "❚❚" : "▶"}
+                              </span>
+                              <span className="guest-artist-track-meta">
+                                <b>{t.title}</b>
+                                <small>{p.title}</small>
+                              </span>
+                              {!locked && <span className="guest-preview-tag">25 s</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                    <div className="guest-cta-actions">
+                      <button type="button" className="pf-btn primary" onClick={openSubscribe}>
+                        Suscribirme para escuchar completo
+                      </button>
+                    </div>
+                  </motion.div>
+                </motion.div>
+              </UniversalPortal>
+            );
+          })()}
       </AnimatePresence>
 
       {/* ==================== TOAST "MOVIDO A …" CON PARTÍCULAS ==================== */}

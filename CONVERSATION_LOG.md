@@ -2308,3 +2308,15 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 **Concepto:** te suscribís a El tablero. como a una revista o un sello: a la escena (los proyectos, los tracks y la gente que los hace), entrando con el pase de alguien que ya está suscrito.
 
 **Cambios de copy:** landing ("SUSCRIPCIÓN POR INVITACIÓN", botones **Suscribirme** / **Ya estoy suscrito**, modal "Suscribirme a El tablero." con explicación y "Suscribirme con Google →", campo "TU PASE DE INVITACIÓN"); navegación y botón de perfil sin sesión → "Suscribirme"; modal de Google ("Suscripción por invitación", "¿Ya estás suscrito? Entrar directo"); mensajes de rechazo sin pase; bienvenida por link ("Te invitaron a suscribirte a El tablero.", "Suscribirme a El tablero.", "Explorar antes de suscribirme"); pases ("se gasta cuando alguien se suscribe"); artistas vacío y drops de productores ("suscritos").
+
+---
+
+### Turno 118 — Modo explorar sin suscribirse
+**Prompt del usuario:** sin suscripción se puede explorar: Inicio con el tablero borroneado, escuchar los tracks destacados (primeros 5) y ver perfiles de artistas; el resto bloqueado para suscritos; todo se escucha solo 25 segundos.
+
+**Implementación (`App.tsx`, `LandingScene.tsx`, `ui-refresh.css`):**
+- Landing: link "Explorar sin suscribirme →" (`guestMode`). "Suscribirme" desde el modo explorar vuelve a la landing con el modal abierto (`autoOpenSubscribe`).
+- `isGuest`: collage del tablero y drops de productores con `blur` + overlay con candado "El tablero es para suscritos / Suscribirme"; tracks destacados: los primeros 5 (`GUEST_FREE_TRACKS`) se escuchan, el resto borroneado con 🔒; tira de portadas, links a proyecto y pestañas Subir/Biblioteca/Perfil → hoja "Suscribite a El tablero."; cualquier navegación fuera de Inicio vuelve a Inicio.
+- Perfiles de artistas (directorio o nombre del artista): hoja con avatar, rol, bio y primeros 5 tracks escuchables (+3 bloqueados).
+- Preview de 25 s (`GUEST_PREVIEW_SEC`): el polling pausa y muestra "Escuchaste los primeros 25 segundos…". Sin descargas ni modo reproductor. Se cargan proyectos públicos y perfiles desde Supabase.
+- Probado: 10 filas / 5 bloqueadas, reproduce, corta a los 25 s, CTA en filas bloqueadas y Biblioteca, vuelta a la landing con modal.
