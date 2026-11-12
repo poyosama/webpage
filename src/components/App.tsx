@@ -1432,6 +1432,27 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     ms.playbackState = isPlaying ? "playing" : "paused";
   }, [isPlaying]);
 
+  // Fin de track con el evento nativo `ended` (en iPhone los timers se congelan en segundo plano)
+  useEffect(() => {
+    sfx.setOnEnded(() => onTrackEndedRef.current());
+    return () => sfx.setOnEnded(null);
+  }, []);
+
+  // Posición/duración para la barra del widget del Control Center / pantalla de bloqueo
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !("mediaSession" in navigator)) return;
+    const ms = navigator.mediaSession;
+    if (!ms.setPositionState || !(miniPlayback.durationSec > 0)) return;
+    try {
+      ms.setPositionState({
+        duration: miniPlayback.durationSec,
+        playbackRate: 1,
+        position: Math.min(miniPlayback.durationSec, Math.max(0, miniPlayback.currentSec)),
+      });
+    } catch {}
+  }, [miniPlayback.durationSec, Math.floor(miniPlayback.currentSec / 5), currentTrack.id]);
+
+  // Controles del widget: se (re)registran en cada track, porque iOS los asocia al audio que suena
   useEffect(() => {
     if (typeof navigator === "undefined" || !("mediaSession" in navigator)) return;
     const ms = navigator.mediaSession;
@@ -1440,23 +1461,32 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
         ms.setActionHandler(a, h);
       } catch {}
     };
+    // Sin seekbackward/seekforward: si están, iOS muestra ±10 s en vez de anterior/siguiente
+    set("seekbackward", null);
+    set("seekforward", null);
     set("play", () => {
       if (!mediaSessionCtlRef.current.playing) mediaSessionCtlRef.current.toggle();
     });
     set("pause", () => {
       if (mediaSessionCtlRef.current.playing) mediaSessionCtlRef.current.toggle();
     });
-    set("previoustrack", () => mediaSessionCtlRef.current.step(-1));
+    set("previoustrack", () => {
+      // Como Spotify: si van más de 3 s, "anterior" vuelve al principio del track
+      const st = sfx.getPlaybackState();
+      if (st.currentSec > 3) {
+        sfx.seek(0);
+        return;
+      }
+      mediaSessionCtlRef.current.step(-1);
+    });
     set("nexttrack", () => mediaSessionCtlRef.current.step(1));
     set("seekto", (d) => {
       if (typeof d.seekTime === "number") sfx.seek(d.seekTime);
     });
-    return () => {
-      (["play", "pause", "previoustrack", "nexttrack", "seekto"] as MediaSessionAction[]).forEach((a) =>
-        set(a, null)
-      );
-    };
-  }, []);
+    set("stop", () => {
+      if (mediaSessionCtlRef.current.playing) mediaSessionCtlRef.current.toggle();
+    });
+  }, [currentTrack.id, isPlaying]);
 
   onTrackEndedRef.current = () => {
     if (repeatMode === "one") {
