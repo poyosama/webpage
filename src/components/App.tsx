@@ -1296,12 +1296,11 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
 
   // "Tus me gusta": proyecto virtual con los tracks marcados con ♥ (primero en la Biblioteca)
   const likedProject: Project | null = (() => {
-    if (likedTrackIds.length === 0) return null;
+    if (!googleConnected) return null;
     const pool = [...projects, ...DEMO_PROJECTS];
     const byId = new Map<string, Track>();
     for (const p of pool) for (const t of p.tracks) if (!byId.has(t.id)) byId.set(t.id, { ...t, coverUrl: t.coverUrl || p.coverUrl });
     const tracks = likedTrackIds.map((id) => byId.get(id)).filter(Boolean) as Track[];
-    if (tracks.length === 0) return null;
     return {
       ...STANDBY_PROJECT,
       id: LIKED_PROJECT_ID,
@@ -4270,6 +4269,14 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
 
                       {/* Lista de tracks numerada limpia */}
                       <div className="untitled-mobile-tracklist">
+                          {activeProject.id === LIKED_PROJECT_ID && activeProject.tracks.length === 0 && (
+                            <div className="liked-empty">
+                              <span aria-hidden>♥</span>
+                              <b>Todavía no tenés me gusta</b>
+                              <small>Tocá el corazón en el reproductor y los tracks aparecen acá.</small>
+                            </div>
+                          )}
+                          
                         {draggedTrack && (
                           <div
                             className={`inspector-drag-left-portal mobile ${
@@ -5022,6 +5029,14 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                           </div>
 
                           <div className="inspector-tracks-list-scroll">
+                          {activeProject.id === LIKED_PROJECT_ID && activeProject.tracks.length === 0 && (
+                            <div className="liked-empty">
+                              <span aria-hidden>♥</span>
+                              <b>Todavía no tenés me gusta</b>
+                              <small>Tocá el corazón en el reproductor y los tracks aparecen acá.</small>
+                            </div>
+                          )}
+                          
                             {activeProject.tracks.map((t, idx) => {
                               const isCurrent = currentTrack.id === t.id;
                               const isDragged = draggedTrack?.track.id === t.id;

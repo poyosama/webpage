@@ -2510,3 +2510,10 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 **Prompt del usuario:** en la landing (web) el link quedaba al costado de la píldora Suscribirme / Ya estoy suscrito; tiene que ir abajo.
 
 **Fix (`ui-refresh.css`):** `.landing-explore-link` como bloque centrado (`width: fit-content; margin: 14px auto 0`). Verificado en 1200×700: queda 14 px debajo de la píldora y centrado.
+
+---
+
+### Turno 136 — "Tus me gusta" siempre visible
+**Prompt del usuario:** no aparece el vinilo de me gusta (¿porque no tiene ninguno?).
+
+**Cambio:** `likedProject` existe siempre que haya sesión (antes solo con ≥1 ♥); primero en rueda y tapas. Vacío muestra "♥ Todavía no tenés me gusta · Tocá el corazón en el reproductor…" (web y celu).
