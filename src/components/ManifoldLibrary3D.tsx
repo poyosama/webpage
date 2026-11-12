@@ -4,7 +4,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
-import { type Project, type ProjectVideoClip } from "@/lib/mock";
+import { type Project, type ProjectVideoClip, projectArtistLabel } from "@/lib/mock";
 import { sfx } from "@/lib/sfx";
 import "./library-polish.css";
 
@@ -1187,7 +1187,7 @@ export default function ManifoldLibrary3D({
                       <div className="untitled-catalog-info">
                         <h4 className="untitled-catalog-title">{p.title}</h4>
                         <span className="untitled-catalog-meta">
-                          {p.artist || "poyo"} · {p.type.toUpperCase()} · {p.tracks.length}{" "}
+                          {projectArtistLabel(p) || "poyo"} · {p.type.toUpperCase()} · {p.tracks.length}{" "}
                           {p.tracks.length === 1 ? "track" : "tracks"}
                         </span>
                       </div>
@@ -1707,7 +1707,7 @@ export default function ManifoldLibrary3D({
                         </span>
                         <h2 className="vinyl-active-title">{activeProject.title}</h2>
                         {activeProject.artist && (
-                          <p className="vinyl-right-artist-name">{activeProject.artist}</p>
+                          <p className="vinyl-right-artist-name">{projectArtistLabel(activeProject)}</p>
                         )}
                         <div className="vinyl-right-action-row">
                           <span className="vinyl-right-enter-chip">

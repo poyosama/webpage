@@ -2484,3 +2484,12 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 - `InviteFriendsModal`: un botón "Generar 5 pases nuevos"; además de "Copiar link", botón "Código" que copia solo el código.
 - `supabase.ts`: storage propio para la sesión: localStorage + copia en cookies de 400 días partidas en pedazos; si el localStorage se borra, la sesión se reconstruye desde las cookies; al cerrar sesión se borran. Probado con document/localStorage simulados.
 - Nota: el link del amigo fallaba principalmente porque la base todavía no tiene `APLICAR_TODO.sql` (los pases solo existen en el navegador de quien los genera).
+
+---
+
+### Turno 133 — Colaboradores: proyectos en conjunto
+**Prompt del usuario:** invitar a otro usuario directamente como colaborador de un proyecto (como en [untitled]) con permisos; que el proyecto sea de los dos y aparezca en los dos perfiles con los dos nombres (ej. poyo · dorkke).
+
+**Implementación:**
+- `supabase/migration_collab.sql` (+ al final de `APLICAR_TODO.sql`): `project_members.is_coauthor`, `added_by`; RPCs `add_project_collaborator(proyecto, @handle, rol, coautor)` (solo dueño; busca por handle sin importar mayúsculas/@), `list_project_collaborators`, `remove_project_collaborator` (dueño, o uno mismo para salirse), `coauthors_for_projects` (para armar "poyo · dorkke"; los coautores de proyectos públicos los ve cualquiera). Probado en Postgres local: un extraño no puede sumar, handle inexistente da error, el coautor ve y edita el proyecto privado, nadie más lo ve, público muestra el coautor, al sacarlo deja de verlo.
+- Cliente: `Project.coauthors` (solo para mostrar, no se guarda) + `projectArtistLabel()` en el inspector, subtítulo de celu, catálogo y tarjeta del vinilo. El colaborador `edit` ya recibía el proyecto en su Biblioteca/Perfil vía membresías (`project_members`). Modal de compartir del proyecto (dueño): sección **Colaboradores** con @usuario + rol (Coautor / Puede editar / Solo escuchar), lista y ✕ para sacar.

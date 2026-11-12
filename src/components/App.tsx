@@ -12,6 +12,7 @@ import {
   SCENE_ARTISTS,
   STANDBY_PROJECT,
   STANDBY_TRACK,
+  projectArtistLabel,
   type ArtistProfile,
   type ProducerDropItem,
   type ProducerDropKind,
@@ -48,6 +49,11 @@ import {
   getProjectShareByToken,
   fetchMyShareMemberships,
   saveSharedTrackMeta,
+  addProjectCollaborator,
+  listProjectCollaborators,
+  removeProjectCollaborator,
+  fetchCoauthors,
+  type ProjectCollaborator,
   isLegacyInviteToken,
   type ProjectInviteRole,
 } from "@/lib/supabase";
@@ -2390,6 +2396,35 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       return liked ? prev.filter((x) => x !== trackId) : [...prev, trackId];
     });
   };
+  // Coautores: se suman al nombre del proyecto ("poyo · dorkke") y el proyecto aparece en los dos perfiles
+  const projectUuidKey = projects
+    .map((p) => p.id)
+    .filter((id) => /^[0-9a-f-]{36}$/i.test(id))
+    .join("|");
+  const [coauthorsRefresh, setCoauthorsRefresh] = useState(0);
+  useEffect(() => {
+    if (!projectUuidKey) return;
+    let alive = true;
+    void fetchCoauthors(projectUuidKey.split("|")).then((map) => {
+      if (!alive || !map) return;
+      setProjects((prev) =>
+        prev.map((p) => {
+          const next = map[p.id] || [];
+          const cur = p.coauthors || [];
+          if (cur.join("|") === next.join("|")) return p;
+          const updated = { ...p, coauthors: next };
+          // no disparar un guardado en la nube por esto
+          if (syncedSigRef.current[p.id] === JSON.stringify(p)) syncedSigRef.current[p.id] = JSON.stringify(updated);
+          return updated;
+        })
+      );
+    });
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectUuidKey, coauthorsRefresh]);
+
   // (definido acá para poder usarlo antes del early-return de la landing)
   function hasGuestInviteAccessEarly() {
     return Boolean(selectedProjectId && projectInvites[selectedProjectId]);
@@ -4014,7 +4049,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                             </div>
                           )}
                           <p className="untitled-mobile-subtitle">
-                            {activeProject.artist} · {activeProject.tracks.length}{" "}
+                            {projectArtistLabel(activeProject)} · {activeProject.tracks.length}{" "}
                             {activeProject.tracks.length === 1 ? "track" : "tracks"} ·{" "}
                             {formatProjectTotalDuration(activeProject.tracks)}
                           </p>
@@ -4813,7 +4848,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                                     )}
                                   </div>
                                 )}
-                                <span className="inspector-project-artist">{activeProject.artist}</span>
+                                <span className="inspector-project-artist">{projectArtistLabel(activeProject)}</span>
                               </div>
                               <div className="inspector-title-ctas">
                                 {!activeIsMine && activeProject.id !== LIKED_PROJECT_ID && (
@@ -5638,6 +5673,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
             project={invitingProject}
             isOwner={Boolean(meProfile.id && invitingProject.artistId === meProfile.id)}
             canShareEdit={Boolean(meProfile.id && invitingProject.artistId === meProfile.id)}
+            onCollaboratorsChanged={() => setCoauthorsRefresh((n) => n + 1)}
             onToggleVisibility={(nextVis) => {
               sfx.tick();
               updateProjectMeta(invitingProject.id, { visibility: nextVis });
@@ -7120,6 +7156,7 @@ function InviteProjectModal({
   track,
   isOwner,
   canShareEdit,
+  onCollaboratorsChanged,
   onToggleVisibility,
   onCopiedLink,
   onClose,
@@ -7129,6 +7166,7 @@ function InviteProjectModal({
   track?: Track;
   isOwner: boolean;
   canShareEdit: boolean;
+  onCollaboratorsChanged?: () => void;
   onToggleVisibility: (nextVisibility: "private" | "public") => void;
   onCopiedLink: (projectId: string) => void;
   onClose: () => void;
@@ -7163,6 +7201,37 @@ function InviteProjectModal({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project.id, track?.id, canShareEdit]);
+  // Colaboradores (solo el dueño, solo a nivel proyecto)
+  const [collabs, setCollabs] = useState<ProjectCollaborator[] | null>(null);
+  const [collabHandle, setCollabHandle] = useState("");
+  const [collabRole, setCollabRole] = useState<"coautor" | "edit" | "listen">("coautor");
+  const [collabMsg, setCollabMsg] = useState("");
+  const [collabBusy, setCollabBusy] = useState(false);
+  useEffect(() => {
+    if (track || !isOwner) return;
+    void listProjectCollaborators(project.id).then(setCollabs);
+  }, [project.id, track, isOwner]);
+  const addCollab = async () => {
+    const h = collabHandle.trim();
+    if (!h) return;
+    setCollabBusy(true);
+    setCollabMsg("");
+    const res = await addProjectCollaborator(
+      project.id,
+      h,
+      collabRole === "listen" ? "listen" : "edit",
+      collabRole === "coautor"
+    );
+    setCollabBusy(false);
+    if (!res.ok) {
+      setCollabMsg(res.error);
+      return;
+    }
+    sfx.drop();
+    setCollabHandle("");
+    setCollabs(await listProjectCollaborators(project.id));
+    onCollaboratorsChanged?.();
+  };
   const listenUrl = links?.listen || "";
   const editUrl = links?.edit || "";
   const scope = track ? "track" : project.type;
@@ -7253,6 +7322,66 @@ function InviteProjectModal({
                 🌐 Público
               </button>
             </div>
+          </div>
+        )}
+
+        {isOwner && !track && (
+          <div className="collab-section">
+            <div className="collab-head">
+              <b>Colaboradores</b>
+              <small>Sumá a otro usuario por su @. Como coautor, el proyecto queda a nombre de los dos y le aparece en su perfil.</small>
+            </div>
+            <div className="collab-add-row">
+              <input
+                value={collabHandle}
+                onChange={(e) => setCollabHandle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void addCollab();
+                }}
+                placeholder="@usuario"
+                autoCapitalize="none"
+                autoCorrect="off"
+              />
+              <select value={collabRole} onChange={(e) => setCollabRole(e.target.value as "coautor" | "edit" | "listen")}>
+                <option value="coautor">Coautor</option>
+                <option value="edit">Puede editar</option>
+                <option value="listen">Solo escuchar</option>
+              </select>
+              <button type="button" className="pf-btn primary" disabled={collabBusy || !collabHandle.trim()} onClick={() => void addCollab()}>
+                {collabBusy ? "…" : "Sumar"}
+              </button>
+            </div>
+            {collabMsg && <p className="collab-msg">{collabMsg}</p>}
+            {collabs && collabs.length > 0 && (
+              <ul className="collab-list">
+                {collabs.map((c) => (
+                  <li key={c.userId}>
+                    <span className="collab-avatar">
+                      {c.avatarUrl ? <img src={c.avatarUrl} alt="" /> : (c.name || c.handle).charAt(0).toUpperCase()}
+                    </span>
+                    <span className="collab-name">
+                      <b>{c.name}</b> <em>{c.handle}</em>
+                    </span>
+                    <span className="collab-role">
+                      {c.isCoauthor ? "Coautor" : c.role === "edit" ? "Puede editar" : "Solo escuchar"}
+                    </span>
+                    <button
+                      type="button"
+                      className="row-icon-btn"
+                      aria-label={`Sacar a ${c.handle}`}
+                      onClick={async () => {
+                        if (await removeProjectCollaborator(project.id, c.userId)) {
+                          setCollabs((prev) => (prev || []).filter((x) => x.userId !== c.userId));
+                          onCollaboratorsChanged?.();
+                        }
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         )}
 

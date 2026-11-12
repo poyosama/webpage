@@ -1064,3 +1064,64 @@ export async function saveSharedTrackMeta(track: Track, projectId: string): Prom
   if (error) console.warn("Error guardando track compartido:", error.message);
   return !error;
 }
+
+
+// =========================================================================
+// COLABORADORES (supabase/migration_collab.sql)
+// =========================================================================
+export type ProjectCollaborator = {
+  userId: string;
+  handle: string;
+  name: string;
+  avatarUrl?: string;
+  role: ProjectInviteRole;
+  isCoauthor: boolean;
+};
+
+export async function addProjectCollaborator(
+  projectId: string,
+  handle: string,
+  role: ProjectInviteRole,
+  coauthor: boolean
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error } = await supabase.rpc("add_project_collaborator", {
+    p_project: toDbId(projectId),
+    p_handle: handle,
+    p_role: role,
+    p_coauthor: coauthor,
+  });
+  if (!error) return { ok: true };
+  if (shareRpcMissing(error)) return { ok: false, error: "Falta la actualización del servidor (APLICAR_TODO.sql)." };
+  return { ok: false, error: error.message.replace(/^.*?ERROR:\s*/, "") };
+}
+
+export async function listProjectCollaborators(projectId: string): Promise<ProjectCollaborator[] | null> {
+  const { data, error } = await supabase.rpc("list_project_collaborators", { p_project: toDbId(projectId) });
+  if (error) return null;
+  return ((data || []) as any[]).map((r) => ({
+    userId: r.user_id,
+    handle: r.handle,
+    name: r.name,
+    avatarUrl: r.avatar_url || undefined,
+    role: r.role === "edit" ? "edit" : "listen",
+    isCoauthor: Boolean(r.is_coauthor),
+  }));
+}
+
+export async function removeProjectCollaborator(projectId: string, userId: string): Promise<boolean> {
+  const { error } = await supabase.rpc("remove_project_collaborator", { p_project: toDbId(projectId), p_user: userId });
+  return !error;
+}
+
+/** Coautores de muchos proyectos de una: { projectId: ["dorkke", ...] } */
+export async function fetchCoauthors(projectIds: string[]): Promise<Record<string, string[]> | null> {
+  const ids = projectIds.filter((id) => UUID_RE.test(id));
+  if (ids.length === 0) return {};
+  const { data, error } = await supabase.rpc("coauthors_for_projects", { p_projects: ids });
+  if (error) return null;
+  const out: Record<string, string[]> = {};
+  for (const r of (data || []) as { project_id: string; name: string; handle: string }[]) {
+    (out[r.project_id] ||= []).push(r.name || r.handle.replace(/^@/, ""));
+  }
+  return out;
+}

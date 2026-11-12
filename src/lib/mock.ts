@@ -75,6 +75,8 @@ export type Project = {
   targetTrackCount?: number;
   coverUrl?: string;
   spotifyUrl?: string;
+  /** Coautores (colaboradores que figuran como dueños): solo para mostrar, no se guarda en el proyecto */
+  coauthors?: string[];
   c1: string;
   c2: string;
   accent: string;
@@ -1039,3 +1041,11 @@ export const INITIAL_PRODUCER_DROPS: ProducerDropItem[] = [
 ];
 
 export const DEMO_PRODUCER_DROPS = INITIAL_PRODUCER_DROPS;
+
+
+/** "poyo · dorkke": artista del proyecto + coautores que no estén ya en el nombre */
+export function projectArtistLabel(p: { artist: string; coauthors?: string[] }): string {
+  const base = p.artist || "";
+  const extra = (p.coauthors || []).filter((n) => n && !base.toLowerCase().includes(n.toLowerCase()));
+  return [base, ...extra].filter(Boolean).join(" · ");
+}
