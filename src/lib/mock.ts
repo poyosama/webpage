@@ -711,6 +711,7 @@ export const DEMO_PROJECTS: Project[] = [
     dateLabel: "ALBUM · 8 TRACKS · 22 MIN 6 SEC",
     zone: "Mendoza",
     coverUrl: "/covers/el-de-la-x.png",
+    spotifyUrl: "https://open.spotify.com/album/1IFW57qYJzerNLvy1qLOcM?si=p7GlDn7aSdC4ZE_iIsa_Lw",
     attributes: ["Mendoza", "2026", "Album", "Máximo"],
     c1: "#18181b",
     c2: "#d4d4d8",

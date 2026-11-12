@@ -2350,3 +2350,10 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 2. `supabase/migration_account.sql`: RPC `delete_my_account()` (security definer, solo a sí mismo; borra proyectos, perfil y `auth.users` → cascada). Probado en Postgres local (borra usuario/proyectos/tracks; anónimo sin permiso). Sin la migración el modal avisa.
 3. `mock.ts` (id `amorio-club` se mantiene por compatibilidad): título **EL DE LA X**, Album 2026, Máximo · prod. maxwaydm, tracklist real de Spotify (EL DE LA X, MERCEDES, MI PARTE feat. Ma7imza, MÍNIMO, DEWACHIN, LOS CHORROS, NUNCA VAS A SER DE LOS FIEROS, L&M; 22 min 6 s); collage del Inicio y perfil de Máximo actualizados; `AGENTS.md` actualizado.
 4. **Tapas HD pendientes:** las imágenes pegadas en el chat no llegan como archivos al entorno; `public/covers/el-de-la-x.png` es por ahora copia de la tapa vieja. Hay que subir los archivos (repo `public/covers/` con los mismos nombres).
+
+---
+
+### Turno 120 — Link de Spotify de EL DE LA X
+**Prompt del usuario:** el link de EL DE LA X es `https://open.spotify.com/album/1IFW57qYJzerNLvy1qLOcM` (el primero que pasó era el de AMORIO CLUB, descartado).
+
+**Cambio:** `spotifyUrl` agregado al proyecto `amorio-club` (EL DE LA X) en `src/lib/mock.ts`; `AGENTS.md` actualizado. Tocar EL DE LA X en el tablero abre ese álbum.

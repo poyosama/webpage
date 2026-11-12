@@ -22,7 +22,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   - `ESTO ES ESTAR EN SONIDO` (LP · `V4lentin0` · 9 tracks · `/covers/esto-es-estar-en-sonido.png` · Spotify: `4AgV3jniMStGnN7qgiZM6C`)
   - `Love2Hate` (EP · `Icylucki` · 3 tracks · `/covers/love2hate.png` · Spotify: `13LVOkh1JCitO7Ah7mxUQw`)
   - `LA PLAGA` (Mixtape · `eyebags` · 6 tracks · `/covers/la-plaga.png` · Spotify: `5MGalKt6rRgZB5tCx46jDO`)
-  - `EL DE LA X` (Album · `Máximo` · prod. `maxwaydm` · 8 tracks · `/covers/el-de-la-x.png`)
+  - `EL DE LA X` (Album · `Máximo` · prod. `maxwaydm` · 8 tracks · `/covers/el-de-la-x.png` · Spotify: `1IFW57qYJzerNLvy1qLOcM`)
   - `blablabla` (EP · `bbbrvno` · 4 tracks · `/covers/blablabla.png` · Spotify: `2qQsmIu0Y54qI0FgjPSFSD`)
 - **Páginas del MVP (en orden en la píldora superior: `Inicio · Subir · Biblioteca · @poyo`):**
   - **Top Navbar Pill (`.ios-navbar`):** Píldora ultra compacta de 42px de alto (`top: 10px`, padding `5px 14px`, botones de 28px). Modos adaptativos: Oyente (`Inicio · Guardados · @perfil`) y Artista (`Inicio · Subir · Biblioteca · @perfil` o `Iniciar sesión`). Separación de `margin-top: 14px !important;` en `.project-inspector-sheet`, `.profile-page` y `.cp-page` para garantizar que la navbar nunca tape encabezados.
