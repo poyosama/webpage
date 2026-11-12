@@ -294,7 +294,7 @@
 :root body .dmg-section { padding-top: 6px; }
 
 /* ===================== CREAR PROYECTO ===================== */
-:root body .cp-page { height: auto !important; min-height: calc(100vh - var(--nav-clear) - 90px) !important; overflow: visible !important; }
+:root body .cp-page { min-height: 0 !important; }
 :root body .cp-content {
   justify-content: flex-start !important;
   padding: 8px 16px 24px !important;
@@ -327,3 +327,23 @@
 :root body .manifold-3d-wrapper.is-compact .untitled-catalog-meta,
 :root body .manifold-3d-wrapper.is-compact .untitled-catalog-cover { text-shadow: none !important; }
 :root body .manifold-3d-wrapper.is-compact .untitled-catalog-info { filter: none !important; }
+
+/* ===================== SCROLL INTERNO DE PÁGINAS (perfil, subir, crear) =====================
+   El body está bloqueado (app-no-scroll); la página scrollea por dentro y deja aire
+   abajo para que el mini-reproductor nunca tape el final (ej: invitaciones). */
+:root body.app-no-scroll .profile-page,
+:root body.app-no-scroll .dmg-section,
+:root body.app-no-scroll .cp-page {
+  overflow-y: auto !important;
+  max-height: 100% !important;
+  height: 100% !important;
+  padding-bottom: 104px !important;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+:root body.app-no-scroll .profile-page::-webkit-scrollbar,
+:root body.app-no-scroll .dmg-section::-webkit-scrollbar,
+:root body.app-no-scroll .cp-page::-webkit-scrollbar { display: none; }
+:root body.app-no-scroll .apple-shell {
+  padding-top: calc(env(safe-area-inset-top, 0px) + var(--nav-clear)) !important;
+}
