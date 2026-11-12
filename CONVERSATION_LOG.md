@@ -2503,3 +2503,10 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 - `src/lib/remotePlayer.ts` (`useRemotePlayer`): canal Supabase Realtime `player:<userId>` con presencia (cada dispositivo: id persistente + nombre "iPhone"/"Mac"/…) y broadcast: `state` (el que suena publica cada 2 s), `cmd` (toggle/next/prev/seek/volume/play_track/transfer) y `claim` (otro empezó a sonar → este se pausa). Sin tablas.
 - `App.tsx`: si este dispositivo controla a otro, `playTrack`/`togglePlay`/`stepTrack`/`handleVolumeChange`/scrubber mandan órdenes; el mini-reproductor refleja lo que suena allá (polling local apagado). Al empezar a sonar localmente hace `claim`. Botón de dispositivos en el mini-reproductor (si hay 2+), hoja "¿Dónde suena?" para pasar la música (con posición) o traerla, y banner verde "Sonando en Mac".
 - Probado: Realtime real del proyecto (dos clientes en Chromium): presencia mutua, orden "next" recibida y estado recibido. El flujo completo con dos dispositivos logueados queda para probar en vivo.
+
+---
+
+### Turno 135 — "Explorar sin suscribirme" debajo de los botones
+**Prompt del usuario:** en la landing (web) el link quedaba al costado de la píldora Suscribirme / Ya estoy suscrito; tiene que ir abajo.
+
+**Fix (`ui-refresh.css`):** `.landing-explore-link` como bloque centrado (`width: fit-content; margin: 14px auto 0`). Verificado en 1200×700: queda 14 px debajo de la píldora y centrado.
