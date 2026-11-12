@@ -1795,6 +1795,43 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     }
   };
 
+  const navigateToProject = (projId: string) => {
+    sfx.open();
+    setSelectedProjectId(projId);
+    setLibrarySubTab("proyectos");
+    setInsideCubeOpen(true);
+    navigate("biblioteca");
+  };
+
+  const navigateToArtist = (artistName: string) => {
+    sfx.tap();
+    const clean = (artistName || "").trim().toLowerCase();
+    const isMe =
+      clean === "poyo" ||
+      clean.includes("poyo") ||
+      (meProfile.name && clean.includes(meProfile.name.toLowerCase())) ||
+      (meProfile.handle && clean.includes(meProfile.handle.toLowerCase().replace("@", "")));
+
+    if (isMe) {
+      navigate("perfil");
+      return;
+    }
+
+    const matchProj = boardProjects.find(
+      (p) =>
+        p.artist?.toLowerCase().includes(clean) ||
+        p.tracks.some((t) => t.artist?.toLowerCase().includes(clean))
+    );
+
+    if (matchProj) {
+      setSelectedProjectId(matchProj.id);
+      setInsideCubeOpen(true);
+      navigate("biblioteca");
+    } else {
+      navigate("perfil");
+    }
+  };
+
   const activeIsMine = Boolean(activeProject && meProfile.id && activeProject.artistId === meProfile.id);
   const activeInviteRole: ProjectInviteRole | null = activeProject ? projectInvites[activeProject.id] || null : null;
   const canEditActive = Boolean(activeProject && (activeIsMine || activeInviteRole === "edit"));
@@ -2305,7 +2342,16 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                       </div>
                       <div className="filmstrip-caption">
                         <b>{p.title}</b>
-                        <span>{p.artist}</span>
+                        <span
+                          className="track-artist-link-btn"
+                          title={`Ver perfil de ${p.artist}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigateToArtist(p.artist);
+                          }}
+                        >
+                          {p.artist}
+                        </span>
                       </div>
                     </motion.button>
                   ))}
@@ -2345,8 +2391,46 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                               </div>
                               <div className="row-main">
                                 <b>{track.title}</b>
-                                <span>
-                                  {track.artist} {track.feat ? `feat. ${track.feat}` : ""} · {proj.title}
+                                <span className="row-meta-subline">
+                                  <button
+                                    type="button"
+                                    className="track-artist-link-btn"
+                                    title={`Ver perfil de ${track.artist}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigateToArtist(track.artist);
+                                    }}
+                                  >
+                                    {track.artist}
+                                  </button>
+                                  {track.feat && (
+                                    <>
+                                      {" feat. "}
+                                      <button
+                                        type="button"
+                                        className="track-artist-link-btn"
+                                        title={`Ver perfil de ${track.feat}`}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          navigateToArtist(track.feat!);
+                                        }}
+                                      >
+                                        {track.feat}
+                                      </button>
+                                    </>
+                                  )}
+                                  {" · "}
+                                  <button
+                                    type="button"
+                                    className="track-project-link-btn"
+                                    title={`Ir al proyecto ${proj.title}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigateToProject(proj.id);
+                                    }}
+                                  >
+                                    {proj.title}
+                                  </button>
                                 </span>
                               </div>
                               <div className="row-pills">

@@ -93,24 +93,32 @@
 
 /* ==================== 2. SWITCHER EN CABECERA ARRIBA A LA IZQUIERDA ==================== */
 .library-top-left-switcher {
-  position: static !important;
+  position: absolute !important;
+  top: 14px !important;
+  left: 20px !important;
+  z-index: 95 !important;
   display: inline-flex !important;
   align-items: center;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  padding: 3px;
-  border-radius: 980px;
-  gap: 3px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  background: rgba(22, 22, 28, 0.78) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  padding: 3px !important;
+  border-radius: 980px !important;
+  gap: 3px !important;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.32) !important;
+  backdrop-filter: blur(20px) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(150%) !important;
   flex-shrink: 0;
+  pointer-events: auto !important;
 }
 
-.manifold-3d-wrapper.has-library-canva .library-top-left-switcher {
-  background: rgba(18, 18, 24, 0.72) !important;
-  border: 1px solid rgba(255, 255, 255, 0.22) !important;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45) !important;
+:root[data-theme="light"] .library-top-left-switcher {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
+}
+
+.manifold-3d-wrapper.is-compact .library-top-left-switcher {
+  position: static !important;
 }
 
 .library-mode-btn {
@@ -121,25 +129,34 @@
   border-radius: 980px;
   font-size: 0.78rem;
   font-weight: 600;
-  color: var(--muted);
+  color: rgba(255, 255, 255, 0.75);
   transition: all 0.18s ease;
   cursor: pointer;
   background: transparent;
   border: none;
 }
 
+:root[data-theme="light"] .library-mode-btn {
+  color: var(--ink-secondary);
+}
+
 .library-mode-btn:hover {
+  color: #ffffff;
+}
+
+:root[data-theme="light"] .library-mode-btn:hover {
   color: var(--ink);
 }
 
 .library-mode-btn.active {
-  background: var(--ink) !important;
-  color: var(--bg) !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
+  background: #ffffff !important;
+  color: #09090b !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
-.manifold-3d-wrapper.has-library-canva .library-mode-btn {
-  color: rgba(255, 255, 255, 0.75) !important;
+:root[data-theme="light"] .library-mode-btn.active {
+  background: #09090b !important;
+  color: #ffffff !important;
 }
 
 .manifold-3d-wrapper.has-library-canva .library-mode-btn:hover {

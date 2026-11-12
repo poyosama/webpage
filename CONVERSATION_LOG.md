@@ -1792,6 +1792,30 @@
 4. **Verificación y Deploy:**
    - Compilación exitosa con Next.js Turbopack (`npm run build`, 0 errores).
 
+---
+
+### Turno 90 — Switcher Permanente en Biblioteca ("Rueda / Tapas") + Enlaces Clickeables a Proyectos y Artistas en Inicio
+**Pedido del usuario (`juani`):**
+- *"ademas esto mira cuando pongo la biblioteca en cuadraditos no m deja volver nunca jajaaj a la ruedita y tambien en el inicio me gustaria que se pueda clickear el nombre del proyecto ahi y que te lleve a el, o tambien tocar el nombre del artista y te lleve a su perfil"* (adjunta 2 capturas: la vista de catálogo en negro sin el switcher de vuelta, y las filas de tracks de Inicio donde quiere clickear proyecto y artista).
+
+**Implementación técnica aplicada (`ManifoldLibrary3D.tsx`, `library-polish.css`, `board-polish.css`, `App.tsx`):**
+1. **Switcher de Modo de Biblioteca Permanente e Indestructible (`ManifoldLibrary3D.tsx`, `library-polish.css`, `board-polish.css`):**
+   - **Causa raíz identificada:** en `board-polish.css`, la clase `.library-clean` tenía `display: none !important` sobre `.manifold-stage-overlay-top`, contenedor donde estaba insertado el switcher. Al pasar a la vista de tapas, el switcher desaparecía y era imposible regresar a la rueda.
+   - **Solución arquitectónica:**
+     - En `ManifoldLibrary3D.tsx`, se reubicó `.library-top-left-switcher` como hijo directo de `.manifold-3d-canvas-stage`, independizándolo de cualquier overlay de títulos o píldoras.
+     - En `library-polish.css`, se fijó con `position: absolute !important; top: 14px !important; left: 20px !important; z-index: 95 !important; pointer-events: auto !important;`, con fondo esmerilado de vidrio, borde nítido y botones de alto contraste [ 💿 Rueda | ⊞ Tapas ].
+     - En `board-polish.css`, se removió `.manifold-stage-overlay-top` de la regla de ocultamiento de `.library-clean` y se aseguró que el switcher tenga siempre `pointer-events: auto !important;`.
+     - Ahora podés alternar infinitamente entre Rueda de vinilos y Tapas cuadradas en cualquier pantalla sin que el switch desaparezca nunca.
+2. **Navegación Clickeable a Proyecto y Artista en Inicio (`App.tsx`, `board-polish.css`):**
+   - Se crearon los helpers `navigateToProject(projId)` y `navigateToArtist(artistName)` en `App.tsx`:
+     - **Click en nombre de Proyecto (`proj.title`):** abre inmediatamente la vista inmersiva del proyecto seleccionado en la Biblioteca (`setInsideCubeOpen(true)` + `navigate("biblioteca")`) con sonido háptico `sfx.open()`.
+     - **Click en nombre de Artista (`track.artist` / `track.feat`):** si es `@poyo` o el usuario activo navega directo a `perfil`. Si es otro artista del tablero, busca su proyecto en el catálogo y lo abre; si no, redirige a perfil con sonido `sfx.tap()`.
+   - Se aplicó en las filas de tracks de Inicio (`.clean-track-row .row-main`) y en el filmstrip superior (`.filmstrip-caption`).
+   - Se estilizaron como enlaces tipográficos nativos (`.track-artist-link-btn`, `.track-project-link-btn`) con hover carmesí/subrayado y `e.stopPropagation()` para poder navegar sin forzar la reproducción accidental del audio.
+3. **Verificación y Deploy:**
+   - Compilación exitosa con Next.js Turbopack (`npm run build`, 0 errores).
+
+
 
 
 

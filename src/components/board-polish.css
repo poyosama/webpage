@@ -2808,14 +2808,59 @@ body.app-no-scroll .cp-page {
 .library-page.library-clean .library-title-block,
 .library-page.library-clean .seg-pills,
 .library-page.library-clean .manifold-overlay-titles,
-.library-page.library-clean .manifold-quick-pills,
-.library-page.library-clean .manifold-stage-overlay-top {
+.library-page.library-clean .manifold-quick-pills {
   display: none !important;
+}
+
+.library-page.library-clean .manifold-stage-overlay-top {
+  display: flex !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 12px 18px 0 !important;
+  pointer-events: none !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 60 !important;
 }
 
 .library-page.library-clean .library-top-left-switcher,
 .library-top-left-switcher {
   display: inline-flex !important;
+  pointer-events: auto !important;
+}
+
+/* ==================== ENLACES CLICKABLES DE ARTISTA Y PROYECTO EN INICIO ==================== */
+.track-artist-link-btn,
+.track-project-link-btn {
+  background: none !important;
+  border: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  font: inherit !important;
+  color: inherit !important;
+  cursor: pointer !important;
+  text-decoration: none !important;
+  display: inline !important;
+  vertical-align: baseline !important;
+  transition: color 0.16s ease, text-decoration 0.16s ease !important;
+}
+
+.track-artist-link-btn:hover {
+  color: #f43f5e !important;
+  text-decoration: underline !important;
+}
+
+.track-project-link-btn:hover {
+  color: var(--ink) !important;
+  text-decoration: underline !important;
+  font-weight: 600 !important;
+}
+
+:root[data-theme="dark"] .track-project-link-btn:hover {
+  color: #ffffff !important;
 }
 
 /* ==================== INICIO EN CELULAR: collage igual que en desktop (una fila por proyecto, escalado) ==================== */

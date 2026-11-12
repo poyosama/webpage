@@ -987,38 +987,40 @@ export default function ManifoldLibrary3D({
           activeMode === "wheel" ? "vinyl-arc-stage" : "catalog-grid-stage"
         }`}
       >
+        {/* Switcher permanente arriba a la izquierda: [ 💿 Rueda | ⊞ Tapas ] */}
+        <div className="library-top-left-switcher" role="group" aria-label="Cambiar modo de vista">
+          <button
+            type="button"
+            className={`library-mode-btn ${activeMode === "wheel" ? "active" : ""}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              sfx.tap();
+              setActiveMode("wheel");
+              onChangeViewMode?.("disc-row");
+            }}
+            title="Vista rueda de vinilos"
+          >
+            <span className="library-mode-icon">💿</span>
+            <span>Rueda</span>
+          </button>
+          <button
+            type="button"
+            className={`library-mode-btn ${activeMode === "grid" ? "active" : ""}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              sfx.tap();
+              setActiveMode("grid");
+              onChangeViewMode?.("manifold");
+            }}
+            title="Vista tapas [untitled]"
+          >
+            <span className="library-mode-icon">⊞</span>
+            <span>Tapas</span>
+          </button>
+        </div>
+
         <div className="manifold-stage-overlay-top">
           <div className="manifold-title-and-switch">
-            {/* Switcher arriba a la izquierda: [ 💿 Rueda | ⊞ Tapas ] */}
-            <div className="library-top-left-switcher" role="group" aria-label="Cambiar modo de vista">
-              <button
-                type="button"
-                className={`library-mode-btn ${activeMode === "wheel" ? "active" : ""}`}
-                onClick={() => {
-                  sfx.tap();
-                  setActiveMode("wheel");
-                  onChangeViewMode?.("disc-row");
-                }}
-                title="Vista rueda de vinilos"
-              >
-                <span className="library-mode-icon">💿</span>
-                <span>Rueda</span>
-              </button>
-              <button
-                type="button"
-                className={`library-mode-btn ${activeMode === "grid" ? "active" : ""}`}
-                onClick={() => {
-                  sfx.tap();
-                  setActiveMode("grid");
-                  onChangeViewMode?.("manifold");
-                }}
-                title="Vista tapas [untitled]"
-              >
-                <span className="library-mode-icon">⊞</span>
-                <span>Tapas</span>
-              </button>
-            </div>
-
             <div className="manifold-overlay-titles">
               <span className="mono-tag">
                 {activeMode === "wheel"
