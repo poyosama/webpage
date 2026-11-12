@@ -2279,3 +2279,10 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 **Diagnóstico:** no es la barra del navegador (en modo web app no hay). Es un bug de iOS en standalone con `statusBarStyle: black-translucent`: `100vh`/`100dvh` miden "pantalla − barra de estado" (~59 px en iPhones con Dynamic Island), y todo lo que usaba `100dvh` (reproductor fullscreen, layout bloqueado, hoja del proyecto) quedaba corto.
 
 **Fix:** `App.tsx` calcula `--app-h` (en standalone: alto real de `screen` según orientación; si no, `innerHeight`) y marca `html.is-standalone`; `ui-refresh.css` usa `var(--app-h, 100dvh)` en `.perf-modal-layer`, `.perf-player`, `html/body.app-no-scroll`, `.apple-shell` bloqueado, `.project-inspector-sheet` y `.untitled-mobile-project-view`; `html` con `background: var(--bg)`. El dock del reproductor ya se posiciona con `safe-area-inset-bottom`, así que baja hasta la barrita del home sin taparla. En navegador normal no cambia nada.
+
+---
+
+### Turno 114 — Mini-reproductor más arriba en celu
+**Prompt del usuario:** "INCREÍBLE" (franja negra resuelta); hacer la píldora del reproductor un poco más alta (estaba encima de la barrita del home del iPhone).
+
+**Fix (`ui-refresh.css`, ≤720px):** `.ios-mini-player-dock` con `bottom: max(12px, safe-area-inset-bottom − 4px)` (antes ~22% del safe-area) y `padding-bottom` de las pantallas `safe-area + 76px` para que el contenido no quede tapado.

@@ -1188,3 +1188,16 @@ html:root body.mobile-vinyl-wheel-locked .apple-shell {
   html:root body .project-inspector-sheet { height: var(--app-h, 100dvh) !important; }
   html:root body .untitled-mobile-project-view { min-height: var(--app-h, 100dvh) !important; }
 }
+
+/* ===== Mini-reproductor (celu): un poco más arriba, sin pisar la barrita del home ===== */
+@media (max-width: 720px) {
+  html:root body .ios-mini-player-dock {
+    bottom: max(12px, calc(env(safe-area-inset-bottom, 0px) - 4px)) !important;
+  }
+  /* el contenido de las pantallas deja lugar para la píldora más alta */
+  html:root body .apple-shell,
+  html:root body.app-no-scroll .apple-shell,
+  html:root body.mobile-vinyl-wheel-locked .apple-shell {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 76px) !important;
+  }
+}
