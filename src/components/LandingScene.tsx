@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { sfx } from "@/lib/sfx";
 import { supabase } from "@/lib/supabase";
+import { validateInviteCode, setPendingInviteCode } from "@/lib/invites";
 
 const VINYL_PALETTE = [
   "#ffffff", // Blanco puro
@@ -325,16 +326,6 @@ function MicroDiscsSwarm({ count }: { count: number }) {
   );
 }
 
-const VALID_REFERRAL_CODES = [
-  "TABLERO-UG-2026",
-  "POYO-VIP",
-  "CHICKENNUGGET",
-  "MENDOZA-808",
-  "HEYSPACE-TABLERO",
-  "UNDERGROUND-2026",
-  "TABLERO-PRIVATE",
-];
-
 async function triggerGoogleOAuth(): Promise<string | null> {
   const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/` : undefined;
   const { data, error } = await supabase.auth.signInWithOAuth({
@@ -362,6 +353,17 @@ export default function LandingScene({
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+
+  // Si un intento de registro fue rechazado (sin pase válido), mostrar el motivo
+  useEffect(() => {
+    try {
+      const msg = localStorage.getItem("eltablero_auth_error");
+      if (msg) {
+        setErrorMsg(msg);
+        localStorage.removeItem("eltablero_auth_error");
+      }
+    } catch {}
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -393,19 +395,21 @@ export default function LandingScene({
     e.preventDefault();
     setErrorMsg("");
 
-    const clean = inviteCode.trim().toUpperCase().replace(/https?:\/\/[^/]+\/(invite\/)?/, "");
+    const clean = inviteCode
+      .trim()
+      .toLowerCase()
+      .replace(/^https?:\/\/[^/]+\/(invite\/)?/, "")
+      .replace(/\/+$/, "");
 
-    const isValid =
-      VALID_REFERRAL_CODES.includes(clean) ||
-      clean.includes("TABLERO") ||
-      clean.includes("VIP") ||
-      clean.length >= 6;
-
-    if (!isValid) {
+    setLoading(true);
+    const res = await validateInviteCode(clean);
+    if (!res.valid) {
+      setLoading(false);
       sfx.close();
-      setErrorMsg("Código de invitación inválido.");
+      setErrorMsg(res.error || "Código de invitación inválido.");
       return;
     }
+    setPendingInviteCode(clean);
 
     sfx.drop();
     onSetAccountRole?.(chosenRole);
@@ -523,7 +527,7 @@ export default function LandingScene({
                 <input
                   value={inviteCode}
                   onChange={(e) => setInviteCode(e.target.value)}
-                  placeholder="TABLERO-UG-2026"
+                  placeholder="board-xxxxxx o el link de invitación"
                   required
                   autoFocus
                 />
