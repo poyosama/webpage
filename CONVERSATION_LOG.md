@@ -2182,3 +2182,13 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
    - Botón de play (`is-playing`) que respira mientras suena.
    - `prefers-reduced-motion` desactiva todo.
 3. Fix: en el perfil el wrapper tiene `has-library-canva` (canva oculto) y el tile "+ Crear" quedaba blanco sobre blanco; ahora usa colores del tema.
+
+---
+
+### Turno 107 — Biblioteca (rueda) en celu sin superposiciones + switcher de 2 íconos
+**Prompt del usuario:** en la rueda se superponían textos ("Abrir proyecto" sobre "+ Subir track", pastilla tapada); no le gustaban las flechitas a la derecha: que los controles queden abajo; Rueda/Tapas como una sola píldora con 2 íconos.
+
+**Implementación:**
+1. `ManifoldLibrary3D.tsx`: el switcher usa íconos SVG (disco / grilla) sin texto, con `aria-label` y `title`.
+2. `ui-refresh.css` (≤720px): el viewport de la rueda pasa a columna (vinilo → tarjeta → flechitas) con `padding` reservado arriba (switcher) y abajo (botones); flechitas en una píldora horizontal debajo de la tarjeta (◀ 1/6 ▶); "Subir track / Cambiar Canva" en una fila fija centrada abajo.
+3. La tarjeta tenía `z-index:20` porque `:root[data-theme] .vinyl-fan-inspector-card.vinyl-fan-clean-title-card` le ganaba en especificidad; ahora `html:root body .vinyl-fan-arc-viewport …` la deja en 500, opaca y con título `--ink`.
