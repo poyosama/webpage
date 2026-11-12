@@ -2341,6 +2341,54 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isGuest]);
 
+  // Sincronización con la nube (tabla track_likes): se mezclan los de la nube con los de este dispositivo
+  const likesCloudRef = useRef<"unknown" | "on" | "off">("unknown");
+  useEffect(() => {
+    if (!googleConnected || !meProfile.id) return;
+    let alive = true;
+    (async () => {
+      const { data, error } = await supabase
+        .from("track_likes")
+        .select("track_id")
+        .eq("user_id", meProfile.id)
+        .order("created_at", { ascending: true });
+      if (!alive) return;
+      if (error) {
+        likesCloudRef.current = "off"; // tabla todavía no creada: quedan solo en el dispositivo
+        return;
+      }
+      likesCloudRef.current = "on";
+      const cloud = (data || []).map((r: { track_id: string }) => r.track_id);
+      setLikedTrackIds((local) => {
+        const merged = Array.from(new Set([...cloud, ...local]));
+        const missing = local.filter((id) => !cloud.includes(id));
+        if (missing.length) {
+          void supabase
+            .from("track_likes")
+            .upsert(missing.map((track_id) => ({ user_id: meProfile.id, track_id })), { onConflict: "user_id,track_id" });
+        }
+        return merged;
+      });
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [googleConnected, meProfile.id]);
+  const toggleLike = (trackId: string) => {
+    setLikedTrackIds((prev) => {
+      const liked = prev.includes(trackId);
+      if (googleConnected && meProfile.id && likesCloudRef.current !== "off") {
+        if (liked) {
+          void supabase.from("track_likes").delete().eq("user_id", meProfile.id).eq("track_id", trackId);
+        } else {
+          void supabase
+            .from("track_likes")
+            .upsert({ user_id: meProfile.id, track_id: trackId }, { onConflict: "user_id,track_id" });
+        }
+      }
+      return liked ? prev.filter((x) => x !== trackId) : [...prev, trackId];
+    });
+  };
   // (definido acá para poder usarlo antes del early-return de la landing)
   function hasGuestInviteAccessEarly() {
     return Boolean(selectedProjectId && projectInvites[selectedProjectId]);
@@ -5520,11 +5568,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                 onCycleRepeat={() =>
                   setRepeatMode((m) => (m === "off" ? "all" : m === "all" ? "one" : "off"))
                 }
-                onToggleLike={(id) =>
-                  setLikedTrackIds((prev) =>
-                    prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-                  )
-                }
+                onToggleLike={toggleLike}
                 onAddToQueue={(t, p) => setUserQueue((prev) => [...prev, { track: t, project: p }])}
                 onRemoveFromQueue={(idx) =>
                   setUserQueue((prev) => prev.filter((_, i) => i !== idx))

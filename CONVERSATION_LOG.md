@@ -2432,3 +2432,13 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 - `PerformativePlayer.tsx`: sin `<small>{type}</small>` en la tapa; sin el badge "BPM · Key ✎"; "Editar track" del menú abre el `EditTrackModal` nuevo (compacto, por delante del reproductor) en vez del Studio viejo; slider de volumen `perf-volume-slider` estilo iOS con relleno.
 - `ui-refresh.css`: título hasta 3 líneas con fuente un poco menor (sin "…"), sombras para legibilidad sobre canvas claros.
 - `App.tsx`: me gusta persistidos por cuenta en `localStorage` (`eltablero_likes_<id>`); proyecto virtual **Tus me gusta** (`LIKED_PROJECT_ID`, tapa SVG de corazón) primero en la Biblioteca (rueda y tapas) cuando hay ♥; no se puede borrar, invitar ni guardar. Probado: ♥ en el reproductor → aparece primero en Tapas y adentro tiene el track.
+
+---
+
+### Turno 129 — Me gusta sincronizados entre dispositivos + consulta "Spotify Connect"
+**Prompt del usuario:** armar la sincronización de los me gusta; ¿se puede controlar desde el celu lo que suena en la compu (como Spotify)?
+
+**Implementación:**
+- `supabase/migration_likes.sql`: tabla `track_likes (user_id, track_id text, created_at)` con RLS (cada uno solo los suyos). Agregada al final de `APLICAR_TODO.sql`. Probado en Postgres local (re-corrida OK; otro usuario ve 0).
+- `App.tsx`: al iniciar sesión baja los ♥ de la nube y los mezcla con los del dispositivo (sube los que faltan); `toggleLike` hace upsert/delete. Si la tabla no existe, quedan solo en el dispositivo (sin errores).
+- Respuesta sobre control remoto entre dispositivos: factible con Supabase Realtime (presencia + broadcast por canal del usuario), sin tablas nuevas; pendiente de decisión del usuario.
