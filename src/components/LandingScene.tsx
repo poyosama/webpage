@@ -354,7 +354,7 @@ export default function LandingScene({
   const [loading, setLoading] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
-  // Si un intento de registro fue rechazado (sin pase válido), mostrar el motivo
+  // Si un intento de suscripción fue rechazado (sin pase válido), mostrar el motivo
   useEffect(() => {
     try {
       const msg = localStorage.getItem("eltablero_auth_error");
@@ -450,7 +450,7 @@ export default function LandingScene({
 
       <div className="landing-center-content">
         <span className="mono-tag" style={{ letterSpacing: "0.22em", marginBottom: 12 }}>
-          ACCESO ANTICIPADO
+          SUSCRIPCIÓN POR INVITACIÓN
         </span>
 
         <h1 className="landing-display-title">El tablero.</h1>
@@ -470,7 +470,7 @@ export default function LandingScene({
               setInviteModalOpen(true);
             }}
           >
-            Registrarme
+            Suscribirme
           </button>
           <span className="landing-pill-divider" />
           <button
@@ -479,7 +479,7 @@ export default function LandingScene({
             disabled={loading}
             onClick={handleDirectSignIn}
           >
-            {loading ? "Conectando..." : "Iniciar sesión"}
+            {loading ? "Conectando..." : "Ya estoy suscrito"}
           </button>
         </div>
 
@@ -493,8 +493,8 @@ export default function LandingScene({
           <div className="apple-modal-card narrow" onClick={(e) => e.stopPropagation()}>
             <div className="modal-head">
               <div>
-                <span className="mono-tag">ACCESO ANTICIPADO</span>
-                <h3>Invitación a El tablero.</h3>
+                <span className="mono-tag">SUSCRIPCIÓN // EL TABLERO.</span>
+                <h3>Suscribirme a El tablero.</h3>
               </div>
               <button
                 type="button"
@@ -521,9 +521,14 @@ export default function LandingScene({
               </div>
             )}
 
+            <p className="subscribe-explainer">
+              Te suscribís a la escena: los proyectos, los tracks y la gente que los hace, en un solo
+              lugar. Se entra con el pase de alguien que ya está suscrito.
+            </p>
+
             <form onSubmit={handleValidateAndRegister} className="modal-form-grid single-col">
               <label className="modal-field">
-                <span>CÓDIGO DE INVITACIÓN</span>
+                <span>TU PASE DE INVITACIÓN</span>
                 <input
                   value={inviteCode}
                   onChange={(e) => setInviteCode(e.target.value)}
@@ -566,7 +571,7 @@ export default function LandingScene({
                   disabled={loading}
                   style={{ justifyContent: "center", padding: "12px 18px", fontSize: "0.95rem" }}
                 >
-                  {loading ? "Conectando..." : "Continuar con Google →"}
+                  {loading ? "Conectando..." : "Suscribirme con Google →"}
                 </button>
               </div>
             </form>

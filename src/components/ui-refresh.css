@@ -1223,3 +1223,10 @@ html:root body .perf-modal-layer { background: transparent !important; }
   background: rgba(245, 158, 11, 0.12);
   border: 1px solid rgba(245, 158, 11, 0.3);
 }
+
+.subscribe-explainer {
+  margin: -2px 0 14px;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: var(--ink-secondary);
+}
