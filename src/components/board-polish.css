@@ -165,7 +165,7 @@ textarea,
 /* ==================== UNIFIED PROJECT INSPECTOR (CANVAS BEHIND + VINYL RENDER + TITLE & TRACKS) ==================== */
 .project-inspector-sheet {
   padding: 4px 16px 14px !important;
-  margin-top: 0 !important;
+  margin-top: 14px !important;
   display: flex !important;
   justify-content: center !important;
   width: 100% !important;
@@ -4009,10 +4009,21 @@ body.app-no-scroll .cp-page {
   transform: translateX(3px);
 }
 
+/* Separación y ergonomía superior en páginas para evitar superposición con la píldora navbar */
+.profile-page {
+  margin-top: 14px !important;
+}
+
+.explore-page,
+.dmg-section {
+  margin-top: 12px !important;
+}
+
 /* Reducción ergonómica en Perfil para cero scroll en desktop y laptop */
 .profile-hero-card {
   padding: 12px 18px !important;
   border-radius: 18px !important;
+  margin-top: 4px !important;
 }
 
 .profile-avatar-large {

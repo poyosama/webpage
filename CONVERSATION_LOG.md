@@ -2052,3 +2052,31 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
      - `src/components/LandingScene.tsx`: `placeholder="TABLERO-UG-2026"`.
 3. **Verificación y Deploy:**
    - Compilación exitosa en Next.js Turbopack (`npm run build`, 0 errores).
+
+---
+
+### Turno 98 — Reducción de la Píldora Navbar y Separación de Tarjetas (Inspector de Proyecto y Perfil) sin Superposición
+**Prompts del usuario:**
+1. *"esta bien pero la pildora de arriba se superpone mucho, baja un poco el flex entero o quitale tamaño a la pildora de arriba"* (adjuntó captura `image.png` mostrando la píldora fija de navegación tapando el borde superior y las insignias del inspector).
+2. *"(esto pasa con la pantalla de perfil tambien)"*
+
+**Diagnóstico visual y técnico:**
+- La píldora superior `.ios-navbar` estaba anclada fija a `top: 14px` con altura calculada de ~58px (paddings de `9px 16px` y botones internos de 36px), alcanzando su borde inferior los ~72px desde el tope de la pantalla.
+- En la vista de inspección de proyecto, la tarjeta `.project-inspector-sheet` / `.inspector-unified-stage` tenía `margin-top: 0 !important;` y el contenedor padre `.apple-shell` tenía `padding-top: 68px;`, provocando que el borde superior de la tarjeta naciera a Y=68px, solapándose directamente con los últimos 4–6px de la píldora navbar y ocultando el borde y los badges superiores.
+- En la pantalla de perfil (`@poyo`), la tarjeta `.profile-hero-card` presentaba exactamente la misma proximidad sin margen superior, quedando parcialmente tapada bajo la barra fija.
+
+**Implementación técnica aplicada:**
+1. **Reducción Proporcional de la Píldora Superior (`src/app/globals.css`):**
+   - Altura de `.ios-navbar` fijada en `height: 42px;` con `top: 10px;` y `padding: 5px 14px;` (ahorrando ~16px de altura total y situando su borde inferior a solo 52px).
+   - Título de marca `.ios-brand-title` compactado a `font-size: 1.02rem` y punto indicador de estado a `7px x 7px`.
+   - Control segmentado de navegación `.ios-seg-control`: botones reducidos a `height: 28px; padding: 4px 13px; font-size: 0.78rem;`.
+   - Botones de acción derecha `.ios-icon-btn` (tema claro/oscuro): compactados a `height: 28px; padding: 4px 10px; font-size: 0.74rem;`.
+2. **Descenso y Holgura Superior del Inspector de Proyecto (`src/components/board-polish.css`):**
+   - Se actualizó `.project-inspector-sheet` con `margin-top: 14px !important;`.
+   - Con el shell comenzando a 68px y el margen de 14px, la tarjeta ahora inicia en Y=82px, dejando un despeje limpio y continuo de ~30px de aire puro por debajo de la píldora flotante.
+3. **Despeje en Pantalla de Perfil y Demás Vistas (`src/components/board-polish.css`):**
+   - Se añadió `.profile-page { margin-top: 14px !important; }` y `.profile-hero-card { margin-top: 4px !important; }`, eliminando completamente la superposición en el perfil.
+   - Se añadió de forma preventiva `.explore-page, .dmg-section { margin-top: 12px !important; }` para asegurar una distancia armoniosa y uniforme en todas las pantallas (Inicio, Subir, Biblioteca, Perfil).
+4. **Verificación y Deploy:**
+   - Compilación exitosa en Next.js Turbopack (`npm run build`, 0 errores).
+
