@@ -1155,3 +1155,36 @@ html:root body .manifold-3d-wrapper:not(.is-compact) .manifold-3d-canvas-stage.c
   html:root body .invite-friends-modal-card .invite-modal-footer .apple-btn { flex: 1 1 0; justify-content: center; }
   html:root body .invite-friends-modal-card .invite-modal-footer > div { width: 100%; }
 }
+
+/* =====================================================================
+   ALTO REAL DE PANTALLA (--app-h, lo calcula App.tsx)
+   En la web app instalada de iOS, 100dvh queda corto (pantalla - barra de estado)
+   y aparecía una franja negra abajo del reproductor y de las pantallas bloqueadas.
+   ===================================================================== */
+html { background: var(--bg); }
+html.is-standalone,
+html.is-standalone body { min-height: var(--app-h, 100dvh); }
+html:root body .perf-modal-layer {
+  height: var(--app-h, 100dvh) !important;
+  min-height: var(--app-h, 100dvh) !important;
+}
+html:root body .perf-player {
+  height: var(--app-h, 100dvh) !important;
+  min-height: var(--app-h, 100dvh) !important;
+}
+html.app-no-scroll,
+html:root body.app-no-scroll,
+html:has(body.mobile-vinyl-wheel-locked),
+html:root body.mobile-vinyl-wheel-locked {
+  height: var(--app-h, 100dvh) !important;
+  max-height: var(--app-h, 100dvh) !important;
+}
+html:root body.app-no-scroll .apple-shell,
+html:root body.mobile-vinyl-wheel-locked .apple-shell {
+  height: var(--app-h, 100dvh) !important;
+  max-height: var(--app-h, 100dvh) !important;
+}
+@media (max-width: 720px) {
+  html:root body .project-inspector-sheet { height: var(--app-h, 100dvh) !important; }
+  html:root body .untitled-mobile-project-view { min-height: var(--app-h, 100dvh) !important; }
+}

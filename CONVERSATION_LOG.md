@@ -2251,3 +2251,12 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 - `App.tsx`: `sfx.setOnEnded(() => onTrackEndedRef.current())`; los handlers de Media Session se re-registran en cada track/estado; `seekbackward/seekforward` en `null` (si existen iOS muestra ±10 s en vez de anterior/siguiente); "anterior" con más de 3 s vuelve al principio (como Spotify); `setPositionState` con duración/posición para la barra del widget; acción `stop`.
 - Probado en navegador: al terminar "i am GOD" arranca solo "esta cumbia".
 - Shuffle y repeat: la Media Session API de la web no tiene esas acciones (iOS no las muestra para web apps); solo serían posibles en la app nativa con un plugin.
+
+---
+
+### Turno 113 — Franja negra abajo en la web app instalada (iOS)
+**Prompt del usuario:** los controles del widget funcionan; pero queda un "padding" negro abajo del reproductor: ¿es de Safari/Chrome? ¿se puede sacar en modo web app?
+
+**Diagnóstico:** no es la barra del navegador (en modo web app no hay). Es un bug de iOS en standalone con `statusBarStyle: black-translucent`: `100vh`/`100dvh` miden "pantalla − barra de estado" (~59 px en iPhones con Dynamic Island), y todo lo que usaba `100dvh` (reproductor fullscreen, layout bloqueado, hoja del proyecto) quedaba corto.
+
+**Fix:** `App.tsx` calcula `--app-h` (en standalone: alto real de `screen` según orientación; si no, `innerHeight`) y marca `html.is-standalone`; `ui-refresh.css` usa `var(--app-h, 100dvh)` en `.perf-modal-layer`, `.perf-player`, `html/body.app-no-scroll`, `.apple-shell` bloqueado, `.project-inspector-sheet` y `.untitled-mobile-project-view`; `html` con `background: var(--bg)`. El dock del reproductor ya se posiciona con `safe-area-inset-bottom`, así que baja hasta la barrita del home sin taparla. En navegador normal no cambia nada.

@@ -1432,6 +1432,35 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     ms.playbackState = isPlaying ? "playing" : "paused";
   }, [isPlaying]);
 
+  // Alto REAL de pantalla para la web app instalada (iOS standalone + barra de estado translúcida):
+  // ahí 100vh/100dvh miden "pantalla - barra de estado" y queda una franja negra abajo.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const root = document.documentElement;
+    const standalone =
+      (navigator as Navigator & { standalone?: boolean }).standalone === true ||
+      window.matchMedia("(display-mode: standalone)").matches;
+    const apply = () => {
+      let h = window.innerHeight;
+      if (standalone) {
+        const portrait = window.matchMedia("(orientation: portrait)").matches;
+        const screenH = portrait
+          ? Math.max(window.screen.height, window.screen.width)
+          : Math.min(window.screen.height, window.screen.width);
+        h = Math.max(h, screenH);
+      }
+      root.style.setProperty("--app-h", `${h}px`);
+      root.classList.toggle("is-standalone", standalone);
+    };
+    apply();
+    window.addEventListener("resize", apply);
+    window.addEventListener("orientationchange", apply);
+    return () => {
+      window.removeEventListener("resize", apply);
+      window.removeEventListener("orientationchange", apply);
+    };
+  }, []);
+
   // Fin de track con el evento nativo `ended` (en iPhone los timers se congelan en segundo plano)
   useEffect(() => {
     sfx.setOnEnded(() => onTrackEndedRef.current());
