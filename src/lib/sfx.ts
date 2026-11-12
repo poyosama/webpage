@@ -26,6 +26,11 @@ let volume = 0.85;
 
 let beatTimer: number | null = null;
 let currentAudioEl: HTMLAudioElement | null = null;
+// Un ÚNICO <audio> reutilizado para todos los tracks: en iOS un elemento nuevo no puede arrancar
+// sin un toque del usuario (en segundo plano no hay toque) y el widget del Control Center queda
+// atado al elemento viejo. Cambiando solo el `src` sigue sonando y sigue el autoplay.
+let reusableAudioEl: HTMLAudioElement | null = null;
+let endedCallback: (() => void) | null = null;
 let mediaSourceNode: MediaElementAudioSourceNode | null = null;
 let analyserNode: AnalyserNode | null = null;
 let subFilterNode: BiquadFilterNode | null = null;
@@ -40,6 +45,18 @@ let highHatEnergy = 0;
 let eightOhEightEnergy = 0;
 let subFloor = 0.04;
 let endedConsumed = false;
+
+/** Evento `ended` real del <audio>: funciona aunque iOS congele los timers en segundo plano */
+function handleAudioElEnded() {
+  if (endedConsumed) return;
+  endedConsumed = true;
+  virtualPlaying = false;
+  if (beatTimer !== null) {
+    clearInterval(beatTimer);
+    beatTimer = null;
+  }
+  endedCallback?.();
+}
 
 // Seguimiento de progreso para canciones con o sin audio subido
 let virtualCurrentSec = 0;
@@ -257,6 +274,10 @@ export const sfx = {
   setTrackDuration(durationSec: number) {
     virtualDurationSec = Math.max(15, durationSec || 174);
   },
+  /** Callback cuando termina el track (evento nativo `ended`) */
+  setOnEnded(cb: (() => void) | null) {
+    endedCallback = cb;
+  },
   getPlaybackState() {
     const now = performance.now();
     if (currentAudioEl && !Number.isNaN(currentAudioEl.duration) && currentAudioEl.duration > 0) {
@@ -373,11 +394,16 @@ export const sfx = {
         if (currentAudioEl) {
           currentAudioEl.pause();
         }
-        currentAudioEl = new Audio(audioUrl);
-        currentAudioEl.crossOrigin = "anonymous";
-        currentAudioEl.setAttribute("playsinline", "true");
-        currentAudioEl.setAttribute("webkit-playsinline", "true");
-        currentAudioEl.preload = "auto";
+        if (!reusableAudioEl) {
+          reusableAudioEl = new Audio();
+          reusableAudioEl.crossOrigin = "anonymous";
+          reusableAudioEl.setAttribute("playsinline", "true");
+          reusableAudioEl.setAttribute("webkit-playsinline", "true");
+          reusableAudioEl.preload = "auto";
+          reusableAudioEl.addEventListener("ended", handleAudioElEnded);
+        }
+        currentAudioEl = reusableAudioEl;
+        currentAudioEl.src = audioUrl;
         currentAudioEl.loop = false;
         currentAudioEl.muted = muted;
         currentAudioEl.volume = volume;

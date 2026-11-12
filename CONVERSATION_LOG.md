@@ -2255,3 +2255,18 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 4. **`LandingScene.tsx`:** "Registrarme" valida contra el servidor y guarda el pase pendiente (antes aceptaba cualquier texto de 6+ letras y no lo guardaba).
 5. **Modal de pases (celu):** hoja inferior por encima de la píldora y el reproductor, header y footer fijos, una fila compacta por pase (código · estado · Copiar link), "✓ Usado · @handle".
 6. **Entorno:** se creó el entorno `webpage` con acceso a `api.supabase.com`; la credencial cargada devolvió 401 ("JWT could not be decoded"): hace falta un *personal access token* (`sbp_…`). Migración pendiente de aplicar.
+
+---
+
+### Turno 112 — Reproducción en segundo plano (iPhone): siguiente track automático y controles del Control Center
+**Prompt del usuario:** en el iPhone, con la web app en segundo plano, el widget (Control Center / pantalla de bloqueo) solo deja pausar y mover el progreso, no saltar/anterior; y al terminar una canción no pasa a la siguiente del proyecto.
+
+**Diagnóstico:**
+1. El fin de track se detectaba con un `setInterval` de 250 ms; en segundo plano iOS congela/frena los timers → nunca se enteraba de que terminó.
+2. `sfx.ts` creaba un `new Audio()` por cada track (y `stopGroove` lo descartaba): iOS no deja arrancar un elemento nuevo sin gesto del usuario (en segundo plano no hay) y el Now Playing queda atado al elemento viejo.
+
+**Fix:**
+- `src/lib/sfx.ts`: un único `<audio>` reutilizado (`reusableAudioEl`) al que solo se le cambia el `src`; escucha el evento nativo `ended` y llama a `sfx.setOnEnded(cb)`. Comparte el flag `endedConsumed` con el polling, así nunca se dispara dos veces.
+- `App.tsx`: `sfx.setOnEnded(() => onTrackEndedRef.current())`; los handlers de Media Session se re-registran en cada track/estado; `seekbackward/seekforward` en `null` (si existen iOS muestra ±10 s en vez de anterior/siguiente); "anterior" con más de 3 s vuelve al principio (como Spotify); `setPositionState` con duración/posición para la barra del widget; acción `stop`.
+- Probado en navegador: al terminar "i am GOD" arranca solo "esta cumbia".
+- Shuffle y repeat: la Media Session API de la web no tiene esas acciones (iOS no las muestra para web apps); solo serían posibles en la app nativa con un plugin.
