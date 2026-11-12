@@ -4394,7 +4394,17 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                           }}
                         />
 
-                        <div className="inspector-tracklist">
+                        <div
+                          className="inspector-tracklist"
+                          onWheel={(e) => {
+                            // La ruedita en cualquier parte del panel mueve la lista de tracks
+                            const list = (e.currentTarget as HTMLElement).querySelector(
+                              ".inspector-tracks-list-scroll"
+                            ) as HTMLElement | null;
+                            if (!list || list.contains(e.target as Node)) return;
+                            list.scrollTop += e.deltaY;
+                          }}
+                        >
                           <div className="inspector-project-head">
                             <div className="inspector-top-badges-row">
                               <div className="inspector-top-badges-left">

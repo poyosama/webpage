@@ -2442,3 +2442,12 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 - `supabase/migration_likes.sql`: tabla `track_likes (user_id, track_id text, created_at)` con RLS (cada uno solo los suyos). Agregada al final de `APLICAR_TODO.sql`. Probado en Postgres local (re-corrida OK; otro usuario ve 0).
 - `App.tsx`: al iniciar sesión baja los ♥ de la nube y los mezcla con los del dispositivo (sube los que faltan); `toggleLike` hace upsert/delete. Si la tabla no existe, quedan solo en el dispositivo (sin errores).
 - Respuesta sobre control remoto entre dispositivos: factible con Supabase Realtime (presencia + broadcast por canal del usuario), sin tablas nuevas; pendiente de decisión del usuario.
+
+---
+
+### Turno 130 — Scroll de la lista de tracks dentro del proyecto
+**Prompt del usuario:** al entrar a un proyecto no se puede scrollear para ver las canciones; con más de 5 no se llegan a ver.
+
+**Diagnóstico (web, 1200×650):** la lista tenía scroll propio pero en una cajita de 221 px sin barra visible, y la página está bloqueada → la ruedita fuera de esa cajita no hacía nada; además el panel se pasaba del área (581 px en 516) y el "+" quedaba detrás del reproductor.
+
+**Fix:** `.project-inspector-sheet` y `.inspector-unified-stage` acotados al alto del área (flex, `max-height: 100%`); la lista ocupa todo el alto restante con barrita fina visible; `onWheel` en `.inspector-tracklist` reenvía la ruedita a la lista aunque el mouse esté sobre el título. En celu: `touch-action: pan-y` explícito en la hoja del proyecto. Probado: 9 tracks, panel dentro del área, ruedita sobre el título mueve la lista.
