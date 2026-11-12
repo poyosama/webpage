@@ -387,8 +387,37 @@
 }
 
 .manifold-3d-wrapper.is-compact .vinyl-fan-arc-viewport {
-  height: clamp(280px, 32vh, 330px) !important;
+  height: clamp(330px, 39vh, 380px) !important;
   padding: 8px 18px 8px !important;
+  overflow: hidden !important;
+}
+
+/* Máscara de desvanecimiento suave vertical: 
+   Permite ver el seleccionado 100% nítido en el centro, 1 arriba y 1 abajo completos, 
+   y el siguiente asomando difuminado hasta la mitad sin corte duro contra el borde */
+.vinyl-fan-arc-wheel {
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(0, 0, 0, 0.25) 4%,
+    rgba(0, 0, 0, 0.75) 12%,
+    #000000 22%,
+    #000000 78%,
+    rgba(0, 0, 0, 0.75) 88%,
+    rgba(0, 0, 0, 0.25) 96%,
+    transparent 100%
+  ) !important;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(0, 0, 0, 0.25) 4%,
+    rgba(0, 0, 0, 0.75) 12%,
+    #000000 22%,
+    #000000 78%,
+    rgba(0, 0, 0, 0.75) 88%,
+    rgba(0, 0, 0, 0.25) 96%,
+    transparent 100%
+  ) !important;
 }
 
 @media (min-width: 721px) {
@@ -398,17 +427,17 @@
   }
 
   .manifold-3d-wrapper.is-compact .vinyl-fan-sleeve-card {
-    width: 184px !important;
-    height: 184px !important;
-    margin-top: -92px !important;
-    transform-origin: -130px 50% !important;
-  }
-
-  .manifold-3d-wrapper.is-compact .vinyl-fan-record-disc {
     width: 168px !important;
     height: 168px !important;
     margin-top: -84px !important;
-    right: -30px !important;
+    transform-origin: -120px 50% !important;
+  }
+
+  .manifold-3d-wrapper.is-compact .vinyl-fan-record-disc {
+    width: 154px !important;
+    height: 154px !important;
+    margin-top: -77px !important;
+    right: -28px !important;
   }
 
   .manifold-3d-wrapper.is-compact .vinyl-fan-sleeve-card.is-focused .vinyl-fan-record-disc {
@@ -438,5 +467,123 @@
 .manifold-3d-wrapper.is-compact .untitled-catalog-grid {
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important;
   gap: 12px !important;
+}
+
+/* ==================== 6. VINILO GHOST PUNTEADO (+ CREAR PROYECTO) ==================== */
+.vinyl-fan-sleeve-card.is-create-slot {
+  cursor: pointer;
+}
+
+.vinyl-fan-sleeve-body.is-create-sleeve {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 2px dashed rgba(0, 0, 0, 0.28) !important;
+  border-radius: 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  backdrop-filter: blur(16px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(140%) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05), inset 0 0 16px rgba(0, 0, 0, 0.02) !important;
+  transition: border-color 0.22s ease, background 0.22s ease, box-shadow 0.22s ease !important;
+}
+
+:root[data-theme="dark"] .vinyl-fan-sleeve-body.is-create-sleeve {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 2px dashed rgba(255, 255, 255, 0.35) !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35), inset 0 0 20px rgba(255, 255, 255, 0.02) !important;
+}
+
+.vinyl-fan-sleeve-card.is-create-slot:hover .vinyl-fan-sleeve-body.is-create-sleeve,
+.vinyl-fan-sleeve-card.is-create-slot.is-focused .vinyl-fan-sleeve-body.is-create-sleeve {
+  border-color: #f43f5e !important;
+  background: rgba(244, 63, 94, 0.08) !important;
+  box-shadow: 0 12px 34px rgba(244, 63, 94, 0.2), inset 0 0 20px rgba(244, 63, 94, 0.06) !important;
+}
+
+.create-sleeve-dashed-border {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  box-sizing: border-box;
+}
+
+.create-sleeve-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 4px;
+}
+
+.create-sleeve-plus {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+  font-size: 3rem;
+  font-weight: 200;
+  line-height: 0.9;
+  color: var(--ink);
+  transition: transform 0.22s ease, color 0.22s ease;
+}
+
+:root[data-theme="dark"] .create-sleeve-plus {
+  color: #ffffff;
+}
+
+.vinyl-fan-sleeve-card.is-create-slot:hover .create-sleeve-plus,
+.vinyl-fan-sleeve-card.is-create-slot.is-focused .create-sleeve-plus {
+  color: #f43f5e;
+  transform: scale(1.12) rotate(90deg);
+}
+
+.create-sleeve-label {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--ink);
+  text-transform: uppercase;
+}
+
+:root[data-theme="dark"] .create-sleeve-label {
+  color: #ffffff;
+}
+
+.create-sleeve-hint {
+  font-size: 0.62rem;
+  color: var(--ink-muted);
+  letter-spacing: -0.01em;
+}
+
+/* Disco de vinilo matriz virgen para la ranura + */
+.vinyl-fan-record-disc.is-create-disc {
+  border: 1px dashed rgba(255, 255, 255, 0.3) !important;
+}
+
+.vinyl-fan-record-label.is-create-label {
+  background: radial-gradient(circle, #24242e 0%, #0d0d12 85%) !important;
+  border: 1px dashed rgba(244, 63, 94, 0.55) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.vinyl-create-plus-icon {
+  font-size: 1.15rem;
+  font-weight: 300;
+  color: #f43f5e;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.vinyl-fan-inspector-card.is-create-inspector-card {
+  border-color: rgba(244, 63, 94, 0.3) !important;
+}
+
+.vinyl-fan-inspector-card.is-create-inspector-card:hover {
+  border-color: #f43f5e !important;
+  box-shadow: 0 14px 36px rgba(244, 63, 94, 0.18) !important;
 }
 

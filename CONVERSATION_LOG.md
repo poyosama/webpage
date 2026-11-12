@@ -1742,5 +1742,33 @@
 5. **Verificación y Deploy:**
    - Compilación exitosa con Next.js Turbopack (`npm run build`, 0 errores).
 
+---
+
+### Turno 88 — Rueda de Vinilos con Curva Óptica (Seleccionado, 1 Completo y 1 Difuminado a la Mitad) + Vinilo Ghost Punteado `+` para Crear Proyecto
+**Pedido del usuario (`juani`):**
+- *"mira los vinilos se cortan ahi abajo, quiero que se vea (tanto para arriba como para abajo) el seleccionado, 1 mas completo, y uno mas difuminado hasta como la mitad, que con el scroll se deja de difuminar y otro atrás toma su lugar, se entiende ? y quiero que agregues un vinilo mas como en lineas punteadas y un simbolo de + que seapara crear otro proyecto"*
+
+**Implementación técnica aplicada (`ManifoldLibrary3D.tsx`, `library-polish.css`):**
+1. **Curva de Difuminado Óptico y Transición Dinámica (`ManifoldLibrary3D.tsx`):**
+   - **Seleccionado (`absDelta <= 0.35`):** 100% visible, nítido (`itemOpacity = 1.0`, `blur = 0px`), con el disco de vinilo saliendo a la derecha con rotación e inspector activo.
+   - **1 más completo (`0.35 < absDelta <= 1.25`):** tanto arriba (`delta = -1`) como abajo (`delta = 1`) se ve entero, dentro del viewport, con opacidad alta (`0.95` a `0.86`) y sin desenfoque (`blur = 0px`).
+   - **Uno más difuminado hasta como la mitad (`1.25 < absDelta <= 2.35`):** asoma la mitad en el arco vertical, con opacidad decreciente (`0.80` a `0.06`) y desenfoque óptico progresivo `blur(Math.min(4.5, (absDelta - 1.15) * 3.2)px)`.
+   - **Transición con Scroll:** al scrollear o arrastrar con el puntero/touch, el que asomaba a la mitad se va des-difuminando suavemente hasta ser el "1 más completo" y luego el "seleccionado", mientras el de atrás entra a tomar su lugar asomando difuminado.
+2. **Máscara de Gradiente Vertical sin Cortes Duros (`library-polish.css`):**
+   - Se aplicó `mask-image` y `-webkit-mask-image` sobre `.vinyl-fan-arc-wheel`:
+     `linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.25) 4%, rgba(0,0,0,0.75) 12%, #000 22%, #000 78%, rgba(0,0,0,0.75) 88%, rgba(0,0,0,0.25) 96%, transparent 100%)`.
+   - Garantiza que NINGÚN vinilo sufra un corte rectangular rígido contra el borde; se funden en el aire de forma inmaculada.
+   - La columna derecha del inspector permanece 100% nítida y legible.
+3. **Vinilo Ghost con Líneas Punteadas y `+` para Crear Proyecto (`ManifoldLibrary3D.tsx`, `library-polish.css`):**
+   - Se incorporó un slot virtual de creación de proyecto (`WheelItem` de tipo `create`) al final de la rueda.
+   - **Funda punteada:** `.is-create-sleeve` con `border: 2px dashed rgba(...)`, fondo de vidrio esmerilado translúcido con blur de 16px, glifo `+` fino y elegante en tipografía Apple, rótulo `NUEVO PROYECTO` en mono y pista `Álbum · EP · Mixtape`.
+   - **Disco virgen matriz:** `.is-create-disc` con sello circular en gradiente carbón y símbolo `+` carmesí.
+   - Al seleccionarse en la rueda, el inspector derecho muestra una tarjeta editorial especial: `+ NUEVO // EL TABLERO`, título `+ Crear Proyecto` y botón `Crear proyecto →`.
+   - Al tocar el vinilo o la tarjeta se ejecuta `onOpenCreateProject()`.
+   - Los controles de paso (▲/▼), arrastre táctil y contador `+/{total}` se integraron con este slot virtual.
+4. **Verificación y Deploy:**
+   - Compilación exitosa con Next.js Turbopack (`npm run build`, 0 errores de TypeScript).
+
+
 
 

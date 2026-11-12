@@ -857,17 +857,23 @@ export default function ManifoldLibrary3D({
     }
   };
 
+  const hasCreateSlot = Boolean(onOpenCreateProject);
+  const totalWheelItemsCount = projects.length + (hasCreateSlot ? 1 : 0);
+
   const stepVinylArc = (dir: -1 | 1) => {
-    if (projects.length === 0) return;
+    if (totalWheelItemsCount === 0) return;
+    const maxIdx = Math.max(0, totalWheelItemsCount - 1);
     const nextIdx = Math.max(
       0,
-      Math.min(projects.length - 1, Math.round(arcOffset) + dir)
+      Math.min(maxIdx, Math.round(arcOffset) + dir)
     );
     sfx.tick();
     setArcOffset(nextIdx);
-    const targetProj = projects[nextIdx];
-    if (targetProj) {
-      onSelectProject(targetProj);
+    if (nextIdx < projects.length) {
+      const targetProj = projects[nextIdx];
+      if (targetProj) {
+        onSelectProject(targetProj);
+      }
     }
   };
 
@@ -1201,289 +1207,448 @@ export default function ManifoldLibrary3D({
               </div>
             </div>
           ) : (
-            <div
-              className="vinyl-fan-arc-viewport"
-              style={{ touchAction: "none" }}
-              onWheel={(e) => {
-                if (projects.length <= 1) return;
-                if (Math.abs(e.deltaY) > 12) {
-                  stepVinylArc(e.deltaY > 0 ? 1 : -1);
-                }
-              }}
-              onPointerDown={(e) => {
-                if (
-                  e.clientY <= 220 ||
-                  (e.target as HTMLElement).closest(
-                    ".vinyl-fan-inspector-card, .vinyl-arc-step-controls, .ios-navbar"
-                  )
-                ) {
-                  return;
-                }
-                arcDragRef.current = {
-                  dragging: true,
-                  startY: e.clientY,
-                  startX: e.clientX,
-                  startOff: arcOffset,
-                  moved: false,
-                  justDragged: false,
-                };
-              }}
-              onPointerMove={(e) => {
-                if (!arcDragRef.current.dragging) return;
-                const dy = e.clientY - arcDragRef.current.startY;
-                const dx = e.clientX - arcDragRef.current.startX;
-                const primaryDelta = Math.abs(dy) >= Math.abs(dx) ? dy : dx;
-                if (Math.abs(primaryDelta) > 6) {
-                  arcDragRef.current.moved = true;
-                  arcDragRef.current.justDragged = true;
-                }
-                if (arcDragRef.current.moved) {
-                  const sensitivity = isMobileViewport ? 56 : 82;
-                  const nextOff = Math.max(
-                    0,
-                    Math.min(
-                      projects.length - 1,
-                      arcDragRef.current.startOff - primaryDelta / sensitivity
-                    )
-                  );
-                  setArcOffset(nextOff);
-                }
-              }}
-              onPointerUp={() => {
-                if (!arcDragRef.current.dragging) return;
-                const wasMoved = arcDragRef.current.moved;
-                arcDragRef.current.dragging = false;
-                if (wasMoved) {
-                  const snapped = Math.max(
-                    0,
-                    Math.min(projects.length - 1, Math.round(arcOffset))
-                  );
-                  setArcOffset(snapped);
-                  const targetProj = projects[snapped];
-                  if (targetProj) {
-                    sfx.tick();
-                    onSelectProject(targetProj);
-                  }
-                  window.setTimeout(() => {
-                    arcDragRef.current.justDragged = false;
-                  }, 80);
-                }
-              }}
-              onPointerCancel={() => {
-                if (!arcDragRef.current.dragging) return;
-                arcDragRef.current.dragging = false;
-                const snapped = Math.max(
-                  0,
-                  Math.min(projects.length - 1, Math.round(arcOffset))
-                );
-                setArcOffset(snapped);
-              }}
-              onPointerLeave={() => {
-                if (!arcDragRef.current.dragging) return;
-                arcDragRef.current.dragging = false;
-                const snapped = Math.max(
-                  0,
-                  Math.min(projects.length - 1, Math.round(arcOffset))
-                );
-                setArcOffset(snapped);
-              }}
-            >
-              <div className="vinyl-arc-step-controls">
-                <button
-                  type="button"
-                  className="vinyl-step-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    stepVinylArc(-1);
+            (() => {
+              type WheelItem =
+                | { type: "project"; project: Project; key: string }
+                | { type: "create"; key: string };
+
+              const wheelItems: WheelItem[] = [
+                ...projects.map((p) => ({
+                  type: "project" as const,
+                  project: p,
+                  key: p.id,
+                })),
+                ...(hasCreateSlot
+                  ? [{ type: "create" as const, key: "__create_vinyl_slot__" }]
+                  : []),
+              ];
+
+              const maxWheelIndex = Math.max(0, wheelItems.length - 1);
+              const isCreateSlotFocused =
+                hasCreateSlot && Math.round(arcOffset) === projects.length;
+
+              return (
+                <div
+                  className="vinyl-fan-arc-viewport"
+                  style={{ touchAction: "none" }}
+                  onWheel={(e) => {
+                    if (wheelItems.length <= 1) return;
+                    if (Math.abs(e.deltaY) > 12) {
+                      stepVinylArc(e.deltaY > 0 ? 1 : -1);
+                    }
                   }}
-                  disabled={Math.round(arcOffset) <= 0}
-                  title="Vinilo anterior"
-                >
-                  ▲
-                </button>
-                <span className="vinyl-step-counter">
-                  {Math.min(projects.length, Math.max(1, Math.round(arcOffset) + 1))}/{projects.length}
-                </span>
-                <button
-                  type="button"
-                  className="vinyl-step-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    stepVinylArc(1);
+                  onPointerDown={(e) => {
+                    if (
+                      e.clientY <= 220 ||
+                      (e.target as HTMLElement).closest(
+                        ".vinyl-fan-inspector-card, .vinyl-arc-step-controls, .ios-navbar"
+                      )
+                    ) {
+                      return;
+                    }
+                    arcDragRef.current = {
+                      dragging: true,
+                      startY: e.clientY,
+                      startX: e.clientX,
+                      startOff: arcOffset,
+                      moved: false,
+                      justDragged: false,
+                    };
                   }}
-                  disabled={Math.round(arcOffset) >= projects.length - 1}
-                  title="Siguiente vinilo"
+                  onPointerMove={(e) => {
+                    if (!arcDragRef.current.dragging) return;
+                    const dy = e.clientY - arcDragRef.current.startY;
+                    const dx = e.clientX - arcDragRef.current.startX;
+                    const primaryDelta = Math.abs(dy) >= Math.abs(dx) ? dy : dx;
+                    if (Math.abs(primaryDelta) > 6) {
+                      arcDragRef.current.moved = true;
+                      arcDragRef.current.justDragged = true;
+                    }
+                    if (arcDragRef.current.moved) {
+                      const sensitivity = isMobileViewport ? 56 : 82;
+                      const nextOff = Math.max(
+                        0,
+                        Math.min(
+                          maxWheelIndex,
+                          arcDragRef.current.startOff - primaryDelta / sensitivity
+                        )
+                      );
+                      setArcOffset(nextOff);
+                    }
+                  }}
+                  onPointerUp={() => {
+                    if (!arcDragRef.current.dragging) return;
+                    const wasMoved = arcDragRef.current.moved;
+                    arcDragRef.current.dragging = false;
+                    if (wasMoved) {
+                      const snapped = Math.max(
+                        0,
+                        Math.min(maxWheelIndex, Math.round(arcOffset))
+                      );
+                      setArcOffset(snapped);
+                      if (snapped < projects.length) {
+                        const targetProj = projects[snapped];
+                        if (targetProj) {
+                          sfx.tick();
+                          onSelectProject(targetProj);
+                        }
+                      } else {
+                        sfx.tick();
+                      }
+                      window.setTimeout(() => {
+                        arcDragRef.current.justDragged = false;
+                      }, 80);
+                    }
+                  }}
+                  onPointerCancel={() => {
+                    if (!arcDragRef.current.dragging) return;
+                    arcDragRef.current.dragging = false;
+                    const snapped = Math.max(
+                      0,
+                      Math.min(maxWheelIndex, Math.round(arcOffset))
+                    );
+                    setArcOffset(snapped);
+                  }}
+                  onPointerLeave={() => {
+                    if (!arcDragRef.current.dragging) return;
+                    arcDragRef.current.dragging = false;
+                    const snapped = Math.max(
+                      0,
+                      Math.min(maxWheelIndex, Math.round(arcOffset))
+                    );
+                    setArcOffset(snapped);
+                  }}
                 >
-                  ▼
-                </button>
-              </div>
-
-              <div className="vinyl-fan-arc-wheel">
-                {projects.map((p, idx) => {
-                  const delta = idx - arcOffset;
-                  const absDelta = Math.abs(delta);
-                  const angleDeg = delta * (isMobileViewport ? 14 : compact ? 14.5 : 17.5);
-                  const angleRad = (angleDeg * Math.PI) / 180;
-                  const radiusX = isMobileViewport ? 115 : compact ? 180 : 270;
-                  const radiusY = isMobileViewport ? 136 : compact ? 165 : 275;
-
-                  const tx =
-                    (Math.cos(angleRad) - 1) * radiusX +
-                    (absDelta < 0.35 ? (isMobileViewport ? 14 : compact ? 16 : 26) : 0);
-                  const ty = Math.sin(angleRad) * radiusY;
-                  const rotZ = angleDeg * 0.78;
-                  const scale = Math.max(0.76, 1 - absDelta * 0.065);
-                  const zIndex = Math.round(30 - absDelta * 6);
-                  const isFocused = Math.round(arcOffset) === idx;
-
-                  return (
-                    <div
-                      key={p.id}
-                      data-project-id={p.id}
-                      role="button"
-                      tabIndex={0}
-                      className={`vinyl-fan-sleeve-card ${isFocused ? "is-focused" : ""} ${
-                        dropTargetProjectId === p.id ? "is-drop-target" : ""
-                      }`}
-                      style={{
-                        transform: `translate3d(${tx.toFixed(1)}px, ${ty.toFixed(1)}px, 0px) rotate(${rotZ.toFixed(2)}deg) scale(${scale.toFixed(3)})`,
-                        zIndex,
-                        opacity: absDelta > 3.2 ? 0 : 1,
-                        filter: isFocused
-                          ? "none"
-                          : `brightness(${Math.max(0.62, 0.88 - absDelta * 0.08).toFixed(2)})`,
-                        pointerEvents: absDelta > 3.2 ? "none" : "auto",
-                        touchAction: "none",
-                      }}
+                  <div className="vinyl-arc-step-controls">
+                    <button
+                      type="button"
+                      className="vinyl-step-btn"
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (arcDragRef.current.justDragged) {
-                          arcDragRef.current.justDragged = false;
-                          return;
-                        }
-                        const alreadyCentered = absDelta < 0.35 && p.id === activeProject?.id;
-                        if (!alreadyCentered) {
-                          // Si tocás un vinilo de arriba o de abajo, scrollea la rueda a esa posición sin abrirlo todavía
-                          sfx.tick();
-                          setArcOffset(idx);
-                          onSelectProject(p);
-                          return;
-                        }
-                        // Si ya está en la posición central y lo tocás, ahí entrás al proyecto
-                        sfx.tap();
-                        if (onDiveIntoProject) {
+                        stepVinylArc(-1);
+                      }}
+                      disabled={Math.round(arcOffset) <= 0}
+                      title="Vinilo anterior"
+                    >
+                      ▲
+                    </button>
+                    <span className="vinyl-step-counter">
+                      {isCreateSlotFocused
+                        ? `+/${projects.length}`
+                        : `${Math.min(projects.length, Math.max(1, Math.round(arcOffset) + 1))}/${projects.length}`}
+                    </span>
+                    <button
+                      type="button"
+                      className="vinyl-step-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        stepVinylArc(1);
+                      }}
+                      disabled={Math.round(arcOffset) >= maxWheelIndex}
+                      title="Siguiente vinilo"
+                    >
+                      ▼
+                    </button>
+                  </div>
+
+                  <div className="vinyl-fan-arc-wheel">
+                    {wheelItems.map((item, idx) => {
+                      const delta = idx - arcOffset;
+                      const absDelta = Math.abs(delta);
+                      const angleDeg = delta * (isMobileViewport ? 14 : compact ? 15 : 15.5);
+                      const angleRad = (angleDeg * Math.PI) / 180;
+                      const radiusX = isMobileViewport ? 115 : compact ? 175 : 255;
+                      const radiusY = isMobileViewport ? 145 : compact ? 170 : 235;
+
+                      const tx =
+                        (Math.cos(angleRad) - 1) * radiusX +
+                        (absDelta < 0.35 ? (isMobileViewport ? 14 : compact ? 16 : 24) : 0);
+                      const ty = Math.sin(angleRad) * radiusY;
+                      const rotZ = angleDeg * 0.72;
+                      const scale = Math.max(0.74, 1 - absDelta * 0.075);
+                      const zIndex = Math.round(35 - absDelta * 6);
+                      const isFocused = Math.round(arcOffset) === idx;
+
+                      // Curva de opacidad y difuminado óptico:
+                      // - Seleccionado (absDelta <= 0.35): opacidad 1.0, blur 0
+                      // - 1 más completo (0.35 < absDelta <= 1.25): opacidad alta (0.95 a 0.86), blur 0 (se ve entero)
+                      // - Uno más difuminado hasta como la mitad (1.25 < absDelta <= 2.35): opacidad desciende progresivamente de 0.80 a 0.08, blur óptico suave
+                      // - Más allá (absDelta > 2.35): invisible (opacidad 0)
+                      const itemOpacity =
+                        absDelta <= 0.35
+                          ? 1
+                          : absDelta <= 1.25
+                          ? Math.max(0.85, 1 - (absDelta - 0.35) * 0.14)
+                          : absDelta <= 2.35
+                          ? Math.max(0.06, 0.85 - ((absDelta - 1.25) / 1.1) * 0.78)
+                          : 0;
+
+                      const blurPx = absDelta <= 1.15 ? 0 : Math.min(4.5, (absDelta - 1.15) * 3.2);
+                      const brightnessVal = isFocused ? 1 : Math.max(0.68, 0.94 - absDelta * 0.12);
+
+                      if (item.type === "create") {
+                        return (
+                          <div
+                            key={item.key}
+                            role="button"
+                            tabIndex={0}
+                            className={`vinyl-fan-sleeve-card is-create-slot ${
+                              isFocused ? "is-focused" : ""
+                            }`}
+                            style={{
+                              transform: `translate3d(${tx.toFixed(1)}px, ${ty.toFixed(1)}px, 0px) rotate(${rotZ.toFixed(2)}deg) scale(${scale.toFixed(3)})`,
+                              zIndex,
+                              opacity: itemOpacity,
+                              filter: `${blurPx > 0 ? `blur(${blurPx.toFixed(1)}px) ` : ""}brightness(${brightnessVal.toFixed(2)})`,
+                              pointerEvents: absDelta > 2.35 ? "none" : "auto",
+                              touchAction: "none",
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (arcDragRef.current.justDragged) {
+                                arcDragRef.current.justDragged = false;
+                                return;
+                              }
+                              if (absDelta >= 0.35) {
+                                sfx.tick();
+                                setArcOffset(idx);
+                                return;
+                              }
+                              if (onOpenCreateProject) {
+                                sfx.open();
+                                onOpenCreateProject();
+                              }
+                            }}
+                          >
+                            <div className="vinyl-fan-record-disc is-create-disc">
+                              <div className="vinyl-fan-record-label is-create-label">
+                                <span className="vinyl-create-plus-icon">+</span>
+                                <span className="vinyl-fan-record-hole" />
+                              </div>
+                            </div>
+
+                            <div className="vinyl-fan-sleeve-body is-create-sleeve">
+                              <div className="create-sleeve-dashed-border">
+                                <div className="create-sleeve-content">
+                                  <span className="create-sleeve-plus">+</span>
+                                  <span className="create-sleeve-label">NUEVO PROYECTO</span>
+                                  <small className="create-sleeve-hint">Álbum · EP · Mixtape</small>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      const p = item.project;
+                      return (
+                        <div
+                          key={p.id}
+                          data-project-id={p.id}
+                          role="button"
+                          tabIndex={0}
+                          className={`vinyl-fan-sleeve-card ${isFocused ? "is-focused" : ""} ${
+                            dropTargetProjectId === p.id ? "is-drop-target" : ""
+                          }`}
+                          style={{
+                            transform: `translate3d(${tx.toFixed(1)}px, ${ty.toFixed(1)}px, 0px) rotate(${rotZ.toFixed(2)}deg) scale(${scale.toFixed(3)})`,
+                            zIndex,
+                            opacity: itemOpacity,
+                            filter: `${blurPx > 0 ? `blur(${blurPx.toFixed(1)}px) ` : ""}brightness(${brightnessVal.toFixed(2)})`,
+                            pointerEvents: absDelta > 2.35 ? "none" : "auto",
+                            touchAction: "none",
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (arcDragRef.current.justDragged) {
+                              arcDragRef.current.justDragged = false;
+                              return;
+                            }
+                            const alreadyCentered = absDelta < 0.35 && p.id === activeProject?.id;
+                            if (!alreadyCentered) {
+                              sfx.tick();
+                              setArcOffset(idx);
+                              onSelectProject(p);
+                              return;
+                            }
+                            sfx.tap();
+                            if (onDiveIntoProject) {
+                              sfx.open();
+                              onDiveIntoProject(p);
+                            }
+                          }}
+                        >
+                          <div
+                            className="vinyl-fan-record-disc"
+                            style={{
+                              borderColor: p.c2,
+                            }}
+                          >
+                            <div
+                              className="vinyl-fan-record-label"
+                              style={{
+                                background: p.coverUrl
+                                  ? `url(${p.coverUrl}) center / cover no-repeat`
+                                  : `radial-gradient(circle, ${p.c2} 0%, ${p.c1} 85%)`,
+                              }}
+                            >
+                              <span className="vinyl-fan-record-hole" />
+                            </div>
+                          </div>
+
+                          <div
+                            className={`vinyl-fan-sleeve-body ${p.coverUrl ? "has-cover-art" : ""}`}
+                            style={{
+                              background: p.coverUrl
+                                ? `url(${p.coverUrl}) center / cover no-repeat`
+                                : `linear-gradient(135deg, ${p.c1} 0%, ${p.c2} 135%)`,
+                            }}
+                          >
+                            {transferAnimation?.targetProjectId === p.id && (
+                              <div className="track-transfer-entry-portal">
+                                <div className="track-sliding-in-right">
+                                  <span>🎵</span>
+                                  <b>{transferAnimation.trackTitle}</b>
+                                </div>
+                                <div className="track-drop-pop-tick">
+                                  <span className="pop-tick-icon">✓</span>
+                                  <span className="pop-tick-text">Tema agregado</span>
+                                </div>
+                              </div>
+                            )}
+                            {!p.coverUrl && (
+                              <div className="vinyl-fan-center-crest">
+                                <div className="crest-ring">
+                                  <strong>{p.tracks[0]?.glyph || "01"}</strong>
+                                  <small>{p.type}</small>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {isCreateSlotFocused ? (
+                    <div
+                      className="vinyl-fan-inspector-card vinyl-fan-clean-title-card is-clickable-card is-create-inspector-card"
+                      role="button"
+                      tabIndex={0}
+                      title="Crear un nuevo proyecto"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onOpenCreateProject) {
                           sfx.open();
-                          onDiveIntoProject(p);
+                          onOpenCreateProject();
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          if (onOpenCreateProject) {
+                            sfx.open();
+                            onOpenCreateProject();
+                          }
                         }
                       }}
                     >
-                      <div
-                        className="vinyl-fan-record-disc"
-                        style={{
-                          borderColor: p.c2,
-                        }}
-                      >
-                        <div
-                          className="vinyl-fan-record-label"
-                          style={{
-                            background: p.coverUrl
-                              ? `url(${p.coverUrl}) center / cover no-repeat`
-                              : `radial-gradient(circle, ${p.c2} 0%, ${p.c1} 85%)`,
-                          }}
+                      <div className="vinyl-right-info-stack">
+                        <span
+                          className="vinyl-right-meta-pill"
+                          style={{ borderColor: "#f43f5e", color: "#f43f5e" }}
                         >
-                          <span className="vinyl-fan-record-hole" />
+                          NUEVO // EL TABLERO
+                        </span>
+                        <h2 className="vinyl-active-title">+ Crear Proyecto</h2>
+                        <p className="vinyl-right-artist-name">
+                          Nuevo álbum, EP, mixtape o single con canvas
+                        </p>
+                        <div className="vinyl-right-action-row">
+                          <span
+                            className="vinyl-right-enter-chip"
+                            style={{
+                              background: "#f43f5e",
+                              color: "#ffffff",
+                              borderColor: "#f43f5e",
+                            }}
+                          >
+                            Crear proyecto
+                            <svg
+                              width="12"
+                              height="12"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2.4"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              aria-hidden
+                            >
+                              <line x1="5" y1="12" x2="19" y2="12"></line>
+                              <polyline points="12 5 19 12 12 19"></polyline>
+                            </svg>
+                          </span>
                         </div>
                       </div>
-
-                      <div
-                        className={`vinyl-fan-sleeve-body ${p.coverUrl ? "has-cover-art" : ""}`}
-                        style={{
-                          background: p.coverUrl
-                            ? `url(${p.coverUrl}) center / cover no-repeat`
-                            : `linear-gradient(135deg, ${p.c1} 0%, ${p.c2} 135%)`,
-                        }}
-                      >
-                        {transferAnimation?.targetProjectId === p.id && (
-                          <div className="track-transfer-entry-portal">
-                            <div className="track-sliding-in-right">
-                              <span>🎵</span>
-                              <b>{transferAnimation.trackTitle}</b>
-                            </div>
-                            <div className="track-drop-pop-tick">
-                              <span className="pop-tick-icon">✓</span>
-                              <span className="pop-tick-text">Tema agregado</span>
-                            </div>
-                          </div>
+                    </div>
+                  ) : activeProject ? (
+                    <div
+                      className="vinyl-fan-inspector-card vinyl-fan-clean-title-card is-clickable-card"
+                      role="button"
+                      tabIndex={0}
+                      title={`Abrir ${activeProject.title}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onDiveIntoProject) {
+                          sfx.open();
+                          onDiveIntoProject(activeProject);
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          if (onDiveIntoProject) {
+                            sfx.open();
+                            onDiveIntoProject(activeProject);
+                          }
+                        }
+                      }}
+                    >
+                      <div className="vinyl-right-info-stack">
+                        <span className="vinyl-right-meta-pill">
+                          {activeProject.type.toUpperCase()} · {activeProject.tracks.length}{" "}
+                          {activeProject.tracks.length === 1 ? "TRACK" : "TRACKS"}
+                        </span>
+                        <h2 className="vinyl-active-title">{activeProject.title}</h2>
+                        {activeProject.artist && (
+                          <p className="vinyl-right-artist-name">{activeProject.artist}</p>
                         )}
-                        {!p.coverUrl && (
-                          <div className="vinyl-fan-center-crest">
-                            <div className="crest-ring">
-                              <strong>{p.tracks[0]?.glyph || "01"}</strong>
-                              <small>{p.type}</small>
-                            </div>
-                          </div>
-                        )}
+                        <div className="vinyl-right-action-row">
+                          <span className="vinyl-right-enter-chip">
+                            Abrir proyecto
+                            <svg
+                              width="12"
+                              height="12"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2.4"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              aria-hidden
+                            >
+                              <line x1="5" y1="12" x2="19" y2="12"></line>
+                              <polyline points="12 5 19 12 12 19"></polyline>
+                            </svg>
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-
-              {activeProject && (
-                <div
-                  className="vinyl-fan-inspector-card vinyl-fan-clean-title-card is-clickable-card"
-                  role="button"
-                  tabIndex={0}
-                  title={`Abrir ${activeProject.title}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (onDiveIntoProject) {
-                      sfx.open();
-                      onDiveIntoProject(activeProject);
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      if (onDiveIntoProject) {
-                        sfx.open();
-                        onDiveIntoProject(activeProject);
-                      }
-                    }
-                  }}
-                >
-                  <div className="vinyl-right-info-stack">
-                    <span className="vinyl-right-meta-pill">
-                      {activeProject.type.toUpperCase()} · {activeProject.tracks.length}{" "}
-                      {activeProject.tracks.length === 1 ? "TRACK" : "TRACKS"}
-                    </span>
-                    <h2 className="vinyl-active-title">{activeProject.title}</h2>
-                    {activeProject.artist && (
-                      <p className="vinyl-right-artist-name">{activeProject.artist}</p>
-                    )}
-                    <div className="vinyl-right-action-row">
-                      <span className="vinyl-right-enter-chip">
-                        Abrir proyecto
-                        <svg
-                          width="12"
-                          height="12"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2.4"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          aria-hidden
-                        >
-                          <line x1="5" y1="12" x2="19" y2="12"></line>
-                          <polyline points="12 5 19 12 12 19"></polyline>
-                        </svg>
-                      </span>
-                    </div>
-                  </div>
+                  ) : null}
                 </div>
-              )}
-            </div>
+              );
+            })()
           )}
       </div>
 
