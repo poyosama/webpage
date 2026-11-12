@@ -97,6 +97,9 @@ const PRODUCER_DROP_KINDS: ("Todos" | ProducerDropKind)[] = [
   "Catálogo de Beats",
 ];
 
+const LIKED_PROJECT_ID = "__tus-me-gusta__";
+const LIKED_COVER = "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%20600%20600%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%233b0764%27/%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%23e11d48%27/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width%3D%27600%27%20height%3D%27600%27%20fill%3D%27url%28%23g%29%27/%3E%3Cpath%20d%3D%27M300%20470%20C180%20380%20110%20315%20110%20235%20C110%20178%20155%20135%20212%20135%20C248%20135%20280%20154%20300%20185%20C320%20154%20352%20135%20388%20135%20C445%20135%20490%20178%20490%20235%20C490%20315%20420%20380%20300%20470Z%27%20fill%3D%27%23fff%27/%3E%3C/svg%3E";
+
 /** Segundos que puede escuchar alguien que todavía no se suscribió */
 const GUEST_PREVIEW_SEC = 25;
 /** Tracks destacados que se pueden escuchar sin suscribirse */
@@ -253,6 +256,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   const [shuffle, setShuffle] = useState<boolean>(false);
   const [repeatMode, setRepeatMode] = useState<RepeatMode>("off");
   const [likedTrackIds, setLikedTrackIds] = useState<string[]>([]);
+  const likesLoadedRef = useRef(false);
   const [userQueue, setUserQueue] = useState<QueueEntry[]>([]);
   const [customAudioMap, setCustomAudioMap] = useState<Record<string, string>>({});
 
@@ -317,6 +321,26 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   const [guestArtist, setGuestArtist] = useState<ArtistProfile | null>(null);
   const [landingAutoSubscribe, setLandingAutoSubscribe] = useState<boolean>(false);
   const isGuestRef = useRef(false);
+  // Me gusta: se guardan por cuenta en este dispositivo
+  useEffect(() => {
+    const key = `eltablero_likes_${meProfile.id || "anon"}`;
+    likesLoadedRef.current = false;
+    try {
+      const raw = localStorage.getItem(key);
+      setLikedTrackIds(raw ? (JSON.parse(raw) as string[]) : []);
+    } catch {
+      setLikedTrackIds([]);
+    }
+    likesLoadedRef.current = true;
+  }, [meProfile.id]);
+  useEffect(() => {
+    if (!likesLoadedRef.current) return;
+    try {
+      localStorage.setItem(`eltablero_likes_${meProfile.id || "anon"}`, JSON.stringify(likedTrackIds));
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [likedTrackIds]);
+
   // Modo reproductor: solo Biblioteca + reproductor (sin la parte de red social)
   const [playerOnlyMode, setPlayerOnlyMode] = useState<boolean>(false);
   useEffect(() => {
@@ -696,6 +720,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   }, [savedProjectIds]);
 
   const toggleSaveProject = (projectId: string) => {
+    if (projectId === LIKED_PROJECT_ID) return;
     sfx.tap();
     setSavedProjectIds((prev) => {
       const exists = prev.includes(projectId);
@@ -714,6 +739,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
 
   // Abre el modal estilo [untitled] de "Invitación al EP / Proyecto" (sin hacer público el proyecto privado)
   const handleCopyProjectLink = (projectId: string) => {
+    if (projectId === LIKED_PROJECT_ID) return;
     sfx.open();
     setInvitingProjectId(projectId);
   };
@@ -1253,7 +1279,35 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     };
   }, [projects, googleConnected, cloudReady, meProfile.id, projectInvites]);
 
+  // "Tus me gusta": proyecto virtual con los tracks marcados con ♥ (primero en la Biblioteca)
+  const likedProject: Project | null = (() => {
+    if (likedTrackIds.length === 0) return null;
+    const pool = [...projects, ...DEMO_PROJECTS];
+    const byId = new Map<string, Track>();
+    for (const p of pool) for (const t of p.tracks) if (!byId.has(t.id)) byId.set(t.id, { ...t, coverUrl: t.coverUrl || p.coverUrl });
+    const tracks = likedTrackIds.map((id) => byId.get(id)).filter(Boolean) as Track[];
+    if (tracks.length === 0) return null;
+    return {
+      ...STANDBY_PROJECT,
+      id: LIKED_PROJECT_ID,
+      title: "Tus me gusta",
+      artist: meProfile.name || "Vos",
+      artistId: "__liked__",
+      type: "Playlist" as ProjectType,
+      visibility: "private",
+      status: "Privado",
+      description: "",
+      coverUrl: LIKED_COVER,
+      c1: "#4c1d95",
+      c2: "#e11d48",
+      accent: "#f43f5e",
+      videos: [],
+      tracks,
+    };
+  })();
+
   const activeProject: Project | null =
+    (selectedProjectId === LIKED_PROJECT_ID ? likedProject : null) ||
     projects.find((p) => p.id === selectedProjectId) ||
     DEMO_PROJECTS.find((p) => p.id === selectedProjectId) ||
     projects.find((p) => p.artistId === meProfile.id) ||
@@ -1747,6 +1801,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   };
 
   const handleDeleteProject = (projectId: string) => {
+    if (projectId === LIKED_PROJECT_ID) return; // "Tus me gusta" no se borra: se vacía quitando los ♥
     if (googleConnected) {
       deleteProjectFromSupabase(projectId).then();
     }
@@ -3371,7 +3426,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                   {/* Escena 3D de Mis Proyectos (se muestra siempre en Lado a Lado, o cuando estás afuera del cubo en modo Por defecto) */}
                   {(libraryLayoutMode === "side-by-side" || !insideCubeOpen || !activeProject) && (
                     <ManifoldLibrary3D
-                      projects={myProjects}
+                      projects={likedProject ? [likedProject, ...myProjects] : myProjects}
                       selectedProjectId={activeProject?.id || ""}
                       viewMode={libraryViewMode}
                       onChangeViewMode={(m) => setLibraryViewMode(m)}
@@ -3431,7 +3486,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                   <MobileSheetPortal>
                   <motion.section
                     key={`inspector-${libraryLayoutMode}-${activeProject.id}`}
-                    className="project-inspector-sheet"
+                    className={`project-inspector-sheet ${activeProject?.id === LIKED_PROJECT_ID ? "is-liked-playlist" : ""}`}
                     onClick={(e) => e.stopPropagation()}
                     onTouchStart={(e) => {
                       const t = e.touches[0];
@@ -4202,7 +4257,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
 
 
                     <div
-                      className={`inspector-unified-stage ${
+                      className={`inspector-unified-stage ${activeProject.id === LIKED_PROJECT_ID ? "is-liked-playlist" : ""} ${
                         activeProject.videos.length > 0 && activeProject.videos[0].url
                           ? "has-canvas-bg"
                           : ""
@@ -4702,7 +4757,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                                 <span className="inspector-project-artist">{activeProject.artist}</span>
                               </div>
                               <div className="inspector-title-ctas">
-                                {!activeIsMine && (
+                                {!activeIsMine && activeProject.id !== LIKED_PROJECT_ID && (
                                   <button
                                     type="button"
                                     className="apple-btn ghost"

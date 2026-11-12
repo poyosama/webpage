@@ -843,12 +843,16 @@ export default function ManifoldLibrary3D({
     justDragged: false,
   });
 
+  // Centrar la rueda solo si cambia la selección o la lista real de proyectos (no en cada redibujo:
+  // mientras suena un track la app se redibuja varias veces por segundo y te sacaba del vinilo "+ Crear")
+  const projectIdsKey = projects.map((p) => p.id).join("|");
   useEffect(() => {
     const idx = projects.findIndex((p) => p.id === selectedProjectId);
     if (idx >= 0 && !arcDragRef.current.dragging) {
       setArcOffset(idx);
     }
-  }, [selectedProjectId, projects]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedProjectId, projectIdsKey]);
 
   const handleCubeOrPlateSelect = (proj: Project) => {
     onSelectProject(proj);
@@ -939,7 +943,7 @@ export default function ManifoldLibrary3D({
               <span className="pill-dot" style={{ background: p.c2 }} />
               <b>{p.title}</b>
             </button>
-            {onDeleteProject && (
+            {onDeleteProject && !p.id.startsWith("__") && (
               <button
                 type="button"
                 className="pill-trash-btn"
@@ -1159,7 +1163,7 @@ export default function ManifoldLibrary3D({
                             <span>{p.tracks[0]?.glyph || "01"}</span>
                           </div>
                         )}
-                        {onDeleteProject && (
+                        {onDeleteProject && !p.id.startsWith("__") && (
                           <button
                             type="button"
                             className="untitled-catalog-delete-btn"

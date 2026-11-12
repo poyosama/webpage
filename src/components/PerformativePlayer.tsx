@@ -545,7 +545,6 @@ export default function PerformativePlayer({
           }}
         >
           {!activeCoverUrl && <span>{track.glyph}</span>}
-          <small>{liveProject.type}</small>
         </div>
         <h1 className="perf-title">{track.title}</h1>
         {!isStandby && (
@@ -952,22 +951,6 @@ export default function PerformativePlayer({
 
           {/* DERECHA / UTILIDADES (Key & BPM + Like Móvil + Cola + Volumen) */}
           <div className="spotify-right-utilities">
-            {!isStandby && (
-              <button
-                type="button"
-                className="spotify-bpm-badge"
-                title={`${track.bpm} BPM · Tonalidad ${track.key} — Tocá para abrir Studio`}
-                onClick={() => {
-                  sfx.open();
-                  setStudioModalOpen(true);
-                }}
-              >
-                <span className="spotify-bpm-dot" />
-                <span className="spotify-bpm-text">{track.bpm} BPM · {track.key}</span>
-                <span className="perf-bottom-meta-pencil" aria-hidden>✎</span>
-              </button>
-            )}
-
             {/* Like móvil visible en pantalla de celular */}
             <button
               type="button"
@@ -1047,7 +1030,8 @@ export default function PerformativePlayer({
                 step={0.01}
                 value={muted ? 0 : volume}
                 onChange={(e) => onVolumeChange(Number(e.target.value))}
-                className="apple-volume-slider"
+                className="apple-volume-slider perf-volume-slider"
+                style={{ ["--fill" as string]: `${(muted ? 0 : volume) * 100}%` }}
                 aria-label="Volumen"
               />
             </div>
@@ -1284,14 +1268,14 @@ export default function PerformativePlayer({
                   onClick={() => {
                     sfx.open();
                     setOptionsSheetOpen(false);
-                    setStudioModalOpen(true);
+                    onOpenEditTrack();
                   }}
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                   </svg>
-                  <span>Studio / Editar Track ({track.bpm} BPM · {track.key})</span>
+                  <span>Editar track</span>
                 </button>
               )}
             </div>

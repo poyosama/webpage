@@ -2421,3 +2421,14 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 **Diagnóstico:** `.apple-modal-backdrop` tenía `z-index: 80`, debajo de la vista del proyecto (145, portal en body), del mini-reproductor (160) y del reproductor grande (800). Además el modal no tenía alto máximo.
 
 **Fix (`ui-refresh.css`):** escala de capas documentada (proyecto 145 · mini 160 · reproductor 800 · modales/hojas/menús 1000 · portada en grande 1100 · toasts 1200); backdrop `fixed` con scroll interno; `.apple-modal-card` con `max-height` = alto real − safe areas y `overflow-y: auto`. Texto de visibilidad corregido ("Solo lo ven vos y quien tenga un link." / "Lo ve todo El tablero.") y basado en `!== "public"`. Verificado: "Invitar" desde adentro del proyecto en celu abre el modal encima (z 1000).
+
+---
+
+### Turno 128 — Rueda mientras suena, reproductor más limpio, editor nuevo y "Tus me gusta"
+**Prompt del usuario:** mientras reproduce no se puede bajar al vinilo "+ Crear" (vuelve al proyecto de arriba); la pantalla de editar está fea; en el reproductor no quiere el tipo de proyecto en la tapa, ni BPM · Key abajo; volumen feo; títulos largos cortados; que funcione el ♥ y haya un "Mis me gusta" primero en la Biblioteca.
+
+**Cambios:**
+- `ManifoldLibrary3D.tsx`: el efecto que centra la rueda dependía del array `projects` (nuevo en cada render; mientras suena se redibuja 4×/s) → ahora depende de `projectIdsKey`. Basurita oculta para proyectos virtuales (`__…`).
+- `PerformativePlayer.tsx`: sin `<small>{type}</small>` en la tapa; sin el badge "BPM · Key ✎"; "Editar track" del menú abre el `EditTrackModal` nuevo (compacto, por delante del reproductor) en vez del Studio viejo; slider de volumen `perf-volume-slider` estilo iOS con relleno.
+- `ui-refresh.css`: título hasta 3 líneas con fuente un poco menor (sin "…"), sombras para legibilidad sobre canvas claros.
+- `App.tsx`: me gusta persistidos por cuenta en `localStorage` (`eltablero_likes_<id>`); proyecto virtual **Tus me gusta** (`LIKED_PROJECT_ID`, tapa SVG de corazón) primero en la Biblioteca (rueda y tapas) cuando hay ♥; no se puede borrar, invitar ni guardar. Probado: ♥ en el reproductor → aparece primero en Tapas y adentro tiene el track.

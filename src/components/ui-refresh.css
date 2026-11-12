@@ -1674,3 +1674,66 @@ html:root body .apple-modal-card {
   overscroll-behavior: contain;
   margin: auto !important;
 }
+
+/* ===================== REPRODUCTOR GRANDE ===================== */
+/* Título entero: fuente un poco más chica y hasta 3 líneas, sin cortarlo con "…" */
+html:root body .perf-title {
+  font-size: clamp(1.5rem, 6.4vw, 2.6rem) !important;
+  line-height: 1.08 !important;
+  white-space: normal !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 3 !important;
+  max-width: min(92vw, 720px) !important;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+@media (min-width: 721px) {
+  html:root body .perf-title { font-size: clamp(2rem, 4vw, 3.2rem) !important; }
+}
+/* Sin etiqueta de tipo de proyecto en la tapa */
+html:root body .perf-artwork-card small { display: none !important; }
+
+/* Volumen estilo iOS: línea fina con relleno y bolita blanca */
+html:root body .perf-volume-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 110px !important;
+  height: 4px !important;
+  border-radius: 999px !important;
+  background: linear-gradient(to right, rgba(255, 255, 255, 0.92) 0 var(--fill, 60%), rgba(255, 255, 255, 0.22) var(--fill, 60%) 100%) !important;
+  border: 0 !important;
+  outline: none;
+  cursor: pointer;
+}
+html:root body .perf-player.stage-light .perf-volume-slider {
+  background: linear-gradient(to right, rgba(9, 9, 11, 0.85) 0 var(--fill, 60%), rgba(9, 9, 11, 0.18) var(--fill, 60%) 100%) !important;
+}
+html:root body .perf-volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px !important;
+  height: 14px !important;
+  border-radius: 50% !important;
+  background: #fff !important;
+  border: 0 !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4) !important;
+  transition: scale 0.15s ease;
+}
+html:root body .perf-volume-slider:active::-webkit-slider-thumb { scale: 1.25; }
+html:root body .perf-volume-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  border: 0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+html:root body .perf-kicker { text-shadow: 0 1px 10px rgba(0, 0, 0, 0.75), 0 0 2px rgba(0, 0, 0, 0.6); }
+html:root body .perf-title { text-shadow: 0 2px 18px rgba(0, 0, 0, 0.55); }
+/* "Tus me gusta": sin invitar / guardar / privado */
+.is-liked-playlist .untitled-mobile-add-btn,
+.is-liked-playlist [aria-label="Invitar o compartir link del proyecto"],
+.is-liked-playlist [title^="Generar link de Invitación"] { display: none !important; }
