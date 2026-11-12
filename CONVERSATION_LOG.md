@@ -2080,3 +2080,27 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 4. **Verificación y Deploy:**
    - Compilación exitosa en Next.js Turbopack (`npm run build`, 0 errores).
 
+---
+
+### Turno 99 — Corrección de Superposición en la Pantalla "Crear Proyecto" (`/create`) e Integración del Botón Volver
+**Prompt del usuario:**
+- *"esto tambien arreglalo"* (adjuntó captura `image.png` mostrando la pantalla `/create` donde la píldora fija superior del navbar tapaba el encabezado de la tarjeta "Crear proyecto", los botones de `🔒 Privado` / `🌐 Público` y dejaba el botón `← Volver` descolgado a la izquierda).
+
+**Diagnóstico visual y técnico:**
+- En `src/components/create-project.css`, el contenedor principal `.cp-content` tenía `justify-content: center !important;` y un padding superior de solo `32px`. Al centrar verticalmente una tarjeta de ~460px en viewports compactos de laptop (~600px–700px disponibles en Chrome con barra de tareas y pestañas), la tarjeta era empujada hacia arriba hasta Y ≈ 50px–60px, solapándose directamente con la píldora flotante del navbar (`.ios-navbar`).
+- La regla de despeje superior `.cp-page { margin-top: 14px !important; }` no estaba incluida en la hoja de estilos global.
+- El botón `← Volver` (`.cp-back`) estaba posicionado con `position: absolute; top: 18px; left: 20px;`, descolgado del formulario y ubicado en la misma franja horizontal que el brand de la cabecera.
+
+**Implementación técnica aplicada:**
+1. **Flujo y Posicionamiento Ergonómico de la Pantalla Crear Proyecto (`src/components/create-project.css`):**
+   - Se reemplazó `justify-content: center !important;` por `justify-content: flex-start !important;` con padding calibrado `padding: clamp(14px, 2.2vh, 24px) 16px 115px !important;`.
+   - Se compactó suavemente el gap interior de la tarjeta `.cp-card` a `9px` y el padding a `16px 20px`, garantizando que en cualquier resolución de pantalla la tarjeta se ubique por debajo de la navbar sin generar solapamientos ni desbordes.
+2. **Despeje Superior Coordinado (`src/components/board-polish.css`):**
+   - Se sumó `.cp-page` a la regla de margen superior `.profile-page, .cp-page { margin-top: 14px !important; }`, dejando una holgura constante de más de 45px entre el borde inferior de la navbar y el inicio de la tarjeta.
+3. **Integración del Botón Volver en el Encabezado de la Tarjeta (`src/components/CreateProjectScreen.tsx`, `src/components/create-project.css`):**
+   - Se integró el botón `← Volver` directamente en el header de `.cp-card` con la clase `.cp-inline-back-pill` (estilo píldora Apple: `height: 26px`, bordes redondeados, interacción suave y alineado junto a "Crear proyecto").
+   - Se ocultó el viejo botón flotante descolgado `.cp-back` para mantener una UI prolija, cohesiva y sin elementos huérfanos.
+4. **Verificación y Deploy:**
+   - Compilación exitosa en Next.js Turbopack (`npm run build`, 0 errores).
+
+

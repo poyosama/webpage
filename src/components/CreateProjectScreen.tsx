@@ -413,7 +413,7 @@ export default function CreateProjectScreen({
       </div>
 
       <div className="cp-content">
-        <button type="button" className="cp-back" onClick={onCancel}>
+        <button type="button" className="cp-back" onClick={onCancel} aria-label="Volver a la biblioteca">
           ← Volver
         </button>
 
@@ -425,7 +425,17 @@ export default function CreateProjectScreen({
           transition={{ type: "spring", stiffness: 140, damping: 20 }}
         >
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-            <h1 className="cp-title" style={{ margin: 0 }}>Crear proyecto</h1>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <button
+                type="button"
+                className="cp-inline-back-pill"
+                onClick={onCancel}
+                title="Volver a la biblioteca"
+              >
+                ← Volver
+              </button>
+              <h1 className="cp-title" style={{ margin: 0 }}>Crear proyecto</h1>
+            </div>
             <div className="seg-pills">
               <button
                 type="button"

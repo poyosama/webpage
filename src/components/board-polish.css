@@ -4010,7 +4010,8 @@ body.app-no-scroll .cp-page {
 }
 
 /* Separación y ergonomía superior en páginas para evitar superposición con la píldora navbar */
-.profile-page {
+.profile-page,
+.cp-page {
   margin-top: 14px !important;
 }
 
