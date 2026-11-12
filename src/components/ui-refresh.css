@@ -37,7 +37,9 @@
 :root body .ios-icon-btn svg { width: 13px; height: 13px; }
 
 /* Todas las pantallas arrancan debajo de la píldora, sin parches por página */
-:root body .apple-shell { padding-top: var(--nav-clear); }
+@media (min-width: 721px) {
+  :root body .apple-shell { padding-top: var(--nav-clear); }
+}
 :root body .explore-page,
 :root body .dmg-section,
 :root body .profile-page,
@@ -344,8 +346,10 @@
 :root body.app-no-scroll .profile-page::-webkit-scrollbar,
 :root body.app-no-scroll .dmg-section::-webkit-scrollbar,
 :root body.app-no-scroll .cp-page::-webkit-scrollbar { display: none; }
-:root body.app-no-scroll .apple-shell {
-  padding-top: calc(env(safe-area-inset-top, 0px) + var(--nav-clear)) !important;
+@media (min-width: 721px) {
+  :root body.app-no-scroll .apple-shell {
+    padding-top: calc(env(safe-area-inset-top, 0px) + var(--nav-clear)) !important;
+  }
 }
 
 /* ===== Título del proyecto: editar = mismo tipo que ver (sin salto ni cambio de fuente) ===== */
@@ -415,3 +419,128 @@
     line-height: 0.95 !important;
   }
 }
+
+
+/* =====================================================================
+   CELULAR (<=720px)
+   ===================================================================== */
+@media (max-width: 720px) {
+  /* La píldora tiene 2 filas (marca+iconos / navegación): alto automático,
+     si no la segunda fila se sale de la píldora y pisa el contenido. */
+  :root body .ios-navbar {
+    height: auto !important;
+    min-height: 0 !important;
+    padding: 6px 8px !important;
+    border-radius: 20px !important;
+    gap: 4px 6px !important;
+  }
+  :root body .ios-seg-control button { height: 28px; padding: 3px 4px; font-size: 0.76rem; }
+  :root body .ios-icon-btn { height: 28px; }
+
+  /* El contenido siempre arranca debajo de las 2 filas de la píldora (también con scroll bloqueado) */
+  :root body .apple-shell,
+  :root body.app-no-scroll .apple-shell,
+  :root body.mobile-vinyl-wheel-locked .apple-shell {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 98px) !important;
+  }
+
+  /* Collage del tablero: nada se corta por la derecha */
+  :root body .corecore-stage { overflow: hidden; }
+  :root body .corecore-stage .Roster-collage { padding: 0 !important; gap: 8px 10px !important; }
+  :root body .corecore-stage .collage-item { max-width: 100% !important; min-width: 0; }
+  :root body .corecore-stage .roster-word {
+    font-size: clamp(1.05rem, 5.2vw, 1.5rem) !important;
+    white-space: normal !important;
+    line-height: 1.12 !important;
+    min-width: 0;
+  }
+  :root body .corecore-stage .collage-cover-thumb { width: 34px !important; height: 34px !important; flex: none; }
+
+  /* Subir */
+  :root body .dmg-section { padding-top: 4px; }
+}
+
+/* =====================================================================
+   TÁCTIL (iPhone/iPad): sin :hover "pegajoso".
+   iOS gasta el primer toque en disparar el hover (si el hover cambia algo visible)
+   y recién el segundo toque hace click → "hay que tocar 2 veces".
+   ===================================================================== */
+@media (hover: none) {
+  :root body .untitled-catalog-delete-btn { opacity: 1 !important; }
+  :root body .untitled-catalog-card:hover,
+  :root body .untitled-catalog-card:active,
+  :root body .board-tile:hover,
+  :root body .strip-album-thumb:hover,
+  :root body .filmstrip-thumb:hover,
+  :root body .apple-btn:hover,
+  :root body .untitled-mobile-play-btn:hover,
+  :root body .untitled-icon-squircle:hover,
+  :root body .ios-mini-player:hover {
+    transform: none !important;
+  }
+  :root body .untitled-catalog-card:hover { box-shadow: none !important; }
+  :root body .untitled-mobile-track-row:hover { transform: none !important; background: transparent !important; }
+  :root body .collage-item:hover .roster-word,
+  :root body .roster-word:hover { transform: none !important; filter: none !important; }
+}
+
+/* ===== Biblioteca (celu): la tarjeta del proyecto va SIEMPRE encima de los vinilos vecinos ===== */
+@media (max-width: 720px) {
+  :root body .vinyl-fan-inspector-card.vinyl-fan-clean-title-card {
+    position: relative;
+    z-index: 500 !important;
+    background: color-mix(in srgb, var(--surface) 95%, transparent) !important;
+    -webkit-backdrop-filter: blur(22px) saturate(160%) !important;
+    backdrop-filter: blur(22px) saturate(160%) !important;
+    border: 1px solid var(--line) !important;
+    border-radius: 18px !important;
+    box-shadow: var(--shadow-soft) !important;
+    padding: 12px 14px !important;
+  }
+  :root body .vinyl-fan-clean-title-card .vinyl-active-title,
+  :root body .vinyl-fan-clean-title-card .vinyl-right-artist-name,
+  :root body .manifold-3d-wrapper.has-library-canva .vinyl-fan-clean-title-card .vinyl-active-title { color: var(--ink) !important; text-shadow: none !important; }
+  :root body .vinyl-fan-clean-title-card .vinyl-right-artist-name,
+  :root body .manifold-3d-wrapper.has-library-canva .vinyl-fan-clean-title-card .vinyl-right-artist-name { color: var(--ink-secondary) !important; }
+  :root body .vinyl-fan-clean-title-card .vinyl-right-meta-pill,
+  :root body .manifold-3d-wrapper.has-library-canva .vinyl-right-meta-pill {
+    color: var(--ink-secondary) !important;
+    background: var(--surface-secondary) !important;
+    border-color: var(--line) !important;
+  }
+  :root body .vinyl-arc-step-controls { right: 4px !important; z-index: 520; }
+}
+
+/* ===== Tapas (celu): 2 columnas que entran en pantalla, nunca cortadas a la derecha ===== */
+@media (max-width: 720px) {
+  :root body .untitled-catalog-viewport {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    overflow-x: hidden !important;
+  }
+  :root body .untitled-catalog-grid,
+  :root body .manifold-3d-wrapper.is-compact .untitled-catalog-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 14px 12px !important;
+    width: 100% !important;
+  }
+  :root body .untitled-catalog-card { min-width: 0; }
+  :root body .untitled-catalog-title,
+  :root body .untitled-catalog-meta {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* ===== Tile "+ Crear proyecto": visible con y sin canva de fondo ===== */
+:root body .untitled-catalog-add-box {
+  background: var(--surface-secondary) !important;
+  border: 1.5px dashed var(--line-strong) !important;
+}
+:root body .untitled-catalog-add-plus { color: var(--ink) !important; }
+:root body .manifold-3d-wrapper.has-library-canva .untitled-catalog-add-box {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+}
+:root body .manifold-3d-wrapper.has-library-canva .untitled-catalog-add-plus { color: #fff !important; }

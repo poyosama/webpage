@@ -2172,3 +2172,17 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 1. `src/lib/invites.ts`: lista `UNLIMITED_INVITE_EMAILS` + `hasUnlimitedInvites(email)`; `generateExtraInvitesForUser(...)` crea 1–20 códigos nuevos sin esperar los 14 días (registro local inmediato, persistencia en `profiles.invite_codes` en segundo plano); `getOrGenerateUserInvites` acepta `unlimited` para devolver todos los códigos (no solo 6).
 2. `InviteFriendsModal.tsx`: si `profile.email` está en la lista, el modal dice "pases ilimitados" y muestra `+ Generar pase` y `+ 5 pases` en vez del contador de 14 días.
 3. Aviso técnico: el chequeo es del lado del cliente (el email viaja en el bundle) y `validateInviteCode` acepta cualquier código con formato `board-xxxxxx`, así que los pases no son un gate real todavía; endurecerlo requiere validar en el servidor (Supabase).
+
+---
+
+### Turno 105 — Revisión visual completa en celu (iPhone) + fix de "tocar 2 veces"
+**Prompt del usuario:** analizar todos los errores visuales desde el celular; los proyectos de la biblioteca hay que tocarlos 2 veces.
+
+**Diagnóstico (capturas en viewport 390px, claro y oscuro):**
+1. **Píldora superior:** en celu tiene 2 filas (marca+iconos / navegación) pero mi `height: 38px` de escritorio la dejaba fija, así que la segunda fila se salía de la píldora y pisaba Subir, Biblioteca y Perfil. Además mi `padding-top` global pisaba el `98px` móvil.
+2. **Inicio:** `blabla` y `EN SONIDO` se cortaban por la derecha (`white-space: nowrap`).
+3. **Biblioteca (rueda):** la tarjeta del título quedaba debajo del vinilo vecino (pastilla `EP · 6 TRACKS` ilegible).
+4. **Tapas:** la 2ª columna se cortaba (`minmax(140px)`); tile "+ Crear" blanco sobre blanco.
+5. **Doble toque:** en iOS el primer toque dispara `:hover` (el botón de basura pasaba de `opacity:0` a `1` y la tarjeta se levantaba) y recién el 2º hace click.
+
+**Fix (`ui-refresh.css`):** navbar `height:auto` en ≤720px y `padding-top` móvil `safe-area + 98px` también con scroll bloqueado; overrides de escritorio acotados a ≥721px; collage con `white-space: normal` y tamaños `5.2vw`; tarjeta del vinilo `z-index:500` con fondo casi opaco y colores `--ink`; grilla de Tapas 2 columnas `minmax(0,1fr)`; `@media (hover: none)` neutraliza transforms de hover y deja la basura siempre visible; tile "+" con colores según haya canva o no.
