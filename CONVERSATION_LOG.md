@@ -2231,3 +2231,13 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 1. **Slider (`ManifoldLibrary3D.tsx` + `ui-refresh.css`):** `input[type=range]` (`step 0.01`) dentro de `.vinyl-arc-step-controls`: mientras deslizás mueve `arcOffset` en continuo (con tick al cruzar cada proyecto) y al soltar encastra y selecciona el proyecto. En celu reemplaza las flechitas (thumb blanco estilo iOS, track con relleno); en escritorio quedan las flechitas.
 2. **Tapas scrolleable:** el escenario `.catalog-grid-stage` no estaba limitado en alto (solo lo estaba el de la rueda) y crecía con el contenido; ahora toma el alto disponible y `.untitled-catalog-viewport` scrollea adentro (`overflow-y:auto`, `touch-action: pan-y`, sin barra). El resto de la app sigue sin scroll de página.
 3. **Pases ilimitados:** antes se decidía con `meProfile.email` (editable/falsificable desde el navegador). Ahora `verifyUnlimitedInvites()` usa `supabase.auth.getUser()` (valida el JWT contra el servidor de Auth, proveedor Google) tanto para mostrar el modo ilimitado como dentro de `generateExtraInvitesForUser`.
+
+---
+
+### Turno 110 — Toast "Movido a…" con partículas, Modo reproductor y fixes de modo noche
+**Prompt del usuario:** toast lindo con partículas al mover un track; botón arriba a la derecha (play en círculo) para una vista solo Biblioteca + reproductor, con el perfil y volver a la vista normal; en modo noche el fondo de Tapas se veía blanco.
+
+**Implementación:**
+1. **Toast (`App.tsx` + `ui-refresh.css`):** `moveToast` al elegir proyecto en la hoja "Mover": píldora flotante sobre el mini-reproductor con la tapa del destino (entra con rebote), check verde que se dibuja y hace un anillo, "MOVIDO A / <proyecto>", y 18 partículas de colores de la marca que explotan desde la tapa. Se va solo a los 2.8 s.
+2. **Modo reproductor:** botón `player-mode-btn` (▶ en círculo) junto al de tema. Activado: la navegación queda con 2 pestañas (Biblioteca y @handle), Inicio/Subir no se muestran (si estabas ahí te lleva a la Biblioteca), el logo lleva a la Biblioteca y el botón queda encendido. Se recuerda en `localStorage` (`eltablero_player_mode`). Tocándolo de nuevo vuelve a la vista normal.
+3. **Modo noche:** `.manifold-3d-canvas-stage` tenía un degradado blanco fijo; ahora transparente/oscuro en dark (y transparente en Tapas). La barra de volumen del mini-reproductor era invisible en dark: ahora track `--line-strong` con relleno `--ink`.
