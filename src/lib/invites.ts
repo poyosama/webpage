@@ -34,6 +34,14 @@ const SEED_INVITES: Record<string, { creatorHandle: string; creatorName: string 
   "board-5056": { creatorHandle: "@poyo", creatorName: "5056" },
 };
 
+/** Cuentas (email de Google) con pases de invitación ilimitados */
+const UNLIMITED_INVITE_EMAILS = ["jpizarrograndinetti@gmail.com"];
+
+export function hasUnlimitedInvites(email?: string | null): boolean {
+  const e = (email || "").trim().toLowerCase();
+  return !!e && UNLIMITED_INVITE_EMAILS.includes(e);
+}
+
 /** Genera una cadena alfanumérica corta y limpia de 6 caracteres */
 function generateCleanCodeSlug(): string {
   const chars = "23456789abcdefghjkmnpqrstuvwxyz";
@@ -67,7 +75,8 @@ function writeGlobalRegistry(reg: Record<string, InviteCodeItem>) {
 export async function getOrGenerateUserInvites(
   userId: string,
   userHandle: string,
-  userName: string
+  userName: string,
+  unlimited = false
 ): Promise<{
   codes: InviteCodeItem[];
   canGenerateNewBatch: boolean;
@@ -165,7 +174,7 @@ export async function getOrGenerateUserInvites(
   }
 
   return {
-    codes: userCodes.slice(0, 6), // Muestra los códigos activos más recientes
+    codes: unlimited ? userCodes : userCodes.slice(0, 6), // Muestra los códigos activos más recientes
     canGenerateNewBatch,
     daysUntilNextBatch,
   };
@@ -226,6 +235,43 @@ export async function generateNewBatchForUser(
   } catch {}
 
   return newCodes;
+}
+
+/** Cuentas con pases ilimitados: genera `count` códigos nuevos sin esperar los 14 días */
+export async function generateExtraInvitesForUser(
+  userId: string,
+  userHandle: string,
+  userName: string,
+  count = 1
+): Promise<InviteCodeItem[]> {
+  const cleanHandle = userHandle.startsWith("@") ? userHandle : `@${userHandle || "artista"}`;
+  const registry = readGlobalRegistry();
+  const now = new Date().toISOString();
+  const n = Math.max(1, Math.min(20, Math.floor(count)));
+
+  for (let i = 0; i < n; i++) {
+    let code = generateCleanCodeSlug();
+    while (registry[code.toLowerCase()]) code = generateCleanCodeSlug();
+    registry[code.toLowerCase()] = {
+      code,
+      creatorId: userId,
+      creatorHandle: cleanHandle,
+      creatorName: userName,
+      createdAt: now,
+      batchDate: now,
+      used: false,
+    };
+  }
+  writeGlobalRegistry(registry);
+
+  const all = Object.values(registry)
+    .filter((x) => x.creatorId === userId)
+    .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+
+  // Persistencia en segundo plano: los códigos ya quedaron en el registro local
+  void Promise.resolve(supabase.from("profiles").update({ invite_codes: all }).eq("id", userId)).catch(() => {});
+
+  return all;
 }
 
 /** Valida si un código de invitación existe y no ha sido utilizado */

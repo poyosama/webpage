@@ -8,6 +8,8 @@ import {
   InviteCodeItem,
   getOrGenerateUserInvites,
   generateNewBatchForUser,
+  generateExtraInvitesForUser,
+  hasUnlimitedInvites,
   buildInviteUrl,
 } from "@/lib/invites";
 
@@ -23,6 +25,7 @@ export function InviteFriendsModal({ profile, onClose }: InviteFriendsModalProps
   const [daysLeft, setDaysLeft] = useState(14);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  const unlimited = hasUnlimitedInvites(profile.email);
 
   useEffect(() => {
     let alive = true;
@@ -31,7 +34,8 @@ export function InviteFriendsModal({ profile, onClose }: InviteFriendsModalProps
       const res = await getOrGenerateUserInvites(
         profile.id || "local-user",
         profile.handle || "@artista",
-        profile.name || "Artista"
+        profile.name || "Artista",
+        unlimited
       );
       if (alive) {
         setInvites(res.codes);
@@ -43,7 +47,7 @@ export function InviteFriendsModal({ profile, onClose }: InviteFriendsModalProps
     return () => {
       alive = false;
     };
-  }, [profile.id, profile.handle, profile.name]);
+  }, [profile.id, profile.handle, profile.name, unlimited]);
 
   const handleCopy = async (code: string) => {
     sfx.tap();
@@ -63,6 +67,20 @@ export function InviteFriendsModal({ profile, onClose }: InviteFriendsModalProps
       setCopiedCode(code);
       setTimeout(() => setCopiedCode((cur) => (cur === code ? null : cur)), 2500);
     }
+  };
+
+  const handleGenerateExtra = async (count: number) => {
+    if (generating) return;
+    sfx.drop();
+    setGenerating(true);
+    const all = await generateExtraInvitesForUser(
+      profile.id || "local-user",
+      profile.handle || "@artista",
+      profile.name || "Artista",
+      count
+    );
+    setInvites(all);
+    setGenerating(false);
   };
 
   const handleGenerateBatch = async () => {
@@ -109,8 +127,17 @@ export function InviteFriendsModal({ profile, onClose }: InviteFriendsModalProps
         </div>
 
         <p className="invite-modal-desc">
-          El tablero. es una plataforma exclusiva para artistas y productores. Tenés{" "}
-          <b>3 códigos de invitación cada 2 semanas</b>. Cada link es de un solo uso y se gasta cuando alguien se registra con él.
+          {unlimited ? (
+            <>
+              El tablero. es una plataforma exclusiva para artistas y productores. Tu cuenta tiene{" "}
+              <b>pases de invitación ilimitados</b>: generá los que quieras. Cada link es de un solo uso y se gasta cuando alguien se registra con él.
+            </>
+          ) : (
+            <>
+              El tablero. es una plataforma exclusiva para artistas y productores. Tenés{" "}
+              <b>3 códigos de invitación cada 2 semanas</b>. Cada link es de un solo uso y se gasta cuando alguien se registra con él.
+            </>
+          )}
         </p>
 
         {loading ? (
@@ -172,6 +199,27 @@ export function InviteFriendsModal({ profile, onClose }: InviteFriendsModalProps
         )}
 
         <div className="invite-modal-footer">
+          {unlimited ? (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button
+                type="button"
+                className="apple-btn primary"
+                disabled={generating}
+                onClick={() => handleGenerateExtra(1)}
+              >
+                {generating ? "Generando..." : "+ Generar pase"}
+              </button>
+              <button
+                type="button"
+                className="apple-btn ghost"
+                disabled={generating}
+                onClick={() => handleGenerateExtra(5)}
+              >
+                + 5 pases
+              </button>
+            </div>
+          ) : (
+          <>
           <div className="invite-renews-info">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10" />
@@ -193,6 +241,8 @@ export function InviteFriendsModal({ profile, onClose }: InviteFriendsModalProps
             >
               {generating ? "Generando pases..." : "Generar nueva tanda de 3 invitaciones"}
             </button>
+          )}
+          </>
           )}
         </div>
       </motion.div>

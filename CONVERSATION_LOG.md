@@ -2162,3 +2162,13 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 **Prompt del usuario:** achicar un cachito el tablero para ver, apenas se entra, el board y el nombre de la web abajo.
 
 **Implementación (`ui-refresh.css`, solo ≥721px):** tamaños del collage escalan con el alto de la ventana (`vh`): `roster-word` `clamp(1.3rem, 6.6vh, 3rem)`, tapitas `5.6vh`, título gigante `12.5vh`; filas `nowrap` (la píldora "Mendoza" ya no rompe a otra línea); paddings del stage/card/footer reducidos. En 1093×490 el board + "El tablero." terminan en y≈355, por encima del mini-reproductor. Celu sin cambios.
+
+---
+
+### Turno 104 — Pases de invitación ilimitados para una cuenta específica
+**Prompt del usuario:** que la cuenta de Google `jpizarrograndinetti@gmail.com` tenga un generador infinito de pases de invitación.
+
+**Implementación:**
+1. `src/lib/invites.ts`: lista `UNLIMITED_INVITE_EMAILS` + `hasUnlimitedInvites(email)`; `generateExtraInvitesForUser(...)` crea 1–20 códigos nuevos sin esperar los 14 días (registro local inmediato, persistencia en `profiles.invite_codes` en segundo plano); `getOrGenerateUserInvites` acepta `unlimited` para devolver todos los códigos (no solo 6).
+2. `InviteFriendsModal.tsx`: si `profile.email` está en la lista, el modal dice "pases ilimitados" y muestra `+ Generar pase` y `+ 5 pases` en vez del contador de 14 días.
+3. Aviso técnico: el chequeo es del lado del cliente (el email viaja en el bundle) y `validateInviteCode` acepta cualquier código con formato `board-xxxxxx`, así que los pases no son un gate real todavía; endurecerlo requiere validar en el servidor (Supabase).
