@@ -288,6 +288,15 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
   const [profileSettingsOpen, setProfileSettingsOpen] = useState<boolean>(false);
   const [profileAddMenuOpen, setProfileAddMenuOpen] = useState<boolean>(false);
+  // Modo reproductor: solo Biblioteca + reproductor (sin la parte de red social)
+  const [playerOnlyMode, setPlayerOnlyMode] = useState<boolean>(false);
+  useEffect(() => {
+    try {
+      setPlayerOnlyMode(localStorage.getItem("eltablero_player_mode") === "1");
+    } catch {}
+  }, []);
+  // Toast "Movido a …" con partículas
+  const [moveToast, setMoveToast] = useState<{ key: number; title: string; coverUrl?: string; c1?: string; c2?: string } | null>(null);
   // Hoja "Mover a otro proyecto" (menú de los 3 puntitos del track)
   const [moveTrackSheet, setMoveTrackSheet] = useState<{ track: Track; sourceProjectId: string } | null>(null);
   const [googleConnected, setGoogleConnected] = useState<boolean>(false);
@@ -2038,6 +2047,29 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     }
   };
 
+  const togglePlayerOnlyMode = () => {
+    const next = !playerOnlyMode;
+    setPlayerOnlyMode(next);
+    try {
+      localStorage.setItem("eltablero_player_mode", next ? "1" : "0");
+    } catch {}
+    if (next) {
+      sfx.open();
+      if (tab !== "biblioteca" && tab !== "perfil") {
+        setInsideCubeOpen(false);
+        navigate("biblioteca");
+      }
+    } else {
+      sfx.close();
+    }
+  };
+
+  // Si quedó activado el modo reproductor, nunca mostrar Inicio/Subir: se abre en la Biblioteca
+  useEffect(() => {
+    if (playerOnlyMode && (tab === "inicio" || tab === "subir")) navigate("biblioteca");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playerOnlyMode, tab]);
+
   const hasGuestInviteAccess = Boolean(selectedProjectId && projectInvites[selectedProjectId]);
 
   if (!authChecked) return <div className="auth-splash" aria-hidden />;
@@ -2072,12 +2104,12 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       <div className="paper-grain" aria-hidden />
 
       {/* Top Navigation Bar */}
-      <header className="ios-navbar">
+      <header className={`ios-navbar ${playerOnlyMode ? "is-player-mode" : ""}`}>
         <button
           type="button"
           className="ios-brand-title"
           onMouseEnter={() => sfx.hover()}
-          onClick={() => navigate("inicio")}
+          onClick={() => navigate(playerOnlyMode ? "biblioteca" : "inicio")}
         >
           <span className="brand-dot" />
           <strong>El tablero.</strong>
@@ -2085,7 +2117,12 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
 
         <nav className="ios-seg-control" aria-label="Navegación principal">
           {(
-            (meProfile.accountType === "oyente"
+            (playerOnlyMode
+              ? [
+                  ["biblioteca", meProfile.accountType === "oyente" ? "Guardados" : "Biblioteca"],
+                  ["perfil", googleConnected ? meProfile.handle : "Iniciar sesión"],
+                ]
+              : meProfile.accountType === "oyente"
               ? [
                   ["inicio", "Inicio"],
                   ["biblioteca", "Guardados"],
@@ -2128,6 +2165,22 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
         </nav>
 
         <div className="ios-nav-right">
+          {/* Modo reproductor: solo Biblioteca + reproductor */}
+          <button
+            type="button"
+            className={`ios-icon-btn player-mode-btn ${playerOnlyMode ? "is-on" : ""}`}
+            onMouseEnter={() => sfx.hover()}
+            onClick={togglePlayerOnlyMode}
+            title={playerOnlyMode ? "Volver a la vista normal" : "Modo reproductor (solo biblioteca y música)"}
+            aria-label={playerOnlyMode ? "Volver a la vista normal" : "Activar modo reproductor"}
+            aria-pressed={playerOnlyMode}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="9.5" />
+              <path d="M10 8.6v6.8l5.4-3.4z" fill="currentColor" stroke="none" />
+            </svg>
+          </button>
+
           {/* Theme Toggle Button (Dark / Light) */}
           <button
             type="button"
@@ -4938,6 +4991,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                   value={muted ? 0 : volume}
                   onChange={(e) => handleVolumeChange(Number(e.target.value))}
                   className="apple-volume-slider"
+                  style={{ ["--fill" as string]: `${(muted ? 0 : volume) * 100}%` }}
                   aria-label="Volumen"
                 />
                 <button
@@ -5120,6 +5174,59 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
         )}
       </AnimatePresence>
 
+      {/* ==================== TOAST "MOVIDO A …" CON PARTÍCULAS ==================== */}
+      <AnimatePresence>
+        {moveToast && (
+          <UniversalPortal>
+            <motion.div
+              key={moveToast.key}
+              className="move-toast"
+              role="status"
+              aria-live="polite"
+              initial={{ opacity: 0, y: 24, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.96 }}
+              transition={{ type: "spring", stiffness: 420, damping: 26 }}
+            >
+              <span className="move-toast-burst" aria-hidden>
+                {Array.from({ length: 18 }).map((_, i) => (
+                  <i
+                    key={i}
+                    style={
+                      {
+                        "--a": `${(360 / 18) * i + ((i * 37) % 11)}deg`,
+                        "--d": `${34 + ((i * 53) % 30)}px`,
+                        "--s": `${3 + (i % 3)}px`,
+                        "--c": ["#22c55e", "#e11d48", "#0284c7", "#ca8a04", "#9333ea", "#ffffff"][i % 6],
+                        "--t": `${(i % 4) * 0.025}s`,
+                      } as React.CSSProperties
+                    }
+                  />
+                ))}
+              </span>
+              <span
+                className="move-toast-cover"
+                style={{
+                  background: moveToast.coverUrl
+                    ? `url(${moveToast.coverUrl}) center / cover no-repeat`
+                    : `linear-gradient(135deg, ${moveToast.c1 || "#222"} 0%, ${moveToast.c2 || "#555"} 100%)`,
+                }}
+              >
+                <span className="move-toast-check">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M5 12.5l4.2 4.2L19 7" />
+                  </svg>
+                </span>
+              </span>
+              <span className="move-toast-text">
+                <small>Movido a</small>
+                <b>{moveToast.title}</b>
+              </span>
+            </motion.div>
+          </UniversalPortal>
+        )}
+      </AnimatePresence>
+
       {/* ==================== HOJA "MOVER A OTRO PROYECTO" (tapas: un toque y se mueve) ==================== */}
       <AnimatePresence>
         {moveTrackSheet && (
@@ -5167,6 +5274,9 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                           onClick={() => {
                             handleTransferTrackToProject(moveTrackSheet.sourceProjectId, moveTrackSheet.track.id, p.id);
                             setMoveTrackSheet(null);
+                            const key = Date.now();
+                            setMoveToast({ key, title: p.title, coverUrl: p.coverUrl, c1: p.c1, c2: p.c2 });
+                            window.setTimeout(() => setMoveToast((cur) => (cur?.key === key ? null : cur)), 2800);
                           }}
                         >
                           <span
