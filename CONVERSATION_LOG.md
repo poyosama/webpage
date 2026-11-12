@@ -2297,3 +2297,24 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 - El gesto arranca con `useDragControls` solo si no tocaste un `input`/slider, campo de texto, la cola o la hoja de opciones (no rompe la barra de progreso ni el volumen).
 - Soltar con más de 130 px o un tirón rápido (>650 px/s) → se achica al mini; si no, vuelve con un spring.
 - Probado: arrastre corto vuelve, arrastre sobre la barra de progreso no cierra, arrastre largo cierra. (Se detectó y corrigió que poner el drag en la misma capa que la animación de entrada dejaba el reproductor fuera de pantalla.)
+
+---
+
+### Turno 116 — Compartir con permisos reales: por proyecto y por track (solo escuchar / editar)
+**Prompt del usuario:** un amigo sugirió permisos de invitación "solo lectura" y "editar" también a nivel track, no solo proyecto; verificar si lo que hizo Flash funciona.
+
+**Auditoría del sistema viejo (no funcionaba):**
+1. El "token" era un hash calculado en el navegador con una sal fija pública → cualquiera con el ID del proyecto podía fabricar el link de edición; no se podía revocar.
+2. "Solo escuchar" no abría proyectos privados: la RLS (`migration_visibility.sql`) solo devuelve públicos o propios.
+3. "Editar" no guardaba nada: la RLS rechaza escrituras de quien no es dueño → los cambios quedaban locales.
+
+**Nuevo (`supabase/migration_sharing.sql`, idempotente, probado en Postgres 16 local):**
+- `project_shares` (token aleatorio de 64 hex, proyecto entero o `track_id`, rol `listen`/`edit`, revocable) y `project_members`.
+- Helpers security definer `share_project_role`, `share_track_role`, `share_can_view_project` y policies permisivas sumadas: miembro de proyecto ve todo (edit: edita proyecto/tracks/canvas, upsert incluido); miembro de track ve el proyecto (tapa/título) y SOLO ese track (edit: solo ese track). Triggers: un editor nunca cambia `user_id`/`is_public` ni mueve un track a otro proyecto.
+- RPCs: `create_project_share` (dueño cualquier link; editor solo links de escucha; links estables), `redeem_project_share`, `get_project_share` (anónimo, solo tracks permitidos), `revoke_project_share`.
+- Tests: extraño no ve nada; escucha-proyecto ve 3 tracks + canvas y no edita; editor-proyecto guarda, agrega tracks y no puede robar el proyecto ni crear links de edición; escucha-track ve solo t1; editor-track edita solo t2 (borrar/editar otros/proyecto no hace nada); anónimo recibe solo lo permitido; revocado deja de funcionar.
+
+**Cliente:**
+- `supabase.ts`: `mapProjectRow` exportado; `createProjectShareToken`, `redeemProjectShareToken`, `getProjectShareByToken`, `fetchMyShareMemberships`, `saveSharedTrackMeta`, `isLegacyInviteToken` (fallback al sistema viejo si la migración no está).
+- `App.tsx`: `/project/:id?invite=<token>` → con sesión se canjea y se recargan proyectos + membresías (`projectInvites`/`trackInvites`); sin sesión se escucha vía `get_project_share`. Menú `•••` del track: **Compartir track** (dueño) y **Editar** para editores de ese track (guarda solo esa fila). En escritorio, botones "Compartir"/"Editar" por fila. `InviteProjectModal` genera links reales (async) y sirve para un track.
+- Probado en navegador (servidor simulado): modal "Compartir track" con ambos links; visitante sin cuenta ve el proyecto privado con un solo track.

@@ -289,6 +289,80 @@ export async function ensurePersistentUrl(
 const TRACK_META_COLS =
   "id, project_id, title, artist, feat, prod, bpm, musical_key, duration, duration_sec, version, note, glyph, c1, c2, accent, audio_freq, cover_url, order_index";
 
+
+/** Fila de `projects` (con `tracks` y `project_videos` anidados) → Project */
+export function mapProjectRow(row: any, idx = 0): Project {
+  const tracks = [...(row.tracks || [])]
+    .sort((a: any, b: any) => (a.order_index ?? 0) - (b.order_index ?? 0))
+    .map((t: any): Track => {
+      const cachedAudio = audioMemCache.get(toDbId(t.id)) || cleanUrl(t.audio_url);
+      return {
+        id: t.id,
+        title: t.title,
+        artist: t.artist,
+        feat: t.feat || undefined,
+        prod: t.prod || undefined,
+        bpm: t.bpm || 140,
+        key: t.musical_key || "F#m",
+        duration: t.duration || "2:30",
+        durationSec: t.duration_sec || 150,
+        version: t.version || 1,
+        note: t.note || undefined,
+        glyph: t.glyph || "01",
+        c1: t.c1 || "#ffffff",
+        c2: t.c2 || "#888888",
+        accent: t.accent || "#ffffff",
+        audioFreq: t.audio_freq || 80,
+        customAudioUrl: cachedAudio,
+        coverUrl: cleanUrl(t.cover_url),
+      };
+    });
+  const isPublic = row.is_public === true;
+  return {
+    id: row.id,
+    title: row.title,
+    artist: row.artist,
+    artistId: row.user_id || String(row.artist || "user").toLowerCase().replace(/\s+/g, ""),
+    type: row.type || "Mixtape",
+    year: row.year || "2026",
+    status: row.status || "Publicado",
+    visibility: isPublic ? "public" : "private",
+    createdAt: row.created_at,
+    dateLabel: row.date_label || `${row.year || "2026"} · ${row.zone || "Mendoza"}`,
+    zone: row.zone || "Mendoza",
+    genre: row.genre || "",
+    description: row.description || "",
+    coverUrl: cleanUrl(row.cover_url),
+    c1: row.c1 || "#111111",
+    c2: row.c2 || "#222222",
+    accent: row.accent || "#ffffff",
+    tagGlyph: row.tag_glyph || "◈",
+    plays: row.plays || "0",
+    blockPos: [idx * 3.2, 0, 0],
+    blockSize: [2.2, 2.2, 2.2],
+    tracks,
+    videos: (row.project_videos || [])
+      .filter((v: any) => cleanUrl(v.url))
+      .map((v: any): ProjectVideoClip => {
+        const isImg =
+          v.media_type === "image" ||
+          /^data:image\//i.test(v.url || "") ||
+          /\.(gif|png|jpe?g|webp|avif)(\?|$)/i.test(v.url || "") ||
+          /\.(gif|png|jpe?g|webp|avif)$/i.test(v.label || "");
+        return {
+          id: v.id,
+          label: v.label || "canvas_loop.mp4",
+          kind: "uploaded",
+          stylePreset: "vhs-grain",
+          url: v.url,
+          mediaType: isImg ? "image" : "video",
+          c1: "#111111",
+          c2: "#222222",
+        };
+      }),
+  };
+}
+
 export async function fetchUserProjectsFromSupabase(userId?: string): Promise<Project[] | null> {
   try {
     let query = supabase
@@ -306,77 +380,7 @@ export async function fetchUserProjectsFromSupabase(userId?: string): Promise<Pr
       return null;
     }
 
-    return data.map((row: any, idx: number): Project => {
-      const tracks = [...(row.tracks || [])]
-        .sort((a: any, b: any) => (a.order_index ?? 0) - (b.order_index ?? 0))
-        .map((t: any): Track => {
-          const cachedAudio = audioMemCache.get(toDbId(t.id)) || cleanUrl(t.audio_url);
-          return {
-            id: t.id,
-            title: t.title,
-            artist: t.artist,
-            feat: t.feat || undefined,
-            prod: t.prod || undefined,
-            bpm: t.bpm || 140,
-            key: t.musical_key || "F#m",
-            duration: t.duration || "2:30",
-            durationSec: t.duration_sec || 150,
-            version: t.version || 1,
-            note: t.note || undefined,
-            glyph: t.glyph || "01",
-            c1: t.c1 || "#ffffff",
-            c2: t.c2 || "#888888",
-            accent: t.accent || "#ffffff",
-            audioFreq: t.audio_freq || 80,
-            customAudioUrl: cachedAudio,
-            coverUrl: cleanUrl(t.cover_url),
-          };
-        });
-      const isPublic = row.is_public === true;
-      return {
-        id: row.id,
-        title: row.title,
-        artist: row.artist,
-        artistId: row.user_id || String(row.artist || "user").toLowerCase().replace(/\s+/g, ""),
-        type: row.type || "Mixtape",
-        year: row.year || "2026",
-        status: row.status || "Publicado",
-        visibility: isPublic ? "public" : "private",
-        createdAt: row.created_at,
-        dateLabel: row.date_label || `${row.year || "2026"} · ${row.zone || "Mendoza"}`,
-        zone: row.zone || "Mendoza",
-        genre: row.genre || "",
-        description: row.description || "",
-        coverUrl: cleanUrl(row.cover_url),
-        c1: row.c1 || "#111111",
-        c2: row.c2 || "#222222",
-        accent: row.accent || "#ffffff",
-        tagGlyph: row.tag_glyph || "◈",
-        plays: row.plays || "0",
-        blockPos: [idx * 3.2, 0, 0],
-        blockSize: [2.2, 2.2, 2.2],
-        tracks,
-        videos: (row.project_videos || [])
-          .filter((v: any) => cleanUrl(v.url))
-          .map((v: any): ProjectVideoClip => {
-            const isImg =
-              v.media_type === "image" ||
-              /^data:image\//i.test(v.url || "") ||
-              /\.(gif|png|jpe?g|webp|avif)(\?|$)/i.test(v.url || "") ||
-              /\.(gif|png|jpe?g|webp|avif)$/i.test(v.label || "");
-            return {
-              id: v.id,
-              label: v.label || "canvas_loop.mp4",
-              kind: "uploaded",
-              stylePreset: "vhs-grain",
-              url: v.url,
-              mediaType: isImg ? "image" : "video",
-              c1: "#111111",
-              c2: "#222222",
-            };
-          }),
-      };
-    });
+    return data.map((row: any, idx: number): Project => mapProjectRow(row, idx));
   } catch (err) {
     console.warn("Fallo fetchUserProjectsFromSupabase:", err);
     return null;
@@ -873,3 +877,112 @@ export function verifyProjectInviteToken(
   return null;
 }
 
+
+
+// =========================================================================
+// COMPARTIR PROYECTOS Y TRACKS (supabase/migration_sharing.sql)
+// =========================================================================
+
+export type ShareMemberships = {
+  projects: Record<string, ProjectInviteRole>;
+  tracks: Record<string, ProjectInviteRole>;
+  projectIdsWithAccess: string[];
+};
+
+function shareRpcMissing(error: { code?: string; message?: string } | null | undefined): boolean {
+  if (!error) return false;
+  return (
+    error.code === "PGRST202" ||
+    error.code === "PGRST205" ||
+    error.code === "42883" ||
+    error.code === "42P01" ||
+    /could not find the function|does not exist|schema cache/i.test(error.message || "")
+  );
+}
+
+/** Los links viejos (hash calculable en el navegador) tienen forma ls_xxxx / ed_xxxx */
+export function isLegacyInviteToken(token: string | null | undefined): boolean {
+  return /^(ed|ls)_[a-z0-9]{4,16}$/i.test((token || "").trim());
+}
+
+/** Crea (o reutiliza) un link para un proyecto entero o un track. "missing" = servidor sin la migración */
+export async function createProjectShareToken(
+  projectId: string,
+  trackId: string | null,
+  role: ProjectInviteRole
+): Promise<string | null | "missing"> {
+  const { data, error } = await supabase.rpc("create_project_share", {
+    p_project: toDbId(projectId),
+    p_track: trackId ? toDbId(trackId) : null,
+    p_role: role,
+  });
+  if (error) return shareRpcMissing(error) ? "missing" : null;
+  return typeof data === "string" ? data : null;
+}
+
+/** Canjea un link: la cuenta logueada queda como miembro del proyecto o del track */
+export async function redeemProjectShareToken(
+  token: string
+): Promise<{ projectId: string; trackId: string | null; role: ProjectInviteRole } | null | "missing"> {
+  const { data, error } = await supabase.rpc("redeem_project_share", { p_token: token });
+  if (error) return shareRpcMissing(error) ? "missing" : null;
+  const row = (Array.isArray(data) ? data[0] : data) as
+    | { project_id: string; track_id: string | null; role: ProjectInviteRole }
+    | undefined;
+  return row ? { projectId: row.project_id, trackId: row.track_id, role: row.role } : null;
+}
+
+/** Sin iniciar sesión: el proyecto con solo los tracks que permite el link (para escuchar) */
+export async function getProjectShareByToken(
+  token: string
+): Promise<{ project: Project; role: ProjectInviteRole; trackId: string | null } | null | "missing"> {
+  const { data, error } = await supabase.rpc("get_project_share", { p_token: token });
+  if (error) return shareRpcMissing(error) ? "missing" : null;
+  if (!data) return null;
+  const row = data as any;
+  return {
+    project: mapProjectRow({ ...row, tracks: row.tracks || [], project_videos: row.project_videos || [] }, 0),
+    role: row.share_role === "edit" ? "edit" : "listen",
+    trackId: row.share_track_id || null,
+  };
+}
+
+/** Membresías de la cuenta (proyectos y tracks compartidos conmigo) */
+export async function fetchMyShareMemberships(userId: string): Promise<ShareMemberships | null> {
+  if (!userId) return null;
+  const { data, error } = await supabase
+    .from("project_members")
+    .select("project_id, track_id, role")
+    .eq("user_id", userId);
+  if (error) return null;
+  const out: ShareMemberships = { projects: {}, tracks: {}, projectIdsWithAccess: [] };
+  const ids = new Set<string>();
+  for (const m of (data || []) as { project_id: string; track_id: string | null; role: ProjectInviteRole }[]) {
+    ids.add(m.project_id);
+    const bucket = m.track_id ? out.tracks : out.projects;
+    const key = m.track_id || m.project_id;
+    bucket[key] = bucket[key] === "edit" || m.role === "edit" ? "edit" : "listen";
+  }
+  out.projectIdsWithAccess = Array.from(ids);
+  return out;
+}
+
+/** Editor de UN track: guarda solo esa fila (no toca el proyecto ni los otros tracks) */
+export async function saveSharedTrackMeta(track: Track, projectId: string): Promise<boolean> {
+  const { error } = await supabase
+    .from("tracks")
+    .update({
+      title: track.title,
+      artist: track.artist,
+      feat: track.feat || null,
+      prod: track.prod || null,
+      bpm: track.bpm,
+      musical_key: track.key,
+      note: track.note || null,
+      glyph: track.glyph,
+    })
+    .eq("id", toDbId(track.id))
+    .eq("project_id", toDbId(projectId));
+  if (error) console.warn("Error guardando track compartido:", error.message);
+  return !error;
+}

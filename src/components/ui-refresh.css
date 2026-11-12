@@ -1213,3 +1213,13 @@ html:root body.mobile-vinyl-wheel-locked .apple-shell {
 }
 /* Mientras se desliza se ve la app de atrás (la capa interna tiene el fondo del reproductor) */
 html:root body .perf-modal-layer { background: transparent !important; }
+
+.invite-link-error {
+  margin: 4px 0 10px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
