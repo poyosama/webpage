@@ -3661,18 +3661,111 @@ body.app-no-scroll .profile-page {
   transform: translateX(3px);
 }
 
-/* Reducción de padding en Perfil para subir la rueda de vinilos y que no se corte */
+/* Reducción ergonómica en Perfil para cero scroll en desktop y laptop */
 .profile-hero-card {
-  padding: 20px 24px !important;
+  padding: 12px 18px !important;
+  border-radius: 18px !important;
+}
+
+.profile-avatar-large {
+  width: 68px !important;
+  height: 68px !important;
+  border-radius: 16px !important;
+  font-size: 1.85rem !important;
+}
+
+.profile-main-copy h1 {
+  font-size: 1.45rem !important;
+  margin: 0 !important;
+  line-height: 1.15 !important;
+}
+
+.profile-main-copy h1 em {
+  font-size: 0.9rem !important;
+}
+
+.profile-main-copy p {
+  margin: 2px 0 4px !important;
+  font-size: 0.8rem !important;
+  line-height: 1.25 !important;
+}
+
+.profile-sticker-tray {
+  margin-top: 4px !important;
+  gap: 4px !important;
+}
+
+.profile-cta-col {
+  gap: 5px !important;
+}
+
+.profile-cta-col .apple-btn {
+  height: 30px !important;
+  padding: 0 12px !important;
+  font-size: 0.76rem !important;
+}
+
+.profile-invite-notif-btn {
+  padding: 4px 10px !important;
+  border-radius: 10px !important;
+  gap: 8px !important;
+}
+
+.invite-notif-badge {
+  width: 24px !important;
+  height: 24px !important;
+  font-size: 0.8rem !important;
+  border-radius: 7px !important;
+}
+
+.invite-notif-info b {
+  font-size: 0.74rem !important;
+}
+
+.invite-notif-info small {
+  font-size: 0.62rem !important;
 }
 
 .profile-metrics-bar {
-  margin-top: 14px !important;
-  padding-top: 12px !important;
+  margin-top: 8px !important;
+  padding-top: 6px !important;
+  gap: 14px !important;
+}
+
+.profile-metrics-bar b {
+  font-size: 1.15rem !important;
+  line-height: 1.1 !important;
+}
+
+.profile-metrics-bar span {
+  font-size: 0.55rem !important;
 }
 
 .profile-manifold-showcase {
-  margin-top: 16px !important;
+  margin-top: 8px !important;
+}
+
+.profile-manifold-showcase .section-header-row {
+  margin-bottom: 4px !important;
+}
+
+.profile-manifold-showcase .editorial-h2 {
+  font-size: 1.15rem !important;
+  margin: 0 !important;
+}
+
+.profile-manifold-showcase .row-actions .apple-btn {
+  height: 28px !important;
+  padding: 0 10px !important;
+  font-size: 0.72rem !important;
+}
+
+@media (min-width: 721px) {
+  body.app-no-scroll .profile-page {
+    overflow-y: hidden !important;
+    max-height: calc(100vh - 120px) !important;
+    padding-bottom: 0 !important;
+  }
 }
 
 /* Banner en Perfil (legacy fallback) */

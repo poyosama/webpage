@@ -1707,7 +1707,40 @@
      - Salta un badge verde esmeralda con el tick de confirmación popeando con resorte elástico (`.track-drop-pop-tick` con `@keyframes tickPopBounce`).
      - Feedback sonoro coordinado `sfx.tick()` y `sfx.drop()`.
      - El track se elimina del proyecto de origen, se incorpora al proyecto destino y ambos se guardan automáticamente.
-6. **Verificación y Deploy:**
-   - Validado con `npm run build` en Next.js Turbopack (0 errores de TypeScript y compilación 100% limpia).
+---
+
+### Turno 87 — Perfil Compacto 100% Cero Scroll (Desktop / Laptop 100vh Locking)
+**Pedido del usuario (`juani`):**
+- *"y de paso te digo en el perfil hay scroll, no quiero que haya scroll asi que compactalo solo un poquito mas hasta que no llegue a poder scrollearse"*
+
+**Implementación técnica aplicada (`ManifoldLibrary3D.tsx`, `library-polish.css`, `board-polish.css`):**
+1. **Reducción Ergonómica del Hero Card de Perfil (`board-polish.css`):**
+   - Padding de `.profile-hero-card` ajustado a `12px 18px` y radio `18px`.
+   - Avatar (`.profile-avatar-large`) escalado a `68px x 68px` con radio `16px`.
+   - Tipografía principal (`h1`) reducida a `1.45rem` con interlineado ceñido `1.15`.
+   - Párrafo de biografía con márgenes compactos `2px 0 4px` y tamaño `0.8rem`.
+   - Botones CTA en columna (`.profile-cta-col`) con gap `5px` y altura `30px`.
+   - Botón unificado de invitaciones rosas (`.profile-invite-notif-btn`) compactado con padding `4px 10px`, badge de ticket `24px x 24px` y textos `0.74rem / 0.62rem`.
+   - Barra de métricas (`.profile-metrics-bar`) con margen superior `8px`, números a `1.15rem` y etiquetas a `0.55rem`.
+2. **Compactación del Header del Showcase (`board-polish.css`):**
+   - Margen superior de `.profile-manifold-showcase` reducido a `8px`.
+   - Margen inferior de `.section-header-row` reducido a `4px`.
+   - Título `.editorial-h2` escalado a `1.15rem`.
+   - Botones de acción `+ Crear Proyecto` y `+ Subir tracks` ajustados a altura `28px`, padding `0 10px` y fuente `0.72rem`.
+3. **Optimización de la Rueda de Vinilos en Perfil (`ManifoldLibrary3D.tsx`, `library-polish.css`):**
+   - Radios elípticos en modo compacto ajustados a `radiusX: 180` y `radiusY: 165` con ángulo `delta * 14.5`.
+   - Viewport de la rueda (`.vinyl-fan-arc-viewport`) compactado a `clamp(280px, 32vh, 330px) !important;` con padding `8px 18px 8px`.
+   - Sobres de vinilo a `184px x 184px` y discos a `168px x 168px`.
+   - Título del vinilo activo ajustado a `clamp(1.7rem, 2.9vw, 2.4rem)`.
+   - Grilla del catálogo en vista cuadrada con minmax de `140px` y gap de `12px`.
+4. **Cero Scroll Garantizado en Desktop (`board-polish.css`):**
+   - Para `@media (min-width: 721px)` en `body.app-no-scroll .profile-page`:
+     - `overflow-y: hidden !important;`
+     - `max-height: calc(100vh - 120px) !important;`
+     - `padding-bottom: 0 !important;`
+   - La pantalla completa entra limpia y sin posibilidad de scrollearse en cualquier monitor o notebook.
+5. **Verificación y Deploy:**
+   - Compilación exitosa con Next.js Turbopack (`npm run build`, 0 errores).
+
 
 

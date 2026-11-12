@@ -1322,14 +1322,14 @@ export default function ManifoldLibrary3D({
                 {projects.map((p, idx) => {
                   const delta = idx - arcOffset;
                   const absDelta = Math.abs(delta);
-                  const angleDeg = delta * (isMobileViewport ? 14 : compact ? 15.5 : 17.5);
+                  const angleDeg = delta * (isMobileViewport ? 14 : compact ? 14.5 : 17.5);
                   const angleRad = (angleDeg * Math.PI) / 180;
-                  const radiusX = isMobileViewport ? 115 : compact ? 210 : 270;
-                  const radiusY = isMobileViewport ? 136 : compact ? 210 : 275;
+                  const radiusX = isMobileViewport ? 115 : compact ? 180 : 270;
+                  const radiusY = isMobileViewport ? 136 : compact ? 165 : 275;
 
                   const tx =
                     (Math.cos(angleRad) - 1) * radiusX +
-                    (absDelta < 0.35 ? (isMobileViewport ? 14 : compact ? 18 : 26) : 0);
+                    (absDelta < 0.35 ? (isMobileViewport ? 14 : compact ? 16 : 26) : 0);
                   const ty = Math.sin(angleRad) * radiusY;
                   const rotZ = angleDeg * 0.78;
                   const scale = Math.max(0.76, 1 - absDelta * 0.065);
