@@ -2121,6 +2121,20 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 2. **Verificación y Deploy:**
    - Compilación exitosa en Next.js Turbopack (`npm run build`, 0 errores).
 
+---
+
+### Turno 101 — Renombrado de Track en chickenNugget ("esta cumbia" → "esta carucha")
+**Prompt del usuario:**
+- *"solo quiero que cambies el nombre de uno de los tracks placeholders (esta cumbia - chickenNugget) se tiene que llamar “esta carucha”"*
+
+**Implementación técnica aplicada:**
+1. **Actualización de Metadata en `src/lib/mock.ts`:**
+   - Modificado el track con id `cn-2` dentro del proyecto `chickenNugget` de `title: "esta cumbia"` a `title: "esta carucha"`.
+   - Actualizadas las bios de los productores (`@gonza2k` y `@2ounces`) y la descripción del drumkit de 2ounces para referenciar `"esta carucha"` de forma consistente.
+2. **Verificación y Deploy:**
+   - Compilación exitosa en Next.js Turbopack (`npm run build`, 0 errores).
+
+
 
 
 
