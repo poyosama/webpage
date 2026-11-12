@@ -1815,6 +1815,52 @@
 3. **Verificación y Deploy:**
    - Compilación exitosa con Next.js Turbopack (`npm run build`, 0 errores).
 
+---
+
+### Turno 91 — Links de Spotify, Portadas Reales (LA PLAGA y AMORIO CLUB), Filtro de Proyectos Privados y Reproducción Ininterrumpida Persistente (F5)
+**Pedido del usuario (`juani`):**
+- *"te paso los links de spoti de todos los proyectos que estan en la tabla ahora, quiero que linkees cada proyecto con su spotify para clickearlos y que te lleve a spotify al respectivo proyecto porque los artistas todavia no estan en el foro...
+la plaga: https://open.spotify.com/album/5MGalKt6rRgZB5tCx46jDO?si=8CZ-n_AIT6-r9tjQ4TifwA
+blablabla: https://open.spotify.com/album/2qQsmIu0Y54qI0FgjPSFSD?si=CtT8-yy7T8OSHX9OryEELA
+perdon la demora: https://open.spotify.com/album/50Qf8do6bp61BCUSABe7nw?si=OLMWIG0BRNG39W-UGyN68A
+chickennugget: https://open.spotify.com/album/06rk3Ca3uVZOXzgdNYakRm?si=P_yv75Q_RYiJJpNldaS91w
+esto es estar en sonido: https://open.spotify.com/album/4AgV3jniMStGnN7qgiZM6C?si=ofGVc82vSz-AkHZb7CGUPw
+ma7ias: https://open.spotify.com/album/3fqEhGOk6yuLCKwi0i7q7S?si=5KCOLaXKTKqqW9Z_xpPreg
+love2hate: https://open.spotify.com/album/13LVOkh1JCitO7Ah7mxUQw?si=wZJ7cfOXQ2ycpdRNYHb3cg
+de amorio club la portada es esta (en realidad es amorio club no amorio club 2)
+y de la plaga tambien jaajaj
+ademas fijate que si los proyectos estan en privado que no aparezcan las canciones en el inicio.. ni en el perfil de los usuarios
+tambien fijate que cuando muevo un track se reinicia el progreso, y si tiro f5 creo que tambien. prioriza que la reproduccion se interrumpa lo menos posible (nada)"*
+
+**Implementación técnica aplicada (`mock.ts`, `App.tsx`, `sfx.ts`, portadas):**
+1. **Links Oficiales de Spotify (`mock.ts`, `App.tsx`):**
+   - Agregada propiedad `spotifyUrl?: string;` al tipo `Project`.
+   - Vinculados los álbumes de Spotify a `chickennugget`, `perdon-la-demora`, `ma7ias`, `esto-es-estar-en-sonido`, `love2hate`, `la-plaga` y `blablabla`.
+   - En `navigateToArtist(artistName)`: como los artistas todavía no están registrados en el foro, al clickear el nombre de un artista abre directamente su álbum en Spotify en nueva pestaña (`window.open(matchProj.spotifyUrl, "_blank")`).
+   - Agregados botones e íconos de Spotify en:
+     - Filas de tracks de Inicio (`.clean-track-row .row-inline-actions`).
+     - Barra superior móvil del proyecto (`.untitled-top-right-group`).
+     - Inspector de escritorio (`.inspector-compact-actions` botón `Spotify`).
+     - Menús de opciones de proyecto móvil y escritorio (`"Escuchar en Spotify"`).
+2. **Portadas Reales y Renombre de Proyecto (`mock.ts`, `App.tsx`, `public/covers/`):**
+   - Copiada imagen provista a `public/covers/amorio-club.png`. Renombrado de `AMORIO CLUB 2` a `AMORIO CLUB`, actualizada bio de Máximo y carátula real en el collage de inicio y tracks.
+   - Copiada imagen provista a `public/covers/la-plaga.png`. Asignada portada real a `LA PLAGA` en mock, collage de inicio, tracks y video.
+3. **Filtro Estricto de Proyectos Privados (`App.tsx`):**
+   - Se añadió `.filter((p) => p.visibility !== "private" && p.status !== "Privado")` a `userProjectsRecent` y a `boardProjects`.
+   - Los proyectos y tracks privados quedan 100% aislados: no se muestran en `Lo último subido & Rotación`, ni en la tira de portadas `filmstrip-row`, ni en las canciones públicas de otros artistas (`sortedArtists`). Solo el dueño del proyecto puede verlo en su perfil privado.
+4. **Reproducción Ininterrumpida al Mover Tracks (`App.tsx`, `sfx.ts`):**
+   - **Causa raíz:** al soltar un track arrastrado, el navegador disparaba un evento `click` sobre la fila, ejecutando `playTrack()` que llamaba a `startGroove` reiniciando el audio desde el segundo 0.
+   - **Solución:**
+     - Se implementó la bandera `dragEndedRecentlyRef` que ignora clicks residuales durante 260ms tras el drop.
+     - En `playTrack`: si el track seleccionado ya es el `currentTrack` y está sonando, retorna temprano sin interrumpir; si estaba pausado, solo reanuda.
+     - En `sfx.ts`: `playNativeAudio` ahora compara URLs absolutas resueltas (`new URL(audioUrl, window.location.href).href`) y, si el audio ya está reproduciéndose y `!resetTime`, no toca `currentTime` ni recrea la instancia `Audio`, garantizando cero saltos.
+5. **Persistencia de Reproducción en F5 (`App.tsx`, `sfx.ts`):**
+   - Se guarda el estado continuo en `localStorage` (`eltablero_playback_v1` con `trackId`, `projectId`, `currentSec`) cada 2s y en el evento `window.beforeunload`.
+   - Al recargar la página con F5, `useEffect` recupera el proyecto, el track y aplica `sfx.seek(savedSec)` y `sfx.setTrackDuration()`, dejando el reproductor en el segundo exacto donde quedó.
+   - Añadidos alias `sfx.seekGroove()` y `sfx.getGrooveProgress()` en `sfx.ts`.
+6. **Verificación y Deploy:**
+   - Compilación exitosa con Next.js Turbopack (`npm run build`, 0 errores).
+
 
 
 

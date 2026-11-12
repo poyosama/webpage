@@ -336,6 +336,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     active: boolean;
   } | null>(null);
   const [isOverLeftExitPortal, setIsOverLeftExitPortal] = useState<boolean>(false);
+  const dragEndedRecentlyRef = useRef<boolean>(false);
 
   const startDraggingTrack = (
     e: React.PointerEvent,
@@ -496,6 +497,11 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       } else {
         sfx.release();
       }
+
+      dragEndedRecentlyRef.current = true;
+      setTimeout(() => {
+        dragEndedRecentlyRef.current = false;
+      }, 260);
 
       setDraggedTrack(null);
       setDropTargetTrackIndex(null);
@@ -759,6 +765,59 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       // ignore
     }
   }, [producerDrops, hydrated]);
+
+  // Restauración de reproducción ininterrumpida tras F5 / recarga
+  const playbackRestoredRef = useRef<boolean>(false);
+  useEffect(() => {
+    if (playbackRestoredRef.current) return;
+    try {
+      const rawPlayback = localStorage.getItem("eltablero_playback_v1");
+      if (!rawPlayback) return;
+      const pb = JSON.parse(rawPlayback);
+      if (!pb?.trackId) return;
+      const allAvailable = [...projects, ...DEMO_PROJECTS];
+      const p =
+        allAvailable.find((x) => x.id === pb.projectId) ||
+        allAvailable.find((x) => x.tracks.some((t) => t.id === pb.trackId));
+      if (!p) return;
+      const t = p.tracks.find((x) => x.id === pb.trackId);
+      if (!t) return;
+      playbackRestoredRef.current = true;
+      setCurrentProject(p);
+      setCurrentTrack(t);
+      if (typeof pb.currentSec === "number" && pb.currentSec > 0) {
+        sfx.setTrackDuration(t.durationSec || 174);
+        sfx.seekGroove(pb.currentSec);
+      }
+    } catch {}
+  }, [projects]);
+
+  // Guardado periódico y en beforeunload para persistir segundos y track en F5
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saveCurrentPlayback = () => {
+      if (!currentTrack || currentTrack.id === "standby-track") return;
+      const prog = sfx.getGrooveProgress();
+      try {
+        localStorage.setItem(
+          "eltablero_playback_v1",
+          JSON.stringify({
+            trackId: currentTrack.id,
+            projectId: currentProject?.id || "",
+            currentSec: prog.currentSec || 0,
+            wasPlaying: isPlaying,
+          })
+        );
+      } catch {}
+    };
+
+    window.addEventListener("beforeunload", saveCurrentPlayback);
+    const interval = setInterval(saveCurrentPlayback, 2000);
+    return () => {
+      window.removeEventListener("beforeunload", saveCurrentPlayback);
+      clearInterval(interval);
+    };
+  }, [currentTrack, currentProject, isPlaying]);
 
   // Carga (o crea) el perfil de la cuenta + todos los proyectos en PARALELO (Stale-While-Revalidate)
   const applySession = async (u: any, mounted: () => boolean, fresh: boolean) => {
@@ -1067,6 +1126,15 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
 
   const playTrack = (track: Track, project: Project, openFull = false) => {
     const isDifferentTrack = track.id !== currentTrack.id;
+    if (!isDifferentTrack && isPlaying) {
+      if (openFull) setPlayerExpanded(true);
+      return;
+    }
+    if (!isDifferentTrack && !isPlaying) {
+      togglePlay();
+      if (openFull) setPlayerExpanded(true);
+      return;
+    }
     setCurrentTrack(track);
     setCurrentProject(project);
     setIsPlaying(true);
@@ -1817,11 +1885,19 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       return;
     }
 
-    const matchProj = boardProjects.find(
+    const allList = [...boardProjects, ...DEMO_PROJECTS];
+    const matchProj = allList.find(
       (p) =>
         p.artist?.toLowerCase().includes(clean) ||
+        p.artistId?.toLowerCase() === clean ||
         p.tracks.some((t) => t.artist?.toLowerCase().includes(clean))
     );
+
+    // Si tiene link de Spotify (artistas que todavía no están en el foro), abrir su Spotify directo
+    if (matchProj?.spotifyUrl) {
+      window.open(matchProj.spotifyUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
 
     if (matchProj) {
       setSelectedProjectId(matchProj.id);
@@ -1839,18 +1915,22 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     (p) => (meProfile.id && p.artistId === meProfile.id) || Boolean(projectInvites[p.id])
   );
 
-  // Proyectos ordenados por lo más nuevo que se va subiendo en tiempo real
-  const userProjectsRecent = [...projects].sort((a, b) => {
-    const tA = new Date(a.createdAt || 0).getTime();
-    const tB = new Date(b.createdAt || 0).getTime();
-    return tB - tA;
-  });
+  // Proyectos ordenados por lo más nuevo que se va subiendo en tiempo real (excluyendo proyectos privados)
+  const userProjectsRecent = [...projects]
+    .filter((p) => p.visibility !== "private" && p.status !== "Privado")
+    .sort((a, b) => {
+      const tA = new Date(a.createdAt || 0).getTime();
+      const tB = new Date(b.createdAt || 0).getTime();
+      return tB - tA;
+    });
 
-  // board. Inicio muestra lo que se va subiendo en tiempo real + catálogo base curado
+  // board. Inicio muestra lo que se va subiendo en tiempo real + catálogo base curado (exclusivamente proyectos públicos)
   const boardProjects: Project[] = [
     ...userProjectsRecent,
     ...DEMO_PROJECTS.filter(
       (d) =>
+        d.visibility !== "private" &&
+        d.status !== "Privado" &&
         !userProjectsRecent.some(
           (p) =>
             p.id.toLowerCase() === d.id.toLowerCase() ||
@@ -2146,6 +2226,11 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                           if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
                         }}
                       >
+                        <img
+                          src="/covers/la-plaga.png"
+                          alt="LA PLAGA"
+                          className="collage-cover-thumb"
+                        />
                         <span className="roster-word">
                           LA <span className="inline-swatch coral">PLAGA</span>
                         </span>
@@ -2288,12 +2373,17 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                         className="collage-item clean-editorial-word"
                         onMouseEnter={() => sfx.hover()}
                         onClick={() => {
-                          const p = findProjectById("amorio-club-2");
+                          const p = findProjectById("amorio-club") || findProjectById("amorio-club-2");
                           if (p && p.tracks[0]) playTrack(p.tracks[0], p, false);
                         }}
                       >
+                        <img
+                          src="/covers/amorio-club.png"
+                          alt="AMORIO CLUB"
+                          className="collage-cover-thumb"
+                        />
                         <span className="roster-word">
-                          <span className="inline-swatch red">AMORIO CLUB 2</span>
+                          <span className="inline-swatch red">AMORIO CLUB</span>
                         </span>
                         <sup className="sup-tag">ep · Máximo</sup>
                       </button>
@@ -2438,6 +2528,27 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                                 <span className="meta-chip">{track.key}</span>
                               </div>
                               <div className="row-inline-actions">
+                                {proj.spotifyUrl && (
+                                  <a
+                                    href={proj.spotifyUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="row-snippet-btn spotify-track-link-btn"
+                                    title={`Abrir ${proj.title} en Spotify`}
+                                    onClick={(e) => e.stopPropagation()}
+                                    style={{
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      padding: "4px 8px",
+                                      textDecoration: "none",
+                                    }}
+                                  >
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="#1DB954">
+                                      <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
+                                    </svg>
+                                  </a>
+                                )}
                                 <button
                                   type="button"
                                   className="row-snippet-btn track-download-btn"
@@ -2980,6 +3091,21 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                         </button>
 
                         <div className="untitled-top-right-group">
+                          {activeProject.spotifyUrl && (
+                            <a
+                              href={activeProject.spotifyUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="untitled-icon-squircle"
+                              aria-label="Abrir en Spotify"
+                              title="Abrir en Spotify"
+                              style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+                            >
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="#1DB954">
+                                <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
+                              </svg>
+                            </a>
+                          )}
                           <button
                             type="button"
                             className={`untitled-icon-squircle ${shareCopiedId === activeProject.id ? "is-active" : ""}`}
@@ -3231,6 +3357,21 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                                     : "Guardar en Biblioteca"}
                                 </span>
                               </button>
+                            )}
+                            {activeProject.spotifyUrl && (
+                              <a
+                                href={activeProject.spotifyUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="untitled-menu-item"
+                                onClick={() => setProjectMenuOpen(false)}
+                                style={{ textDecoration: "none" }}
+                              >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="#1DB954">
+                                  <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
+                                </svg>
+                                <span>Escuchar en Spotify</span>
+                              </a>
                             )}
                             {activeIsMine && (
                               <>
@@ -3499,7 +3640,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                                     isCurrent ? "is-playing" : ""
                                   }`}
                                   onClick={() => {
-                                    if (!draggedTrack) playTrack(t, activeProject, false);
+                                    if (!draggedTrack && !dragEndedRecentlyRef.current) playTrack(t, activeProject, false);
                                   }}
                                 >
                                   {canEditActive && (
@@ -3882,6 +4023,21 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                                   </svg>
                                   <span>{shareCopiedId === activeProject.id ? "Link copiado" : "Invitar"}</span>
                                 </button>
+                                {activeProject.spotifyUrl && (
+                                  <a
+                                    href={activeProject.spotifyUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="apple-btn ghost compact-pill-btn spotify-pill-btn"
+                                    style={{ display: "inline-flex", alignItems: "center", gap: 6, textDecoration: "none" }}
+                                    title="Abrir álbum en Spotify"
+                                  >
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="#1DB954">
+                                      <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
+                                    </svg>
+                                    <span>Spotify</span>
+                                  </a>
+                                )}
                                 <button
                                   type="button"
                                   className={`untitled-icon-squircle ${projectMenuOpen ? "is-active" : ""}`}
@@ -4026,6 +4182,21 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                                               : "Guardar en Biblioteca"}
                                           </span>
                                         </button>
+                                      )}
+                                      {activeProject.spotifyUrl && (
+                                        <a
+                                          href={activeProject.spotifyUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="untitled-menu-item"
+                                          onClick={() => setProjectMenuOpen(false)}
+                                          style={{ textDecoration: "none" }}
+                                        >
+                                          <svg width="15" height="15" viewBox="0 0 24 24" fill="#1DB954">
+                                            <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
+                                          </svg>
+                                          <span>Escuchar en Spotify</span>
+                                        </a>
                                       )}
                                       {activeIsMine && (
                                         <>
@@ -4185,7 +4356,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                                   }`}
                                   onMouseEnter={() => sfx.hover()}
                                   onClick={() => {
-                                    if (!draggedTrack) playTrack(t, activeProject, false);
+                                    if (!draggedTrack && !dragEndedRecentlyRef.current) playTrack(t, activeProject, false);
                                   }}
                                 >
                                   {canEditActive && (

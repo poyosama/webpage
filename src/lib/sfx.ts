@@ -301,6 +301,9 @@ export const sfx = {
       currentAudioEl.currentTime = Math.min(currentAudioEl.duration, clamped);
     }
   },
+  seekGroove(sec: number) {
+    return this.seek(sec);
+  },
   setTrackDuration(durationSec: number) {
     virtualDurationSec = Math.max(15, durationSec || 174);
   },
@@ -349,6 +352,9 @@ export const sfx = {
       ended: fireEnded,
     };
   },
+  getGrooveProgress() {
+    return this.getPlaybackState();
+  },
   pauseGroove() {
     if (currentAudioEl && !Number.isNaN(currentAudioEl.currentTime)) {
       virtualCurrentSec = currentAudioEl.currentTime;
@@ -390,17 +396,29 @@ export const sfx = {
     const c = ac();
 
     const playNativeAudio = (audioUrl: string) => {
-      if (currentAudioEl && currentAudioEl.src === audioUrl) {
+      let isSameSrc = false;
+      if (currentAudioEl && typeof window !== "undefined") {
+        try {
+          const resolvedUrl = new URL(audioUrl, window.location.href).href;
+          isSameSrc = currentAudioEl.src === resolvedUrl || currentAudioEl.src === audioUrl;
+        } catch {
+          isSameSrc = currentAudioEl.src === audioUrl;
+        }
+      }
+
+      if (currentAudioEl && isSameSrc) {
         currentAudioEl.loop = false;
         currentAudioEl.muted = muted;
         currentAudioEl.volume = volume;
         applyAudioPlaybackRateAndPitch();
         if (resetTime || currentAudioEl.ended) {
           currentAudioEl.currentTime = 0;
-        } else if (virtualCurrentSec > 0 && !Number.isNaN(virtualCurrentSec)) {
+        } else if (virtualCurrentSec > 0 && !Number.isNaN(virtualCurrentSec) && currentAudioEl.paused) {
           currentAudioEl.currentTime = virtualCurrentSec;
         }
-        currentAudioEl.play().catch(() => {});
+        if (currentAudioEl.paused) {
+          currentAudioEl.play().catch(() => {});
+        }
       } else {
         if (currentAudioEl) {
           currentAudioEl.pause();
