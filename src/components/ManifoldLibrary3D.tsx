@@ -968,36 +968,6 @@ export default function ManifoldLibrary3D({
         </div>
       )}
 
-      {/* ==================== SWITCHER FLOTANTE ARRIBA A LA IZQUIERDA ==================== */}
-      <div className="library-top-left-switcher">
-        <button
-          type="button"
-          className={`library-mode-btn ${activeMode === "wheel" ? "active" : ""}`}
-          onClick={() => {
-            sfx.tap();
-            setActiveMode("wheel");
-            onChangeViewMode?.("disc-row");
-          }}
-          title="Vista rueda de vinilos"
-        >
-          <span className="library-mode-icon">💿</span>
-          <span>Rueda</span>
-        </button>
-        <button
-          type="button"
-          className={`library-mode-btn ${activeMode === "grid" ? "active" : ""}`}
-          onClick={() => {
-            sfx.tap();
-            setActiveMode("grid");
-            onChangeViewMode?.("manifold");
-          }}
-          title="Vista tapas [untitled]"
-        >
-          <span className="library-mode-icon">⊞</span>
-          <span>Tapas</span>
-        </button>
-      </div>
-
       {/* ==================== STAGE PRINCIPAL DE BIBLIOTECA ==================== */}
       <div
         className={`manifold-3d-canvas-stage ${
@@ -1006,6 +976,36 @@ export default function ManifoldLibrary3D({
       >
         <div className="manifold-stage-overlay-top">
           <div className="manifold-title-and-switch">
+            {/* Switcher arriba a la izquierda: [ 💿 Rueda | ⊞ Tapas ] */}
+            <div className="library-top-left-switcher" role="group" aria-label="Cambiar modo de vista">
+              <button
+                type="button"
+                className={`library-mode-btn ${activeMode === "wheel" ? "active" : ""}`}
+                onClick={() => {
+                  sfx.tap();
+                  setActiveMode("wheel");
+                  onChangeViewMode?.("disc-row");
+                }}
+                title="Vista rueda de vinilos"
+              >
+                <span className="library-mode-icon">💿</span>
+                <span>Rueda</span>
+              </button>
+              <button
+                type="button"
+                className={`library-mode-btn ${activeMode === "grid" ? "active" : ""}`}
+                onClick={() => {
+                  sfx.tap();
+                  setActiveMode("grid");
+                  onChangeViewMode?.("manifold");
+                }}
+                title="Vista tapas [untitled]"
+              >
+                <span className="library-mode-icon">⊞</span>
+                <span>Tapas</span>
+              </button>
+            </div>
+
             <div className="manifold-overlay-titles">
               <span className="mono-tag">
                 {activeMode === "wheel"
@@ -1300,14 +1300,14 @@ export default function ManifoldLibrary3D({
                 {projects.map((p, idx) => {
                   const delta = idx - arcOffset;
                   const absDelta = Math.abs(delta);
-                  const angleDeg = delta * (isMobileViewport ? 14 : 17.5);
+                  const angleDeg = delta * (isMobileViewport ? 14 : compact ? 15.5 : 17.5);
                   const angleRad = (angleDeg * Math.PI) / 180;
-                  const radiusX = isMobileViewport ? 115 : 270;
-                  const radiusY = isMobileViewport ? 136 : 275;
+                  const radiusX = isMobileViewport ? 115 : compact ? 210 : 270;
+                  const radiusY = isMobileViewport ? 136 : compact ? 210 : 275;
 
                   const tx =
                     (Math.cos(angleRad) - 1) * radiusX +
-                    (absDelta < 0.35 ? (isMobileViewport ? 14 : 26) : 0);
+                    (absDelta < 0.35 ? (isMobileViewport ? 14 : compact ? 18 : 26) : 0);
                   const ty = Math.sin(angleRad) * radiusY;
                   const rotZ = angleDeg * 0.78;
                   const scale = Math.max(0.76, 1 - absDelta * 0.065);

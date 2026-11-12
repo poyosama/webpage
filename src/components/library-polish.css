@@ -87,12 +87,13 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
 }
 
-/* ==================== 2. SWITCHER FLOTANTE ARRIBA A LA IZQUIERDA ==================== */
+.manifold-3d-wrapper {
+  position: relative !important;
+}
+
+/* ==================== 2. SWITCHER EN CABECERA ARRIBA A LA IZQUIERDA ==================== */
 .library-top-left-switcher {
-  position: absolute;
-  top: clamp(14px, 2.2vw, 24px);
-  left: clamp(18px, 3.5vw, 42px);
-  z-index: 60;
+  position: static !important;
   display: inline-flex !important;
   align-items: center;
   background: var(--surface);
@@ -100,9 +101,10 @@
   padding: 3px;
   border-radius: 980px;
   gap: 3px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
+  flex-shrink: 0;
 }
 
 .manifold-3d-wrapper.has-library-canva .library-top-left-switcher {
@@ -378,3 +380,43 @@
     font-size: 0.78rem !important;
   }
 }
+
+/* ==================== 5. MODO COMPACTO (PERFIL & SHOWCASE SIN CORTE VERTICAL) ==================== */
+.manifold-3d-wrapper.is-compact .vinyl-fan-arc-viewport {
+  height: clamp(380px, 46vh, 440px) !important;
+  padding: 18px 24px 18px !important;
+}
+
+@media (min-width: 721px) {
+  .manifold-3d-wrapper.is-compact .vinyl-fan-arc-wheel {
+    flex: 0 0 clamp(330px, 38vw, 440px) !important;
+    width: clamp(330px, 38vw, 440px) !important;
+  }
+
+  .manifold-3d-wrapper.is-compact .vinyl-fan-sleeve-card {
+    width: 216px !important;
+    height: 216px !important;
+    margin-top: -108px !important;
+    transform-origin: -150px 50% !important;
+  }
+
+  .manifold-3d-wrapper.is-compact .vinyl-fan-record-disc {
+    width: 196px !important;
+    height: 196px !important;
+    margin-top: -98px !important;
+    right: -38px !important;
+  }
+
+  .manifold-3d-wrapper.is-compact .vinyl-fan-sleeve-card.is-focused .vinyl-fan-record-disc {
+    transform: translateX(28px) rotate(22deg) !important;
+  }
+
+  .manifold-3d-wrapper.is-compact .vinyl-fan-clean-title-card .vinyl-active-title {
+    font-size: clamp(2rem, 3.8vw, 3.2rem) !important;
+  }
+}
+
+.manifold-3d-wrapper.is-compact .untitled-catalog-viewport {
+  padding: clamp(20px, 3vw, 36px) clamp(16px, 3.2vw, 32px) 80px !important;
+}
+

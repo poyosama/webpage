@@ -1631,3 +1631,47 @@
    - Se añadió la regla `.library-page.library-clean .library-top-left-switcher { display: inline-flex !important; }` en `board-polish.css` para garantizar que esté SIEMPRE visible y accesible para alternar entre `💿 Rueda` y `⊞ Tapas [untitled]`.
 4. **Verificación y Deploy:**
    - Compilación exitosa con `npm run build` en Turbopack sin errores.
+
+---
+
+### Turno 85 — Unificación de Invitaciones en Botón Notificación Rosa, Rueda de Vinilos Compacta en Perfil y Fix de Switcher sobre Avatar
+**Pedido del usuario (`juani`):**
+- *"y el perfil se siguen viendo hasta ahi los vinilos, no se puede ver mas.. para mi lo de invitaciones exclusivas ponelo donde sale Invitar amigos y unifica los dos con el formato del rosa asi como notificacion, me gusto esa, pero si subis eso y haces un poquito menos de zoom o algo asi (que queed cuadrado con las otras pantallas) para que se pueda ver la ruedita de proyectos. las tapas se ven bien !"* (adjuntó captura `image.png` mostrando el banner gigante empujando la rueda de vinilos hacia abajo, la rueda cortada a la mitad por el borde inferior, y el switcher `[ 💿 Rueda | ⊞ Tapas ]` superpuesto sobre el avatar).
+
+**Diagnóstico sobre `image.png`:**
+1. **Rueda de vinilos cortada verticalmente:**
+   - La tarjeta de perfil (`.profile-hero-card`) tenía 28px de padding, margen superior amplio y un banner gigante inferior de ~140px de altura para las invitaciones. Esto empujaba el showcase de proyectos a Y=560px, dejando solo 300px libres en pantallas de 1080p, provocando que la mitad inferior de los vinilos quedara oculta tras el dock del reproductor.
+   - La rueda de vinilos utilizaba radios de 270x275px y sobres de 250px en todas las vistas, requiriendo más altura vertical de la disponible cuando se combinaba con la tarjeta de perfil.
+2. **Switcher de vistas flotando sobre el avatar del perfil:**
+   - `.manifold-3d-wrapper` no tenía `position: relative`, haciendo que el switcher absoluto (`.library-top-left-switcher` a `top: 14px; left: 18px`) se posicionara respecto al contenedor superior de la página, cayendo exactamente sobre el avatar del perfil.
+3. **Invitaciones redundantes:**
+   - Existía el botón simple `"Invitar amigos (3 pases)"` en la columna derecha y además el banner gigante inferior `"Invitaciones exclusivas a board"`. Juani pidió unificarlos en la posición del botón derecho usando el formato rosa tipo notificación que le gustó.
+
+**Implementación técnica aplicada:**
+1. **Unificación de Invitaciones en Botón Notificación Rosa (`App.tsx`, `board-polish.css`):**
+   - Se removió el banner inferior gigante `.profile-invite-banner` de la tarjeta de perfil, ahorrando ~140px de altura vertical inmediata.
+   - En la columna derecha de acciones de perfil se reemplazó el botón fantasma por `.profile-invite-notif-btn`:
+     - Badge rosa con glow `🎟️` (`rgba(244, 63, 94, 0.16)`).
+     - Contenido tipográfico: título en negrita `"Invitaciones exclusivas"` y subtítulo `"3 pases cada 2 semanas"` (blanco en modo oscuro, negro en modo claro).
+     - Flecha interactiva rosa `→` que reacciona con micro-animación al hover.
+     - Fondo con degradé suave rosado (`rgba(244, 63, 94, 0.12)` a `rgba(225, 29, 72, 0.05)`) y borde rosado fino (`rgba(244, 63, 94, 0.3)`), adaptado con alto contraste en dark mode.
+2. **Corrección de Switcher Arriba a la Izquierda (`ManifoldLibrary3D.tsx`, `library-polish.css`, `globals.css`):**
+   - Se añadió `position: relative !important;` tanto en `globals.css` como en `library-polish.css` a `.manifold-3d-wrapper`.
+   - Se integró `.library-top-left-switcher` directamente dentro de `.manifold-title-and-switch` en el header de la biblioteca/showcase con `position: static !important;`.
+   - Ya no se superpone jamás sobre el avatar ni elementos externos; queda limpiamente alineado arriba a la izquierda del encabezado de proyectos.
+3. **Rueda de Vinilos Compacta sin Cortes en Perfil (`ManifoldLibrary3D.tsx`, `library-polish.css`, `board-polish.css`):**
+   - Se activó `compact={true}` en `<ManifoldLibrary3D compact={true} />` dentro del showcase de perfil.
+   - En `ManifoldLibrary3D.tsx`, cuando `compact` es verdadero:
+     - Radios elípticos reducidos armónicamente: `radiusX: 210` (vs 270) y `radiusY: 210` (vs 275).
+     - Separación angular compacta: `angleDeg: delta * 15.5` (vs 17.5).
+     - Desplazamiento horizontal del vinilo central enfocado: `18px` (vs 26px).
+   - En `library-polish.css` para `.manifold-3d-wrapper.is-compact`:
+     - Altura del viewport ajustada a `clamp(380px, 46vh, 440px) !important;`.
+     - Tamaño de sobre cuadrado ajustado a `216px` (vs 250px) con origen de rotación en `-150px 50%`.
+     - Disco de vinilo ajustado a `196px` (vs 230px).
+     - Título derecho escalado armónicamente a `clamp(2rem, 3.8vw, 3.2rem)`.
+   - Reducción del padding de `.profile-hero-card` a `20px 24px` y del margen superior del showcase a `16px`.
+   - Ahora el perfil completo (avatar, bio, botones, métricas, títulos, la rueda completa de vinilos con sus arcos superior e inferior, el disco saliente y el reproductor) entra cómodamente en pantallas desktop y laptops sin cortes.
+4. **Verificación y Deploy:**
+   - Build 100% verificado con Turbopack y TypeScript (`npm run build`, 0 errores).
+

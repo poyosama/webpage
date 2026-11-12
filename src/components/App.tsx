@@ -4077,14 +4077,19 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                     </button>
                     <button
                       type="button"
-                      className="apple-btn ghost invite-cta-btn"
+                      className="profile-invite-notif-btn"
                       onClick={() => {
                         sfx.open();
                         setInviteFriendsModalOpen(true);
                       }}
-                      title="Invitá a tus amigos (3 pases cada 2 semanas)"
+                      title="Invitaciones exclusivas a board (3 pases disponibles)"
                     >
-                      🎟️ Invitar amigos (3 pases)
+                      <span className="invite-notif-badge">🎟️</span>
+                      <div className="invite-notif-info">
+                        <b>Invitaciones exclusivas</b>
+                        <small>3 pases cada 2 semanas</small>
+                      </div>
+                      <span className="invite-notif-arrow">→</span>
                     </button>
                   </div>
                 </div>
@@ -4104,27 +4109,6 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                       <span>SEGUIDORES</span>
                     </div>
                   )}
-                </div>
-
-                {/* Banner de Invitaciones exclusivas (3 cada 2 semanas) */}
-                <div
-                  className="profile-invite-banner"
-                  onClick={() => {
-                    sfx.open();
-                    setInviteFriendsModalOpen(true);
-                  }}
-                  title="Abrir mis pases de invitación"
-                >
-                  <div className="profile-invite-banner-left">
-                    <span className="invite-banner-icon">🎟️</span>
-                    <div className="invite-banner-text">
-                      <b>Invitaciones exclusivas a board.</b>
-                      <span>Tenés 3 códigos cada 2 semanas para sumar a tus artistas y productores de confianza.</span>
-                    </div>
-                  </div>
-                  <button type="button" className="apple-btn ghost compact">
-                    Ver pases
-                  </button>
                 </div>
               </section>
 
@@ -4157,6 +4141,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                   projects={myProjects}
                   selectedProjectId={activeProject?.id || selectedProjectId}
                   viewMode={libraryViewMode}
+                  compact={true}
                   onChangeViewMode={(m) => setLibraryViewMode(m)}
                   onSelectProject={(proj) => setSelectedProjectId(proj.id)}
                   onDiveIntoProject={(proj) => {
