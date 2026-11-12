@@ -1909,3 +1909,27 @@ sigue habiendo un padding raro abajo del reproductor no entiendo por que, pasa e
    - Se eliminaron las compensaciones dobles que sumaban espacio para controladores de Safari inexistentes en modo PWA, dejando el reproductor flotando a una distancia ergonómica exacta de ~10-14px sobre el Home Indicator de iOS.
 6. **Verificación y Deploy:**
    - Compilación exitosa con Next.js Turbopack (`npm run build`, 0 errores).
+### Turno 93 — Estilos del Modal de Opciones (•••) en Reproductor, Bloqueo de Scroll Horizontal en Pantalla de Proyecto y Despegue de Blur en Rueda de Vinilos Móvil
+**Prompt del usuario:**
+- *"en el reproductor los tres puntitos no hacen nada
+en la pantalla de proyecto desde el celular se puede scrollear para abajo y para los costados, que se pueda para abajo pero solo para ver los tracks, no para los costados x dios
+despues en la ruedita de la biblioteca en el iphone se ve mal el blur mira tapa hasta el proyecto seleccionado nada q ver"*
+*(Adjunta capturas IMG_3932.png, IMG_3944.png, IMG_3942.png)*
+
+**Implementación técnica aplicada:**
+1. **Modal de Opciones del Reproductor Expandido (`•••`) (`board-polish.css`):**
+   - El botón `.perf-options-btn` en `PerformativePlayer.tsx` disparaba el estado `optionsSheetOpen`, pero faltaban los estilos CSS de `.spotify-options-backdrop` y `.spotify-options-sheet`.
+   - Se incorporó la suite completa de estilos en `src/components/board-polish.css` con efecto iOS bottom sheet nativo (`backdrop-filter: blur(24px) saturate(180%)`, fondo translúcido oscuro, grabber ergonómico `.spotify-sheet-grabber`, animaciones `@keyframes spotifyBackdropFadeIn` y `@keyframes spotifySheetSlideUp`, y soporte Light/Dark Mode con `z-index: 99999`).
+   - Ahora el botón circular de tres puntos abre instantáneamente las opciones completas: Compartir link, Me gusta, Ir al proyecto, Fila de reproducción (`Queue`), Copiar enlace, Studio, Modo Cine y selector de Temas.
+2. **Bloqueo Total de Scroll Horizontal en Vista de Proyecto en Celular (`board-polish.css`):**
+   - En móviles, `.project-view-vinyl-stage .vinyl-fan-record-disc` tenía un offset absoluto de `right: -36px` con `translateX(38px)` que empujaba el disco hacia afuera por la derecha más de 70px. Al carecer de `overflow: hidden`, provocaba que la hoja del proyecto se expandiera más allá del viewport (`>100vw`) permitiendo desplazamientos laterales desprolijos (como se observaba en `IMG_3932.png` con el título "psyops" cortado a la izquierda).
+   - Se aplicó `overflow-x: hidden !important; width: 100vw !important; max-width: 100vw !important; box-sizing: border-box !important; touch-action: pan-y !important; overscroll-behavior-x: none !important;` tanto en `.project-inspector-sheet` como en `.untitled-mobile-project-view`.
+   - Se blindó `.project-view-vinyl-stage` con `overflow: hidden !important; width: 100% !important; max-width: 100% !important; touch-action: pan-y !important;`, conteniendo el disco dentro del marco visual sin perder su estética de vinilo asomando del sobre. La pantalla ahora solo permite scroll vertical para recorrer los tracks del proyecto.
+3. **Corrección de Rueda de Biblioteca en iPhone — Despegue de Título y Suavizado de Blur/Forcefield (`board-polish.css`):**
+   - En móvil (`@media (max-width: 720px)`), `.vinyl-fan-arc-wheel` tenía una altura restrictiva (`height: clamp(160px, 30vh, 200px)`), mientras que el sobre de vinilo mide 190px, sobresaliendo por abajo.
+   - Sumado a ello, la tarjeta de título `.vinyl-fan-clean-title-card` poseía `z-index: 50` (mayor que el vinilo seleccionado, que tiene `z-index: 35`) y su forcefield protector `.vinyl-title-forcefield` subía 16px con un gradiente negro casi opaco (`inset: -16px -22px; rgba(10, 10, 14, 0.94)`), montándose por encima de la mitad inferior de la portada del proyecto enfocado (como se evidenciaba en `IMG_3944.png`).
+   - Se ajustó `.vinyl-fan-arc-wheel` en móvil a `height: 220px !important; min-height: 220px !important; margin: 0 auto 12px !important;`, conteniendo completamente la carátula de 190px sin desbordes.
+   - Se reubicó la tarjeta de título `.vinyl-fan-clean-title-card` con `margin: 8px auto 0 !important;` y se redujo su `z-index` a `20 !important;` para que permanezca en su capa inferior.
+   - Se calibró `.vinyl-title-forcefield` en móvil a `inset: 0 -12px !important;` con un gradiente suave y sutil (`backdrop-filter: blur(8px)`), impidiendo que invada verticalmente la carátula del disco enfocado, la cual ahora se visualiza 100% nítida e impecable.
+4. **Verificación y Deploy:**
+   - Compilación exitosa en producción (`next build`, 0 errores en TypeScript y Turbopack).

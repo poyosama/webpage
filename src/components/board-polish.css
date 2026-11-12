@@ -1598,8 +1598,9 @@ body.app-no-scroll .cp-page {
     left: auto !important;
     top: auto !important;
     width: clamp(240px, 62vw, 340px) !important;
-    height: clamp(160px, 30vh, 200px) !important;
-    margin: 0 auto !important;
+    height: 220px !important;
+    min-height: 220px !important;
+    margin: 0 auto 12px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -1633,25 +1634,36 @@ body.app-no-scroll .cp-page {
   .project-inspector-sheet {
     position: fixed !important;
     inset: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
     z-index: 145 !important;
     background: #0a0a0c !important;
     border: none !important;
     border-radius: 0 !important;
     padding: 0 !important;
     margin: 0 !important;
+    overflow-x: hidden !important;
     overflow-y: auto !important;
+    overscroll-behavior-x: none !important;
+    touch-action: pan-y !important;
+    box-sizing: border-box !important;
     -webkit-overflow-scrolling: touch !important;
   }
 
   .untitled-mobile-project-view {
     display: flex !important;
     flex-direction: column !important;
+    width: 100% !important;
+    max-width: 100vw !important;
     min-height: 100dvh !important;
     background: #0a0a0c !important;
     color: #ffffff !important;
-    padding: calc(env(safe-area-inset-top, 0px) + 14px) 22px
+    padding: calc(env(safe-area-inset-top, 0px) + 14px) 20px
       calc(env(safe-area-inset-bottom, 0px) + 108px) !important;
     box-sizing: border-box !important;
+    overflow-x: hidden !important;
+    overscroll-behavior-x: none !important;
+    touch-action: pan-y !important;
   }
 
   .untitled-mobile-topbar {
@@ -1809,15 +1821,19 @@ body.app-no-scroll .cp-page {
     margin: 4px 6px !important;
   }
 
-  /* Escenario de vinilo idéntico a la rueda de selección de proyectos */
+  /* Escenario de vinilo idéntico a la rueda de selección de proyectos (contenido sin scroll lateral) */
   .project-view-vinyl-stage {
     width: 100% !important;
+    max-width: 100% !important;
     display: flex !important;
     justify-content: center !important;
     align-items: center !important;
     padding: 14px 0 24px !important;
     position: relative !important;
     perspective: 1000px !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    touch-action: pan-y !important;
   }
 
   .project-view-vinyl-stage .vinyl-fan-sleeve-card {
@@ -1826,8 +1842,8 @@ body.app-no-scroll .cp-page {
     left: auto !important;
     margin: 0 !important;
     transform: none !important;
-    width: min(246px, 64vw) !important;
-    height: min(156px, 40vw) !important;
+    width: min(230px, 58vw) !important;
+    height: min(150px, 38vw) !important;
     border-radius: 12px !important;
     flex-shrink: 0 !important;
     cursor: default !important;
@@ -1846,12 +1862,12 @@ body.app-no-scroll .cp-page {
   .project-view-vinyl-stage .vinyl-fan-record-disc {
     position: absolute !important;
     top: 50% !important;
-    right: -36px !important;
-    width: min(148px, 38vw) !important;
-    height: min(148px, 38vw) !important;
-    margin-top: calc(-1 * min(148px, 38vw) / 2) !important;
+    right: -24px !important;
+    width: min(142px, 36vw) !important;
+    height: min(142px, 36vw) !important;
+    margin-top: calc(-1 * min(142px, 36vw) / 2) !important;
     border-radius: 50% !important;
-    transform: translateX(38px) rotate(24deg) !important;
+    transform: translateX(28px) rotate(24deg) !important;
     z-index: 1 !important;
     box-shadow: 0 14px 34px rgba(0, 0, 0, 0.5) !important;
   }
@@ -2780,12 +2796,16 @@ body.app-no-scroll .cp-page {
     font-size: 1.15rem !important;
   }
 
-  /* Hoja del proyecto montada en <body>: pantalla completa real, con scroll propio */
+  /* Hoja del proyecto montada en <body>: pantalla completa real, con scroll solo vertical para ver tracks */
   .project-inspector-sheet {
     height: 100dvh !important;
     width: 100vw !important;
     max-width: 100vw !important;
-    overscroll-behavior: contain !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-x: none !important;
+    touch-action: pan-y !important;
+    overscroll-behavior-y: contain !important;
   }
 
   /* Rueda de vinilos: el contador +/- ya no tapa los sobres, va al borde derecho */
@@ -3078,7 +3098,7 @@ body.app-no-scroll .cp-page {
   }
 }
 
-/* En Celular (<= 720px): Rueda centrada arriba y título centrado abajo */
+/* En Celular (<= 720px): Rueda centrada arriba y título centrado abajo sin superponerse a la tapa */
 @media (max-width: 720px) {
   :root[data-theme="dark"] .vinyl-fan-inspector-card.vinyl-fan-clean-title-card,
   :root[data-theme="light"] .vinyl-fan-inspector-card.vinyl-fan-clean-title-card,
@@ -3088,7 +3108,7 @@ body.app-no-scroll .cp-page {
     bottom: auto !important;
     left: auto !important;
     right: auto !important;
-    margin: 0 auto !important;
+    margin: 8px auto 0 !important;
     padding: 6px 14px !important;
     display: flex !important;
     flex-direction: column !important;
@@ -3096,6 +3116,7 @@ body.app-no-scroll .cp-page {
     justify-content: center !important;
     text-align: center !important;
     max-width: 92vw !important;
+    z-index: 20 !important;
   }
 
   .vinyl-right-info-stack {
@@ -3116,6 +3137,28 @@ body.app-no-scroll .cp-page {
 
   .vinyl-right-action-row {
     margin-top: 4px !important;
+  }
+
+  /* Forcefield en móvil: nunca se extiende hacia arriba tapando la carátula */
+  .vinyl-title-forcefield {
+    inset: 0 -12px !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    border-radius: 20px !important;
+  }
+
+  :root[data-theme="dark"] .vinyl-title-forcefield .forcefield-core-glow,
+  [data-theme="dark"] .vinyl-title-forcefield .forcefield-core-glow {
+    background: radial-gradient(ellipse 96% 90% at 50% 50%, rgba(10, 10, 14, 0.6) 0%, rgba(10, 10, 14, 0.3) 55%, rgba(10, 10, 14, 0) 90%) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+  }
+
+  :root[data-theme="light"] .vinyl-title-forcefield .forcefield-core-glow,
+  [data-theme="light"] .vinyl-title-forcefield .forcefield-core-glow {
+    background: radial-gradient(ellipse 96% 90% at 50% 50%, rgba(255, 255, 255, 0.65) 0%, rgba(255, 255, 255, 0.35) 55%, rgba(255, 255, 255, 0) 90%) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
   }
 }
 
@@ -5613,6 +5656,206 @@ body.app-no-scroll .cp-page {
   flex-shrink: 0;
   font-size: 0.78rem !important;
   padding: 6px 12px !important;
+}
+
+/* ==================== SPOTIFY / APPLE MUSIC OPTIONS SHEET (•••) ==================== */
+.spotify-options-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 99999 !important;
+  background: rgba(0, 0, 0, 0.75) !important;
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  display: flex !important;
+  align-items: flex-end !important;
+  justify-content: center !important;
+  animation: spotifyBackdropFadeIn 0.22s ease-out forwards !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  touch-action: pan-y !important;
+}
+
+.spotify-options-sheet {
+  width: 100% !important;
+  max-width: 540px !important;
+  max-height: 82vh !important;
+  background: #141418 !important;
+  border-top-left-radius: 28px !important;
+  border-top-right-radius: 28px !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  border-bottom: none !important;
+  box-shadow: 0 -18px 56px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+  padding: 12px 18px calc(24px + env(safe-area-inset-bottom, 16px)) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 14px !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  animation: spotifySheetSlideUp 0.26s cubic-bezier(0.2, 0.9, 0.3, 1) forwards !important;
+}
+
+:root[data-theme="light"] .spotify-options-sheet {
+  background: #f4f4f6 !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+  box-shadow: 0 -18px 56px rgba(0, 0, 0, 0.25) !important;
+}
+
+.spotify-sheet-grabber {
+  width: 42px !important;
+  height: 4.5px !important;
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, 0.28) !important;
+  margin: 2px auto 6px !important;
+  flex-shrink: 0 !important;
+}
+
+:root[data-theme="light"] .spotify-sheet-grabber {
+  background: rgba(0, 0, 0, 0.25) !important;
+}
+
+.spotify-sheet-header {
+  display: flex !important;
+  align-items: center !important;
+  gap: 14px !important;
+  padding-bottom: 14px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+:root[data-theme="light"] .spotify-sheet-header {
+  border-bottom-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+.spotify-sheet-art {
+  width: 54px !important;
+  height: 54px !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  flex-shrink: 0 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45) !important;
+  display: grid !important;
+  place-items: center !important;
+  font-weight: 800 !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+.spotify-sheet-meta {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 3px !important;
+  min-width: 0 !important;
+  flex: 1 !important;
+}
+
+.spotify-sheet-meta h4 {
+  margin: 0 !important;
+  font-size: 1.08rem !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+  color: #ffffff !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+:root[data-theme="light"] .spotify-sheet-meta h4 {
+  color: #09090b !important;
+}
+
+.spotify-sheet-meta p {
+  margin: 0 !important;
+  font-size: 0.84rem !important;
+  color: rgba(255, 255, 255, 0.65) !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+:root[data-theme="light"] .spotify-sheet-meta p {
+  color: rgba(0, 0, 0, 0.6) !important;
+}
+
+.spotify-sheet-toast {
+  background: rgba(34, 197, 94, 0.16) !important;
+  border: 1px solid rgba(34, 197, 94, 0.35) !important;
+  color: #4ade80 !important;
+  padding: 9px 14px !important;
+  border-radius: 12px !important;
+  font-size: 0.84rem !important;
+  font-weight: 600 !important;
+  text-align: center !important;
+  animation: spotifyToastPop 0.2s cubic-bezier(0.2, 0.9, 0.3, 1) !important;
+}
+
+.spotify-sheet-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+}
+
+.spotify-sheet-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 14px !important;
+  width: 100% !important;
+  padding: 13px 14px !important;
+  border-radius: 14px !important;
+  background: transparent !important;
+  border: none !important;
+  color: #ffffff !important;
+  font-size: 0.94rem !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em !important;
+  text-align: left !important;
+  cursor: pointer !important;
+  transition: background 0.16s ease, transform 0.12s ease !important;
+}
+
+:root[data-theme="light"] .spotify-sheet-item {
+  color: #18181b !important;
+}
+
+.spotify-sheet-item:hover,
+.spotify-sheet-item:active {
+  background: rgba(255, 255, 255, 0.08) !important;
+  transform: scale(0.99) !important;
+}
+
+:root[data-theme="light"] .spotify-sheet-item:hover,
+:root[data-theme="light"] .spotify-sheet-item:active {
+  background: rgba(0, 0, 0, 0.06) !important;
+}
+
+.spotify-sheet-item svg {
+  flex-shrink: 0 !important;
+  color: rgba(255, 255, 255, 0.75) !important;
+}
+
+:root[data-theme="light"] .spotify-sheet-item svg {
+  color: rgba(0, 0, 0, 0.7) !important;
+}
+
+.spotify-sheet-item.is-liked {
+  color: #4ade80 !important;
+}
+
+.spotify-sheet-item.is-liked svg {
+  color: #4ade80 !important;
+}
+
+@keyframes spotifyBackdropFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes spotifySheetSlideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes spotifyToastPop {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 
