@@ -2188,10 +2188,10 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
         <motion.main
           key={tab}
           className="ios-main"
-          initial={{ opacity: 0, y: 12, filter: "blur(5px)" }}
-          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-          exit={{ opacity: 0, y: -8, filter: "blur(5px)" }}
-          transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
         >
           {/* ==================== 1. INICIO ==================== */}
           {tab === "inicio" && (
@@ -3061,11 +3061,11 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                     }}
                     initial={
                       libraryLayoutMode === "inside"
-                        ? { opacity: 0, scale: 0.94, filter: "blur(8px)" }
-                        : { opacity: 1, scale: 1 }
+                        ? { opacity: 0, scale: 0.96, y: 12 }
+                        : { opacity: 1, scale: 1, y: 0 }
                     }
-                    animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-                    transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{ duration: 0.26, ease: [0.16, 1, 0.3, 1] }}
                   >
                     {/* ==================== UI MÓVIL ESTILO [untitled] (IDÉNTICA A IMG_3888.png EN CELULAR) ==================== */}
                     <div className="untitled-mobile-project-view">

@@ -32,10 +32,14 @@ function HighResFlowParticles({
 }) {
   const pointsRef = useRef<THREE.Points>(null!);
   const matRef = useRef<THREE.PointsMaterial>(null!);
-  const count = 36000;
+  const count = useMemo(() => {
+    if (typeof window !== "undefined" && window.innerWidth <= 720) return 8000;
+    return 16000;
+  }, []);
   const lastImpulseRef = useRef(0);
   const dispRef = useRef(0);
   const velRef = useRef(0);
+  const lastDispRef = useRef(-1);
 
   const circleSprite = useMemo(() => {
     const c = document.createElement("canvas");
@@ -174,32 +178,36 @@ function HighResFlowParticles({
 
     const pulseDisp = dispRef.current;
     if (matRef.current) {
-      const baseSize = isDarkStage ? 0.024 : 0.030;
+      const baseSize = isDarkStage ? 0.032 : 0.038;
       matRef.current.size = baseSize * (1 + pulseDisp * 0.28 * mobileScale);
     }
 
-    const geo = pointsRef.current.geometry;
-    const attr = geo.getAttribute("position") as THREE.BufferAttribute;
-    const arr = attr.array as Float32Array;
-
-    const waveT = t * 0.55;
-    for (let i = 0; i < count; i++) {
-      const ix = i * 3;
-      const hx = homePositions[ix];
-      const hy = homePositions[ix + 1];
-      const hz = homePositions[ix + 2];
-      const phi = phases[i];
-      const wave = Math.sin(waveT + phi) * 0.016;
-
-      arr[ix] = hx + scatterDirs[ix] * pulseDisp + wave * 0.5;
-      arr[ix + 1] = hy + scatterDirs[ix + 1] * pulseDisp + wave;
-      arr[ix + 2] = hz + scatterDirs[ix + 2] * pulseDisp + wave * 0.35;
+    const lastDisp = lastDispRef.current;
+    if (Math.abs(pulseDisp - lastDisp) > 0.0015 || (pulseDisp === 0 && lastDisp !== 0)) {
+      const geo = pointsRef.current?.geometry;
+      if (geo) {
+        const attr = geo.getAttribute("position") as THREE.BufferAttribute;
+        if (attr) {
+          const arr = attr.array as Float32Array;
+          for (let i = 0; i < count; i++) {
+            const ix = i * 3;
+            arr[ix] = homePositions[ix] + scatterDirs[ix] * pulseDisp;
+            arr[ix + 1] = homePositions[ix + 1] + scatterDirs[ix + 1] * pulseDisp;
+            arr[ix + 2] = homePositions[ix + 2] + scatterDirs[ix + 2] * pulseDisp;
+          }
+          attr.needsUpdate = true;
+          lastDispRef.current = pulseDisp;
+        }
+      }
     }
-    attr.needsUpdate = true;
 
-    pointsRef.current.rotation.y += clampedDt * 0.035;
-    pointsRef.current.rotation.x = Math.sin(t * 0.1) * 0.025 - pointer.y * 0.05;
-    pointsRef.current.rotation.z = pointer.x * 0.04;
+    if (pointsRef.current) {
+      pointsRef.current.rotation.y += clampedDt * 0.035;
+      pointsRef.current.rotation.x = Math.sin(t * 0.1) * 0.025 - pointer.y * 0.05;
+      pointsRef.current.rotation.z = pointer.x * 0.04;
+      const breathe = 1 + Math.sin(t * 0.8) * 0.014;
+      pointsRef.current.scale.set(breathe, breathe, breathe);
+    }
   });
 
   return (

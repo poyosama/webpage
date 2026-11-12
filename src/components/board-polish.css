@@ -5858,6 +5858,148 @@ body.app-no-scroll .cp-page {
   to { opacity: 1; transform: scale(1); }
 }
 
+/* ==================== OPTIMIZACIÓN Y SUAVIZADO FLUIDO (APPLE SMOOTH INTERACTION) ==================== */
+/* Hardware acceleration y suavidad de rendering en todas las computadoras */
+.ios-main,
+.untitled-catalog-card,
+.project-inspector-sheet,
+.vinyl-fan-sleeve-card,
+.ios-mini-player,
+.secondstory-strip-card,
+.dmg-section {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
 
+/* 1. Transición y elevación suave de tarjetas de proyectos (Catálogo de Tapas) */
+.untitled-catalog-card {
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.28s ease,
+    border-color 0.2s ease !important;
+  cursor: pointer !important;
+}
 
+.untitled-catalog-card:hover {
+  transform: translateY(-4px) scale(1.014) !important;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45) !important;
+}
 
+.untitled-catalog-card:active {
+  transform: scale(0.975) translateY(0) !important;
+}
+
+/* 2. Miniaturas de tapas en la tira de inicio: micro-zoom magnético suave */
+.strip-album-thumb {
+  transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.24s ease,
+    filter 0.2s ease !important;
+}
+
+.strip-album-thumb:hover {
+  transform: scale(1.08) translateY(-3px) !important;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5) !important;
+  z-index: 8 !important;
+}
+
+.strip-album-thumb:active {
+  transform: scale(0.96) !important;
+}
+
+/* 3. Filas de tracks en la vista de proyecto: hover deslizante y micro-tap */
+.untitled-mobile-track-row {
+  transition: background 0.18s ease,
+    transform 0.16s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.untitled-mobile-track-row:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+  transform: translateX(4px) !important;
+}
+
+:root[data-theme="light"] .untitled-mobile-track-row:hover {
+  background: rgba(0, 0, 0, 0.04) !important;
+}
+
+.untitled-mobile-track-row:active {
+  transform: scale(0.985) translateX(2px) !important;
+}
+
+/* 4. Botones squircle de navegación y opciones estilo Apple */
+.untitled-icon-squircle {
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+    background 0.18s ease,
+    box-shadow 0.18s ease !important;
+}
+
+.untitled-icon-squircle:hover {
+  transform: translateY(-1.5px) scale(1.04) !important;
+}
+
+.untitled-icon-squircle:active {
+  transform: scale(0.93) !important;
+}
+
+/* 5. Botón Play principal squircle en proyectos */
+.untitled-mobile-play-btn {
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.22s ease !important;
+}
+
+.untitled-mobile-play-btn:hover {
+  transform: scale(1.06) !important;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.48) !important;
+}
+
+.untitled-mobile-play-btn:active {
+  transform: scale(0.92) !important;
+}
+
+/* 6. Píldora de navegación superior: feedback elástico táctil */
+.ios-seg-control button {
+  transition: color 0.18s ease, transform 0.14s ease !important;
+}
+
+.ios-seg-control button:active {
+  transform: scale(0.95) !important;
+}
+
+/* 7. Dynamic Island Mini-Player: micro-elevación flotante suave */
+.ios-mini-player {
+  transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.24s ease !important;
+}
+
+.ios-mini-player:hover {
+  transform: translateY(-1.5px) scale(1.008) !important;
+}
+
+.ios-mini-player:active {
+  transform: scale(0.988) !important;
+}
+
+/* 8. Botones primarios y ghost en general: pulsación viva no tosca */
+.apple-btn {
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.18s ease,
+    background 0.16s ease !important;
+}
+
+.apple-btn:hover {
+  transform: translateY(-1.5px) !important;
+}
+
+.apple-btn:active {
+  transform: scale(0.96) !important;
+}
+
+/* 9. Indicador visual animado de track en reproducción activa */
+.untitled-mobile-track-row.is-playing .untitled-mobile-track-num {
+  animation: trackPlayGlow 1.8s ease-in-out infinite alternate !important;
+}
+
+@keyframes trackPlayGlow {
+  0% { opacity: 0.7; transform: scale(0.96); }
+  100% { opacity: 1; transform: scale(1.08); }
+}

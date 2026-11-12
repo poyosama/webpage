@@ -1270,7 +1270,8 @@ export default function ManifoldLibrary3D({
                     const dy = e.clientY - arcDragRef.current.startY;
                     const dx = e.clientX - arcDragRef.current.startX;
                     const primaryDelta = Math.abs(dy) >= Math.abs(dx) ? dy : dx;
-                    if (Math.abs(primaryDelta) > 6) {
+                    const dragThreshold = isMobileViewport ? 18 : 8;
+                    if (Math.abs(primaryDelta) > dragThreshold) {
                       arcDragRef.current.moved = true;
                       arcDragRef.current.justDragged = true;
                     }
@@ -1299,15 +1300,12 @@ export default function ManifoldLibrary3D({
                       if (snapped < projects.length) {
                         const targetProj = projects[snapped];
                         if (targetProj) {
-                          sfx.tick();
                           onSelectProject(targetProj);
                         }
-                      } else {
-                        sfx.tick();
                       }
                       window.setTimeout(() => {
                         arcDragRef.current.justDragged = false;
-                      }, 80);
+                      }, 100);
                     }
                   }}
                   onPointerCancel={() => {
@@ -1419,13 +1417,18 @@ export default function ManifoldLibrary3D({
                                 arcDragRef.current.justDragged = false;
                                 return;
                               }
+                              if (isMobileViewport) {
+                                setArcOffset(idx);
+                                if (onOpenCreateProject) {
+                                  onOpenCreateProject();
+                                }
+                                return;
+                              }
                               if (absDelta >= 0.35) {
-                                sfx.tick();
                                 setArcOffset(idx);
                                 return;
                               }
                               if (onOpenCreateProject) {
-                                sfx.open();
                                 onOpenCreateProject();
                               }
                             }}
@@ -1474,16 +1477,22 @@ export default function ManifoldLibrary3D({
                               arcDragRef.current.justDragged = false;
                               return;
                             }
-                            const alreadyCentered = absDelta < 0.35 && p.id === activeProject?.id;
+                            // En celular: 1 solo toque abre el proyecto de inmediato sin requerir 2 toques
+                            if (isMobileViewport) {
+                              setArcOffset(idx);
+                              onSelectProject(p);
+                              if (onDiveIntoProject) {
+                                onDiveIntoProject(p);
+                              }
+                              return;
+                            }
+                            const alreadyCentered = absDelta < 0.65 || p.id === activeProject?.id;
                             if (!alreadyCentered) {
-                              sfx.tick();
                               setArcOffset(idx);
                               onSelectProject(p);
                               return;
                             }
-                            sfx.tap();
                             if (onDiveIntoProject) {
-                              sfx.open();
                               onDiveIntoProject(p);
                             }
                           }}

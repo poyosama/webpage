@@ -120,64 +120,14 @@ function ac(): AudioContext | null {
   return ctx;
 }
 
-function hapticPulse(freq = 88, endFreq = 32, dur = 0.011, gain = 0.22, transientGain = 0.07) {
-  if (typeof navigator !== "undefined" && "vibrate" in navigator && !muted) {
-    try {
-      navigator.vibrate(4);
-    } catch {
-      // Ignore on unsupported browsers
-    }
-  }
-  const c = ac();
-  if (!c || !master || muted) return;
-  const t = c.currentTime;
-
-  const o = c.createOscillator();
-  const g = c.createGain();
-  o.type = "sine";
-  o.frequency.setValueAtTime(freq, t);
-  o.frequency.exponentialRampToValueAtTime(endFreq, t + dur);
-  g.gain.setValueAtTime(0.0001, t);
-  g.gain.linearRampToValueAtTime(gain, t + 0.0012);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  o.connect(g).connect(master);
-  o.start(t);
-  o.stop(t + dur + 0.003);
-
-  if (transientGain > 0 && noiseBuf) {
-    const src = c.createBufferSource();
-    src.buffer = noiseBuf;
-    const lp = c.createBiquadFilter();
-    lp.type = "bandpass";
-    lp.frequency.setValueAtTime(340, t);
-    lp.Q.setValueAtTime(2.2, t);
-    const ng = c.createGain();
-    ng.gain.setValueAtTime(0.0001, t);
-    ng.gain.linearRampToValueAtTime(transientGain, t + 0.0008);
-    ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.004);
-    src.connect(lp).connect(ng).connect(master);
-    src.start(t);
-    src.stop(t + 0.005);
-  }
+function hapticPulse(..._args: unknown[]) {
+  // Ruiditos de interacción UI desactivados por pedido del usuario
+  return;
 }
 
-function softBrush(cutoff = 780, dur = 0.007, gain = 0.055) {
-  const c = ac();
-  if (!c || !master || !noiseBuf || muted) return;
-  const t = c.currentTime;
-  const src = c.createBufferSource();
-  src.buffer = noiseBuf;
-  const filter = c.createBiquadFilter();
-  filter.type = "bandpass";
-  filter.frequency.setValueAtTime(cutoff, t);
-  filter.Q.setValueAtTime(2.0, t);
-  const g = c.createGain();
-  g.gain.setValueAtTime(0.0001, t);
-  g.gain.linearRampToValueAtTime(gain, t + 0.001);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  src.connect(filter).connect(g).connect(master);
-  src.start(t);
-  src.stop(t + dur + 0.002);
+function softBrush(..._args: unknown[]) {
+  // Ruiditos de interacción UI desactivados por pedido del usuario
+  return;
 }
 
 let lastHover = 0;
