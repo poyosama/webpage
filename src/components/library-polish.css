@@ -3,7 +3,7 @@
   image-rendering: auto;
 }
 
-/* ==================== 1. CANVA DE FONDO EN BIBLIOTECA ==================== */
+/* ==================== 1. CANVA DE FONDO EN BIBLIOTECA (100% NÍTIDO, CERO SMUDGE) ==================== */
 .library-canva-backdrop {
   position: absolute;
   inset: 0;
@@ -12,47 +12,103 @@
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
+  background: #000000;
 }
 
 .library-canva-media {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  opacity: 0.32;
-  filter: saturate(1.2) brightness(0.68) blur(3px);
-  transform: scale(1.05);
-  transition: opacity 0.4s ease;
+  opacity: 1 !important;
+  filter: saturate(1.12) contrast(1.06) !important;
+  transform: scale(1.01);
+  transition: opacity 0.35s ease;
 }
 
-:root[data-theme="dark"] .library-canva-media {
-  opacity: 0.28;
-  filter: saturate(1.15) brightness(0.55) blur(3px);
-}
-
-:root[data-theme="light"] .library-canva-media {
-  opacity: 0.16;
-  filter: saturate(1.1) brightness(0.92) blur(3px);
-}
-
+/* Scrim cinematográfico uniforme: permite ver el video con total nitidez sin que el fondo blanco interfiera */
 .library-canva-vignette {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(circle at center, transparent 35%, var(--bg) 95%),
-    linear-gradient(180deg, rgba(0, 0, 0, 0.22) 0%, transparent 45%, var(--bg) 100%);
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.44) 0%,
+    rgba(0, 0, 0, 0.24) 40%,
+    rgba(0, 0, 0, 0.64) 100%
+  ) !important;
 }
 
-/* ==================== 2. SWITCHER DE VISTAS (RUEDA DE VINILOS VS CATÁLOGO TAPAS [UNTITLED]) ==================== */
-.library-view-switcher {
-  display: inline-flex;
+/* ==================== ADAPTACIÓN AUTOMÁTICA CUANDO HAY CANVA ACTIVO ==================== */
+.manifold-3d-wrapper.has-library-canva {
+  background: #000000 !important;
+  color: #ffffff !important;
+}
+
+.manifold-3d-wrapper.has-library-canva .manifold-3d-canvas-stage {
+  background: transparent !important;
+}
+
+.manifold-3d-wrapper.has-library-canva .vinyl-fan-clean-title-card .vinyl-active-title {
+  color: #ffffff !important;
+  text-shadow: 0 4px 28px rgba(0, 0, 0, 0.95), 0 1px 4px rgba(0, 0, 0, 0.8) !important;
+}
+
+.manifold-3d-wrapper.has-library-canva .vinyl-fan-clean-title-card .vinyl-right-artist-name {
+  color: rgba(255, 255, 255, 0.88) !important;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.85) !important;
+}
+
+.manifold-3d-wrapper.has-library-canva .vinyl-right-meta-pill {
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.32) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+}
+
+.manifold-3d-wrapper.has-library-canva .vinyl-right-enter-chip {
+  background: #ffffff !important;
+  color: #09090b !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5) !important;
+}
+
+.manifold-3d-wrapper.has-library-canva .library-bottom-actions .apple-btn.ghost {
+  background: rgba(18, 18, 24, 0.72) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.26) !important;
+  backdrop-filter: blur(18px) !important;
+  -webkit-backdrop-filter: blur(18px) !important;
+}
+
+.manifold-3d-wrapper.has-library-canva .library-bottom-actions .apple-btn.primary {
+  background: #ffffff !important;
+  color: #09090b !important;
+  border: 1px solid rgba(255, 255, 255, 0.45) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* ==================== 2. SWITCHER FLOTANTE ARRIBA A LA IZQUIERDA ==================== */
+.library-top-left-switcher {
+  position: absolute;
+  top: clamp(14px, 2.2vw, 24px);
+  left: clamp(18px, 3.5vw, 42px);
+  z-index: 60;
+  display: inline-flex !important;
   align-items: center;
   background: var(--surface);
   border: 1px solid var(--line);
   padding: 3px;
   border-radius: 980px;
   gap: 3px;
-  margin-bottom: 8px;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.manifold-3d-wrapper.has-library-canva .library-top-left-switcher {
+  background: rgba(18, 18, 24, 0.72) !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45) !important;
 }
 
 .library-mode-btn {
@@ -66,6 +122,8 @@
   color: var(--muted);
   transition: all 0.18s ease;
   cursor: pointer;
+  background: transparent;
+  border: none;
 }
 
 .library-mode-btn:hover {
@@ -73,9 +131,22 @@
 }
 
 .library-mode-btn.active {
-  background: var(--ink);
-  color: var(--bg);
+  background: var(--ink) !important;
+  color: var(--bg) !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
+}
+
+.manifold-3d-wrapper.has-library-canva .library-mode-btn {
+  color: rgba(255, 255, 255, 0.75) !important;
+}
+
+.manifold-3d-wrapper.has-library-canva .library-mode-btn:hover {
+  color: #ffffff !important;
+}
+
+.manifold-3d-wrapper.has-library-canva .library-mode-btn.active {
+  background: #ffffff !important;
+  color: #09090b !important;
 }
 
 .library-mode-icon {
@@ -91,8 +162,7 @@
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: clamp(16px, 3.2vw, 36px);
-  padding-bottom: 120px;
+  padding: clamp(60px, 6vw, 76px) clamp(16px, 3.2vw, 36px) 120px;
   box-sizing: border-box;
   -webkit-overflow-scrolling: touch;
 }
@@ -148,6 +218,20 @@
 
 .untitled-catalog-card.is-selected .untitled-catalog-cover {
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28), 0 0 0 2.5px var(--ink);
+}
+
+.manifold-3d-wrapper.has-library-canva .untitled-catalog-cover {
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55);
+}
+
+.manifold-3d-wrapper.has-library-canva .untitled-catalog-title {
+  color: #ffffff !important;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8);
+}
+
+.manifold-3d-wrapper.has-library-canva .untitled-catalog-meta {
+  color: rgba(255, 255, 255, 0.75) !important;
 }
 
 .untitled-catalog-placeholder-glyph {
@@ -246,7 +330,7 @@
   transform: scale(1.15);
 }
 
-/* ==================== 4. BOTONES FLOTANTES ABAJO A LA DERECHA (CERO PÍLDORA IZQUIERDA DE CANVA) ==================== */
+/* ==================== 4. BOTONES FLOTANTES ABAJO A LA DERECHA ==================== */
 .library-bottom-actions {
   position: absolute;
   bottom: 24px;

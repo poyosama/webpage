@@ -2813,6 +2813,11 @@ body.app-no-scroll .profile-page {
   display: none !important;
 }
 
+.library-page.library-clean .library-top-left-switcher,
+.library-top-left-switcher {
+  display: inline-flex !important;
+}
+
 /* ==================== INICIO EN CELULAR: collage igual que en desktop (una fila por proyecto, escalado) ==================== */
 @media (max-width: 720px) {
   .corecore-stage {

@@ -1603,3 +1603,31 @@
    - **Alivio de carga de CPU en `LandingScene.tsx`:** Ajustado el enjambre de micro-discos para mantener fluidez a 60 FPS estables en laptops y móviles.
 7. **Verificación y Deploy:**
    - Validado con `npm run build` en Next.js Turbopack (0 errores de TypeScript y compilación exitosa).
+---
+
+### Turno 84 — Corrección Crítica del Canvas de Fondo en Biblioteca (Cero Blur, Opacidad 100% y Adaptación Cinema sin Interferencia del Fondo Claro)
+**Pedido del usuario (`juani`):**
+- *"y esta cagada el canvas no se ve, el fondo interfiere..."* (adjuntando captura `image.png` en PC en modo claro).
+
+**Diagnóstico sobre `image.png`:**
+1. **Canvas lavado y mancha borrosa ("el canvas no se ve, el fondo interfiere"):**
+   - En `library-polish.css`, en modo claro `:root[data-theme="light"] .library-canva-media` tenía hardcodeado `opacity: 0.16` y `filter: blur(3px)`.
+   - Además, `.library-canva-vignette` aplicaba un `radial-gradient(circle at center, transparent 35%, var(--bg) 95%)`. Al ser `var(--bg)` blanco crema (`#f6f6f4`), el degradé tapaba el 70% del video con blanco sólido, dejando solo un óvalo transparente en el centro donde asomaba un 16% de video desenfocado. Esto provocaba que en pantalla se viera como una mancha o manchón gris sucio en vez de verse el video real.
+2. **Switcher superior oculto por regla `.library-clean`:**
+   - La regla `.library-page.library-clean .manifold-stage-overlay-top { display: none !important; }` en `board-polish.css` estaba ocultando el switcher de vistas que había quedado dentro de ese contenedor.
+
+**Implementación técnica (`ManifoldLibrary3D.tsx`, `library-polish.css`, `board-polish.css`):**
+1. **Canva de fondo 100% nítido y a pantalla completa (`library-polish.css`):**
+   - Retirado el desenfoque `blur(3px)` y la opacidad al 16%: `.library-canva-media` ahora tiene `opacity: 1 !important; filter: saturate(1.12) contrast(1.06) !important;`. El video o imagen de Canvas se visualiza con total definición y fidelidad.
+   - Eliminada la máscara radial que fundía a blanco: se reemplazó por un scrim uniforme cinematográfico (`rgba(0,0,0,0.44)` a `rgba(0,0,0,0.64)`) que cubre todo el escenario, permitiendo que el video se luzca en toda la pantalla sin crear manchas.
+2. **Adaptación de Alto Contraste en Modo Canvas (`.has-library-canva` en `library-polish.css`):**
+   - Cuando el proyecto activo tiene un Canvas, el escenario se transforma automáticamente en un espacio inmersivo tipo Cine (similar a Spotify Canvas y Apple Music):
+     - El fondo general es negro profundo (`background: #000000 !important;`). El fondo blanco nunca más interfiere con el video.
+     - El título `.vinyl-active-title` y el artista `.vinyl-right-artist-name` son blanco puro `#ffffff` con sombra profunda `0 4px 28px rgba(0, 0, 0, 0.95)`.
+     - La píldora de metadatos y el chip `Abrir proyecto →` adoptan contraste premium (vidrio esmerilado oscuro y botón blanco macizo).
+     - Los botones inferiores (`+ Subir track` y `Cambiar Canva`) se adaptan a estilo dark glass para no perderse contra el video.
+3. **Switcher Flotante Arriba a la Izquierda (`ManifoldLibrary3D.tsx`, `board-polish.css`):**
+   - Se desacopló el switcher del header superior y se ubicó como control flotante independiente en `.library-top-left-switcher`.
+   - Se añadió la regla `.library-page.library-clean .library-top-left-switcher { display: inline-flex !important; }` en `board-polish.css` para garantizar que esté SIEMPRE visible y accesible para alternar entre `💿 Rueda` y `⊞ Tapas [untitled]`.
+4. **Verificación y Deploy:**
+   - Compilación exitosa con `npm run build` en Turbopack sin errores.
