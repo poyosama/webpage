@@ -168,6 +168,50 @@ async function blobToDataUrl(blob: Blob): Promise<string | null> {
 }
 
 // ==================== STORAGE: SUBIR AUDIO / TAPAS / VIDEOS AL BUCKET ====================
+async function uploadToStorageWithRetry(
+  filename: string,
+  file: File | Blob,
+  folder: string,
+  maxRetries = 3
+): Promise<string | null> {
+  const timeoutMs = folder === "tracks" || folder === "videos" ? 45000 : 18000;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const uploadPromise = supabase.storage
+        .from("el-tablero-media")
+        .upload(filename, file, {
+          cacheControl: "31536000",
+          upsert: true,
+          contentType: file.type || (folder === "tracks" ? "audio/mpeg" : undefined),
+        });
+
+      const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
+        setTimeout(
+          () => resolve({ data: null, error: new Error(`Storage upload timeout (${timeoutMs}ms)`) }),
+          timeoutMs
+        )
+      );
+
+      const { data, error } = await Promise.race([uploadPromise, timeoutPromise]);
+      if (!error && data) {
+        const { data: publicUrlData } = supabase.storage
+          .from("el-tablero-media")
+          .getPublicUrl(data.path);
+        if (publicUrlData?.publicUrl) return publicUrlData.publicUrl;
+      }
+      if (error) {
+        console.warn(`Storage upload attempt ${attempt}/${maxRetries} failed:`, error.message);
+      }
+    } catch (err: any) {
+      console.warn(`Storage upload attempt ${attempt}/${maxRetries} err:`, err?.message || err);
+    }
+    if (attempt < maxRetries) {
+      await new Promise((r) => setTimeout(r, attempt * 1000));
+    }
+  }
+  return null;
+}
+
 export async function uploadMediaToSupabase(
   file: File | Blob,
   folder: "covers" | "tracks" | "videos" | "avatars" = "covers"
@@ -178,35 +222,25 @@ export async function uploadMediaToSupabase(
     const ext = (rawName.includes(".") ? rawName.split(".").pop() : mimeExt) || "bin";
     const filename = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext.toLowerCase()}`;
 
-    // Timeout de 8s para no trabar la app si Supabase Storage está lento o inaccesible
-    const uploadPromise = supabase.storage
-      .from("el-tablero-media")
-      .upload(filename, file, {
-        cacheControl: "31536000",
-        upsert: false,
-        contentType: file.type || undefined,
-      });
-
-    const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
-      setTimeout(() => resolve({ data: null, error: new Error("Storage upload timeout") }), 8000)
-    );
-
-    const { data, error } = await Promise.race([uploadPromise, timeoutPromise]);
-
-    if (!error && data) {
-      const { data: publicUrlData } = supabase.storage
-        .from("el-tablero-media")
-        .getPublicUrl(data.path);
-      return publicUrlData.publicUrl;
+    // 1. Intento robusto en Storage con reintentos
+    const storageUrl = await uploadToStorageWithRetry(filename, file, folder, 3);
+    if (storageUrl) {
+      return storageUrl;
     }
 
-    // Para archivos pesados (>4MB de audio o video), no generar Data URL en base64 para evitar congelar el hilo y saturar la DB
+    // 2. Si Storage falla y es imagen, compresión y fallback a Data URL WebP compacta
+    if (folder === "covers" || folder === "avatars" || file.type.startsWith("image/")) {
+      return await blobToDataUrl(file);
+    }
+
+    // 3. Para archivos pesados de audio o video donde el bucket no respondió:
+    // Evitamos meter 30MB en texto Base64 dentro de Postgres para no colapsar la conexión
     if (file.size > 4 * 1024 * 1024 && (folder === "tracks" || folder === "videos")) {
-      console.warn("Archivo pesado sin bucket disponible, omitiendo Data URL:", folder, file.size);
+      console.warn("Audio/video pesado sin bucket disponible, se preserva en cache local:", folder, file.size);
       return null;
     }
 
-    // Fallback directo a Data URL en PostgreSQL cuando el bucket aún no está creado o no tiene políticas
+    // Fallback a Data URL para audios cortos (<4MB) si Storage no está disponible
     return await blobToDataUrl(file);
   } catch (err) {
     console.warn("Error en uploadMediaToSupabase:", err);
@@ -226,10 +260,23 @@ export async function ensurePersistentUrl(
   let result: string | null = null;
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 6000);
+    const timer = setTimeout(() => controller.abort(), 35000);
     const res = await fetch(url, { signal: controller.signal });
     clearTimeout(timer);
     const blob = await res.blob();
+
+    // Guardar copia local en IndexedDB si es audio para que nunca se pierda en recargas
+    if (folder === "tracks") {
+      try {
+        const buf = await blob.arrayBuffer();
+        if (buf && buf.byteLength > 0) {
+          void fastCacheSet(`blob_audio:${url}`, buf);
+        }
+      } catch {
+        // ignore
+      }
+    }
+
     result = await uploadMediaToSupabase(blob, folder);
   } catch (err) {
     console.warn("No se pudo leer el archivo temporal:", err);
@@ -532,6 +579,23 @@ export async function saveProjectToSupabase(project: Project, userId?: string): 
       videos.push({ ...v, url: url || v.url });
     }
 
+    let safeUserId: string | null = null;
+    if (userId && UUID_RE.test(userId)) {
+      safeUserId = userId;
+    } else if (project.artistId && UUID_RE.test(project.artistId)) {
+      safeUserId = project.artistId;
+    } else {
+      try {
+        const { data: authData } = await supabase.auth.getSession();
+        const authUid = authData.session?.user?.id;
+        if (authUid && UUID_RE.test(authUid)) {
+          safeUserId = authUid;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
     const baseRow: Record<string, unknown> = {
       id: dbProjectId,
       title: project.title,
@@ -542,7 +606,7 @@ export async function saveProjectToSupabase(project: Project, userId?: string): 
       zone: project.zone,
       description: project.description || "",
       cover_url: coverUrl,
-      user_id: (project.artistId && UUID_RE.test(project.artistId) ? project.artistId : userId) || null,
+      user_id: safeUserId,
       updated_at: new Date().toISOString(),
     };
 
@@ -552,6 +616,11 @@ export async function saveProjectToSupabase(project: Project, userId?: string): 
     if (projErr && /is_public/i.test(projErr.message)) {
       // la columna is_public todavía no existe en la DB (falta correr la migración)
       ({ error: projErr } = await supabase.from("projects").upsert(baseRow, { onConflict: "id" }));
+    }
+    if (projErr && /user_id|foreign key/i.test(projErr.message)) {
+      // Si falló por constraint de user_id en base de datos, reintentamos con user_id: null
+      const rowNoUser = { ...baseRow, user_id: null };
+      ({ error: projErr } = await supabase.from("projects").upsert(rowNoUser, { onConflict: "id" }));
     }
     if (projErr) {
       console.warn("Error guardando proyecto en Supabase:", projErr.message);

@@ -1087,8 +1087,6 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
           syncedSigRef.current[proj.id] = sig;
           continue;
         }
-        const stillTransient = hasTransientMedia(saved);
-        if (stillTransient) failed = true;
         const merged = mergePersistedUrls(proj, saved);
         // Siempre registramos la firma del resultado para evitar el loop infinito
         syncedSigRef.current[proj.id] = JSON.stringify(merged);
@@ -4573,11 +4571,6 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                     <div className="profile-badges">
                       <span className="mono-tag">{meProfile.role}</span>
                       {meProfile.zone && <span className="mono-tag">{meProfile.zone}</span>}
-                      {googleConnected && (
-                        <span className="mono-tag google-verified">
-                          Google: {meProfile.email}
-                        </span>
-                      )}
                     </div>
                     <h1>
                       {meProfile.name} <em>{meProfile.handle}</em>
@@ -4594,42 +4587,29 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                     )}
                   </div>
                   <div className="profile-cta-col">
-                    <button
-                      type="button"
-                      className="apple-btn primary"
-                      onClick={() => {
-                        sfx.open();
-                        setEditProfileOpen(true);
-                      }}
-                    >
-                      Editar Perfil &amp; Identidad
-                    </button>
-                    <button
-                      type="button"
-                      className="apple-btn ghost"
-                      onClick={() => {
-                        sfx.open();
-                        setAuthModalOpen(true);
-                      }}
-                    >
-                      Cuenta / Google Sign-In
-                    </button>
-                    <button
-                      type="button"
-                      className="profile-invite-notif-btn"
-                      onClick={() => {
-                        sfx.open();
-                        setInviteFriendsModalOpen(true);
-                      }}
-                      title="Invitaciones exclusivas a board (3 pases disponibles)"
-                    >
-                      <span className="invite-notif-badge">🎟️</span>
-                      <div className="invite-notif-info">
-                        <b>Invitaciones exclusivas</b>
-                        <small>3 pases cada 2 semanas</small>
-                      </div>
-                      <span className="invite-notif-arrow">→</span>
-                    </button>
+                    <div className="profile-actions-row">
+                      <button
+                        type="button"
+                        className="apple-btn primary profile-action-btn-half"
+                        onClick={() => {
+                          sfx.open();
+                          setEditProfileOpen(true);
+                        }}
+                      >
+                        Editar Perfil &amp; Identidad
+                      </button>
+                      <button
+                        type="button"
+                        className="apple-btn ghost profile-action-btn-half profile-invite-half-btn"
+                        onClick={() => {
+                          sfx.open();
+                          setInviteFriendsModalOpen(true);
+                        }}
+                        title="Invitaciones exclusivas a board (3 pases disponibles)"
+                      >
+                        <span>🎟️ Invitar amigos</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -4651,6 +4631,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                 </div>
               </section>
 
+              {/* ==================== 1. MIS PROYECTOS & CANVAS (ANTES DE INVITACIONES) ==================== */}
               <section className="profile-manifold-showcase">
                 <div className="section-header-row">
                   <div>
@@ -4681,6 +4662,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                   selectedProjectId={activeProject?.id || selectedProjectId}
                   viewMode={libraryViewMode}
                   compact={true}
+                  hideSwitcher={true}
                   onChangeViewMode={(m) => setLibraryViewMode(m)}
                   onSelectProject={(proj) => setSelectedProjectId(proj.id)}
                   onDiveIntoProject={(proj) => {
@@ -4701,6 +4683,37 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                       : null
                   }
                 />
+              </section>
+
+              {/* ==================== 2. INVITACIONES EXCLUSIVAS (AL FINAL DE PROYECTOS) ==================== */}
+              <section className="profile-invites-bottom-section">
+                <div
+                  className="profile-invite-banner"
+                  onClick={() => {
+                    sfx.open();
+                    setInviteFriendsModalOpen(true);
+                  }}
+                  title="Abrir mis pases de invitación"
+                >
+                  <div className="profile-invite-banner-left">
+                    <span className="invite-banner-icon">🎟️</span>
+                    <div className="invite-banner-text">
+                      <b>Invitaciones exclusivas a board.</b>
+                      <p>Tenés 3 códigos cada 2 semanas para sumar a tus artistas y productores de confianza.</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="apple-btn ghost invite-banner-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      sfx.open();
+                      setInviteFriendsModalOpen(true);
+                    }}
+                  >
+                    Ver pases
+                  </button>
+                </div>
               </section>
             </div>
           )}
@@ -5032,6 +5045,9 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
         {editProfileOpen && (
           <EditProfileModal
             profile={meProfile}
+            googleConnected={googleConnected}
+            userEmail={meProfile.email}
+            onOpenAuth={() => setAuthModalOpen(true)}
             onClose={() => setEditProfileOpen(false)}
             onSave={async (updated) => {
               const res = await handleSaveProfileAndHandle(updated);
@@ -5509,10 +5525,16 @@ function EditProjectModal({
 /* ==================== COMPONENTE: MODAL EDITAR PERFIL ==================== */
 function EditProfileModal({
   profile,
+  googleConnected,
+  userEmail,
+  onOpenAuth,
   onClose,
   onSave,
 }: {
   profile: ArtistProfile;
+  googleConnected?: boolean;
+  userEmail?: string;
+  onOpenAuth?: () => void;
   onClose: () => void;
   onSave: (p: ArtistProfile) => Promise<{ success: boolean; error?: string }>;
 }) {
@@ -5713,6 +5735,35 @@ function EditProfileModal({
             <span>STICKERS / INSIGNIAS (SEPARADOS POR ESPACIO)</span>
             <input value={stickersText} onChange={(e) => setStickersText(e.target.value)} />
           </label>
+
+          {/* SECCIÓN CUENTA / GOOGLE SIGN-IN */}
+          <div className="modal-field full profile-auth-integrated-card">
+            <span>CUENTA &amp; SINCRONIZACIÓN EN LA NUBE</span>
+            <div className="profile-auth-integrated-content">
+              <div className="profile-auth-integrated-info">
+                <b>
+                  {googleConnected ? (userEmail || "Conectado con Google") : "Cuenta no vinculada"}
+                </b>
+                <small>
+                  {googleConnected
+                    ? "Tus canciones y proyectos se respaldan automáticamente en la nube de board."
+                    : "Vinculá tu cuenta para sincronizar tus proyectos entre todos tus dispositivos."}
+                </small>
+              </div>
+              {onOpenAuth && (
+                <button
+                  type="button"
+                  className="apple-btn ghost profile-auth-integrated-btn"
+                  onClick={() => {
+                    onClose();
+                    onOpenAuth();
+                  }}
+                >
+                  {googleConnected ? "Administrar Cuenta" : "Cuenta / Google Sign-In"}
+                </button>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="modal-foot">

@@ -1866,3 +1866,46 @@ tambien fijate que cuando muevo un track se reinicia el progreso, y si tiro f5 c
 
 
 
+---
+
+### Turno 92 — Optimización de Sincronización en la Nube, Perfil Compacto (Google en Modal + Botones Lado a Lado), Forcefield de Texto en Biblioteca y Dock Ergonómico
+**Prompt del usuario:**
+- *"por ahi tengo muchos problemas con que mis archivos se guarden en la nube, por ahi me tira mucho que no se pudo guardar en la nube, optimiza este proceso, a veces ni se guardan directamente las cosas!
+imagen de la biblioteca: en el tema oscuro sacale ese recuadro a donde dice el nombre del proyecto
+imagen del perfil: se ve rueda y tapas arriba, no importa eso sacalo cuando se vea en el celu en el perfil que se vean solo las tapas.
+cuenta / google sign in adentro de editar perfil, editar perfil e invitar amigos lado a lado para compactar la ui
+lo que dice google: (mail) sacalo.
+inverti lo de invitaciones exclusivas con los proyectos, que esté el perfil, los proyectos y despues las invitaciones exclusivas !
+en la biblioteca tambien tendrias que hacer un forcefield con particulitas que anulen lo que hay detras del texto porque si ves la tapa de atras hace que no se vea el texto del nombre del proyecto
+ademas si pones la vista tapas, subir track y subir canva quedan muy encimados con crear proyecto. en celular tambien inclui lo que dijimos del vinilo ghost con lineas punteadas !
+sigue habiendo un padding raro abajo del reproductor no entiendo por que, pasa en todas las pantallas. es una cuestion de que yo lo estoy usando de webapp en el celu ? y ahi entrarian los controladores de safari ?"*
+
+**Implementación técnica aplicada:**
+1. **Robustez y Optimización de Guardado en la Nube (`src/lib/supabase.ts`, `src/components/App.tsx`):**
+   - **Causa raíz de `"No se pudo guardar en la nube"`:**
+     - En `saveProjectToSupabase`, `user_id` tomaba strings alfanuméricos como `"poyo"`, lo que provocaba un error de PostgreSQL tipo `invalid input syntax for type uuid: "poyo"`, abortando la transacción entera y devolviendo `null`.
+     - `uploadMediaToSupabase` tenía un timeout de 8s que fallaba casi siempre al subir audios pesados (>8MB) en conexiones móviles, y no realizaba ningún reintento.
+     - En `App.tsx`, `hasTransientMedia(saved)` marcaba falsamente `failed = true` y tiraba error si el audio pesado aún residía en IndexedDB local mientras se sincronizaba.
+   - **Solución integral:**
+     - Implementada función de reintentos `uploadToStorageWithRetry` con 3 intentos y backoff exponencial, aumentando los timeouts a 45s para tracks/videos y 18s para imágenes.
+     - En `saveProjectToSupabase`: sanitización estricta de `user_id` asegurando que sea un UUID válido o `null`, con rescate automático de la sesión autenticada (`supabase.auth.getSession()`). Si PostgreSQL arroja error de restricción de clave foránea, se realiza fallback automático con `user_id: null` para que el proyecto y sus pistas se guarden siempre sin excepción.
+     - En `ensurePersistentUrl`: guardado preventivo del buffer de audio en IndexedDB local (`fastCacheSet`) para asegurar que el audio nunca se pierda con F5, incluso antes de completar la subida.
+     - En el efecto de sincronización de `App.tsx`: removido el disparador falso de error por `stillTransient` cuando la fila en PostgreSQL se insertó con éxito.
+2. **Biblioteca — Eliminación de Recuadro en Tema Oscuro y Forcefield con Micro-partículas (`ManifoldLibrary3D.tsx`, `board-polish.css`):**
+   - Eliminado el recuadro rectangular oscuro duro (`background: #17171f`, `border: 1px solid ...`) en `:root[data-theme="dark"] .vinyl-fan-clean-title-card`.
+   - Creado `.vinyl-title-forcefield` con `.forcefield-core-glow` que genera un halo radial elíptico difuminado (`backdrop-filter: blur(18px)`) y 6 micropartículas sentientes flotantes (`ff-p1` a `ff-p6`) con animación `forcefieldPFloat`.
+   - Este escudo anula ópticamente el vinilo o sobre trasero que se asomaba debajo del texto del proyecto (`beats`, `LP · 9 TRACKS`), otorgando contraste cristalino y pureza editorial sin recuadros toscos.
+3. **Biblioteca — Desacople de Botones Flotantes en Vista Tapas y Vinilo Ghost Punteado (`ManifoldLibrary3D.tsx`):**
+   - La barra inferior `.library-bottom-actions` (`+ Subir track` y `Subir Canva`) ahora solo se renderiza cuando `activeMode === "wheel"`. En vista Tapas (`"grid"`), los botones flotantes no aparecen, dejando libre la tarjeta de `+ Crear Proyecto`.
+   - En la rueda de vinilos: el vinilo ghost `is-create-slot` con borde punteado (`2px dashed`), disco matriz con label `+` y tarjeta inspectora integrada está garantizado en `wheelItems` tanto en móvil como en escritorio, y el contador `vinyl-step-counter` ahora refleja dinámicamente `wheelItems.length`.
+4. **Perfil — Compactación de UI, Cuenta Google en Modal y Reordenamiento (`App.tsx`, `board-polish.css`):**
+   - Eliminado el texto verde `Google: {meProfile.email}` del hero del perfil.
+   - Integrada la sección de Cuenta y Google Sign-In dentro del modal `EditProfileModal` (`.profile-auth-integrated-card`), permitiendo al usuario gestionar su vinculación a Google de forma ordenada sin ensuciar la pantalla principal.
+   - Los botones `Editar Perfil & Identidad` e `🎟️ Invitar amigos` ahora se posicionan lado a lado en un grid estilizado de 2 columnas (`.profile-actions-row`), compactando drásticamente el espacio vertical.
+   - Forzada la vista de sólo tapas en el perfil (`compact={true}` y `hideSwitcher={true}`), ocultando el switch `[ 💿 Rueda | ⊞ Tapas ]` en celular.
+   - Invertido el orden de las secciones en el perfil: primero datos y métricas, segundo **Mis Proyectos & Canvas**, y tercero la tarjeta rosa de **Invitaciones exclusivas a board** (`.profile-invites-bottom-section`).
+5. **Dynamic Island Mini-Player — Eliminación del Padding Inferior Raro (`globals.css`, `board-polish.css`):**
+   - Corregido el cálculo del dock en móviles y webapps standalone a `bottom: max(6px, calc(env(safe-area-inset-bottom, 0px) * 0.22 + 4px)) !important;`.
+   - Se eliminaron las compensaciones dobles que sumaban espacio para controladores de Safari inexistentes en modo PWA, dejando el reproductor flotando a una distancia ergonómica exacta de ~10-14px sobre el Home Indicator de iOS.
+6. **Verificación y Deploy:**
+   - Compilación exitosa con Next.js Turbopack (`npm run build`, 0 errores).

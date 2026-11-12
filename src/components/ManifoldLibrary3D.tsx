@@ -757,6 +757,7 @@ export default function ManifoldLibrary3D({
   onUploadProjectTrack,
   onUpdateProjectCover,
   compact = false,
+  hideSwitcher = false,
   dropTargetProjectId = null,
   transferAnimation = null,
 }: {
@@ -774,6 +775,7 @@ export default function ManifoldLibrary3D({
   onUploadProjectTrack?: (projectId: string, file: File) => void;
   onUpdateProjectCover?: (projectId: string, newCoverUrl: string) => void;
   compact?: boolean;
+  hideSwitcher?: boolean;
   dropTargetProjectId?: string | null;
   transferAnimation?: { trackTitle: string; targetProjectId: string } | null;
 }) {
@@ -792,12 +794,16 @@ export default function ManifoldLibrary3D({
   const [isMobileViewport, setIsMobileViewport] = useState<boolean>(false);
 
   const [activeMode, setActiveMode] = useState<"wheel" | "grid">(
-    viewMode === "manifold" ? "grid" : "wheel"
+    compact || hideSwitcher ? "grid" : viewMode === "manifold" ? "grid" : "wheel"
   );
 
   useEffect(() => {
+    if (compact || hideSwitcher) {
+      setActiveMode("grid");
+      return;
+    }
     setActiveMode(viewMode === "manifold" ? "grid" : "wheel");
-  }, [viewMode]);
+  }, [viewMode, compact, hideSwitcher]);
 
   const activeCanvasClip = activeProject?.videos?.find((v) => Boolean(v.url)) || null;
   const isCanvasImage = Boolean(
@@ -987,37 +993,39 @@ export default function ManifoldLibrary3D({
           activeMode === "wheel" ? "vinyl-arc-stage" : "catalog-grid-stage"
         }`}
       >
-        {/* Switcher permanente arriba a la izquierda: [ 💿 Rueda | ⊞ Tapas ] */}
-        <div className="library-top-left-switcher" role="group" aria-label="Cambiar modo de vista">
-          <button
-            type="button"
-            className={`library-mode-btn ${activeMode === "wheel" ? "active" : ""}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              sfx.tap();
-              setActiveMode("wheel");
-              onChangeViewMode?.("disc-row");
-            }}
-            title="Vista rueda de vinilos"
-          >
-            <span className="library-mode-icon">💿</span>
-            <span>Rueda</span>
-          </button>
-          <button
-            type="button"
-            className={`library-mode-btn ${activeMode === "grid" ? "active" : ""}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              sfx.tap();
-              setActiveMode("grid");
-              onChangeViewMode?.("manifold");
-            }}
-            title="Vista tapas [untitled]"
-          >
-            <span className="library-mode-icon">⊞</span>
-            <span>Tapas</span>
-          </button>
-        </div>
+        {/* Switcher permanente arriba a la izquierda: [ 💿 Rueda | ⊞ Tapas ] (oculto en perfil/celular) */}
+        {!hideSwitcher && !(compact && isMobileViewport) && (
+          <div className="library-top-left-switcher" role="group" aria-label="Cambiar modo de vista">
+            <button
+              type="button"
+              className={`library-mode-btn ${activeMode === "wheel" ? "active" : ""}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                sfx.tap();
+                setActiveMode("wheel");
+                onChangeViewMode?.("disc-row");
+              }}
+              title="Vista rueda de vinilos"
+            >
+              <span className="library-mode-icon">💿</span>
+              <span>Rueda</span>
+            </button>
+            <button
+              type="button"
+              className={`library-mode-btn ${activeMode === "grid" ? "active" : ""}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                sfx.tap();
+                setActiveMode("grid");
+                onChangeViewMode?.("manifold");
+              }}
+              title="Vista tapas [untitled]"
+            >
+              <span className="library-mode-icon">⊞</span>
+              <span>Tapas</span>
+            </button>
+          </div>
+        )}
 
         <div className="manifold-stage-overlay-top">
           <div className="manifold-title-and-switch">
@@ -1336,8 +1344,8 @@ export default function ManifoldLibrary3D({
                     </button>
                     <span className="vinyl-step-counter">
                       {isCreateSlotFocused
-                        ? `+/${projects.length}`
-                        : `${Math.min(projects.length, Math.max(1, Math.round(arcOffset) + 1))}/${projects.length}`}
+                        ? `+ / ${wheelItems.length}`
+                        : `${Math.min(wheelItems.length, Math.max(1, Math.round(arcOffset) + 1))} / ${wheelItems.length}`}
                     </span>
                     <button
                       type="button"
@@ -1618,6 +1626,19 @@ export default function ManifoldLibrary3D({
                       }}
                     >
                       <div className="vinyl-right-info-stack">
+                        {/* Forcefield protector con micropartículas: anula el fondo de la tapa que está detrás */}
+                        <div className="vinyl-title-forcefield" aria-hidden="true">
+                          <div className="forcefield-core-glow" />
+                          <div className="forcefield-particles">
+                            <span className="ff-p ff-p1" />
+                            <span className="ff-p ff-p2" />
+                            <span className="ff-p ff-p3" />
+                            <span className="ff-p ff-p4" />
+                            <span className="ff-p ff-p5" />
+                            <span className="ff-p ff-p6" />
+                          </div>
+                        </div>
+
                         <span className="vinyl-right-meta-pill">
                           {activeProject.type.toUpperCase()} · {activeProject.tracks.length}{" "}
                           {activeProject.tracks.length === 1 ? "TRACK" : "TRACKS"}
@@ -1654,7 +1675,7 @@ export default function ManifoldLibrary3D({
           )}
       </div>
 
-      {activeProject && (
+      {activeProject && activeMode === "wheel" && (
         <div className="library-bottom-actions">
           {onUploadProjectTrack && (
             <label className="apple-btn ghost library-action-btn" onMouseEnter={() => sfx.hover()}>
