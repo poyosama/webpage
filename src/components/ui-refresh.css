@@ -1018,3 +1018,140 @@ html:root body .manifold-3d-wrapper:not(.is-compact) .manifold-3d-canvas-stage.c
 :root body .mini-volume-wrap .apple-volume-slider {
   background: linear-gradient(to right, var(--ink) 0 var(--fill, 50%), var(--line-strong) var(--fill, 50%) 100%);
 }
+
+/* ===================== MODAL DE PASES ===================== */
+/* Siempre por encima de la píldora (z 85) y del mini-reproductor (z 160) */
+.apple-modal-backdrop:has(.invite-friends-modal-card) { z-index: 300 !important; }
+
+@media (max-width: 720px) {
+  .apple-modal-backdrop:has(.invite-friends-modal-card) {
+    align-items: flex-end !important;
+    justify-content: center !important;
+    padding: 0 !important;
+  }
+  html:root body .invite-friends-modal-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 24px) !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 24px 24px 0 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+  }
+  /* Header fijo arriba */
+  html:root body .invite-friends-modal-card .modal-head {
+    flex: none;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 10px !important;
+    padding: 16px 16px 10px !important;
+    margin: 0 !important;
+    border-bottom: 1px solid var(--line) !important;
+  }
+  html:root body .invite-friends-modal-card .modal-head h3 {
+    font-size: 1.02rem !important;
+    line-height: 1.2 !important;
+    margin-top: 2px !important;
+  }
+  html:root body .invite-friends-modal-card .modal-head h3 span:first-child { display: none; }
+  html:root body .invite-friends-modal-card .modal-head .apple-btn {
+    height: 30px !important;
+    padding: 0 12px !important;
+    font-size: 0.78rem !important;
+    flex: none;
+  }
+  /* Cuerpo que scrollea */
+  html:root body .invite-friends-modal-card .invite-modal-desc {
+    flex: none;
+    margin: 0 !important;
+    padding: 10px 16px 6px !important;
+    font-size: 0.8rem !important;
+    line-height: 1.45 !important;
+    color: var(--ink-secondary) !important;
+  }
+  html:root body .invite-friends-modal-card .invite-cards-grid,
+  html:root body .invite-friends-modal-card .invite-loading-box {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 6px !important;
+    padding: 6px 12px 12px !important;
+    margin: 0 !important;
+  }
+  /* Cada pase: una fila compacta  [PASE #1 / código]  [estado]  [copiar] */
+  html:root body .invite-code-card {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 10px 10px 10px 14px !important;
+    border-radius: 14px !important;
+    min-height: 0 !important;
+  }
+  html:root body .invite-code-card .invite-code-top {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    margin: 0 !important;
+  }
+  html:root body .invite-code-card .invite-badge-col {
+    text-align: left !important;
+    align-items: flex-start !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1px !important;
+    min-width: 0;
+  }
+  html:root body .invite-code-card .invite-ticket-number { font-size: 0.6rem !important; letter-spacing: 0.08em; }
+  html:root body .invite-code-card .invite-code-title {
+    font-family: var(--font-mono), monospace !important;
+    font-size: 0.86rem !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  html:root body .invite-code-card .invite-status-pill {
+    flex: none;
+    max-width: 46%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.62rem !important;
+    padding: 3px 8px !important;
+  }
+  html:root body .invite-code-card .invite-code-url-box {
+    flex: none;
+    display: contents !important;
+  }
+  html:root body .invite-code-card .invite-url-text { display: none !important; }
+  html:root body .invite-code-card .invite-copy-btn {
+    flex: none;
+    width: auto !important;
+    height: 32px !important;
+    padding: 0 12px !important;
+    font-size: 0.74rem !important;
+    border-radius: 999px !important;
+  }
+  /* Footer fijo abajo, respetando la barrita del iPhone */
+  html:root body .invite-friends-modal-card .invite-modal-footer {
+    flex: none;
+    margin: 0 !important;
+    padding: 10px 16px calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+    border-top: 1px solid var(--line) !important;
+    background: var(--surface) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+  html:root body .invite-friends-modal-card .invite-modal-footer .apple-btn { flex: 1 1 0; justify-content: center; }
+  html:root body .invite-friends-modal-card .invite-modal-footer > div { width: 100%; }
+}

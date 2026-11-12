@@ -2241,3 +2241,17 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 1. **Toast (`App.tsx` + `ui-refresh.css`):** `moveToast` al elegir proyecto en la hoja "Mover": píldora flotante sobre el mini-reproductor con la tapa del destino (entra con rebote), check verde que se dibuja y hace un anillo, "MOVIDO A / <proyecto>", y 18 partículas de colores de la marca que explotan desde la tapa. Se va solo a los 2.8 s.
 2. **Modo reproductor:** botón `player-mode-btn` (▶ en círculo) junto al de tema. Activado: la navegación queda con 2 pestañas (Biblioteca y @handle), Inicio/Subir no se muestran (si estabas ahí te lleva a la Biblioteca), el logo lleva a la Biblioteca y el botón queda encendido. Se recuerda en `localStorage` (`eltablero_player_mode`). Tocándolo de nuevo vuelve a la vista normal.
 3. **Modo noche:** `.manifold-3d-canvas-stage` tenía un degradado blanco fijo; ahora transparente/oscuro en dark (y transparente en Tapas). La barra de volumen del mini-reproductor era invisible en dark: ahora track `--line-strong` con relleno `--ink`.
+
+---
+
+### Turno 111 — Pases de invitación en el servidor (Supabase) + modal de pases en celu
+**Prompt del usuario:** el modal de pases no se veía bien en el celu; armar el sistema de invitaciones en Supabase ("armá todo, no me pidas confirmación salvo que sea algo grande").
+
+**Implementación:**
+1. **`supabase/migration_invites.sql` (nuevo, idempotente):** tabla `invite_codes` (RLS: cada uno ve solo sus pases, nadie escribe directo), `invite_admins` (solo `jpizarrograndinetti@gmail.com`, sin policies → inaccesible desde la app), `invite_settings` (fecha de corte para cuentas previas); funciones security definer `invite_is_unlimited`, `create_invite_codes` (3 cada 14 días; admin hasta 20 por tanda sin límite), `validate_invite_code` (anon), `consume_invite_code`, `invite_can_create_profile`; policy RESTRICTIVA de INSERT en `profiles` (cuenta nueva sin pase gastado no puede crear perfil; las previas quedan habilitadas); trigger que completa el handle en el pase gastado; importa los pases viejos de `profiles.invite_codes` y vacía esa columna (era legible por todos).
+   - **Probado en Postgres 16 local** con stub de Supabase: admin ilimitado (tope 20/tanda), usuario común 3 y luego error de cuota, insert manual y auto-admin bloqueados por RLS, usuario nuevo sin pase rechazado y con pase aceptado, pase no reutilizable, anónimo puede validar pero no gastar ni leer, upsert de perfiles viejos OK, re-ejecución OK.
+2. **`src/lib/invites.ts`:** primero servidor (RPC/tabla), fallback al sistema viejo si la migración no está aplicada (`PGRST202/205`). Se eliminó la validación comodín (`board-xxxxxx` siempre válido).
+3. **`App.tsx`:** cuenta nueva → `canCreateProfile()`; si no puede, gasta el pase pendiente; si no hay pase válido cierra sesión y deja el motivo para la landing.
+4. **`LandingScene.tsx`:** "Registrarme" valida contra el servidor y guarda el pase pendiente (antes aceptaba cualquier texto de 6+ letras y no lo guardaba).
+5. **Modal de pases (celu):** hoja inferior por encima de la píldora y el reproductor, header y footer fijos, una fila compacta por pase (código · estado · Copiar link), "✓ Usado · @handle".
+6. **Entorno:** se creó el entorno `webpage` con acceso a `api.supabase.com`; la credencial cargada devolvió 401 ("JWT could not be decoded"): hace falta un *personal access token* (`sbp_…`). Migración pendiente de aplicar.

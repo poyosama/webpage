@@ -4,6 +4,10 @@
  * - Cada link tiene el formato: https://www.eltablero.blog/invite/<codigo>
  * - Cuando una persona se registra con ese link, el código se consume (used: true) y queda inhabilitado.
  * - Factor Auth: sin un código válido no podés registrarte como usuario nuevo.
+ *
+ * SERVIDOR (supabase/migration_invites.sql): los pases viven en public.invite_codes y se
+ * crean/validan/gastan con funciones RPC security definer. Si la migración todavía no se
+ * corrió (la RPC no existe), se usa el sistema viejo (legacy_*) para no romper nada.
  */
 
 import { supabase } from "./supabase";
@@ -46,7 +50,7 @@ export function hasUnlimitedInvites(email?: string | null): boolean {
  * Chequeo verificado: pregunta al servidor de Auth de Supabase (getUser valida el JWT),
  * así no alcanza con editar el email del perfil local o el localStorage.
  */
-export async function verifyUnlimitedInvites(): Promise<boolean> {
+async function legacy_verifyUnlimitedInvites(): Promise<boolean> {
   try {
     const { data, error } = await supabase.auth.getUser();
     if (error || !data?.user) return false;
@@ -88,7 +92,7 @@ function writeGlobalRegistry(reg: Record<string, InviteCodeItem>) {
 }
 
 /** Obtiene o genera los 3 códigos de invitación para un usuario en la quincena actual */
-export async function getOrGenerateUserInvites(
+async function legacy_getOrGenerateUserInvites(
   userId: string,
   userHandle: string,
   userName: string,
@@ -197,7 +201,7 @@ export async function getOrGenerateUserInvites(
 }
 
 /** Genera una nueva tanda de 3 invitaciones si pasaron las 2 semanas */
-export async function generateNewBatchForUser(
+async function legacy_generateNewBatchForUser(
   userId: string,
   userHandle: string,
   userName: string
@@ -254,14 +258,14 @@ export async function generateNewBatchForUser(
 }
 
 /** Cuentas con pases ilimitados: genera `count` códigos nuevos sin esperar los 14 días */
-export async function generateExtraInvitesForUser(
+async function legacy_generateExtraInvitesForUser(
   userId: string,
   userHandle: string,
   userName: string,
   count = 1
 ): Promise<InviteCodeItem[]> {
   // Solo cuentas verificadas por el servidor de Auth pueden saltarse el límite
-  if (!(await verifyUnlimitedInvites())) {
+  if (!(await legacy_verifyUnlimitedInvites())) {
     return Object.values(readGlobalRegistry())
       .filter((x) => x.creatorId === userId)
       .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
@@ -297,7 +301,7 @@ export async function generateExtraInvitesForUser(
 }
 
 /** Valida si un código de invitación existe y no ha sido utilizado */
-export async function validateInviteCode(
+async function legacy_validateInviteCode(
   rawCode: string
 ): Promise<{ valid: boolean; creatorHandle?: string; creatorName?: string; error?: string }> {
   const code = (rawCode || "").trim().toLowerCase();
@@ -365,20 +369,12 @@ export async function validateInviteCode(
     }
   } catch {}
 
-  // Si tiene el formato típico board-xxxxxx y es un código generado dinámico
-  if (/^board-[a-z0-9]{5,8}$/.test(code)) {
-    return {
-      valid: true,
-      creatorHandle: "@quetablero",
-      creatorName: "El tablero.",
-    };
-  }
 
   return { valid: false, error: "El código de invitación no existe o es incorrecto." };
 }
 
 /** Consume el código de invitación al registrarse un nuevo usuario */
-export async function consumeInviteCode(
+async function legacy_consumeInviteCode(
   rawCode: string,
   newUserId: string,
   newUserHandle: string
@@ -461,4 +457,205 @@ export function buildInviteUrl(code: string): string {
       ? window.location.origin
       : "https://www.eltablero.blog";
   return `${origin}/invite/${encodeURIComponent(code)}`;
+}
+
+
+// =========================================================================
+// SERVIDOR (Supabase RPC) con fallback al sistema viejo
+// =========================================================================
+
+type InviteRow = {
+  code: string;
+  creator_id: string | null;
+  creator_handle: string | null;
+  creator_name: string | null;
+  created_at: string;
+  used: boolean;
+  used_by: string | null;
+  used_by_handle: string | null;
+  used_at: string | null;
+};
+
+let serverMode: boolean | null = null; // null = no sabemos todavía
+
+function isMissingRpc(error: { code?: string; message?: string } | null | undefined): boolean {
+  if (!error) return false;
+  return (
+    error.code === "PGRST202" ||
+    error.code === "PGRST205" ||
+    error.code === "42883" ||
+    error.code === "42P01" ||
+    /could not find the function|does not exist|schema cache/i.test(error.message || "")
+  );
+}
+
+function rowToItem(r: InviteRow): InviteCodeItem {
+  return {
+    code: r.code,
+    creatorId: r.creator_id || "",
+    creatorHandle: r.creator_handle || "",
+    creatorName: r.creator_name || "",
+    createdAt: r.created_at,
+    batchDate: r.created_at,
+    used: r.used,
+    usedByUserId: r.used_by || undefined,
+    usedByHandle: r.used_by_handle || undefined,
+    usedAt: r.used_at || undefined,
+  };
+}
+
+async function fetchMyServerCodes(userId: string): Promise<InviteCodeItem[] | null> {
+  const { data, error } = await supabase
+    .from("invite_codes")
+    .select("*")
+    .eq("creator_id", userId)
+    .order("created_at", { ascending: false });
+  if (error) {
+    if (isMissingRpc(error)) serverMode = false;
+    return null;
+  }
+  serverMode = true;
+  return (data as InviteRow[]).map(rowToItem);
+}
+
+async function rpcCreate(count: number): Promise<{ codes: InviteCodeItem[] | null; error?: string }> {
+  const { data, error } = await supabase.rpc("create_invite_codes", { p_count: count });
+  if (error) {
+    if (isMissingRpc(error)) {
+      serverMode = false;
+      return { codes: null };
+    }
+    return { codes: [], error: error.message };
+  }
+  serverMode = true;
+  return { codes: ((data as InviteRow[]) || []).map(rowToItem) };
+}
+
+/** ¿La cuenta logueada tiene pases ilimitados? (lo decide el servidor) */
+export async function verifyUnlimitedInvites(): Promise<boolean> {
+  if (serverMode !== false) {
+    const { data, error } = await supabase.rpc("invite_is_unlimited");
+    if (!error) {
+      serverMode = true;
+      return data === true;
+    }
+    if (!isMissingRpc(error)) return false;
+    serverMode = false;
+  }
+  return legacy_verifyUnlimitedInvites();
+}
+
+/** Lista (o crea la primera tanda de) los pases del usuario */
+export async function getOrGenerateUserInvites(
+  userId: string,
+  userHandle: string,
+  userName: string,
+  unlimited = false
+): Promise<{ codes: InviteCodeItem[]; canGenerateNewBatch: boolean; daysUntilNextBatch: number }> {
+  if (!userId) return { codes: [], canGenerateNewBatch: false, daysUntilNextBatch: 14 };
+  if (serverMode !== false) {
+    let codes = await fetchMyServerCodes(userId);
+    if (codes) {
+      if (codes.length === 0) {
+        const res = await rpcCreate(3);
+        if (res.codes) codes = res.codes;
+      }
+      const latest = codes[0] ? new Date(codes[0].createdAt).getTime() : 0;
+      const since = Date.now() - latest;
+      return {
+        codes: unlimited ? codes : codes.slice(0, 6),
+        canGenerateNewBatch: codes.length === 0 || since >= TWO_WEEKS_MS,
+        daysUntilNextBatch: Math.max(0, Math.ceil((TWO_WEEKS_MS - since) / 86400000)),
+      };
+    }
+  }
+  return legacy_getOrGenerateUserInvites(userId, userHandle, userName, unlimited);
+}
+
+/** Nueva tanda de 3 (el servidor controla los 14 días) */
+export async function generateNewBatchForUser(
+  userId: string,
+  userHandle: string,
+  userName: string
+): Promise<InviteCodeItem[]> {
+  if (serverMode !== false) {
+    const res = await rpcCreate(3);
+    if (res.codes) return res.codes.slice(0, 6);
+  }
+  return legacy_generateNewBatchForUser(userId, userHandle, userName);
+}
+
+/** Pases extra para cuentas ilimitadas (el servidor rechaza a cualquier otra cuenta) */
+export async function generateExtraInvitesForUser(
+  userId: string,
+  userHandle: string,
+  userName: string,
+  count = 1
+): Promise<InviteCodeItem[]> {
+  if (serverMode !== false) {
+    const res = await rpcCreate(count);
+    if (res.codes) return res.codes;
+  }
+  return legacy_generateExtraInvitesForUser(userId, userHandle, userName, count);
+}
+
+/** Valida un código (existe y está sin usar) */
+export async function validateInviteCode(
+  rawCode: string
+): Promise<{ valid: boolean; creatorHandle?: string; creatorName?: string; error?: string }> {
+  const code = (rawCode || "").trim().toLowerCase();
+  if (!code) return { valid: false, error: "Ingresá un código de invitación." };
+  if (serverMode !== false) {
+    const { data, error } = await supabase.rpc("validate_invite_code", { p_code: code });
+    if (!error) {
+      serverMode = true;
+      const row = (Array.isArray(data) ? data[0] : data) as
+        | { valid: boolean; creator_handle: string | null; creator_name: string | null; reason: string | null }
+        | undefined;
+      if (row?.valid) {
+        return { valid: true, creatorHandle: row.creator_handle || undefined, creatorName: row.creator_name || undefined };
+      }
+      return { valid: false, error: row?.reason || "El código de invitación no existe o es incorrecto." };
+    }
+    if (!isMissingRpc(error)) return { valid: false, error: "No pudimos verificar el código. Probá de nuevo." };
+    serverMode = false;
+  }
+  return legacy_validateInviteCode(code);
+}
+
+/**
+ * Gasta el código para la cuenta logueada.
+ * Devuelve "ok" | "invalid" (código inexistente/usado) | "legacy" (servidor sin migración: se usó el sistema viejo).
+ */
+export async function consumeInviteCode(
+  rawCode: string,
+  newUserId: string,
+  newUserHandle: string
+): Promise<"ok" | "invalid" | "legacy"> {
+  const code = (rawCode || "").trim().toLowerCase();
+  if (serverMode !== false) {
+    const { data, error } = await supabase.rpc("consume_invite_code", { p_code: code });
+    if (!error) {
+      serverMode = true;
+      if (data === true) {
+        try {
+          localStorage.removeItem(PENDING_INVITE_KEY);
+        } catch {}
+        return "ok";
+      }
+      return "invalid";
+    }
+    if (!isMissingRpc(error)) return "invalid";
+    serverMode = false;
+  }
+  if (!code) return "invalid";
+  await legacy_consumeInviteCode(code, newUserId, newUserHandle);
+  return "legacy";
+}
+
+/** ¿Esta cuenta puede crear su perfil? (admin, cuenta previa o con pase gastado). null = servidor sin migración */
+export async function canCreateProfile(): Promise<boolean | null> {
+  const { data, error } = await supabase.rpc("invite_can_create_profile");
+  if (error) return isMissingRpc(error) ? null : false;
+  return data === true;
 }

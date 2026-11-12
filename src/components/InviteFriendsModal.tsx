@@ -172,7 +172,7 @@ export function InviteFriendsModal({ profile, onClose }: InviteFriendsModalProps
                     </div>
                     {inv.used ? (
                       <span className="invite-status-pill used">
-                        ✓ Canjeado por {inv.usedByHandle || "un amigo"}
+                        ✓ Usado{inv.usedByHandle ? ` · ${inv.usedByHandle}` : ""}
                       </span>
                     ) : (
                       <span className="invite-status-pill available">Disponible</span>

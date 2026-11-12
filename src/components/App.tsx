@@ -48,6 +48,7 @@ import {
 import {
   validateInviteCode,
   consumeInviteCode,
+  canCreateProfile,
   getPendingInviteCode,
   setPendingInviteCode,
   getOrGenerateUserInvites,
@@ -892,7 +893,31 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
           createdAt: existing.created_at,
         };
       } else {
-        // Cuenta nueva: perfil vacío (solo nombre y handle de Google)
+        // Cuenta nueva: antes de crear el perfil hay que gastar un pase de invitación (lo valida el servidor)
+        const pendingInvite = getPendingInviteCode();
+        const allowed = await canCreateProfile(); // null = servidor sin la migración de pases
+        let inviteMode: "ok" | "legacy" = allowed === null ? "legacy" : "ok";
+        if (allowed === false) {
+          const consumed = pendingInvite
+            ? await consumeInviteCode(pendingInvite, u.id, `@${rawH.toLowerCase()}`)
+            : "invalid";
+          if (consumed === "invalid") {
+            try {
+              localStorage.setItem(
+                "eltablero_auth_error",
+                pendingInvite
+                  ? "Ese pase de invitación no es válido o ya fue usado. Pedile uno nuevo a quien te invitó."
+                  : "El tablero. es por invitación: necesitás un pase para crear tu cuenta. Tocá Registrarme e ingresá tu código."
+              );
+              localStorage.removeItem("board_pending_invite_code");
+            } catch {}
+            await supabase.auth.signOut();
+            return;
+          }
+          inviteMode = consumed;
+        }
+
+        // Perfil vacío (solo nombre y handle de Google)
         let handle = `@${rawH.toLowerCase()}`;
         let res = await saveUserProfileToSupabase({ id: u.id, handle, name: defaultName, avatarUrl: meta.avatar_url });
         if (!res.success) {
@@ -908,9 +933,8 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
           avatarUrl: meta.avatar_url || undefined,
         };
 
-        // Si se registró con un link de invitación, consumirlo inmediatamente
-        const pendingInvite = getPendingInviteCode();
-        if (pendingInvite) {
+        // Servidor sin migración: se gasta el pase con el sistema viejo
+        if (inviteMode === "legacy" && pendingInvite) {
           void consumeInviteCode(pendingInvite, u.id, base.handle);
         }
         void getOrGenerateUserInvites(u.id, base.handle, base.name);
