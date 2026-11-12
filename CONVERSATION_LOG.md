@@ -2318,3 +2318,12 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 - `supabase.ts`: `mapProjectRow` exportado; `createProjectShareToken`, `redeemProjectShareToken`, `getProjectShareByToken`, `fetchMyShareMemberships`, `saveSharedTrackMeta`, `isLegacyInviteToken` (fallback al sistema viejo si la migración no está).
 - `App.tsx`: `/project/:id?invite=<token>` → con sesión se canjea y se recargan proyectos + membresías (`projectInvites`/`trackInvites`); sin sesión se escucha vía `get_project_share`. Menú `•••` del track: **Compartir track** (dueño) y **Editar** para editores de ese track (guarda solo esa fila). En escritorio, botones "Compartir"/"Editar" por fila. `InviteProjectModal` genera links reales (async) y sirve para un track.
 - Probado en navegador (servidor simulado): modal "Compartir track" con ambos links; visitante sin cuenta ve el proyecto privado con un solo track.
+
+---
+
+### Turno 117 — "Suscribirme" en vez de registrarse / iniciar sesión
+**Prompt del usuario:** que no sea "registrarme" ni "iniciar sesión" sino "Suscribirme" / "Ya estoy suscrito"; pensar a qué te suscribís.
+
+**Concepto:** te suscribís a El tablero. como a una revista o un sello: a la escena (los proyectos, los tracks y la gente que los hace), entrando con el pase de alguien que ya está suscrito.
+
+**Cambios de copy:** landing ("SUSCRIPCIÓN POR INVITACIÓN", botones **Suscribirme** / **Ya estoy suscrito**, modal "Suscribirme a El tablero." con explicación y "Suscribirme con Google →", campo "TU PASE DE INVITACIÓN"); navegación y botón de perfil sin sesión → "Suscribirme"; modal de Google ("Suscripción por invitación", "¿Ya estás suscrito? Entrar directo"); mensajes de rechazo sin pase; bienvenida por link ("Te invitaron a suscribirte a El tablero.", "Suscribirme a El tablero.", "Explorar antes de suscribirme"); pases ("se gasta cuando alguien se suscribe"); artistas vacío y drops de productores ("suscritos").

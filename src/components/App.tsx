@@ -922,8 +922,8 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
               localStorage.setItem(
                 "eltablero_auth_error",
                 pendingInvite
-                  ? "Ese pase de invitación no es válido o ya fue usado. Pedile uno nuevo a quien te invitó."
-                  : "El tablero. es por invitación: necesitás un pase para crear tu cuenta. Tocá Registrarme e ingresá tu código."
+                  ? "Ese pase no es válido o ya fue usado. Pedile uno nuevo a quien te invitó a suscribirte."
+                  : "El tablero. es por suscripción con invitación: necesitás un pase para suscribirte. Tocá Suscribirme e ingresá tu pase."
               );
               localStorage.removeItem("board_pending_invite_code");
             } catch {}
@@ -2296,19 +2296,19 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
             (playerOnlyMode
               ? [
                   ["biblioteca", meProfile.accountType === "oyente" ? "Guardados" : "Biblioteca"],
-                  ["perfil", googleConnected ? meProfile.handle : "Iniciar sesión"],
+                  ["perfil", googleConnected ? meProfile.handle : "Suscribirme"],
                 ]
               : meProfile.accountType === "oyente"
               ? [
                   ["inicio", "Inicio"],
                   ["biblioteca", "Guardados"],
-                  ["perfil", googleConnected ? meProfile.handle : "Iniciar sesión"],
+                  ["perfil", googleConnected ? meProfile.handle : "Suscribirme"],
                 ]
               : [
                   ["inicio", "Inicio"],
                   ["subir", "Subir"],
                   ["biblioteca", "Biblioteca"],
-                  ["perfil", googleConnected ? meProfile.handle : "Iniciar sesión"],
+                  ["perfil", googleConnected ? meProfile.handle : "Suscribirme"],
                 ]) as [ScreenTab, string][]
           ).map(([id, label]) => {
             const isActive =
@@ -2407,7 +2407,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
             ) : (
               <>
                 <GoogleCircleIcon size={14} />
-                <span>Iniciar sesión</span>
+                <span>Suscribirme</span>
               </>
             )}
           </button>
@@ -2916,14 +2916,14 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                           0 ARTISTAS REGISTRADOS
                         </span>
                         <p style={{ color: "var(--ink-secondary)", fontSize: "0.86rem", margin: "4px 0 14px" }}>
-                          No hay cuentas creadas todavía. Conectate con Google para registrar tu perfil.
+                          Todavía no hay nadie suscrito. Suscribite con Google para aparecer acá.
                         </p>
                         <button
                           type="button"
                           className="apple-btn primary"
                           onClick={() => setAuthModalOpen(true)}
                         >
-                          Iniciar Sesión con Google
+                          Suscribirme con Google
                         </button>
                       </div>
                     )}
@@ -3029,7 +3029,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                         0 NOVEDADES DE PRODUCTORES
                       </span>
                       <p style={{ color: "var(--ink-secondary)", fontSize: "0.85rem", margin: "4px 0 0" }}>
-                        Los beatmakers registrados publicarán sus beatposts, drumkits y soundkits en esta sección.
+                        Los beatmakers suscritos publicarán sus beatposts, drumkits y soundkits en esta sección.
                       </p>
                     </div>
                   )}
@@ -6337,7 +6337,7 @@ function GoogleAuthModal({
 
   const handleOAuthGoogle = async () => {
     if (!connected && !verifiedInvite && !existingUserMode) {
-      setInviteError("Ingresá y validá tu código de invitación para registrarte.");
+      setInviteError("Ingresá y validá tu pase de invitación para suscribirte.");
       return;
     }
 
@@ -6488,10 +6488,10 @@ function GoogleAuthModal({
             ) : (
               <div className="auth-invite-gate-box">
                 <span style={{ fontWeight: 600, color: "var(--ink)" }}>
-                  Acceso exclusivo por invitación
+                  Suscripción por invitación
                 </span>
                 <span>
-                  El tablero. es una plataforma privada. Para registrarte como artista o productor necesitás un link o código de invitación de un miembro.
+                  Te suscribís a la escena de El tablero.: proyectos, tracks y la gente que los hace. Para suscribirte necesitás el pase (link o código) de alguien que ya está suscrito.
                 </span>
                 <div className="auth-invite-input-row">
                   <input
@@ -6537,7 +6537,7 @@ function GoogleAuthModal({
                     marginTop: 4,
                   }}
                 >
-                  ¿Ya tenías cuenta en El tablero.? Iniciar sesión directo
+                  ¿Ya estás suscrito? Entrar directo
                 </button>
               </div>
             )}

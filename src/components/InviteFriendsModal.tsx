@@ -140,12 +140,12 @@ export function InviteFriendsModal({ profile, onClose }: InviteFriendsModalProps
           {unlimited ? (
             <>
               El tablero. es una plataforma exclusiva para artistas y productores. Tu cuenta tiene{" "}
-              <b>pases de invitación ilimitados</b>: generá los que quieras. Cada link es de un solo uso y se gasta cuando alguien se registra con él.
+              <b>pases de invitación ilimitados</b>: generá los que quieras. Cada link es de un solo uso y se gasta cuando alguien se suscribe con él.
             </>
           ) : (
             <>
               El tablero. es una plataforma exclusiva para artistas y productores. Tenés{" "}
-              <b>3 códigos de invitación cada 2 semanas</b>. Cada link es de un solo uso y se gasta cuando alguien se registra con él.
+              <b>3 códigos de invitación cada 2 semanas</b>. Cada link es de un solo uso y se gasta cuando alguien se suscribe con él.
             </>
           )}
         </p>
@@ -292,10 +292,10 @@ export function WelcomeInviteModal({
         <div className="welcome-invite-header">
           <div className="welcome-invite-ticket-icon">🎟️</div>
           <span className="mono-tag">ACCESO EXCLUSIVO // INVITACIÓN DE ARTISTA</span>
-          <h2>Has sido invitado a El tablero.</h2>
+          <h2>Te invitaron a suscribirte a El tablero.</h2>
           <p>
             Te invitó <b>{creatorName || "un artista"}</b> (
-            <span className="invite-creator-handle">{creatorHandle || "@quetablero"}</span>) para formar parte de la plataforma privada de proyectos, identidad y música.
+            <span className="invite-creator-handle">{creatorHandle || "@quetablero"}</span>) a suscribirte a la escena: los proyectos, los tracks y la gente que los hace.
           </p>
         </div>
 
@@ -314,10 +314,10 @@ export function WelcomeInviteModal({
               onAccept();
             }}
           >
-            Reclamar mi cuenta en El tablero.
+            Suscribirme a El tablero.
           </button>
           <button type="button" className="apple-btn ghost" onClick={onClose}>
-            Explorar antes de registrarme
+            Explorar antes de suscribirme
           </button>
         </div>
       </motion.div>
