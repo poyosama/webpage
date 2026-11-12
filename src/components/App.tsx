@@ -6778,7 +6778,7 @@ function GoogleAuthModal({
                   Suscripción por invitación
                 </span>
                 <span>
-                  Te suscribís a la escena de El tablero.: proyectos, tracks y la gente que los hace. Para suscribirte necesitás el pase (link o código) de alguien que ya está suscrito.
+                  Es gratis. Solo necesitás un pase de alguien que ya está suscrito.
                 </span>
                 <div className="auth-invite-input-row">
                   <input

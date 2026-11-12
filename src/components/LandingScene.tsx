@@ -478,7 +478,7 @@ export default function LandingScene({
 
       <div className="landing-center-content">
         <span className="mono-tag" style={{ letterSpacing: "0.22em", marginBottom: 12 }}>
-          SUSCRIPCIÓN POR INVITACIÓN
+          SUSCRIPCIÓN GRATIS · POR INVITACIÓN
         </span>
 
         <h1 className="landing-display-title">El tablero.</h1>
@@ -555,17 +555,14 @@ export default function LandingScene({
               </div>
             )}
 
-            <p className="subscribe-explainer">
-              Te suscribís a la escena: los proyectos, los tracks y la gente que los hace, en un solo
-              lugar. Se entra con el pase de alguien que ya está suscrito.
-            </p>
+            <p className="subscribe-explainer">Es gratis. Solo necesitás un pase.</p>
 
             {prefilledInvite?.code && inviteCode === prefilledInvite.code && (
               <div className="landing-invite-from">
                 <span className="landing-invite-check" aria-hidden>✓</span>
                 <span>
                   Te invitó <b>{prefilledInvite.creatorName || "alguien de la escena"}</b>
-                  {prefilledInvite.creatorHandle ? ` (${prefilledInvite.creatorHandle})` : ""}. Tu pase ya está puesto.
+                  {prefilledInvite.creatorHandle ? ` (${prefilledInvite.creatorHandle})` : ""}. Tu pase es válido.
                 </span>
               </div>
             )}

@@ -295,7 +295,7 @@ export function WelcomeInviteModal({
           <h2>Te invitaron a suscribirte a El tablero.</h2>
           <p>
             Te invitó <b>{creatorName || "un artista"}</b> (
-            <span className="invite-creator-handle">{creatorHandle || "@quetablero"}</span>) a suscribirte a la escena: los proyectos, los tracks y la gente que los hace.
+            <span className="invite-creator-handle">{creatorHandle || "@quetablero"}</span>). Es gratis.
           </p>
         </div>
 

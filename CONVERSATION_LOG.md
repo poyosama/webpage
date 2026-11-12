@@ -2369,3 +2369,13 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 - `App.tsx`: ignora `?invite=` en `/project/...`; pasa `prefilledInvite` (pase validado + quién invita) e `inviteLinkError` a `LandingScene`.
 - `LandingScene.tsx`: con `/invite/:code` válido abre "Suscribirme" automáticamente con el pase en el campo y el aviso "✓ Te invitó poyo (@poyo). Tu pase ya está puesto."; limpia la URL a `/`. Link inválido/usado → aviso en la landing. Al tocar "Suscribirme con Google" el pase queda pendiente y se gasta al volver del login.
 - Probado en celu simulado (válido e inválido).
+
+---
+
+### Turno 122 — Tapas oficiales HD, "Tu pase es válido" y copy minimalista con "gratis"
+**Prompt del usuario:** EL DE LA X seguía con la tapa de AMORIO CLUB; cambiar "Tu pase ya está puesto" por "Tu pase es válido"; sacar el texto "te suscribís a la escena…" (minimalista); poner en algún lado que es gratis.
+
+**Cambios:**
+- Entorno `webpage`: se habilitaron `open.spotify.com`, `i.scdn.co`, `image-cdn-fa.spotifycdn.com` e `image-cdn-ak.spotifycdn.com`. Se bajaron las tapas oficiales 640×640 de Spotify (oEmbed → versión `b273`) de los 8 proyectos y reemplazaron `public/covers/*.png` (EL DE LA X ahora con su tapa real; se borró `amorio-club.png`).
+- Landing: subtítulo "SUSCRIPCIÓN GRATIS · POR INVITACIÓN"; modal "Es gratis. Solo necesitás un pase."; banner del link "✓ Te invitó poyo (@poyo). Tu pase es válido."
+- Modal de cuenta sin sesión y bienvenida por link: textos largos reemplazados por "Es gratis…".
