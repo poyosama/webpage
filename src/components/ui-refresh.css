@@ -796,3 +796,90 @@
 }
 .move-sheet-item small { font-size: 0.68rem; color: var(--ink-muted); }
 .move-sheet-empty { padding: 18px 4px 8px; color: var(--ink-secondary); font-size: 0.86rem; }
+
+/* ===================== SLIDER DE LA RUEDA (celu) ===================== */
+.vinyl-arc-slider { display: none; }
+@media (max-width: 720px) {
+  html:root body .vinyl-arc-step-controls {
+    gap: 10px !important;
+    padding: 6px 12px 6px 14px !important;
+    width: min(300px, 100%) !important;
+  }
+  html:root body .vinyl-arc-step-controls .vinyl-step-btn { display: none !important; }
+  html:root body .vinyl-arc-step-controls .vinyl-step-counter { order: 2; min-width: 38px; }
+  .vinyl-arc-slider {
+    order: 1;
+    display: block;
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 28px;
+    margin: 0;
+    background: transparent;
+    -webkit-appearance: none;
+    appearance: none;
+    touch-action: none;
+    cursor: grab;
+  }
+  .vinyl-arc-slider:active { cursor: grabbing; }
+  .vinyl-arc-slider::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: 999px;
+    background: linear-gradient(to right, var(--ink) 0 var(--fill, 0%), var(--line-strong) var(--fill, 0%) 100%);
+  }
+  .vinyl-arc-slider::-moz-range-track {
+    height: 4px;
+    border-radius: 999px;
+    background: var(--line-strong);
+  }
+  .vinyl-arc-slider::-moz-range-progress { height: 4px; border-radius: 999px; background: var(--ink); }
+  .vinyl-arc-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 22px;
+    height: 22px;
+    margin-top: -9px;
+    border-radius: 50%;
+    background: #fff;
+    border: 0.5px solid rgba(0, 0, 0, 0.12);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+    transition: scale 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .vinyl-arc-slider:active::-webkit-slider-thumb { scale: 1.18; }
+  .vinyl-arc-slider::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #fff;
+    border: 0.5px solid rgba(0, 0, 0, 0.12);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+  }
+}
+
+/* ===================== TAPAS: se puede scrollear si hay muchos proyectos ===================== */
+html:root body .catalog-grid-stage .untitled-catalog-viewport,
+html:root body.app-no-scroll .catalog-grid-stage .untitled-catalog-viewport {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y !important;
+  scrollbar-width: none;
+}
+html:root body .catalog-grid-stage .untitled-catalog-viewport::-webkit-scrollbar { display: none; }
+@media (max-width: 720px) {
+  html:root body .catalog-grid-stage .untitled-catalog-viewport { padding-bottom: 76px !important; }
+}
+/* El escenario de Tapas toma el alto disponible (como la rueda) para que la grilla scrollee adentro */
+html:root body.app-no-scroll .manifold-3d-wrapper:not(.is-compact) .manifold-3d-canvas-stage.catalog-grid-stage {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}

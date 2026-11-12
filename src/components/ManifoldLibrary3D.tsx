@@ -866,6 +866,26 @@ export default function ManifoldLibrary3D({
   const hasCreateSlot = Boolean(onOpenCreateProject);
   const totalWheelItemsCount = projects.length + (hasCreateSlot ? 1 : 0);
 
+  // Slider de la rueda (celu): mueve la rueda en continuo y al soltar encastra en un proyecto
+  const sliderTickRef = useRef<number>(-1);
+  const scrubVinylArc = (value: number) => {
+    const rounded = Math.round(value);
+    if (rounded !== sliderTickRef.current) {
+      sliderTickRef.current = rounded;
+      sfx.tick();
+    }
+    setArcOffset(value);
+  };
+  const releaseVinylArc = (value: number) => {
+    const maxIdx = Math.max(0, totalWheelItemsCount - 1);
+    const snapped = Math.max(0, Math.min(maxIdx, Math.round(value)));
+    setArcOffset(snapped);
+    if (snapped < projects.length) {
+      const targetProj = projects[snapped];
+      if (targetProj) onSelectProject(targetProj);
+    }
+  };
+
   const stepVinylArc = (dir: -1 | 1) => {
     if (totalWheelItemsCount === 0) return;
     const maxIdx = Math.max(0, totalWheelItemsCount - 1);
@@ -1368,6 +1388,24 @@ export default function ManifoldLibrary3D({
                     >
                       ▼
                     </button>
+                    {wheelItems.length > 1 && (
+                      <input
+                        type="range"
+                        className="vinyl-arc-slider"
+                        aria-label="Deslizá para recorrer tus proyectos"
+                        min={0}
+                        max={maxWheelIndex}
+                        step={0.01}
+                        value={arcOffset}
+                        style={{ ["--fill" as string]: `${(arcOffset / Math.max(1, maxWheelIndex)) * 100}%` }}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onChange={(e) => scrubVinylArc(Number(e.target.value))}
+                        onPointerUp={(e) => releaseVinylArc(Number((e.target as HTMLInputElement).value))}
+                        onTouchEnd={(e) => releaseVinylArc(Number((e.target as HTMLInputElement).value))}
+                        onKeyUp={(e) => releaseVinylArc(Number((e.target as HTMLInputElement).value))}
+                        onBlur={(e) => releaseVinylArc(Number(e.target.value))}
+                      />
+                    )}
                   </div>
 
                   <div className="vinyl-fan-arc-wheel">

@@ -9,7 +9,7 @@ import {
   getOrGenerateUserInvites,
   generateNewBatchForUser,
   generateExtraInvitesForUser,
-  hasUnlimitedInvites,
+  verifyUnlimitedInvites,
   buildInviteUrl,
 } from "@/lib/invites";
 
@@ -25,7 +25,17 @@ export function InviteFriendsModal({ profile, onClose }: InviteFriendsModalProps
   const [daysLeft, setDaysLeft] = useState(14);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
-  const unlimited = hasUnlimitedInvites(profile.email);
+  const [unlimited, setUnlimited] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    void verifyUnlimitedInvites().then((ok) => {
+      if (alive) setUnlimited(ok);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [profile.id]);
 
   useEffect(() => {
     let alive = true;
