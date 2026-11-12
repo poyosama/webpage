@@ -178,6 +178,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
 
   // Modo oscuro / Modo claro global para todas las pantallas
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [inviteLinkError, setInviteLinkError] = useState<string>("");
 
   useEffect(() => {
     try {
@@ -199,7 +200,10 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       if (match && match[1]) {
         code = match[1];
       } else {
-        const q = new URLSearchParams(window.location.search).get("invite");
+        // ?invite= en /project/... es un link de compartir proyecto, no un pase de suscripción
+        const q = window.location.pathname.startsWith("/project/")
+          ? null
+          : new URLSearchParams(window.location.search).get("invite");
         if (q) code = q;
       }
     }
@@ -214,6 +218,8 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
             creatorHandle: res.creatorHandle,
             creatorName: res.creatorName,
           });
+        } else {
+          setInviteLinkError(res.error || "Ese link de invitación no es válido o ya fue usado.");
         }
       });
     }
@@ -2332,6 +2338,8 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       <>
         <LandingScene
           autoOpenSubscribe={landingAutoSubscribe}
+          prefilledInvite={welcomeInvite}
+          inviteLinkError={inviteLinkError}
           onEnterAsGuest={() => {
             setLandingAutoSubscribe(false);
             setGuestMode(true);

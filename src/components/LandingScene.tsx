@@ -342,17 +342,41 @@ async function triggerGoogleOAuth(): Promise<string | null> {
 export default function LandingScene({
   onEnterAsGuest,
   autoOpenSubscribe = false,
+  prefilledInvite = null,
+  inviteLinkError = "",
   onOpenGoogleAuth,
   onSetAccountRole,
 }: {
   onEnterAsGuest?: () => void;
   /** Volviendo del modo explorar con "Suscribirme": abre directo el modal */
   autoOpenSubscribe?: boolean;
+  /** Entró por un link /invite/:code válido: el modal se abre con el pase ya puesto */
+  prefilledInvite?: { code: string; creatorHandle?: string; creatorName?: string } | null;
+  inviteLinkError?: string;
   onOpenGoogleAuth?: () => void;
   onSetAccountRole?: (role: "artista" | "oyente") => void;
 }) {
   const [inviteModalOpen, setInviteModalOpen] = useState(autoOpenSubscribe);
   const [inviteCode, setInviteCode] = useState("");
+
+  // Link de invitación: abrir "Suscribirme" con el pase ya copiado y dejar la URL limpia
+  useEffect(() => {
+    if (!prefilledInvite?.code) return;
+    setInviteCode(prefilledInvite.code);
+    setErrorMsg("");
+    setInviteModalOpen(true);
+    try {
+      if (window.location.pathname.startsWith("/invite/")) window.history.replaceState(null, "", "/");
+    } catch {}
+  }, [prefilledInvite?.code]);
+
+  useEffect(() => {
+    if (!inviteLinkError) return;
+    setErrorMsg(`${inviteLinkError} Pedile un pase nuevo a quien te invitó.`);
+    try {
+      if (window.location.pathname.startsWith("/invite/")) window.history.replaceState(null, "", "/");
+    } catch {}
+  }, [inviteLinkError]);
   const [chosenRole, setChosenRole] = useState<"artista" | "oyente">("artista");
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
@@ -535,6 +559,16 @@ export default function LandingScene({
               Te suscribís a la escena: los proyectos, los tracks y la gente que los hace, en un solo
               lugar. Se entra con el pase de alguien que ya está suscrito.
             </p>
+
+            {prefilledInvite?.code && inviteCode === prefilledInvite.code && (
+              <div className="landing-invite-from">
+                <span className="landing-invite-check" aria-hidden>✓</span>
+                <span>
+                  Te invitó <b>{prefilledInvite.creatorName || "alguien de la escena"}</b>
+                  {prefilledInvite.creatorHandle ? ` (${prefilledInvite.creatorHandle})` : ""}. Tu pase ya está puesto.
+                </span>
+              </div>
+            )}
 
             <form onSubmit={handleValidateAndRegister} className="modal-form-grid single-col">
               <label className="modal-field">

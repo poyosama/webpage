@@ -2357,3 +2357,15 @@ de paso tambien cambiale el nombre de nuevo a El tablero. con todos los cambios 
 **Prompt del usuario:** el link de EL DE LA X es `https://open.spotify.com/album/1IFW57qYJzerNLvy1qLOcM` (el primero que pasó era el de AMORIO CLUB, descartado).
 
 **Cambio:** `spotifyUrl` agregado al proyecto `amorio-club` (EL DE LA X) en `src/lib/mock.ts`; `AGENTS.md` actualizado. Tocar EL DE LA X en el tablero abre ese álbum.
+
+---
+
+### Turno 121 — Links de invitación que abren la suscripción con el pase ya puesto
+**Prompt del usuario:** ¿los links de invitación funcionan de verdad? Que al pasarle el link a un amigo se abra la página, toque suscribirse y el código ya esté copiado.
+
+**Diagnóstico:** no funcionaban para alguien sin cuenta: el cartel de bienvenida (`WelcomeInviteModal`) vive dentro de la app, pero sin sesión se renderiza la landing en su lugar → nunca aparecía; y el modal "Suscribirme" arrancaba vacío. Además `?invite=` de los links de compartir proyecto (`/project/:id?invite=`) se tomaba como pase.
+
+**Fix:**
+- `App.tsx`: ignora `?invite=` en `/project/...`; pasa `prefilledInvite` (pase validado + quién invita) e `inviteLinkError` a `LandingScene`.
+- `LandingScene.tsx`: con `/invite/:code` válido abre "Suscribirme" automáticamente con el pase en el campo y el aviso "✓ Te invitó poyo (@poyo). Tu pase ya está puesto."; limpia la URL a `/`. Link inválido/usado → aviso en la landing. Al tocar "Suscribirme con Google" el pase queda pendiente y se gasta al volver del login.
+- Probado en celu simulado (válido e inválido).
