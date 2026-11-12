@@ -347,3 +347,35 @@
 :root body.app-no-scroll .apple-shell {
   padding-top: calc(env(safe-area-inset-top, 0px) + var(--nav-clear)) !important;
 }
+
+/* ===== Título del proyecto: editar = mismo tipo que ver (sin salto ni cambio de fuente) ===== */
+:root body .inline-project-title-input {
+  font-family: inherit !important;
+  font-size: clamp(1.25rem, 1.7vw, 1.55rem) !important;
+  font-weight: 750 !important;
+  letter-spacing: -0.03em !important;
+  line-height: 1.08 !important;
+  padding: 2px 8px !important;
+  margin: -3.5px 0 -3.5px -9.5px !important;
+}
+@media (min-width: 721px) and (max-width: 900px) {
+  :root body .inline-project-title-input { font-size: 1.35rem !important; }
+}
+@media (max-width: 720px) {
+  :root body .inline-project-title-input.mobile {
+    font-size: 1.75rem !important;
+    font-weight: 700 !important;
+    line-height: 1.12 !important;
+  }
+}
+:root body .inline-title-confirm-btn,
+:root body .inline-title-cancel-btn { width: 28px !important; height: 28px !important; border-radius: 9px !important; font-size: 0.8rem !important; }
+
+/* ===== Selección de tapa: aro fino con aire (estilo Apple), sin marco negro grueso ===== */
+:root body .untitled-catalog-card.is-selected .untitled-catalog-cover {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px color-mix(in srgb, var(--ink) 65%, transparent),
+    0 10px 22px -10px rgba(0, 0, 0, 0.35) !important;
+}
+:root body .untitled-catalog-cover {
+  box-shadow: 0 6px 16px -8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
