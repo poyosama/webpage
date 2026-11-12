@@ -321,6 +321,199 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     return `${mins}m ${String(secs).padStart(2, "0")}s`;
   };
 
+  // ==================== TRACK FORCEFIELD DRAG & TRANSFER ====================
+  const [draggedTrack, setDraggedTrack] = useState<{
+    track: Track;
+    sourceProjectId: string;
+    sourceIndex: number;
+  } | null>(null);
+  const [dragPointer, setDragPointer] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [dropTargetTrackIndex, setDropTargetTrackIndex] = useState<number | null>(null);
+  const [dropTargetProjectId, setDropTargetProjectId] = useState<string | null>(null);
+  const [transferAnimation, setTransferAnimation] = useState<{
+    track: Track;
+    targetProjectId: string;
+    active: boolean;
+  } | null>(null);
+  const [isOverLeftExitPortal, setIsOverLeftExitPortal] = useState<boolean>(false);
+
+  const startDraggingTrack = (
+    e: React.PointerEvent,
+    track: Track,
+    index: number
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    sfx.open();
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+
+    setDraggedTrack({
+      track,
+      sourceProjectId: activeProject?.id || "",
+      sourceIndex: index,
+    });
+    setDragPointer({ x: startX, y: startY });
+    setDropTargetTrackIndex(index);
+    setDropTargetProjectId(null);
+    setIsOverLeftExitPortal(false);
+  };
+
+  const handleReorderTracks = (
+    projectId: string,
+    fromIndex: number,
+    toIndex: number
+  ) => {
+    if (fromIndex === toIndex) return;
+    sfx.drop();
+    setProjects((prev) =>
+      prev.map((p) => {
+        if (p.id !== projectId) return p;
+        const copy = [...p.tracks];
+        const [moved] = copy.splice(fromIndex, 1);
+        copy.splice(toIndex, 0, moved);
+        const updated = { ...p, tracks: copy };
+        if (currentProject.id === p.id) setCurrentProject(updated);
+        return updated;
+      })
+    );
+  };
+
+  const handleTransferTrackToProject = (
+    sourceProjectId: string,
+    trackId: string,
+    targetProjectId: string
+  ) => {
+    const source = projects.find((p) => p.id === sourceProjectId);
+    const target = projects.find((p) => p.id === targetProjectId);
+    if (!source || !target || source.id === target.id) return;
+
+    const trackToMove = source.tracks.find((t) => t.id === trackId);
+    if (!trackToMove) return;
+
+    // Feedback auditivo: tick y drop
+    sfx.tick();
+    setTimeout(() => sfx.drop(), 120);
+
+    // Activar animación visual: entra por la derecha y salta tick popeando
+    setTransferAnimation({
+      track: trackToMove,
+      targetProjectId: target.id,
+      active: true,
+    });
+
+    setTimeout(() => {
+      setTransferAnimation((curr) =>
+        curr?.targetProjectId === target.id ? null : curr
+      );
+    }, 2400);
+
+    // Mover track en el estado
+    setProjects((prev) =>
+      prev.map((p) => {
+        if (p.id === source.id) {
+          const updated = {
+            ...p,
+            tracks: p.tracks.filter((t) => t.id !== trackId),
+          };
+          if (currentProject.id === p.id) setCurrentProject(updated);
+          return updated;
+        }
+        if (p.id === target.id) {
+          const updated = {
+            ...p,
+            tracks: [...p.tracks, trackToMove],
+          };
+          if (currentProject.id === p.id) setCurrentProject(updated);
+          return updated;
+        }
+        return p;
+      })
+    );
+  };
+
+  useEffect(() => {
+    if (!draggedTrack) return;
+
+    const handleWindowPointerMove = (e: PointerEvent) => {
+      const x = e.clientX;
+      const y = e.clientY;
+      setDragPointer({ x, y });
+
+      // Acción B: Si está adentro del proyecto y arrastra hacia la izquierda de la tapa
+      // Salimos a la biblioteca de proyectos!
+      if (insideCubeOpen) {
+        const isDesktop = window.innerWidth > 720;
+        const leftThreshold = isDesktop ? 440 : 110;
+        const exitTriggerX = isDesktop ? 360 : 85;
+
+        if (x < leftThreshold) {
+          setIsOverLeftExitPortal(true);
+        } else {
+          setIsOverLeftExitPortal(false);
+        }
+
+        if (x < exitTriggerX) {
+          sfx.close();
+          setInsideCubeOpen(false);
+          setIsOverLeftExitPortal(false);
+          return;
+        }
+
+        // Si sigue dentro de la lista de pistas, detectar índice de destino para reordenar
+        const elem = document.elementFromPoint(x, y);
+        const rowElem = elem?.closest("[data-track-index]") as HTMLElement | null;
+        if (rowElem) {
+          const idx = Number(rowElem.getAttribute("data-track-index"));
+          if (!isNaN(idx)) {
+            setDropTargetTrackIndex(idx);
+          }
+        }
+      } else {
+        // Afuera en la biblioteca de proyectos:
+        // Detectar proyecto bajo el puntero
+        const elem = document.elementFromPoint(x, y);
+        const projectElem = elem?.closest("[data-project-id]") as HTMLElement | null;
+        if (projectElem) {
+          const targetId = projectElem.getAttribute("data-project-id");
+          if (targetId && targetId !== draggedTrack.sourceProjectId) {
+            setDropTargetProjectId(targetId);
+          } else {
+            setDropTargetProjectId(null);
+          }
+        } else {
+          setDropTargetProjectId(null);
+        }
+      }
+    };
+
+    const handleWindowPointerUp = () => {
+      if (!insideCubeOpen && dropTargetProjectId && dropTargetProjectId !== draggedTrack.sourceProjectId) {
+        handleTransferTrackToProject(draggedTrack.sourceProjectId, draggedTrack.track.id, dropTargetProjectId);
+      } else if (insideCubeOpen && dropTargetTrackIndex !== null && dropTargetTrackIndex !== draggedTrack.sourceIndex) {
+        handleReorderTracks(draggedTrack.sourceProjectId, draggedTrack.sourceIndex, dropTargetTrackIndex);
+      } else {
+        sfx.release();
+      }
+
+      setDraggedTrack(null);
+      setDropTargetTrackIndex(null);
+      setDropTargetProjectId(null);
+      setIsOverLeftExitPortal(false);
+    };
+
+    window.addEventListener("pointermove", handleWindowPointerMove, { passive: false });
+    window.addEventListener("pointerup", handleWindowPointerUp);
+    window.addEventListener("pointercancel", handleWindowPointerUp);
+
+    return () => {
+      window.removeEventListener("pointermove", handleWindowPointerMove);
+      window.removeEventListener("pointerup", handleWindowPointerUp);
+      window.removeEventListener("pointercancel", handleWindowPointerUp);
+    };
+  }, [draggedTrack, insideCubeOpen, dropTargetTrackIndex, dropTargetProjectId, projects]);
+
   // Bloqueo total de scroll del navegador en todas las pantallas excepto "inicio"
   // (evita que la pantalla se desplace o rebote al interactuar en web y celular)
   useEffect(() => {
@@ -2612,6 +2805,15 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                       onRemoveProjectVideo={handleRemoveProjectVideo}
                       onUploadProjectTrack={handleUploadProjectTrack}
                       onUpdateProjectCover={handleUpdateProjectCover}
+                      dropTargetProjectId={dropTargetProjectId}
+                      transferAnimation={
+                        transferAnimation?.active
+                          ? {
+                              trackTitle: transferAnimation.track.title,
+                              targetProjectId: transferAnimation.targetProjectId,
+                            }
+                          : null
+                      }
                     />
                   )}
 
@@ -3169,6 +3371,16 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
 
                       {/* Lista de tracks numerada limpia */}
                       <div className="untitled-mobile-tracklist">
+                        {draggedTrack && (
+                          <div
+                            className={`inspector-drag-left-portal mobile ${
+                              isOverLeftExitPortal ? "is-hovered" : ""
+                            }`}
+                          >
+                            <span className="left-portal-arrow">‹</span>
+                            <span className="left-portal-title">Llevá acá para proyectos</span>
+                          </div>
+                        )}
                         {activeProject.tracks
                           .filter((t) => {
                             if (!projectSearchQuery.trim()) return true;
@@ -3184,14 +3396,46 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                           .map((t, idx) => {
                             const isCurrent = currentTrack.id === t.id;
                             const menuOpen = mobileTrackMenuId === t.id;
+                            const isDragged = draggedTrack?.track.id === t.id;
+                            const isDropBefore = dropTargetTrackIndex === idx && draggedTrack && draggedTrack.sourceIndex > idx;
+                            const isDropAfter = dropTargetTrackIndex === idx && draggedTrack && draggedTrack.sourceIndex < idx;
                             return (
-                              <div key={t.id} className="untitled-mobile-track-item">
+                              <div
+                                key={t.id}
+                                data-track-index={idx}
+                                data-track-id={t.id}
+                                className={`untitled-mobile-track-item ${
+                                  isDragged ? "is-drag-source" : ""
+                                } ${isDropBefore ? "is-drop-target-before" : ""} ${
+                                  isDropAfter ? "is-drop-target-after" : ""
+                                }`}
+                              >
                                 <div
                                   className={`untitled-mobile-track-row ${
                                     isCurrent ? "is-playing" : ""
                                   }`}
-                                  onClick={() => playTrack(t, activeProject, false)}
+                                  onClick={() => {
+                                    if (!draggedTrack) playTrack(t, activeProject, false);
+                                  }}
                                 >
+                                  {canEditActive && (
+                                    <button
+                                      type="button"
+                                      className="track-drag-handle mobile"
+                                      title="Arrastrá para reordenar o mover de proyecto"
+                                      onPointerDown={(e) => startDraggingTrack(e, t, idx)}
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                                        <circle cx="9" cy="6" r="2.2" />
+                                        <circle cx="15" cy="6" r="2.2" />
+                                        <circle cx="9" cy="12" r="2.2" />
+                                        <circle cx="15" cy="12" r="2.2" />
+                                        <circle cx="9" cy="18" r="2.2" />
+                                        <circle cx="15" cy="18" r="2.2" />
+                                      </svg>
+                                    </button>
+                                  )}
                                   <span className="untitled-mobile-track-num">
                                     {isCurrent && isPlaying ? "▶" : idx + 1}
                                   </span>
@@ -3426,6 +3670,17 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
 
                       {/* ==================== SPLIT PRINCIPAL: VINILO A LA IZQUIERDA + TÍTULO Y TRACKS A LA DERECHA ==================== */}
                       <div className="inspector-split">
+                        {draggedTrack && (
+                          <div
+                            className={`inspector-drag-left-portal ${
+                              isOverLeftExitPortal ? "is-hovered" : ""
+                            }`}
+                          >
+                            <span className="left-portal-arrow">‹</span>
+                            <span className="left-portal-title">Llevá acá para proyectos</span>
+                            <small className="left-portal-sub">Soltá en otro proyecto</small>
+                          </div>
+                        )}
                         <DiscSpinner3D
                           project={activeProject}
                           currentTrackId={currentTrack.id}
@@ -3830,14 +4085,43 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                           <div className="inspector-tracks-list-scroll">
                             {activeProject.tracks.map((t, idx) => {
                               const isCurrent = currentTrack.id === t.id;
+                              const isDragged = draggedTrack?.track.id === t.id;
+                              const isDropBefore = dropTargetTrackIndex === idx && draggedTrack && draggedTrack.sourceIndex > idx;
+                              const isDropAfter = dropTargetTrackIndex === idx && draggedTrack && draggedTrack.sourceIndex < idx;
                               const art = t.coverUrl || activeProject.coverUrl;
                               return (
                                 <div
                                   key={t.id}
-                                  className={`clean-track-row ${isCurrent ? "is-playing" : ""}`}
+                                  data-track-index={idx}
+                                  data-track-id={t.id}
+                                  className={`clean-track-row ${isCurrent ? "is-playing" : ""} ${
+                                    isDragged ? "is-drag-source" : ""
+                                  } ${isDropBefore ? "is-drop-target-before" : ""} ${
+                                    isDropAfter ? "is-drop-target-after" : ""
+                                  }`}
                                   onMouseEnter={() => sfx.hover()}
-                                  onClick={() => playTrack(t, activeProject, false)}
+                                  onClick={() => {
+                                    if (!draggedTrack) playTrack(t, activeProject, false);
+                                  }}
                                 >
+                                  {canEditActive && (
+                                    <button
+                                      type="button"
+                                      className="track-drag-handle"
+                                      title="Arrastrá para reordenar o mover de proyecto"
+                                      onPointerDown={(e) => startDraggingTrack(e, t, idx)}
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                                        <circle cx="9" cy="6" r="2.2" />
+                                        <circle cx="15" cy="6" r="2.2" />
+                                        <circle cx="9" cy="12" r="2.2" />
+                                        <circle cx="15" cy="12" r="2.2" />
+                                        <circle cx="9" cy="18" r="2.2" />
+                                        <circle cx="15" cy="18" r="2.2" />
+                                      </svg>
+                                    </button>
+                                  )}
                                   <span className="inspector-track-num">{idx + 1}</span>
                                   <div className="track-row-art-wrap">
                                     {art ? (
@@ -4152,6 +4436,15 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                   }}
                   onOpenCreateProject={() => navigate("crear-proyecto")}
                   onDeleteProject={handleDeleteProject}
+                  dropTargetProjectId={dropTargetProjectId}
+                  transferAnimation={
+                    transferAnimation?.active
+                      ? {
+                          trackTitle: transferAnimation.track.title,
+                          targetProjectId: transferAnimation.targetProjectId,
+                        }
+                      : null
+                  }
                 />
               </section>
             </div>
@@ -4556,6 +4849,44 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
         >
           {syncStatus === "saving" ? "Guardando…" : "No se pudo guardar en la nube · reintentar"}
         </button>
+      )}
+
+      {/* ==================== PROXY FLOTANTE CON FORCEFIELD FACHERO ==================== */}
+      {draggedTrack && (
+        <div
+          className="track-forcefield-floating-proxy"
+          style={{
+            transform: `translate3d(${dragPointer.x}px, ${dragPointer.y}px, 0px) translate(-50%, -50%) rotate(2.4deg)`,
+          }}
+        >
+          <div className="forcefield-aura-ring" />
+          <div className="forcefield-card">
+            <div className="forcefield-thumb">
+              <img
+                src={
+                  draggedTrack.track.coverUrl ||
+                  activeProject?.coverUrl ||
+                  "/covers/chickennugget.png"
+                }
+                alt=""
+              />
+              <span className="forcefield-energy-badge">⚡</span>
+            </div>
+            <div className="forcefield-info">
+              <b>{draggedTrack.track.title}</b>
+              <span>
+                {draggedTrack.track.artist} · {draggedTrack.track.bpm} BPM · {draggedTrack.track.key}
+              </span>
+            </div>
+            <div className="forcefield-status-chip">
+              {insideCubeOpen
+                ? "Arrastrá a la izq. para proyectos"
+                : dropTargetProjectId
+                ? "Soltá para agregar ✓"
+                : "Soltá en un proyecto"}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

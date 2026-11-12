@@ -4878,5 +4878,400 @@ body.app-no-scroll .profile-page {
   color: #ffffff !important;
 }
 
+/* ==================== TRACK FORCEFIELD DRAG & TRANSFER ==================== */
+
+/* Grip handle en tracks */
+.track-drag-handle {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 22px !important;
+  height: 28px !important;
+  border-radius: 6px !important;
+  background: transparent !important;
+  border: none !important;
+  color: var(--muted) !important;
+  cursor: grab !important;
+  opacity: 0.45 !important;
+  transition: opacity 0.15s ease, color 0.15s ease, transform 0.15s ease !important;
+  touch-action: none !important;
+  user-select: none !important;
+  flex-shrink: 0 !important;
+  margin-right: 4px !important;
+  padding: 0 !important;
+}
+
+.track-drag-handle:hover,
+.clean-track-row:hover .track-drag-handle,
+.untitled-mobile-track-row:hover .track-drag-handle {
+  opacity: 1 !important;
+  color: #e11d48 !important;
+  transform: scale(1.15) !important;
+}
+
+.track-drag-handle:active {
+  cursor: grabbing !important;
+}
+
+.track-drag-handle.mobile {
+  width: 24px !important;
+  height: 32px !important;
+  margin-right: 2px !important;
+}
+
+/* Fila mientras se arrastra */
+.clean-track-row.is-drag-source,
+.untitled-mobile-track-item.is-drag-source {
+  opacity: 0.28 !important;
+  border: 1.5px dashed #e11d48 !important;
+  border-radius: 12px !important;
+  transform: scale(0.98) !important;
+  transition: opacity 0.15s ease, transform 0.15s ease !important;
+}
+
+.clean-track-row.is-drop-target-before,
+.untitled-mobile-track-item.is-drop-target-before {
+  border-top: 3px solid #e11d48 !important;
+  box-shadow: 0 -6px 16px rgba(225, 29, 72, 0.4) !important;
+  border-radius: 12px 12px 0 0 !important;
+}
+
+.clean-track-row.is-drop-target-after,
+.untitled-mobile-track-item.is-drop-target-after {
+  border-bottom: 3px solid #e11d48 !important;
+  box-shadow: 0 6px 16px rgba(225, 29, 72, 0.4) !important;
+  border-radius: 0 0 12px 12px !important;
+}
+
+/* Floating Proxy con Forcefield Holográfico */
+.track-forcefield-floating-proxy {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  z-index: 999999 !important;
+  pointer-events: none !important;
+  will-change: transform !important;
+  filter: drop-shadow(0 20px 42px rgba(0, 0, 0, 0.55)) !important;
+}
+
+.forcefield-card {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 10px 16px !important;
+  border-radius: 20px !important;
+  background: rgba(14, 14, 18, 0.94) !important;
+  border: 1.5px solid rgba(244, 63, 94, 0.9) !important;
+  box-shadow:
+    0 18px 46px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.2),
+    0 0 32px rgba(225, 29, 72, 0.6),
+    inset 0 0 20px rgba(225, 29, 72, 0.25) !important;
+  backdrop-filter: blur(24px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(190%) !important;
+  color: #ffffff !important;
+  min-width: 270px !important;
+  max-width: 380px !important;
+  animation: forcefieldCardPulse 1.5s ease-in-out infinite alternate !important;
+}
+
+@keyframes forcefieldCardPulse {
+  0% {
+    box-shadow:
+      0 18px 46px rgba(0, 0, 0, 0.55),
+      0 0 22px rgba(225, 29, 72, 0.5),
+      inset 0 0 16px rgba(225, 29, 72, 0.18);
+    border-color: rgba(244, 63, 94, 0.85);
+  }
+  100% {
+    box-shadow:
+      0 24px 58px rgba(0, 0, 0, 0.7),
+      0 0 42px rgba(244, 63, 94, 0.9),
+      inset 0 0 26px rgba(244, 63, 94, 0.38);
+    border-color: rgba(251, 113, 133, 1);
+  }
+}
+
+.forcefield-aura-ring {
+  position: absolute !important;
+  inset: -6px !important;
+  border-radius: 26px !important;
+  background: radial-gradient(circle, rgba(244, 63, 94, 0.4) 0%, transparent 72%) !important;
+  pointer-events: none !important;
+  animation: forcefieldAuraSpin 2.6s linear infinite !important;
+}
+
+@keyframes forcefieldAuraSpin {
+  0% { transform: scale(0.97); opacity: 0.65; }
+  50% { transform: scale(1.06); opacity: 1; }
+  100% { transform: scale(0.97); opacity: 0.65; }
+}
+
+.forcefield-thumb {
+  position: relative !important;
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 10px !important;
+  overflow: hidden !important;
+  flex-shrink: 0 !important;
+  border: 1px solid rgba(255, 255, 255, 0.28) !important;
+}
+
+.forcefield-thumb img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+.forcefield-energy-badge {
+  position: absolute !important;
+  bottom: -3px !important;
+  right: -3px !important;
+  font-size: 0.82rem !important;
+  line-height: 1 !important;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.9)) !important;
+}
+
+.forcefield-info {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+.forcefield-info b {
+  font-size: 0.88rem !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  letter-spacing: -0.01em !important;
+}
+
+.forcefield-info span {
+  font-size: 0.72rem !important;
+  color: rgba(255, 255, 255, 0.78) !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.forcefield-status-chip {
+  padding: 4px 10px !important;
+  border-radius: 999px !important;
+  background: rgba(244, 63, 94, 0.28) !important;
+  border: 1px solid rgba(244, 63, 94, 0.5) !important;
+  font-size: 0.64rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  color: #ffffff !important;
+  white-space: nowrap !important;
+}
+
+/* Indicador portal magnético izquierdo en el inspector */
+.inspector-drag-left-portal {
+  position: absolute !important;
+  top: 14px !important;
+  left: 14px !important;
+  bottom: 14px !important;
+  width: 110px !important;
+  border-radius: 20px !important;
+  border: 2px dashed rgba(225, 29, 72, 0.6) !important;
+  background: rgba(225, 29, 72, 0.08) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  padding: 12px 8px !important;
+  gap: 6px !important;
+  z-index: 100 !important;
+  pointer-events: none !important;
+  animation: leftPortalGlow 1.4s ease-in-out infinite alternate !important;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+
+.inspector-drag-left-portal.mobile {
+  top: 10px !important;
+  left: 10px !important;
+  bottom: 10px !important;
+  width: 80px !important;
+  padding: 8px 4px !important;
+}
+
+.inspector-drag-left-portal.is-hovered {
+  border-color: #f43f5e !important;
+  background: rgba(225, 29, 72, 0.28) !important;
+  box-shadow: 0 0 35px rgba(225, 29, 72, 0.7) !important;
+  transform: scale(1.05) !important;
+}
+
+@keyframes leftPortalGlow {
+  0% {
+    border-color: rgba(225, 29, 72, 0.45);
+    background: rgba(225, 29, 72, 0.06);
+  }
+  100% {
+    border-color: rgba(244, 63, 94, 1);
+    background: rgba(225, 29, 72, 0.18);
+    box-shadow: 0 0 28px rgba(225, 29, 72, 0.5);
+  }
+}
+
+.left-portal-arrow {
+  font-size: 1.8rem !important;
+  font-weight: 800 !important;
+  color: #f43f5e !important;
+  line-height: 1 !important;
+  animation: arrowBounceLeft 1s ease-in-out infinite alternate !important;
+}
+
+@keyframes arrowBounceLeft {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-6px); }
+}
+
+.left-portal-title {
+  font-size: 0.74rem !important;
+  font-weight: 800 !important;
+  color: #ffffff !important;
+  letter-spacing: -0.01em !important;
+  line-height: 1.2 !important;
+}
+
+.left-portal-sub {
+  font-size: 0.62rem !important;
+  color: rgba(255, 255, 255, 0.72) !important;
+  line-height: 1.2 !important;
+}
+
+/* Proyecto receptivo como Drop Target en la Biblioteca */
+.untitled-catalog-card.is-drop-target .untitled-catalog-cover,
+.vinyl-fan-sleeve-card.is-drop-target .vinyl-fan-sleeve-body,
+.quick-proj-pill-group.is-drop-target {
+  box-shadow: 0 0 0 3.5px #e11d48, 0 0 42px rgba(225, 29, 72, 0.75) !important;
+  transform: scale(1.05) !important;
+  border-color: #e11d48 !important;
+  transition: all 0.18s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+
+/* ==================== ANIMACIÓN AL SOLTAR: ENTRA POR LA DERECHA + TICK POPEANDO ==================== */
+.track-transfer-entry-portal {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 95 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  pointer-events: none !important;
+  overflow: visible !important;
+}
+
+/* El track entra deslizándose por la derecha */
+.track-sliding-in-right {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 8px 18px !important;
+  border-radius: 999px !important;
+  background: #09090b !important;
+  border: 1.5px solid #e11d48 !important;
+  color: #ffffff !important;
+  font-size: 0.82rem !important;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.6), 0 0 24px rgba(225, 29, 72, 0.75) !important;
+  animation: slideInFromRight 0.6s cubic-bezier(0.2, 0.9, 0.3, 1) forwards !important;
+  white-space: nowrap !important;
+}
+
+@keyframes slideInFromRight {
+  0% {
+    transform: translateX(130px) scale(0.85);
+    opacity: 0;
+  }
+  65% {
+    transform: translateX(-10px) scale(1.06);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(0px) scale(1);
+    opacity: 1;
+  }
+}
+
+/* El tick de confirmación popeando con resorte */
+.track-drop-pop-tick {
+  position: absolute !important;
+  top: -30px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  padding: 7px 16px !important;
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  color: #ffffff !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.6) !important;
+  box-shadow: 0 10px 30px rgba(16, 185, 129, 0.6) !important;
+  animation: tickPopBounce 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) forwards !important;
+  z-index: 100 !important;
+  white-space: nowrap !important;
+}
+
+@keyframes tickPopBounce {
+  0% {
+    transform: scale(0) translateY(24px) rotate(-18deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.35) translateY(-10px) rotate(5deg);
+    opacity: 1;
+  }
+  75% {
+    transform: scale(0.94) translateY(2px) rotate(-1deg);
+  }
+  100% {
+    transform: scale(1) translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+.pop-tick-icon {
+  font-size: 1.05rem !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+}
+
+.pop-tick-text {
+  font-size: 0.76rem !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.01em !important;
+  white-space: nowrap !important;
+}
+
+/* Pop tick miniatura en píldoras superiores */
+.pill-transfer-pop-tick {
+  position: absolute !important;
+  top: -12px !important;
+  right: -8px !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  background: #10b981 !important;
+  color: #ffffff !important;
+  display: grid !important;
+  place-items: center !important;
+  font-size: 0.72rem !important;
+  font-weight: 800 !important;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.6) !important;
+  animation: tickPopBounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards !important;
+}
+
+
 
 

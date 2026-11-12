@@ -1675,3 +1675,39 @@
 4. **Verificación y Deploy:**
    - Build 100% verificado con Turbopack y TypeScript (`npm run build`, 0 errores).
 
+---
+
+### Turno 86 — Drag & Drop con Forcefield Fachero: Reordenar Tracks y Transferir a otro Proyecto hacia la Izquierda con Animación y Tick Popeando
+**Pedido del usuario (`juani`):**
+- *"despues quiero que en la pantalla de proyecto se pueda agarrar un track como arrastrarlo, se le arma como un forcefield fachero y lo podes:
+  -mover entre las pistas del proyecto para modificar el orden
+  -llevar hacia la izquierda de la tapa para ir a la pantalla de proyectos y seguir arrastrando el track hasta un nuevo proyecto, en el cual va a entrar el track por la derecha y va a saltar un iconito de tick de confirmacion como popeando del proyecto al que se le agregó el tema, se entiende ?"*
+
+**Implementación técnica aplicada (`App.tsx`, `ManifoldLibrary3D.tsx`, `board-polish.css`):**
+1. **Grip Handles y Detección Táctil / Pointer (`App.tsx`):**
+   - Se añadió un grip handle sutil `⋮⋮` (`.track-drag-handle`) tanto en desktop (`.clean-track-row`) como en móvil (`.untitled-mobile-track-item`).
+   - Soporte nativo para Pointer Events (`startDraggingTrack`), permitiendo arrastrar fluidamente con mouse en PC y con el dedo en pantallas táctiles sin interferir con el click de reproducir ni con los menús.
+   - La fila original pasa a estado atenuado con borde discontinuo (`.is-drag-source`).
+2. **Proxy Flotante con "Forcefield Fachero" Holográfico (`App.tsx`, `board-polish.css`):**
+   - Al agarrar un track se proyecta un avatar flotante en tiempo real bajo el cursor/dedo (`.track-forcefield-floating-proxy`):
+     - Anillo de fuerza pulsante electromagnético (`.forcefield-aura-ring` con rotación continua y pulsación de escala).
+     - Tarjeta de vidrio polarizado con resplandor neón magenta/carmesí (`.forcefield-card`), sombra profunda y aura de plasma variable (`forcefieldCardPulse`).
+     - Miniatura del tema con chip energético `⚡`, título en negrita, artista, BPM, Key y chip dinámico de ayuda ("Arrastrá a la izq. para proyectos" / "Soltá para agregar ✓").
+3. **Reordenar Pistas dentro del Proyecto Activo (`App.tsx`):**
+   - Al deslizar sobre la lista de temas, detecta automáticamente la ranura de inserción y dibuja una línea electromagnética viva (`.is-drop-target-before` / `.is-drop-target-after`).
+   - Al soltar en la lista, reordena instantáneamente el array `tracks` del proyecto activo con sonido `sfx.drop()` y guarda el nuevo orden en el estado y caché.
+4. **Portal Magnético Hacia la Izquierda de la Tapa (`App.tsx`, `board-polish.css`):**
+   - En el lateral izquierdo del proyecto (sobre la portada / spinner) se despliega un sensor magnético interactivo (`.inspector-drag-left-portal` con flecha `‹` y texto descriptivo).
+   - Al arrastrar el track hacia la izquierda de la tapa (`x < 360px` en PC o `x < 85px` en móvil), se cierra suavemente la vista interior del proyecto (`setInsideCubeOpen(false)`) con sonido `sfx.close()`, abriendo la biblioteca de proyectos en pantalla completa mientras el track SIGUE tomado en tu mano dentro del forcefield.
+5. **Transferencia a Nuevo Proyecto con Entrada por la Derecha y Tick Popeando (`ManifoldLibrary3D.tsx`, `App.tsx`, `board-polish.css`):**
+   - Todos los proyectos de la biblioteca (en la rueda de vinilos 3D, en el catálogo de portadas cuadradas o en las píldoras superiores) se convierten en zonas de recepción con atributo `data-project-id`.
+   - Al pasar el track flotante por encima de cualquier otro proyecto, este reacciona con un halo electromagnético de atracción (`.is-drop-target`).
+   - Al soltar el tema sobre el proyecto elegido:
+     - El tema entra deslizándose por la derecha (`.track-sliding-in-right` con `@keyframes slideInFromRight`).
+     - Salta un badge verde esmeralda con el tick de confirmación popeando con resorte elástico (`.track-drop-pop-tick` con `@keyframes tickPopBounce`).
+     - Feedback sonoro coordinado `sfx.tick()` y `sfx.drop()`.
+     - El track se elimina del proyecto de origen, se incorpora al proyecto destino y ambos se guardan automáticamente.
+6. **Verificación y Deploy:**
+   - Validado con `npm run build` en Next.js Turbopack (0 errores de TypeScript y compilación 100% limpia).
+
+

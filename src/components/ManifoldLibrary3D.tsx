@@ -757,6 +757,8 @@ export default function ManifoldLibrary3D({
   onUploadProjectTrack,
   onUpdateProjectCover,
   compact = false,
+  dropTargetProjectId = null,
+  transferAnimation = null,
 }: {
   projects: Project[];
   selectedProjectId: string;
@@ -772,6 +774,8 @@ export default function ManifoldLibrary3D({
   onUploadProjectTrack?: (projectId: string, file: File) => void;
   onUpdateProjectCover?: (projectId: string, newCoverUrl: string) => void;
   compact?: boolean;
+  dropTargetProjectId?: string | null;
+  transferAnimation?: { trackTitle: string; targetProjectId: string } | null;
 }) {
   const activeProject =
     projects.find((p) => p.id === selectedProjectId) || projects[0] || null;
@@ -874,7 +878,10 @@ export default function ManifoldLibrary3D({
         return (
           <div
             key={p.id}
-            className={`quick-proj-pill-group ${isCurrentSelected ? "on" : ""}`}
+            data-project-id={p.id}
+            className={`quick-proj-pill-group ${isCurrentSelected ? "on" : ""} ${
+              dropTargetProjectId === p.id ? "is-drop-target" : ""
+            }`}
           >
             <button
               type="button"
@@ -1065,9 +1072,12 @@ export default function ManifoldLibrary3D({
                   return (
                     <div
                       key={p.id}
+                      data-project-id={p.id}
                       role="button"
                       tabIndex={0}
-                      className={`untitled-catalog-card ${isSelected ? "is-selected" : ""}`}
+                      className={`untitled-catalog-card ${isSelected ? "is-selected" : ""} ${
+                        dropTargetProjectId === p.id ? "is-drop-target" : ""
+                      }`}
                       onClick={() => {
                         sfx.tap();
                         onSelectProject(p);
@@ -1085,6 +1095,18 @@ export default function ManifoldLibrary3D({
                             : `linear-gradient(135deg, ${p.c1} 0%, ${p.c2} 100%)`,
                         }}
                       >
+                        {transferAnimation?.targetProjectId === p.id && (
+                          <div className="track-transfer-entry-portal">
+                            <div className="track-sliding-in-right">
+                              <span>🎵</span>
+                              <b>{transferAnimation.trackTitle}</b>
+                            </div>
+                            <div className="track-drop-pop-tick">
+                              <span className="pop-tick-icon">✓</span>
+                              <span className="pop-tick-text">Tema agregado</span>
+                            </div>
+                          </div>
+                        )}
                         {!p.coverUrl && (
                           <div className="untitled-catalog-placeholder-glyph">
                             <span>{p.tracks[0]?.glyph || "01"}</span>
@@ -1317,9 +1339,12 @@ export default function ManifoldLibrary3D({
                   return (
                     <div
                       key={p.id}
+                      data-project-id={p.id}
                       role="button"
                       tabIndex={0}
-                      className={`vinyl-fan-sleeve-card ${isFocused ? "is-focused" : ""}`}
+                      className={`vinyl-fan-sleeve-card ${isFocused ? "is-focused" : ""} ${
+                        dropTargetProjectId === p.id ? "is-drop-target" : ""
+                      }`}
                       style={{
                         transform: `translate3d(${tx.toFixed(1)}px, ${ty.toFixed(1)}px, 0px) rotate(${rotZ.toFixed(2)}deg) scale(${scale.toFixed(3)})`,
                         zIndex,
@@ -1378,6 +1403,18 @@ export default function ManifoldLibrary3D({
                             : `linear-gradient(135deg, ${p.c1} 0%, ${p.c2} 135%)`,
                         }}
                       >
+                        {transferAnimation?.targetProjectId === p.id && (
+                          <div className="track-transfer-entry-portal">
+                            <div className="track-sliding-in-right">
+                              <span>🎵</span>
+                              <b>{transferAnimation.trackTitle}</b>
+                            </div>
+                            <div className="track-drop-pop-tick">
+                              <span className="pop-tick-icon">✓</span>
+                              <span className="pop-tick-text">Tema agregado</span>
+                            </div>
+                          </div>
+                        )}
                         {!p.coverUrl && (
                           <div className="vinyl-fan-center-crest">
                             <div className="crest-ring">
