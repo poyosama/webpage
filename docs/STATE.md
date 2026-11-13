@@ -5,9 +5,11 @@
 ## Estado del backend
 - `APLICAR_TODO.sql` **aplicado en Supabase (2026-11-13)**: pases del servidor, compartir, colaboradores, borrar cuenta, me gusta sincronizados y proyectos privados por defecto (`is_public`) están activos. Si se agregan migraciones nuevas, sumarlas al final de `APLICAR_TODO.sql` (idempotente) y pedir que se vuelva a correr.
 - Proyectos existentes quedaron **privados**: para que aparezcan en el Inicio de otros hay que ponerlos en Público (botón compartir).
+- **Pendiente de correr:** `migration_account_type.sql` (ya al final de `APLICAR_TODO.sql`): columna `profiles.account_type` ('artista'|'oyente') y RPC `handle_available`. Sin ella el registro funciona igual (el código tiene fallback) pero el rol no se guarda en la base y los oyentes no se filtran del directorio para otros dispositivos.
 - Marca de Google verificada y publicada ("El tablero"). Privacidad/Términos en `/privacidad` y `/terminos`.
 
 ## Pantallas y features
+- **Registro** (`OnboardingScreen.tsx`): cuenta nueva = Google → pase gastado → pantalla de credenciales (foto opcional, nombre, @usuario con check, artista/oyente) → recién ahí se crea el perfil. No se importa nombre/foto/handle de Google. Oyentes: no salen en "Artistas en El tablero", Perfil sin "Mis proyectos".
 - **Landing** (`LandingScene.tsx`): "Suscribirme" (gratis, por invitación) / "Ya estoy suscrito" / "Explorar sin suscribirme". `/invite/<código>` abre el modal con el pase puesto.
 - **Modo explorar** (sin cuenta): Inicio con el tablero borroneado, 5 tracks destacados, previews de 25 s, perfiles de artista; el resto pide suscribirse.
 - **Inicio:** collage del tablero (click → Spotify), tira de portadas, tracks destacados, artistas, drops de productores.

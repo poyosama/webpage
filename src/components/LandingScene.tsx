@@ -345,7 +345,6 @@ export default function LandingScene({
   prefilledInvite = null,
   inviteLinkError = "",
   onOpenGoogleAuth,
-  onSetAccountRole,
 }: {
   onEnterAsGuest?: () => void;
   /** Volviendo del modo explorar con "Suscribirme": abre directo el modal */
@@ -354,7 +353,6 @@ export default function LandingScene({
   prefilledInvite?: { code: string; creatorHandle?: string; creatorName?: string } | null;
   inviteLinkError?: string;
   onOpenGoogleAuth?: () => void;
-  onSetAccountRole?: (role: "artista" | "oyente") => void;
 }) {
   const [inviteModalOpen, setInviteModalOpen] = useState(autoOpenSubscribe);
   const [inviteCode, setInviteCode] = useState("");
@@ -377,7 +375,6 @@ export default function LandingScene({
       if (window.location.pathname.startsWith("/invite/")) window.history.replaceState(null, "", "/");
     } catch {}
   }, [inviteLinkError]);
-  const [chosenRole, setChosenRole] = useState<"artista" | "oyente">("artista");
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -436,7 +433,6 @@ export default function LandingScene({
     setPendingInviteCode(clean);
 
     sfx.drop();
-    onSetAccountRole?.(chosenRole);
     setLoading(true);
 
     try {
@@ -557,7 +553,7 @@ export default function LandingScene({
               </div>
             )}
 
-            <p className="subscribe-explainer">Es gratis. Solo necesitás un pase.</p>
+            <p className="subscribe-explainer">Es gratis. Solo necesitás un pase. Después armás tu perfil: usuario, foto y si sos artista u oyente.</p>
 
             {prefilledInvite?.code && inviteCode === prefilledInvite.code && (
               <div className="landing-invite-from">
@@ -589,32 +585,6 @@ export default function LandingScene({
                   autoFocus
                 />
               </label>
-
-              <div className="modal-field">
-                <span>PERFIL</span>
-                <div className="seg-pills" style={{ marginTop: 6 }}>
-                  <button
-                    type="button"
-                    className={chosenRole === "artista" ? "on" : ""}
-                    onClick={() => {
-                      sfx.tap();
-                      setChosenRole("artista");
-                    }}
-                  >
-                    Artista / Productor
-                  </button>
-                  <button
-                    type="button"
-                    className={chosenRole === "oyente" ? "on" : ""}
-                    onClick={() => {
-                      sfx.tap();
-                      setChosenRole("oyente");
-                    }}
-                  >
-                    Oyente
-                  </button>
-                </div>
-              </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
                 <button

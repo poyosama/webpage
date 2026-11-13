@@ -529,10 +529,15 @@ export async function purgeJaimeMartinezProfile(): Promise<void> {
 
 export async function fetchCommunityProfilesFromSupabase(): Promise<ArtistProfile[]> {
   try {
-    const { data, error } = await supabase
+    const cols = "id, name, handle, role, zone, crew, bio, color, stickers, avatar_url, created_at";
+    let { data, error }: { data: any[] | null; error: any } = await supabase
       .from("profiles")
-      .select("id, name, handle, role, zone, crew, bio, color, stickers, avatar_url, created_at, invite_codes")
+      .select(`${cols}, account_type`)
       .order("created_at", { ascending: false });
+    if (error && /account_type/i.test(error.message || "")) {
+      // Servidor sin la migración de tipo de cuenta
+      ({ data, error } = await supabase.from("profiles").select(cols).order("created_at", { ascending: false }));
+    }
 
     if (error || !data) {
       return [];
@@ -553,6 +558,7 @@ export async function fetchCommunityProfilesFromSupabase(): Promise<ArtistProfil
       name: row.name,
       handle: row.handle?.startsWith("@") ? row.handle : `@${row.handle || "artista"}`,
       role: row.role || "Artista",
+      accountType: row.account_type === "oyente" ? "oyente" : "artista",
       category: "rapero",
       zone: row.zone || "",
       crew: row.crew || "",
@@ -570,6 +576,39 @@ export async function fetchCommunityProfilesFromSupabase(): Promise<ArtistProfil
   } catch (err) {
     console.warn("Fallo fetchCommunityProfilesFromSupabase:", err);
     return [];
+  }
+}
+
+// ==================== HANDLE: FORMATO Y DISPONIBILIDAD ====================
+export function cleanHandleText(raw: string): string {
+  return raw.replace(/^@+/, "").toLowerCase().trim().replace(/[^a-z0-9._]/g, "");
+}
+
+export type HandleStatus = { state: "ok" | "taken" | "invalid" | "error"; clean: string; message: string };
+
+/** Formato (3–20 caracteres: letras, números, . y _) + disponibilidad real en la base (case-insensitive). */
+export async function checkHandleAvailability(raw: string, myId?: string): Promise<HandleStatus> {
+  const clean = cleanHandleText(raw);
+  if (clean.length < 3) return { state: "invalid", clean, message: "Mínimo 3 caracteres." };
+  if (clean.length > 20) return { state: "invalid", clean, message: "Máximo 20 caracteres." };
+  if (/^[._]|[._]$/.test(clean)) return { state: "invalid", clean, message: "No puede empezar ni terminar con . o _" };
+  try {
+    const { data, error } = await supabase.rpc("handle_available", { p_handle: clean });
+    if (!error && typeof data === "boolean") {
+      return data
+        ? { state: "ok", clean, message: "Disponible" }
+        : { state: "taken", clean, message: "Ya lo usa otra persona." };
+    }
+    // Sin la migración: consulta directa
+    let q = supabase.from("profiles").select("id").ilike("handle", `@${clean.replace(/[%_]/g, "\\$&")}`);
+    if (myId) q = q.neq("id", myId);
+    const { data: rows, error: e2 } = await q.limit(1);
+    if (e2) return { state: "error", clean, message: "No pude chequear ahora. Probá de nuevo." };
+    return rows && rows.length
+      ? { state: "taken", clean, message: "Ya lo usa otra persona." }
+      : { state: "ok", clean, message: "Disponible" };
+  } catch {
+    return { state: "error", clean, message: "No pude chequear ahora. Probá de nuevo." };
   }
 }
 
@@ -599,21 +638,27 @@ export async function saveUserProfileToSupabase(profile: Partial<ArtistProfile> 
 
     const avatarUrl = await ensurePersistentUrl(profile.avatarUrl, "avatars");
 
-    const { error: upsertErr } = await supabase
-      .from("profiles")
-      .upsert({
-        id: profile.id,
-        handle: cleanHandle,
-        name: profile.name.trim() || cleanHandle,
-        role: profile.role || "Artista",
-        zone: profile.zone || "",
-        crew: profile.crew || "",
-        bio: profile.bio || "",
-        color: profile.color || "#111111",
-        stickers: profile.stickers || [],
-        avatar_url: avatarUrl,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: "id" });
+    const row: Record<string, unknown> = {
+      id: profile.id,
+      handle: cleanHandle,
+      name: profile.name.trim() || cleanHandle,
+      role: profile.role || "Artista",
+      zone: profile.zone || "",
+      crew: profile.crew || "",
+      bio: profile.bio || "",
+      color: profile.color || "#111111",
+      stickers: profile.stickers || [],
+      avatar_url: avatarUrl,
+      updated_at: new Date().toISOString(),
+    };
+    if (profile.accountType) row.account_type = profile.accountType;
+
+    let { error: upsertErr } = await supabase.from("profiles").upsert(row, { onConflict: "id" });
+    // Servidor sin la migración de tipo de cuenta: se guarda igual sin esa columna
+    if (upsertErr && /account_type/i.test(upsertErr.message || "")) {
+      delete row.account_type;
+      ({ error: upsertErr } = await supabase.from("profiles").upsert(row, { onConflict: "id" }));
+    }
 
     if (upsertErr) {
       return { success: false, error: `Error en base de datos: ${upsertErr.message}` };

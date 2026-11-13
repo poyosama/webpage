@@ -69,6 +69,7 @@ import {
 } from "@/lib/invites";
 import { InviteFriendsModal, WelcomeInviteModal } from "./InviteFriendsModal";
 import { analyzeAudioFile, downloadTrackAudio } from "@/lib/audioAnalysis";
+import OnboardingScreen from "./OnboardingScreen";
 import "./board-polish.css";
 import "./ui-refresh.css";
 import "./motion.css";
@@ -374,6 +375,12 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
 
   // Landing Page con micro vinilos y referral invite (estilo HeySpace)
   const [showLanding, setShowLanding] = useState<boolean>(false);
+  // Cuenta nueva con pase ya gastado: falta la pantalla de credenciales (nombre, @usuario, artista/oyente)
+  const [onboarding, setOnboarding] = useState<{
+    user: any;
+    inviteMode: "ok" | "legacy";
+    pendingInvite: string | null;
+  } | null>(null);
 
   // Proyectos guardados en la biblioteca ("Guardados") para oyentes y artistas
   const [savedProjectIds, setSavedProjectIds] = useState<string[]>([]);
@@ -931,20 +938,13 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   // Carga (o crea) el perfil de la cuenta + todos los proyectos en PARALELO (Stale-While-Revalidate)
   const applySession = async (u: any, mounted: () => boolean, fresh: boolean) => {
     if (!u || !mounted()) return;
-    const meta = u.user_metadata || {};
-    const defaultName = meta.full_name || meta.name || u.email?.split("@")[0] || "Artista";
-    const rawH = (meta.user_name || u.email?.split("@")[0] || "artista").replace(/[^a-zA-Z0-9_]/g, "");
+    // La identidad la arma la persona en el registro: no se importa nombre, handle ni foto de Google
 
-    let pendingRole: "artista" | "oyente" | null = null;
+    // Rol guardado en este dispositivo por versiones viejas (antes no se guardaba en la base)
+    let legacyRole: "artista" | "oyente" | null = null;
     try {
-      pendingRole = (localStorage.getItem("eltablero_pending_role") as "artista" | "oyente") || null;
-      const stored = localStorage.getItem(`eltablero_role_${u.id}`) as "artista" | "oyente" | null;
-      if (pendingRole) {
-        localStorage.setItem(`eltablero_role_${u.id}`, pendingRole);
-        localStorage.removeItem("eltablero_pending_role");
-      } else {
-        pendingRole = stored;
-      }
+      legacyRole = (localStorage.getItem(`eltablero_role_${u.id}`) as "artista" | "oyente" | null) || null;
+      localStorage.removeItem("eltablero_pending_role");
     } catch {}
 
     try {
@@ -963,17 +963,23 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
           ...EMPTY_ME_PROFILE,
           id: u.id,
           email: u.email,
-          name: existing.name || defaultName,
+          name: existing.name || "",
           handle: existing.handle?.startsWith("@") ? existing.handle : `@${existing.handle}`,
           role: existing.role || EMPTY_ME_PROFILE.role,
           zone: existing.zone || "",
           crew: existing.crew || "",
           bio: existing.bio || "",
           color: existing.color || EMPTY_ME_PROFILE.color,
-          avatarUrl: existing.avatar_url || meta.avatar_url || undefined,
+          avatarUrl: existing.avatar_url || undefined,
           stickers: existing.stickers || [],
           createdAt: existing.created_at,
+          accountType: existing.account_type === "oyente" ? "oyente" : "artista",
         };
+        // Cuentas viejas que eligieron "oyente" solo en este dispositivo: se sube a la base (una vez)
+        if (legacyRole === "oyente" && existing.account_type !== "oyente") {
+          base.accountType = "oyente";
+          void supabase.from("profiles").update({ account_type: "oyente" }).eq("id", u.id);
+        }
       } else {
         // Cuenta nueva: antes de crear el perfil hay que gastar un pase de invitación (lo valida el servidor)
         const pendingInvite = getPendingInviteCode();
@@ -981,7 +987,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
         let inviteMode: "ok" | "legacy" = allowed === null ? "legacy" : "ok";
         if (allowed === false) {
           const consumed = pendingInvite
-            ? await consumeInviteCode(pendingInvite, u.id, `@${rawH.toLowerCase()}`)
+            ? await consumeInviteCode(pendingInvite, u.id, "")
             : "invalid";
           if (consumed === "invalid") {
             try {
@@ -999,33 +1005,24 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
           inviteMode = consumed;
         }
 
-        // Perfil vacío (solo nombre y handle de Google)
-        let handle = `@${rawH.toLowerCase()}`;
-        let res = await saveUserProfileToSupabase({ id: u.id, handle, name: defaultName, avatarUrl: meta.avatar_url });
-        if (!res.success) {
-          handle = `@${rawH.toLowerCase()}${Math.floor(100 + Math.random() * 900)}`;
-          res = await saveUserProfileToSupabase({ id: u.id, handle, name: defaultName, avatarUrl: meta.avatar_url });
-        }
-        base = {
-          ...EMPTY_ME_PROFILE,
-          id: u.id,
-          email: u.email,
-          name: defaultName,
-          handle: res.cleanHandle || handle,
-          avatarUrl: meta.avatar_url || undefined,
-        };
-
-        // Servidor sin migración: se gasta el pase con el sistema viejo
-        if (inviteMode === "legacy" && pendingInvite) {
-          void consumeInviteCode(pendingInvite, u.id, base.handle);
-        }
-        void getOrGenerateUserInvites(u.id, base.handle, base.name);
+        // El perfil NO se crea solo: primero la pantalla de credenciales (nombre, @usuario, artista/oyente)
+        if (!mounted()) return;
+        setOnboarding({
+          user: u,
+          inviteMode,
+          pendingInvite,
+        });
+        setGoogleConnected(true);
+        setShowLanding(false);
+        return;
       }
       if (existing) {
         void getOrGenerateUserInvites(u.id, base.handle, base.name);
       }
       setWelcomeInvite(null);
-      if (pendingRole) base.accountType = pendingRole;
+      try {
+        localStorage.setItem(`eltablero_role_${u.id}`, base.accountType || "artista");
+      } catch {}
       if (!mounted()) return;
       setMeProfile(base);
       setGoogleConnected(true);
@@ -2209,6 +2206,44 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     sfx.drop();
   };
 
+  // Pantalla de credenciales: crea el perfil con lo que eligió la persona y recién ahí entra a la app
+  const handleCompleteOnboarding = async (r: {
+    name: string;
+    handle: string;
+    accountType: "artista" | "oyente";
+    avatarUrl?: string;
+  }): Promise<{ success: boolean; error?: string }> => {
+    if (!onboarding) return { success: false, error: "Sesión no encontrada. Volvé a entrar." };
+    const u = onboarding.user;
+    // La foto (data URL achicada) va a Storage; si el bucket no responde queda como data URL compacta
+    let avatarUrl = r.avatarUrl;
+    if (avatarUrl?.startsWith("data:")) {
+      try {
+        const blob = await (await fetch(avatarUrl)).blob();
+        avatarUrl = (await uploadMediaToSupabase(blob, "avatars")) || avatarUrl;
+      } catch {}
+    }
+    const res = await saveUserProfileToSupabase({
+      id: u.id,
+      handle: r.handle,
+      name: r.name,
+      role: r.accountType === "oyente" ? "Oyente" : "Artista",
+      accountType: r.accountType,
+      avatarUrl,
+    });
+    if (!res.success) return { success: false, error: res.error };
+    try {
+      localStorage.setItem(`eltablero_role_${u.id}`, r.accountType);
+    } catch {}
+    // Servidor sin migración de pases: se gasta el pase con el sistema viejo
+    if (onboarding.inviteMode === "legacy" && onboarding.pendingInvite) {
+      void consumeInviteCode(onboarding.pendingInvite, u.id, res.cleanHandle || r.handle);
+    }
+    setOnboarding(null);
+    await applySession(u, () => true, true);
+    return { success: true };
+  };
+
   const handleSaveProfileAndHandle = async (
     updated: Partial<ArtistProfile> & { name: string; handle: string; email?: string }
   ): Promise<{ success: boolean; error?: string }> => {
@@ -2246,9 +2281,13 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       color: updated.color || meProfile.color,
       stickers: updated.stickers ?? meProfile.stickers,
       avatarUrl: updated.avatarUrl || meProfile.avatarUrl,
+      accountType: updated.accountType ?? meProfile.accountType,
     });
 
     if (res.success && res.cleanHandle) {
+      try {
+        localStorage.setItem(`eltablero_role_${userId}`, updated.accountType ?? meProfile.accountType ?? "artista");
+      } catch {}
       setMeProfile((prev) => ({
         ...prev,
         ...updated,
@@ -2389,11 +2428,13 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   const loggedInArtists = communityArtists.filter((ca) => {
     const h = (ca.handle || "").toLowerCase();
     const n = (ca.name || "").toLowerCase();
-    return !h.includes("jm2100553") && !n.includes("jaime martinez");
+    return !h.includes("jm2100553") && !n.includes("jaime martinez") && ca.accountType !== "oyente";
   });
 
   const allArtists = [
-    ...(meProfile.id && !loggedInArtists.some((a) => a.id === meProfile.id || a.handle === meProfile.handle)
+    ...(meProfile.id &&
+    meProfile.accountType !== "oyente" &&
+    !loggedInArtists.some((a) => a.id === meProfile.id || a.handle === meProfile.handle)
       ? [meProfile]
       : []),
     ...loggedInArtists,
@@ -2625,6 +2666,20 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   const hasGuestInviteAccess = Boolean(selectedProjectId && projectInvites[selectedProjectId]);
 
   if (!authChecked) return <div className="auth-splash" aria-hidden />;
+  if (onboarding) {
+    return (
+      <OnboardingScreen
+        userId={onboarding.user.id}
+        onSubmit={handleCompleteOnboarding}
+        onCancel={() => {
+          setOnboarding(null);
+          setGoogleConnected(false);
+          setShowLanding(true);
+          void supabase.auth.signOut();
+        }}
+      />
+    );
+  }
   if (!googleConnected && !hasGuestInviteAccess && !guestMode) {
     return (
       <>
@@ -2638,11 +2693,6 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
             setTab("inicio");
           }}
           onOpenGoogleAuth={() => setAuthModalOpen(true)}
-          onSetAccountRole={(role) => {
-            try {
-              localStorage.setItem("eltablero_pending_role", role);
-            } catch {}
-          }}
         />
         <AnimatePresence>
           {authModalOpen && (
@@ -5287,7 +5337,14 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                 <div className="profile-hero-top">
                   <div
                     className="profile-avatar-large"
-                    style={{ background: meProfile.color, cursor: "pointer", position: "relative", overflow: "hidden" }}
+                    style={{
+                      background: meProfile.avatarUrl ? meProfile.color : "var(--surface-secondary)",
+                      border: meProfile.avatarUrl ? undefined : "1.5px dashed var(--line-strong)",
+                      color: "var(--ink)",
+                      cursor: "pointer",
+                      position: "relative",
+                      overflow: "hidden",
+                    }}
                     onClick={() => {
                       sfx.open();
                       setEditProfileOpen(true);
@@ -5403,6 +5460,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                   </div>
                 </div>
 
+                {meProfile.accountType !== "oyente" && (
                 <div className="profile-metrics-bar">
                   <div>
                     <b>{myProjects.reduce((acc, p) => acc + p.tracks.length, 0)}</b>
@@ -5419,9 +5477,11 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                     </div>
                   )}
                 </div>
+                )}
               </section>
 
               {/* ==================== 1. MIS PROYECTOS & CANVAS (ANTES DE INVITACIONES) ==================== */}
+              {meProfile.accountType !== "oyente" && (
               <section className="profile-manifold-showcase">
                 <div className="pf-section-head">
                   <h2>Mis proyectos</h2>
@@ -5484,6 +5544,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                   }
                 />
               </section>
+              )}
 
               {/* ==================== 2. INVITACIONES EXCLUSIVAS (AL FINAL DE PROYECTOS) ==================== */}
               <section className="profile-invites-bottom-section">
@@ -5499,7 +5560,11 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                     <span className="invite-banner-icon">🎟️</span>
                     <div className="invite-banner-text">
                       <b>Invitaciones exclusivas a El tablero.</b>
-                      <p>Tenés 3 códigos cada 2 semanas para sumar a tus artistas y productores de confianza.</p>
+                      <p>
+                        {meProfile.accountType === "oyente"
+                          ? "Tenés 3 códigos cada 2 semanas para sumar a gente de confianza."
+                          : "Tenés 3 códigos cada 2 semanas para sumar a tus artistas y productores de confianza."}
+                      </p>
                     </div>
                   </div>
                   <button
