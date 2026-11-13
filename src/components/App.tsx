@@ -77,6 +77,7 @@ import {
 import { InviteFriendsModal, WelcomeInviteModal } from "./InviteFriendsModal";
 import { analyzeAudioFile, downloadTrackAudio } from "@/lib/audioAnalysis";
 import OnboardingScreen from "./OnboardingScreen";
+import NotificationBell from "./NotificationBell";
 import "./board-polish.css";
 import "./ui-refresh.css";
 import "./motion.css";
@@ -3024,6 +3025,16 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
               </svg>
             )}
           </button>
+
+          {!isGuest && googleConnected && meProfile.id && (
+            <NotificationBell
+              meId={meProfile.id}
+              onOpenActor={(n) => {
+                const prof = findArtistProfile(n.handle);
+                if (prof) openArtistProfile(prof);
+              }}
+            />
+          )}
 
           <button
             type="button"

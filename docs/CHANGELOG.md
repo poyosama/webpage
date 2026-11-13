@@ -1,4 +1,5 @@
 # Changelog (lo más nuevo arriba · 1–3 líneas por cambio)
+- 2026-11-13 · Campanita de notificaciones: me gusta a un track tuyo, guardaron tu proyecto, te siguen, ahora son amigos. Tabla `notifications` + triggers + RPC `my_notifications` (`migration_notifications.sql`, sumada a `APLICAR_TODO.sql`: **hay que correrla**); `NotificationBell.tsx` (Realtime).
 - 2026-11-13 · Mover un track a otro proyecto le pone la portada del proyecto destino; "Editar track" ya no tiene "Cambiar portada" (queda Reemplazar audio). `App.tsx`.
 - 2026-11-13 · Ícono de la pestaña/app: ahora "tab." (recortado del logo, fondo negro). `public/{icon,icon-192,apple-touch-icon}.png`, `favicon.ico`, `src/app/{icon.png,favicon.ico}`, fuente `public/brand/icon-tab.svg`.
 

@@ -24,6 +24,7 @@
 - Compartir: `project_shares` (token aleatorio, proyecto o track, listen/edit) + `project_members` (+ `is_coauthor` para colaboradores). RLS en `migration_sharing.sql` / `migration_collab.sql`.
 - Privacidad: `projects.visibility` public/friends/private (is_public sincronizado por trigger); amigos = `is_friend_of(owner)`.
 - Seguidores: `follows` (seguidor→seguido); amigos = se siguen los dos; `social_lists(user)` devuelve amigo/seguidor/seguido.
+- Notificaciones (campanita en la barra, `NotificationBell.tsx`): `notifications` llenada por triggers de `track_likes`, `saved_projects` y `follows` (like/save/follow/friend); lectura vía RPC `my_notifications`. **Pendiente de correr:** `migration_notifications.sql` (al final de `APLICAR_TODO.sql`); sin ella la campanita no aparece.
 - Me gusta: `track_likes` + localStorage. Sesión: localStorage + copia en cookies (400 días) en `src/lib/supabase.ts`.
 
 ## Archivos clave
