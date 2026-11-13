@@ -54,6 +54,9 @@ import {
   listProjectCollaborators,
   removeProjectCollaborator,
   fetchCoauthors,
+  fetchSocialLists,
+  setFollowing,
+  type SocialLists,
   type ProjectCollaborator,
   isLegacyInviteToken,
   type ProjectInviteRole,
@@ -369,6 +372,10 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       setPlayerOnlyMode(localStorage.getItem("eltablero_player_mode") === "1");
     } catch {}
   }, []);
+  // Seguidores / amigos: listas por usuario (cache) y hoja con la lista abierta
+  const [socialByUser, setSocialByUser] = useState<Record<string, SocialLists>>({});
+  const [socialSheet, setSocialSheet] = useState<{ title: string; people: { userId: string; handle: string; name: string; avatarUrl?: string }[] } | null>(null);
+  const [followBusy, setFollowBusy] = useState(false);
   // Perfil de otro artista (página encima de la pantalla actual)
   const [viewingArtist, setViewingArtist] = useState<ArtistProfile | null>(null);
   // Portada en grande (lightbox)
@@ -2419,6 +2426,49 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     }
     setPlayerExpanded(false);
     setViewingArtist(a);
+  };
+
+  const loadSocial = (userId?: string) => {
+    if (!userId) return;
+    void fetchSocialLists(userId).then((l) => {
+      if (l) setSocialByUser((prev) => ({ ...prev, [userId]: l }));
+    });
+  };
+  useEffect(() => {
+    if (viewingArtist?.id) loadSocial(viewingArtist.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewingArtist?.id]);
+  useEffect(() => {
+    if (googleConnected && meProfile.id) loadSocial(meProfile.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [googleConnected, meProfile.id]);
+  /** Relación conmigo según las listas del otro: ¿lo sigo? ¿me sigue? */
+  const relationWith = (otherId: string) => {
+    const l = socialByUser[otherId];
+    if (!l || !meProfile.id) return { iFollow: false, followsMe: false, known: Boolean(l) };
+    const me = meProfile.id;
+    const amigo = l.amigos.some((p) => p.userId === me);
+    return {
+      iFollow: amigo || l.seguidores.some((p) => p.userId === me),
+      followsMe: amigo || l.seguidos.some((p) => p.userId === me),
+      known: true,
+    };
+  };
+  const toggleFollow = async (other: ArtistProfile) => {
+    if (!meProfile.id || followBusy) return;
+    const rel = relationWith(other.id);
+    setFollowBusy(true);
+    sfx.tap();
+    const ok = await setFollowing(meProfile.id, other.id, !rel.iFollow);
+    setFollowBusy(false);
+    if (ok) {
+      loadSocial(other.id);
+      loadSocial(meProfile.id);
+    }
+  };
+  const openSocialSheet = (title: string, people: { userId: string; handle: string; name: string; avatarUrl?: string }[]) => {
+    sfx.open();
+    setSocialSheet({ title, people });
   };
 
   const closeArtistProfile = () => {
@@ -5629,11 +5679,21 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                     <b>{myProjects.length}</b>
                     <span>PROYECTOS</span>
                   </div>
-                  {meProfile.followersCount > 0 && (
-                    <div>
-                      <b>{meProfile.followersCount}</b>
-                      <span>SEGUIDORES</span>
-                    </div>
+                  {socialByUser[meProfile.id] && (
+                    <>
+                      <button type="button" className="pf-metric-btn" onClick={() => openSocialSheet("Tus amigos", socialByUser[meProfile.id].amigos)}>
+                        <b>{socialByUser[meProfile.id].amigos.length}</b>
+                        <span>AMIGOS</span>
+                      </button>
+                      <button type="button" className="pf-metric-btn" onClick={() => openSocialSheet("Te siguen", socialByUser[meProfile.id].seguidores)}>
+                        <b>{socialByUser[meProfile.id].seguidores.length}</b>
+                        <span>SEGUIDORES</span>
+                      </button>
+                      <button type="button" className="pf-metric-btn" onClick={() => openSocialSheet("Seguís a", socialByUser[meProfile.id].seguidos)}>
+                        <b>{socialByUser[meProfile.id].seguidos.length}</b>
+                        <span>SEGUIDOS</span>
+                      </button>
+                    </>
                   )}
                 </div>
                 )}
@@ -6423,6 +6483,40 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                             <b>{tracks.length}</b> tracks
                           </span>
                         </div>
+                        {(() => {
+                          const l = socialByUser[a.id];
+                          const rel = relationWith(a.id);
+                          if (!l) return null;
+                          const label = rel.iFollow && rel.followsMe ? "Amigos ✓" : rel.iFollow ? "Siguiendo" : rel.followsMe ? "Seguir también" : "Seguir";
+                          return (
+                            <>
+                              <div className="artist-page-social">
+                                <button type="button" onClick={() => openSocialSheet(`Amigos de ${a.name}`, l.amigos)}>
+                                  <b>{l.amigos.length}</b> amigos
+                                </button>
+                                <button type="button" onClick={() => openSocialSheet(`Seguidores de ${a.name}`, l.seguidores)}>
+                                  <b>{l.seguidores.length}</b> seguidores
+                                </button>
+                                <button type="button" onClick={() => openSocialSheet(`${a.name} sigue a`, l.seguidos)}>
+                                  <b>{l.seguidos.length}</b> seguidos
+                                </button>
+                              </div>
+                              {googleConnected && meProfile.id && (
+                                <div className="artist-page-actions">
+                                  <button
+                                    type="button"
+                                    className={`pf-btn ${rel.iFollow ? "" : "primary"} follow-btn`}
+                                    disabled={followBusy}
+                                    onClick={() => void toggleFollow(a)}
+                                  >
+                                    {followBusy ? "…" : label}
+                                  </button>
+                                  {rel.followsMe && !rel.iFollow && <small className="follows-you">Te sigue</small>}
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
                       </div>
                     </header>
 
@@ -6514,6 +6608,65 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
               </UniversalPortal>
             );
           })()}
+      </AnimatePresence>
+
+      {/* ==================== LISTA DE AMIGOS / SEGUIDORES / SEGUIDOS ==================== */}
+      <AnimatePresence>
+        {socialSheet && (
+          <UniversalPortal>
+            <motion.div
+              className="move-sheet-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSocialSheet(null)}
+            >
+              <motion.div
+                className="move-sheet social-sheet"
+                initial={{ y: 40, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 40, opacity: 0 }}
+                transition={{ type: "spring", stiffness: 380, damping: 32 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="move-sheet-grabber" aria-hidden />
+                <div className="move-sheet-head">
+                  <h3>{socialSheet.title}</h3>
+                  <button type="button" className="pf-btn" onClick={() => setSocialSheet(null)}>
+                    Cerrar
+                  </button>
+                </div>
+                {socialSheet.people.length === 0 ? (
+                  <p className="move-sheet-empty">Todavía nadie.</p>
+                ) : (
+                  <ul className="social-list">
+                    {socialSheet.people.map((p) => (
+                      <li key={p.userId}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const prof =
+                              [meProfile, ...communityArtists].find((x) => x.id === p.userId) ||
+                              ({ ...EMPTY_ME_PROFILE, id: p.userId, name: p.name, handle: p.handle, avatarUrl: p.avatarUrl } as ArtistProfile);
+                            setSocialSheet(null);
+                            openArtistProfile(prof);
+                          }}
+                        >
+                          <span className="collab-avatar">
+                            {p.avatarUrl ? <img src={p.avatarUrl} alt="" /> : (p.name || p.handle).charAt(0).toUpperCase()}
+                          </span>
+                          <span className="collab-name">
+                            <b>{p.name}</b> <em>{p.handle}</em>
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </motion.div>
+            </motion.div>
+          </UniversalPortal>
+        )}
       </AnimatePresence>
 
       {/* ==================== PORTADA EN GRANDE ==================== */}

@@ -1,6 +1,6 @@
 -- =========================================================================
 -- EL TABLERO // APLICAR TODO (pegar entero en Supabase > SQL Editor > Run)
--- Junta, en orden: migration_visibility, migration_invites, migration_sharing, migration_account, migration_likes, migration_collab.
+-- Junta, en orden: migration_visibility, migration_invites, migration_sharing, migration_account, migration_likes, migration_collab, migration_social.
 -- Es idempotente: se puede correr más de una vez.
 -- =========================================================================
 
@@ -228,13 +228,16 @@ declare
 begin
   select * into r from public.invite_codes where code = lower(trim(p_code));
   if not found then
-    return query select false, null::text, null::text, 'El código de invitación no existe o es incorrecto.'::text;
-  elsif r.revoked or r.expires_at <= now() then
-    return query select false, r.creator_handle, r.creator_name, 'Este pase venció. Pedile uno nuevo a quien te invitó.'::text;
+    return query select false, null::text, null::text, 'Ese código no existe. Revisá que esté bien escrito (board-xxxxxx).'::text;
   elsif r.used then
     return query select false, r.creator_handle, r.creator_name,
-      ('Este código de invitación ya fue utilizado' ||
-        coalesce(' por ' || r.used_by_handle, '') || '.')::text;
+      ('Este pase ya se usó' || coalesce(' (lo usó ' || r.used_by_handle || ')', '') || '. Pedile uno nuevo a quien te invitó.')::text;
+  elsif r.revoked then
+    return query select false, r.creator_handle, r.creator_name,
+      'Este pase ya no sirve: quien te invitó generó pases nuevos. Pedile uno nuevo.'::text;
+  elsif r.expires_at <= now() then
+    return query select false, r.creator_handle, r.creator_name,
+      ('Este pase venció el ' || to_char(r.expires_at at time zone 'America/Argentina/Buenos_Aires', 'DD/MM') || ' (duran 14 días). Pedile uno nuevo.')::text;
   else
     return query select true, r.creator_handle, r.creator_name, null::text;
   end if;
@@ -854,33 +857,54 @@ grant execute on function public.add_project_collaborator(uuid, text, text, bool
 grant execute on function public.list_project_collaborators(uuid) to anon, authenticated;
 grant execute on function public.remove_project_collaborator(uuid, uuid) to authenticated;
 grant execute on function public.coauthors_for_projects(uuid[]) to anon, authenticated;
--- ============================================================
--- Tipo de cuenta: artista u oyente (se elige en la pantalla de registro)
--- Los oyentes NO aparecen en "Artistas en El tablero".
--- Idempotente: se puede correr más de una vez.
--- ============================================================
-alter table public.profiles
-  add column if not exists account_type text not null default 'artista';
 
-alter table public.profiles drop constraint if exists profiles_account_type_check;
-alter table public.profiles
-  add constraint profiles_account_type_check check (account_type in ('artista', 'oyente'));
+-- >>>>>>>>>> migration_social.sql
+-- =========================================================================
+-- EL TABLERO // MIGRACIÓN: seguidores y amigos
+-- Seguís a alguien → figurás como seguidor en su perfil. Si te sigue de vuelta → son amigos.
+-- Idempotente.
+-- =========================================================================
+create table if not exists public.follows (
+  follower_id uuid not null references auth.users(id) on delete cascade,
+  followee_id uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (follower_id, followee_id),
+  check (follower_id <> followee_id)
+);
+create index if not exists follows_followee_idx on public.follows (followee_id);
 
--- Chequeo de handle disponible (case-insensitive) sin exponer nada más del perfil.
--- Pasa el id propio para que "mi handle actual" cuente como disponible.
-create or replace function public.handle_available(p_handle text)
-returns boolean
+alter table public.follows enable row level security;
+-- Quién sigue a quién es público (como en cualquier red)
+drop policy if exists "Follows visibles" on public.follows;
+create policy "Follows visibles" on public.follows for select using (true);
+drop policy if exists "Seguir con mi cuenta" on public.follows;
+create policy "Seguir con mi cuenta" on public.follows for insert with check (auth.uid() = follower_id);
+drop policy if exists "Dejar de seguir" on public.follows;
+create policy "Dejar de seguir" on public.follows for delete using (auth.uid() = follower_id);
+
+grant select on public.follows to anon, authenticated;
+grant insert, delete on public.follows to authenticated;
+
+-- Amigos / seguidores / seguidos de un usuario (los tres grupos sin solaparse)
+create or replace function public.social_lists(p_user uuid)
+returns table (kind text, user_id uuid, handle text, name text, avatar_url text)
 language sql
 stable
 security definer
 set search_path = public
 as $$
-  select not exists (
-    select 1 from public.profiles
-     where lower(handle) = '@' || lower(regexp_replace(coalesce(p_handle, ''), '^@+', ''))
-       and id is distinct from auth.uid()
-  );
+  with seguidores as (select follower_id as id from public.follows where followee_id = p_user),
+       seguidos   as (select followee_id as id from public.follows where follower_id = p_user)
+  select case
+           when s1.id is not null and s2.id is not null then 'amigo'
+           when s1.id is not null then 'seguidor'
+           else 'seguido'
+         end,
+         pr.id, pr.handle, pr.name, pr.avatar_url
+    from (select id from seguidores union select id from seguidos) u
+    left join seguidores s1 on s1.id = u.id
+    left join seguidos s2 on s2.id = u.id
+    join public.profiles pr on pr.id = u.id;
 $$;
-
-revoke all on function public.handle_available(text) from public;
-grant execute on function public.handle_available(text) to authenticated;
+revoke all on function public.social_lists(uuid) from public;
+grant execute on function public.social_lists(uuid) to anon, authenticated;

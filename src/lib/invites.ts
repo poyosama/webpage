@@ -641,6 +641,9 @@ export async function validateInviteCode(
 ): Promise<{ valid: boolean; creatorHandle?: string; creatorName?: string; error?: string }> {
   const code = extractInviteCode(rawCode);
   if (!code) return { valid: false, error: "Ingresá un código de invitación." };
+  if (!/^board-[a-z0-9]{4,10}$/.test(code)) {
+    return { valid: false, error: "Eso no parece un pase. Tiene que ser algo como board-k3m9qa (o pegá el link entero)." };
+  }
   if (serverMode !== false) {
     const { data, error } = await supabase.rpc("validate_invite_code", { p_code: code });
     if (!error) {

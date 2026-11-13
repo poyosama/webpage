@@ -166,13 +166,16 @@ declare
 begin
   select * into r from public.invite_codes where code = lower(trim(p_code));
   if not found then
-    return query select false, null::text, null::text, 'El código de invitación no existe o es incorrecto.'::text;
-  elsif r.revoked or r.expires_at <= now() then
-    return query select false, r.creator_handle, r.creator_name, 'Este pase venció. Pedile uno nuevo a quien te invitó.'::text;
+    return query select false, null::text, null::text, 'Ese código no existe. Revisá que esté bien escrito (board-xxxxxx).'::text;
   elsif r.used then
     return query select false, r.creator_handle, r.creator_name,
-      ('Este código de invitación ya fue utilizado' ||
-        coalesce(' por ' || r.used_by_handle, '') || '.')::text;
+      ('Este pase ya se usó' || coalesce(' (lo usó ' || r.used_by_handle || ')', '') || '. Pedile uno nuevo a quien te invitó.')::text;
+  elsif r.revoked then
+    return query select false, r.creator_handle, r.creator_name,
+      'Este pase ya no sirve: quien te invitó generó pases nuevos. Pedile uno nuevo.'::text;
+  elsif r.expires_at <= now() then
+    return query select false, r.creator_handle, r.creator_name,
+      ('Este pase venció el ' || to_char(r.expires_at at time zone 'America/Argentina/Buenos_Aires', 'DD/MM') || ' (duran 14 días). Pedile uno nuevo.')::text;
   else
     return query select true, r.creator_handle, r.creator_name, null::text;
   end if;

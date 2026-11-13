@@ -1199,3 +1199,34 @@ export async function fetchCoauthors(projectIds: string[]): Promise<Record<strin
   }
   return out;
 }
+
+
+// =========================================================================
+// SEGUIDORES Y AMIGOS (supabase/migration_social.sql)
+// =========================================================================
+export type SocialPerson = { userId: string; handle: string; name: string; avatarUrl?: string };
+export type SocialLists = { amigos: SocialPerson[]; seguidores: SocialPerson[]; seguidos: SocialPerson[] };
+
+/** Amigos (se siguen los dos), seguidores (te siguen, no los seguís) y seguidos (los seguís, no te siguen) */
+export async function fetchSocialLists(userId: string): Promise<SocialLists | null> {
+  if (!UUID_RE.test(userId)) return null;
+  const { data, error } = await supabase.rpc("social_lists", { p_user: userId });
+  if (error) return null;
+  const out: SocialLists = { amigos: [], seguidores: [], seguidos: [] };
+  for (const r of (data || []) as { kind: string; user_id: string; handle: string; name: string; avatar_url: string | null }[]) {
+    const person = { userId: r.user_id, handle: r.handle, name: r.name, avatarUrl: r.avatar_url || undefined };
+    if (r.kind === "amigo") out.amigos.push(person);
+    else if (r.kind === "seguidor") out.seguidores.push(person);
+    else out.seguidos.push(person);
+  }
+  return out;
+}
+
+export async function setFollowing(me: string, other: string, follow: boolean): Promise<boolean> {
+  if (follow) {
+    const { error } = await supabase.from("follows").upsert({ follower_id: me, followee_id: other }, { onConflict: "follower_id,followee_id" });
+    return !error;
+  }
+  const { error } = await supabase.from("follows").delete().eq("follower_id", me).eq("followee_id", other);
+  return !error;
+}
