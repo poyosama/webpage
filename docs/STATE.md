@@ -3,8 +3,7 @@
 **Qué es:** plataforma (web + PWA, iOS vía Capacitor) para que raperos y productores de la escena guarden, compartan y escuchen sus proyectos. Next.js 16 (App Router, Turbopack) + Supabase (Postgres, Auth Google, Storage, Realtime) + Vercel. Dominio: `eltablero.blog`.
 
 ## Estado del backend
-- **Pendiente:** volver a correr `APLICAR_TODO.sql` (suma `migration_social.sql`, `migration_profiles.sql`, `migration_privacy.sql` y los mensajes nuevos del validador de pases).
-- `APLICAR_TODO.sql` **aplicado en Supabase (2026-11-13)**: pases del servidor, compartir, colaboradores, borrar cuenta, me gusta sincronizados y proyectos privados por defecto (`is_public`) están activos. Si se agregan migraciones nuevas, sumarlas al final de `APLICAR_TODO.sql` (idempotente) y pedir que se vuelva a correr.
+- `APLICAR_TODO.sql` **aplicado completo en Supabase (2026-11-13, incluye social, account_type y privacidad)**: pases del servidor, compartir, colaboradores, borrar cuenta, me gusta sincronizados y proyectos privados por defecto (`is_public`) están activos. Si se agregan migraciones nuevas, sumarlas al final de `APLICAR_TODO.sql` (idempotente) y pedir que se vuelva a correr.
 - Proyectos existentes quedaron **privados**: para que aparezcan en el Inicio de otros hay que ponerlos en Público (botón compartir).
 - **Pendiente de correr:** `migration_account_type.sql` (ya al final de `APLICAR_TODO.sql`): columna `profiles.account_type` ('artista'|'oyente') y RPC `handle_available`. Sin ella el registro funciona igual (el código tiene fallback) pero el rol no se guarda en la base y los oyentes no se filtran del directorio para otros dispositivos.
 - Marca de Google verificada y publicada ("El tablero"). Privacidad/Términos en `/privacidad` y `/terminos`.
@@ -31,6 +30,11 @@
 - `src/components/App.tsx` (~7k líneas): estado global, pantallas, modales.
 - Estilos: `globals.css` → `board-polish.css` → `ui-refresh.css` (overrides actuales, capas z-index documentadas) → `motion.css` (animaciones). Cambios nuevos: en `ui-refresh.css`.
 - `src/lib/mock.ts`: proyectos demo (tapas en `public/covers/`, oficiales de Spotify), artistas.
+
+## Roadmap (no codear hasta que el usuario avise)
+- **Tablero con rotación diaria** cuando haya suficientes proyectos reales: ordenar por guardados, escuchas y recientes (algoritmo de sort), reemplazando el collage fijo de `BOARD_ITEMS`/demos y "Lo último subido & Rotación".
+- **Proyectos fijados a mano en el tablero** por el admin (jpizarrograndinetti@gmail.com): elegir un proyecto y fijarlo (ej. tabla `board_pins` + UI solo para admin).
+- **Comunidad / posts**: pestaña nueva o sección en Inicio (a definir).
 
 ## Ideas charladas, no hechas
 - Fundadores: primeros 30 gratis de por vida; después plan Artista $5.000/mes o $12.500/trimestre con Mercado Pago (cobro en la web, no en App Store).
