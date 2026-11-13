@@ -143,7 +143,7 @@ export default function NotificationBell({
         <div className="notif-panel" role="dialog" aria-label="Notificaciones">
           <div className="notif-head">Notificaciones</div>
           {items.length === 0 ? (
-            <div className="notif-empty">Todavía no hay nada, juani. Cuando te den me gusta, te sigan o guarden tus proyectos, aparece acá.</div>
+            <div className="notif-empty">Todavía no hay nada. Cuando te den me gusta, te sigan o guarden tus proyectos, aparece acá.</div>
           ) : (
             <ul className="notif-list">
               {items.map((n) => (
