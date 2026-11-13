@@ -2,8 +2,9 @@
 
 **Qué es:** plataforma (web + PWA, iOS vía Capacitor) para que raperos y productores de la escena guarden, compartan y escuchen sus proyectos. Next.js 16 (App Router, Turbopack) + Supabase (Postgres, Auth Google, Storage, Realtime) + Vercel. Dominio: `eltablero.blog`.
 
-## Pendiente del usuario
-- **Pegar `supabase/APLICAR_TODO.sql`** en Supabase → SQL Editor → Run (idempotente). Sin eso NO funcionan: pases de invitación del servidor, compartir proyectos/tracks, colaboradores, borrar cuenta, me gusta sincronizados. La app cae a modos locales sin romperse.
+## Estado del backend
+- `APLICAR_TODO.sql` **aplicado en Supabase (2026-11-13)**: pases del servidor, compartir, colaboradores, borrar cuenta, me gusta sincronizados y proyectos privados por defecto (`is_public`) están activos. Si se agregan migraciones nuevas, sumarlas al final de `APLICAR_TODO.sql` (idempotente) y pedir que se vuelva a correr.
+- Proyectos existentes quedaron **privados**: para que aparezcan en el Inicio de otros hay que ponerlos en Público (botón compartir).
 - Marca de Google verificada y publicada ("El tablero"). Privacidad/Términos en `/privacidad` y `/terminos`.
 
 ## Pantallas y features

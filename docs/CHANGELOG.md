@@ -1,5 +1,6 @@
 # Changelog (lo más nuevo arriba · 1–3 líneas por cambio)
 
+- 2026-11-13 · El usuario aplicó `APLICAR_TODO.sql` en Supabase; verificado por REST (tablas y RPCs responden).
 - 2026-11-12 · Contexto reorganizado: `AGENTS.md` corto, `docs/STATE.md`, este changelog; log viejo y PLAN a `docs/archive/`.
 - 2026-11-12 · iOS: un solo scroller en la vista del proyecto; tapa animada de Tus me gusta (`App.tsx`, `ui-refresh.css`).
 - 2026-11-12 · Biblioteca celu: botones Subir track/Canva sin pisar el reproductor; Tus me gusta siempre visible.
