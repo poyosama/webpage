@@ -1,6 +1,6 @@
 -- =========================================================================
 -- EL TABLERO // APLICAR TODO (pegar entero en Supabase > SQL Editor > Run)
--- Junta, en orden: migration_visibility, migration_invites, migration_sharing, migration_account, migration_likes, migration_collab, migration_social.
+-- Junta, en orden: migration_visibility, migration_invites, migration_sharing, migration_account, migration_likes, migration_collab, migration_social, migration_profiles.
 -- Es idempotente: se puede correr más de una vez.
 -- =========================================================================
 
@@ -908,3 +908,18 @@ as $$
 $$;
 revoke all on function public.social_lists(uuid) from public;
 grant execute on function public.social_lists(uuid) to anon, authenticated;
+
+-- >>>>>>>>>> migration_profiles.sql
+-- =========================================================================
+-- EL TABLERO // MIGRACIÓN: tipo de cuenta en el perfil (artista / oyente)
+-- Sin esta columna todos figuraban como artistas (el tipo quedaba solo en el navegador).
+-- Los oyentes existentes se marcan solos la próxima vez que entran. Idempotente.
+-- =========================================================================
+alter table public.profiles add column if not exists account_type text not null default 'artista';
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'profiles_account_type_check') then
+    alter table public.profiles add constraint profiles_account_type_check check (account_type in ('artista', 'oyente'));
+  end if;
+end;
+$$;
