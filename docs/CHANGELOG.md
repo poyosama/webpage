@@ -1,4 +1,5 @@
 # Changelog (lo más nuevo arriba · 1–3 líneas por cambio)
+- 2026-11-13 · Ícono de la pestaña/app: ahora "tab." (recortado del logo, fondo negro). `public/{icon,icon-192,apple-touch-icon}.png`, `favicon.ico`, `src/app/{icon.png,favicon.ico}`, fuente `public/brand/icon-tab.svg`.
 
 - 2026-11-13 · Tablero (web): nombres de artista al lado de cada proyecto legibles (mono 0.6–0.72rem), proyectos sin cortes de línea; sigue entrando en la primera pantalla. Roadmap anotado en `STATE.md` (rotación diaria, fijados a mano, comunidad). SQL completo aplicado y verificado.
 - 2026-11-13 · Privacidad de proyectos en 3 niveles (Público / Amigos / Solo yo): `projects.visibility` + RLS para amigos mutuos (`migration_privacy.sql`, en `APLICAR_TODO.sql`); selector `VisibilityPills` en compartir, editar y crear proyecto; ciclo en los toggles.
