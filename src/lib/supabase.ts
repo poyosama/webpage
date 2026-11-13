@@ -326,6 +326,10 @@ export async function uploadMediaToSupabase(
   }
 }
 
+// Subidas compartidas entre corridas de la sincronización: el mismo archivo (blob:) se sube UNA sola vez,
+// aunque la sincronización se dispare de nuevo mientras sube.
+const persistedUploads = new Map<string, Promise<string | null>>();
+
 /** Si la URL es blob: (temporal, se pierde con F5) la sube al bucket o la convierte a Data URL persistente. */
 export async function ensurePersistentUrl(
   url: string | undefined | null,
@@ -335,6 +339,21 @@ export async function ensurePersistentUrl(
   if (!url) return null;
   if (!isTransientUrl(url)) return url;
   if (cache?.has(url)) return cache.get(url) ?? null;
+  const inflight = persistedUploads.get(url);
+  if (inflight) {
+    const r = await inflight;
+    cache?.set(url, r);
+    return r;
+  }
+  const job = uploadTransient(url, folder);
+  persistedUploads.set(url, job);
+  const result = await job;
+  if (!result) persistedUploads.delete(url); // si falló, se puede reintentar
+  cache?.set(url, result);
+  return result;
+}
+
+async function uploadTransient(url: string, folder: "covers" | "tracks" | "videos" | "avatars"): Promise<string | null> {
   let result: string | null = null;
   try {
     const controller = new AbortController();
@@ -359,7 +378,6 @@ export async function ensurePersistentUrl(
   } catch (err) {
     console.warn("No se pudo leer el archivo temporal:", err);
   }
-  cache?.set(url, result);
   return result;
 }
 
@@ -680,10 +698,8 @@ export async function saveProjectToSupabase(project: Project, userId?: string): 
     const cache = new Map<string, string | null>();
     const dbProjectId = toDbId(project.id);
 
-    const coverUrl = await ensurePersistentUrl(project.coverUrl, "covers", cache);
-
-    const tracks: Track[] = [];
-    for (const t of project.tracks || []) {
+    // Todo en paralelo: tapa, canvas y hasta 3 tracks a la vez (antes era de a uno)
+    const saveTrack = async (t: Track): Promise<Track> => {
       const dbTrackId = toDbId(t.id);
       let audio = await ensurePersistentUrl(t.customAudioUrl, "tracks", cache);
       if (!audio) {
@@ -693,18 +709,31 @@ export async function saveProjectToSupabase(project: Project, userId?: string): 
         void fastCacheSet(`audio:${dbTrackId}`, audio);
       }
       const cover = await ensurePersistentUrl(t.coverUrl, "covers", cache);
-      tracks.push({
+      return {
         ...t,
         customAudioUrl: audio || (isTransientUrl(t.customAudioUrl) ? t.customAudioUrl : audio) || undefined,
         coverUrl: cover || (isTransientUrl(t.coverUrl) ? t.coverUrl : cover) || undefined,
-      });
-    }
-
-    const videos: ProjectVideoClip[] = [];
-    for (const v of project.videos || []) {
-      const url = await ensurePersistentUrl(v.url, "videos", cache);
-      videos.push({ ...v, url: url || v.url });
-    }
+      };
+    };
+    const list = project.tracks || [];
+    const tracks: Track[] = new Array(list.length);
+    let next = 0;
+    const worker = async () => {
+      while (next < list.length) {
+        const i = next++;
+        tracks[i] = await saveTrack(list[i]);
+      }
+    };
+    const [coverUrl, videos] = await Promise.all([
+      ensurePersistentUrl(project.coverUrl, "covers", cache),
+      Promise.all(
+        (project.videos || []).map(async (v): Promise<ProjectVideoClip> => {
+          const url = await ensurePersistentUrl(v.url, "videos", cache);
+          return { ...v, url: url || v.url };
+        })
+      ),
+      Promise.all(Array.from({ length: Math.min(3, list.length) }, worker)),
+    ]).then(([c, v]) => [c, v] as const);
 
     let safeUserId: string | null = null;
     if (userId && UUID_RE.test(userId)) {

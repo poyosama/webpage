@@ -365,6 +365,8 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       setPlayerOnlyMode(localStorage.getItem("eltablero_player_mode") === "1");
     } catch {}
   }, []);
+  // Perfil de otro artista (página encima de la pantalla actual)
+  const [viewingArtist, setViewingArtist] = useState<ArtistProfile | null>(null);
   // Portada en grande (lightbox)
   const [coverLightbox, setCoverLightbox] = useState<{ url?: string; title: string; c1?: string; c2?: string } | null>(null);
   // Toast "Movido a …" con partículas
@@ -1234,62 +1236,73 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     );
   }, [projects, meProfile.id, projectInvites]);
 
-  // Sincronización automática con la nube: sube archivos temporales y guarda proyectos propios o con invitación de edición
-  useEffect(() => {
-    const hasEditInvite = Object.values(projectInvites).includes("edit");
-    if (!cloudReady || (!googleConnected && !hasEditInvite)) return;
-    const editable = projects.filter(
-      (p) => (meProfile.id && p.artistId === meProfile.id) || projectInvites[p.id] === "edit"
-    );
-    const pending = editable.filter((p) => syncedSigRef.current[p.id] !== JSON.stringify(p));
-    if (pending.length === 0) return;
-
-    let aborted = false;
-    const safetyTimer = setTimeout(() => {
-      // Guard de seguridad: si pasaron 12s, no dejar la UI clavada en "Guardando…"
-      setSyncStatus((s) => (s === "saving" ? "idle" : s));
-    }, 12000);
-
-    const timer = setTimeout(async () => {
-      setSyncStatus("saving");
-      let failed = false;
-      for (const proj of pending) {
-        if (aborted) break;
-        const sig = JSON.stringify(proj);
-        const ownerUserId = proj.artistId || meProfile.id || "";
-        const saved = await saveProjectToSupabase(proj, ownerUserId);
-        if (!saved) {
-          failed = true;
-          // Marcamos como intentado para NO entrar en bucle infinito cada 900ms
-          syncedSigRef.current[proj.id] = sig;
-          continue;
-        }
-        const merged = mergePersistedUrls(proj, saved);
-        // Siempre registramos la firma del resultado para evitar el loop infinito
-        syncedSigRef.current[proj.id] = JSON.stringify(merged);
-        if (JSON.stringify(merged) !== sig) {
-          setProjects((prev) => prev.map((x) => (x.id === proj.id ? mergePersistedUrls(x, saved) : x)));
-        }
-      }
-      if (!aborted) {
-        clearTimeout(safetyTimer);
+  // Sincronización automática con la nube: sube archivos temporales y guarda proyectos propios o con invitación de edición.
+  // Una sola corrida a la vez y SIN cancelar: si algo cambia mientras sube, al terminar vuelve a pasar con lo último
+  // (antes cada cambio cancelaba la subida en curso y el mismo WAV se volvía a subir).
+  const syncLatestRef = useRef<{ projects: Project[]; invites: Record<string, ProjectInviteRole>; meId: string }>({
+    projects: [],
+    invites: {},
+    meId: "",
+  });
+  syncLatestRef.current = { projects, invites: projectInvites, meId: meProfile.id || "" };
+  const syncRunningRef = useRef(false);
+  const syncAgainRef = useRef(false);
+  const runCloudSync = async () => {
+    if (syncRunningRef.current) {
+      syncAgainRef.current = true;
+      return;
+    }
+    syncRunningRef.current = true;
+    try {
+      do {
+        syncAgainRef.current = false;
+        const { projects: list, invites, meId } = syncLatestRef.current;
+        const editable = list.filter((p) => (meId && p.artistId === meId) || invites[p.id] === "edit");
+        const pending = editable.filter((p) => syncedSigRef.current[p.id] !== JSON.stringify(p));
+        if (pending.length === 0) break;
+        setSyncStatus("saving");
+        let failed = false;
+        await Promise.all(
+          pending.map(async (proj) => {
+            const sig = JSON.stringify(proj);
+            const saved = await saveProjectToSupabase(proj, proj.artistId || meId || "");
+            if (!saved) {
+              failed = true;
+              syncedSigRef.current[proj.id] = sig; // no reintentar en bucle
+              return;
+            }
+            const merged = mergePersistedUrls(proj, saved);
+            syncedSigRef.current[proj.id] = JSON.stringify(merged);
+            if (JSON.stringify(merged) !== sig) {
+              setProjects((prev) =>
+                prev.map((x) => {
+                  if (x.id !== proj.id) return x;
+                  const up = mergePersistedUrls(x, saved);
+                  // si no hubo otros cambios mientras subía, marcar como sincronizado
+                  if (JSON.stringify(x) === sig) syncedSigRef.current[proj.id] = JSON.stringify(up);
+                  return up;
+                })
+              );
+            }
+          })
+        );
         if (failed) {
           setSyncStatus("error");
-          // Revertir a idle tras 3.5 segundos para que la pill no quede pegada
-          setTimeout(() => {
-            setSyncStatus((s) => (s === "error" ? "idle" : s));
-          }, 3500);
+          setTimeout(() => setSyncStatus((st) => (st === "error" ? "idle" : st)), 3500);
         } else {
           setSyncStatus("idle");
         }
-      }
-    }, 900);
-
-    return () => {
-      aborted = true;
-      clearTimeout(timer);
-      clearTimeout(safetyTimer);
-    };
+      } while (syncAgainRef.current);
+    } finally {
+      syncRunningRef.current = false;
+    }
+  };
+  useEffect(() => {
+    const hasEditInvite = Object.values(projectInvites).includes("edit");
+    if (!cloudReady || (!googleConnected && !hasEditInvite)) return;
+    const t = setTimeout(() => void runCloudSync(), 350);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projects, googleConnected, cloudReady, meProfile.id, projectInvites]);
 
   // "Tus me gusta": proyecto virtual con los tracks marcados con ♥ (primero en la Biblioteca)
@@ -2332,6 +2345,92 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     navigate("biblioteca");
   };
 
+  const DEMO_IDS = new Set(DEMO_PROJECTS.map((d) => d.id));
+  const isDemoProject = (p?: Project | null) => Boolean(p && DEMO_IDS.has(p.id) && !p.artistId?.match(/^[0-9a-f-]{36}$/i));
+  /** Busca el perfil real de un artista por nombre o @handle (usuarios suscritos) */
+  const findArtistProfile = (nameOrHandle: string): ArtistProfile | null => {
+    const clean = (nameOrHandle || "").trim().toLowerCase().replace(/^@/, "");
+    if (!clean) return null;
+    const pool = [meProfile, ...communityArtists].filter((a) => a && a.id);
+    return (
+      pool.find((a) => (a.handle || "").toLowerCase().replace(/^@/, "") === clean) ||
+      pool.find((a) => (a.name || "").toLowerCase() === clean) ||
+      null
+    );
+  };
+  const profileReturnPathRef = useRef<string | null>(null);
+  const handleSlug = (h: string) => "@" + (h || "").replace(/^@+/, "");
+  const openArtistProfile = (a: ArtistProfile) => {
+    sfx.open();
+    // URL compartible: eltablero.blog/@handle
+    try {
+      if (a.handle && !(meProfile.id && a.id === meProfile.id)) {
+        if (!window.location.pathname.startsWith("/@")) profileReturnPathRef.current = window.location.pathname + window.location.search;
+        window.history.pushState({ artist: a.id }, "", `/${handleSlug(a.handle)}`);
+      }
+    } catch {}
+    if (meProfile.id && a.id === meProfile.id) {
+      setViewingArtist(null);
+      setPlayerExpanded(false);
+      navigate("perfil");
+      return;
+    }
+    setPlayerExpanded(false);
+    setViewingArtist(a);
+  };
+
+  const closeArtistProfile = () => {
+    setViewingArtist(null);
+    try {
+      if (window.location.pathname.startsWith("/@")) {
+        window.history.replaceState(null, "", profileReturnPathRef.current || "/");
+      }
+    } catch {}
+    profileReturnPathRef.current = null;
+  };
+
+  // Entrar por eltablero.blog/@handle (o volver atrás con el navegador)
+  const pendingProfileHandleRef = useRef<string | null>(
+    typeof window !== "undefined" && /^\/@[^/]+$/.test(window.location.pathname)
+      ? decodeURIComponent(window.location.pathname.slice(2))
+      : null
+  );
+  // Sin cuenta: entrar al modo explorar para poder ver el perfil
+  useEffect(() => {
+    if (pendingProfileHandleRef.current && authChecked && !googleConnected && !guestMode) setGuestMode(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authChecked, googleConnected]);
+  useEffect(() => {
+    const h = pendingProfileHandleRef.current;
+    if (!h) return;
+    const prof = findArtistProfile(h);
+    if (!prof) return; // todavía no cargaron los perfiles: se reintenta cuando lleguen
+    pendingProfileHandleRef.current = null;
+    if (isGuestRef.current || !googleConnected) {
+      setGuestArtist(prof);
+      return;
+    }
+    if (meProfile.id && prof.id === meProfile.id) {
+      window.history.replaceState(null, "", "/profile");
+      navigate("perfil");
+      return;
+    }
+    setViewingArtist(prof);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [communityArtists, meProfile.id, googleConnected, guestMode]);
+  useEffect(() => {
+    const onPop = () => {
+      if (!window.location.pathname.startsWith("/@")) setViewingArtist(null);
+      else {
+        const prof = findArtistProfile(decodeURIComponent(window.location.pathname.slice(2)));
+        if (prof) setViewingArtist(prof);
+      }
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [communityArtists, meProfile.id]);
+
   const navigateToArtist = (artistName: string) => {
     sfx.tap();
     const clean = (artistName || "").trim().toLowerCase();
@@ -2343,6 +2442,15 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       if (prof) setGuestArtist(prof);
       else setGuestCta("Suscribite para ver los perfiles completos de la escena.");
       return;
+    }
+    // Varios artistas ("poyo · dorkke" / "poyo, dorkke"): se toma el primero que tenga perfil
+    const names = (artistName || "").split(/\s*(?:·|,|&| x | feat\. )\s*/i).filter(Boolean);
+    for (const n of names) {
+      const prof = findArtistProfile(n);
+      if (prof) {
+        openArtistProfile(prof);
+        return;
+      }
     }
     const isMe =
       clean === "poyo" ||
@@ -3183,6 +3291,11 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                                   setGuestCta(`Suscribite para escuchar los ${boardProjects.reduce((n, pp) => n + pp.tracks.length, 0)} tracks de la escena.`);
                                   return;
                                 }
+                                // Lanzamientos de ejemplo (sin audio real): directo a Spotify
+                                if (isDemoProject(proj) && !track.customAudioUrl && !customAudioMap[track.id]) {
+                                  if (proj.spotifyUrl) window.open(proj.spotifyUrl, "_blank", "noopener,noreferrer");
+                                  return;
+                                }
                                 playTrack(track, proj, false);
                               }}
                             >
@@ -3352,12 +3465,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                               setGuestArtist(a);
                               return;
                             }
-                            const found = owned[0];
-                            if (found) {
-                              setSelectedProjectId(found.id);
-                              setInsideCubeOpen(true);
-                              navigate("biblioteca");
-                            }
+                            openArtistProfile(a);
                           }}
                         >
                           <div className="artist-dir-avatar" style={{ background: a.color, overflow: "hidden" }}>
@@ -4250,7 +4358,10 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                             </div>
                           )}
                           <p className="untitled-mobile-subtitle">
-                            {projectArtistLabel(activeProject)} · {activeProject.tracks.length}{" "}
+                            <span className="artist-link" role="button" onClick={() => navigateToArtist(projectArtistLabel(activeProject))}>
+                              {projectArtistLabel(activeProject)}
+                            </span>{" "}
+                            · {activeProject.tracks.length}{" "}
                             {activeProject.tracks.length === 1 ? "track" : "tracks"} ·{" "}
                             {formatProjectTotalDuration(activeProject.tracks)}
                           </p>
@@ -5057,7 +5168,13 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                                     )}
                                   </div>
                                 )}
-                                <span className="inspector-project-artist">{projectArtistLabel(activeProject)}</span>
+                                <span
+                                  className="inspector-project-artist artist-link"
+                                  role="button"
+                                  onClick={() => navigateToArtist(projectArtistLabel(activeProject))}
+                                >
+                                  {projectArtistLabel(activeProject)}
+                                </span>
                               </div>
                               <div className="inspector-title-ctas">
                                 {!activeIsMine && activeProject.id !== LIKED_PROJECT_ID && (
@@ -5689,7 +5806,14 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                   <b>{currentTrack.title}</b>
                   {currentTrack.id !== "standby-track" && (
                     <div className="mini-meta-sub">
-                      <span>
+                      <span
+                        className="mini-artist-link"
+                        role="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigateToArtist(currentTrack.artist);
+                        }}
+                      >
                         {currentTrack.artist}
                         {currentTrack.prod ? ` · prod. ${currentTrack.prod}` : ""}
                       </span>
@@ -5890,6 +6014,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                   setTab("biblioteca");
                 }}
                 onOpenEditTrack={() => setEditingTrack(currentTrack)}
+                onOpenArtist={(n) => navigateToArtist(n)}
                 onSaveTrack={handleSaveTrackAndClip}
                 theme={theme}
                 onToggleTheme={toggleTheme}
@@ -6201,6 +6326,150 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
             </motion.div>
           </UniversalPortal>
         )}
+      </AnimatePresence>
+
+      {/* ==================== PERFIL DE OTRO ARTISTA ==================== */}
+      <AnimatePresence>
+        {viewingArtist &&
+          (() => {
+            const a = viewingArtist;
+            const nameLc = (a.name || "").toLowerCase();
+            const own = [...projects]
+              .filter(
+                (p) =>
+                  !p.id.startsWith("__") &&
+                  (p.artistId === a.id || (p.coauthors || []).some((c) => c.toLowerCase() === nameLc)) &&
+                  (p.visibility === "public" || Boolean(projectInvites[p.id]))
+              )
+              .sort((x, y) => new Date(y.createdAt || 0).getTime() - new Date(x.createdAt || 0).getTime());
+            const releases = DEMO_PROJECTS.filter(
+              (d) =>
+                !own.some((o) => o.title.toLowerCase() === d.title.toLowerCase()) &&
+                d.artist.toLowerCase().split(/\s*(?:·|,|&| x )\s*/).includes(nameLc)
+            );
+            const tracks = own.flatMap((p) => p.tracks.map((t) => ({ t, p })));
+            return (
+              <UniversalPortal>
+                <motion.div
+                  className="artist-page"
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 24 }}
+                  transition={{ type: "spring", stiffness: 340, damping: 32 }}
+                >
+                  <div className="artist-page-inner">
+                    <button type="button" className="pf-btn artist-page-back" onClick={closeArtistProfile}>
+                      ← Volver
+                    </button>
+                    <header className="artist-page-head">
+                      <div className="artist-page-avatar" style={{ background: a.color }}>
+                        {a.avatarUrl ? <img src={a.avatarUrl} alt={a.name} /> : a.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="artist-page-copy">
+                        <span className="mono-tag">{[a.role, a.zone].filter(Boolean).join(" · ") || "ARTISTA"}</span>
+                        <h1>
+                          {a.name} <em>{a.handle}</em>
+                        </h1>
+                        {a.bio && <p>{a.bio}</p>}
+                        <div className="artist-page-stats">
+                          <span>
+                            <b>{own.length + releases.length}</b> proyectos
+                          </span>
+                          <span>
+                            <b>{tracks.length}</b> tracks
+                          </span>
+                        </div>
+                      </div>
+                    </header>
+
+                    {own.length + releases.length > 0 && (
+                      <section>
+                        <h2 className="artist-page-h2">Proyectos</h2>
+                        <div className="artist-page-grid">
+                          {own.map((p) => (
+                            <button
+                              key={p.id}
+                              type="button"
+                              className="artist-page-card"
+                              onClick={() => {
+                                sfx.open();
+                                setViewingArtist(null);
+                                setSelectedProjectId(p.id);
+                                setLibrarySubTab("proyectos");
+                                setInsideCubeOpen(true);
+                                navigate("biblioteca");
+                              }}
+                            >
+                              <span
+                                className="artist-page-cover"
+                                style={{
+                                  background: p.coverUrl
+                                    ? `url(${p.coverUrl}) center / cover no-repeat`
+                                    : `linear-gradient(135deg, ${p.c1}, ${p.c2})`,
+                                }}
+                              />
+                              <b>{p.title}</b>
+                              <small>
+                                {p.type} · {p.tracks.length} {p.tracks.length === 1 ? "track" : "tracks"}
+                              </small>
+                            </button>
+                          ))}
+                          {releases.map((p) => (
+                            <button
+                              key={p.id}
+                              type="button"
+                              className="artist-page-card"
+                              onClick={() => p.spotifyUrl && window.open(p.spotifyUrl, "_blank", "noopener,noreferrer")}
+                            >
+                              <span
+                                className="artist-page-cover"
+                                style={{ background: p.coverUrl ? `url(${p.coverUrl}) center / cover no-repeat` : "#111" }}
+                              />
+                              <b>{p.title}</b>
+                              <small>{p.type} · Spotify ↗</small>
+                            </button>
+                          ))}
+                        </div>
+                      </section>
+                    )}
+
+                    {tracks.length > 0 && (
+                      <section>
+                        <h2 className="artist-page-h2">Tracks</h2>
+                        <div className="artist-page-tracks">
+                          {tracks.map(({ t, p }, i) => {
+                            const active = currentTrack.id === t.id;
+                            return (
+                              <button
+                                key={t.id}
+                                type="button"
+                                className={`artist-page-track ${active ? "is-playing" : ""}`}
+                                onClick={() => playTrack(t, p, false)}
+                              >
+                                <span className="artist-page-track-num">{active && isPlaying ? "❚❚" : i + 1}</span>
+                                <span
+                                  className="artist-page-track-art"
+                                  style={{ background: p.coverUrl ? `url(${p.coverUrl}) center / cover no-repeat` : `linear-gradient(135deg, ${t.c1}, ${t.c2})` }}
+                                />
+                                <span className="artist-page-track-meta">
+                                  <b>{t.title}</b>
+                                  <small>{p.title}</small>
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </section>
+                    )}
+
+                    {own.length + releases.length === 0 && (
+                      <p className="artist-page-empty">Todavía no publicó proyectos.</p>
+                    )}
+                  </div>
+                </motion.div>
+              </UniversalPortal>
+            );
+          })()}
       </AnimatePresence>
 
       {/* ==================== PORTADA EN GRANDE ==================== */}

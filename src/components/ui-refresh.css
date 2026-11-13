@@ -1976,3 +1976,93 @@ html:root body .landing-explore-link {
     padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 110px) !important;
   }
 }
+
+/* ===================== PERFIL DE OTRO ARTISTA ===================== */
+.artist-page {
+  position: fixed;
+  inset: 0;
+  z-index: 150; /* por encima de la vista del proyecto (145), debajo del mini-reproductor (160) */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  background: var(--bg);
+  color: var(--ink);
+}
+.artist-page-inner {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: calc(env(safe-area-inset-top, 0px) + 18px) 16px calc(env(safe-area-inset-bottom, 0px) + 120px);
+}
+.artist-page-back { margin-bottom: 16px; }
+.artist-page-head { display: flex; gap: 18px; align-items: center; margin-bottom: 22px; }
+.artist-page-avatar {
+  width: 96px;
+  height: 96px;
+  flex: none;
+  border-radius: 28px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 2rem;
+  font-weight: 700;
+  box-shadow: 0 14px 30px -14px rgba(0, 0, 0, 0.5);
+}
+.artist-page-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.artist-page-copy { min-width: 0; }
+.artist-page-copy h1 { font-size: clamp(1.5rem, 5vw, 2.2rem); letter-spacing: -0.04em; line-height: 1.05; margin-top: 2px; }
+.artist-page-copy h1 em { font-style: normal; font-weight: 500; font-size: 0.5em; color: var(--ink-muted); letter-spacing: 0; }
+.artist-page-copy p { margin-top: 6px; font-size: 0.88rem; color: var(--ink-secondary); line-height: 1.45; }
+.artist-page-stats { display: flex; gap: 16px; margin-top: 10px; font-size: 0.8rem; color: var(--ink-muted); }
+.artist-page-stats b { color: var(--ink); font-size: 0.95rem; }
+.artist-page-h2 { font-size: 1rem; font-weight: 650; letter-spacing: -0.02em; margin: 20px 0 10px; }
+.artist-page-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 14px 12px; }
+@media (max-width: 520px) {
+  .artist-page-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .artist-page-avatar { width: 76px; height: 76px; border-radius: 22px; }
+}
+.artist-page-card { display: flex; flex-direction: column; gap: 4px; min-width: 0; text-align: left; color: var(--ink); background: none; border: 0; }
+.artist-page-cover {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  box-shadow: 0 10px 22px -12px rgba(0, 0, 0, 0.45);
+}
+.artist-page-card b { font-size: 0.86rem; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.artist-page-card small { font-size: 0.72rem; color: var(--ink-muted); }
+.artist-page-tracks { display: flex; flex-direction: column; gap: 2px; }
+.artist-page-track {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border-radius: 12px;
+  text-align: left;
+  color: var(--ink);
+  background: none;
+  border: 0;
+}
+.artist-page-track:hover, .artist-page-track.is-playing { background: var(--surface-secondary); }
+.artist-page-track-num { width: 22px; text-align: center; font-size: 0.78rem; color: var(--ink-muted); }
+.artist-page-track-art { width: 40px; height: 40px; flex: none; border-radius: 8px; }
+.artist-page-track-meta { display: flex; flex-direction: column; min-width: 0; }
+.artist-page-track-meta b { font-size: 0.88rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.artist-page-track-meta small { font-size: 0.72rem; color: var(--ink-muted); }
+.artist-page-empty { color: var(--ink-muted); font-size: 0.86rem; padding: 24px 0; }
+
+/* Nombres clickeables → perfil */
+.artist-link, .mini-artist-link { cursor: pointer; }
+.artist-link:hover, .mini-artist-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+.perf-artist-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.perf-artist-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+/* El mini-reproductor siempre por encima de las páginas (perfil de artista 150), debajo de modales (1000) */
+html:root body .ios-mini-player-dock { z-index: 160 !important; }

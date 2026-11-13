@@ -262,6 +262,7 @@ export default function PerformativePlayer({
   onClose,
   onJumpToProject,
   onOpenEditTrack,
+  onOpenArtist,
   onSaveTrack,
   theme,
   onToggleTheme,
@@ -291,6 +292,8 @@ export default function PerformativePlayer({
   onClose: () => void;
   onJumpToProject: (projectId: string) => void;
   onOpenEditTrack: () => void;
+  /** Tocar un nombre abre el perfil de ese artista */
+  onOpenArtist?: (name: string) => void;
   onSaveTrack?: (updatedTrack: Track, updatedClip?: ProjectVideoClip) => void;
   theme?: "dark" | "light";
   onToggleTheme?: () => void;
@@ -549,8 +552,18 @@ export default function PerformativePlayer({
         <h1 className="perf-title">{track.title}</h1>
         {!isStandby && (
           <p className="perf-kicker">
-            {track.artist} {track.feat ? `feat. ${track.feat}` : ""} — prod.{" "}
-            {track.prod || track.artist}
+            {[track.artist, track.feat].filter(Boolean).map((n, i) => (
+              <span key={i}>
+                {i > 0 ? " feat. " : ""}
+                <button type="button" className="perf-artist-link" onClick={() => onOpenArtist?.(n as string)}>
+                  {n}
+                </button>
+              </span>
+            ))}
+            {" — prod. "}
+            <button type="button" className="perf-artist-link" onClick={() => onOpenArtist?.(track.prod || track.artist)}>
+              {track.prod || track.artist}
+            </button>
           </p>
         )}
         {isStandby && <p className="perf-kicker">Elegí un track de tu biblioteca para escucharlo acá</p>}

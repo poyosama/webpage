@@ -23,6 +23,8 @@ const nextConfig: NextConfig = isCapacitorBuild
           { source: "/landing", destination: "/" },
           { source: "/project/:id*", destination: "/" },
           { source: "/invite/:code*", destination: "/" },
+          // Perfiles públicos: eltablero.blog/@handle
+          { source: "/:handle(@[A-Za-z0-9_\\.]+)", destination: "/" },
         ];
       },
     };
