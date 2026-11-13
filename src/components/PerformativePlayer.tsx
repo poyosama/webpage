@@ -317,7 +317,8 @@ export default function PerformativePlayer({
     }
   }, [theme]);
 
-  const [cinemaMode, setCinemaMode] = useState(true);
+  // on = partículas + canvas · off = solo partículas · cine = solo canvas (sin partículas)
+  const [canvasMode, setCanvasMode] = useState<"on" | "off" | "cine">("on");
   const [impulseSignal, setImpulseSignal] = useState(0);
   const [seed, setSeed] = useState(0);
   const [queueOpen, setQueueOpen] = useState(false);
@@ -385,7 +386,9 @@ export default function PerformativePlayer({
     return [...liveProject.tracks.slice(idx + 1), ...liveProject.tracks.slice(0, idx)];
   }, [liveProject.tracks, track.id]);
 
-  const isCinemaActive = cinemaMode && Boolean(activeCanvasClip?.url || activeCoverUrl);
+  const isCinemaActive = canvasMode !== "off" && Boolean(activeCanvasClip?.url || activeCoverUrl);
+  // Cine: solo el canvas; si el track no tiene canvas ni portada, quedan las partículas
+  const hideParticles = canvasMode === "cine" && isCinemaActive;
   const isImageCanvas = Boolean(
     activeCanvasClip?.url &&
       (activeCanvasClip.mediaType === "image" ||
@@ -468,7 +471,7 @@ export default function PerformativePlayer({
           sfx.tap();
         }}
       >
-        {sceneReady && (
+        {sceneReady && !hideParticles && (
         <Canvas
           camera={{ position: [0, 0, 5.2], fov: 42 }}
           dpr={[1, 1.25]}
@@ -1245,14 +1248,19 @@ export default function PerformativePlayer({
                 className="spotify-sheet-item"
                 onClick={() => {
                   sfx.tap();
-                  setCinemaMode((c) => !c);
+                  setCanvasMode((m) => (m === "on" ? "off" : m === "off" ? "cine" : "on"));
                 }}
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="2" y="4" width="20" height="16" rx="3" />
                   <path d="M2 8h20M7 4v4M12 4v4M17 4v4" />
                 </svg>
-                <span>Modo Cine (Canvas): {cinemaMode ? "Activado" : "Desactivado"}</span>
+                <span>
+                  Canvas: {canvasMode === "on" ? "on" : canvasMode === "off" ? "off" : "cine"}
+                  <small style={{ display: "block", opacity: 0.6, fontSize: "0.78em", fontWeight: 400 }}>
+                    {canvasMode === "on" ? "Partículas + canvas" : canvasMode === "off" ? "Solo partículas" : "Solo canvas"}
+                  </small>
+                </span>
               </button>
 
               <button
