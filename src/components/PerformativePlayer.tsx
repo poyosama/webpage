@@ -300,6 +300,12 @@ export default function PerformativePlayer({
 }) {
   const [darkStage, setDarkStage] = useState(theme ? theme === "dark" : true);
   const [studioModalOpen, setStudioModalOpen] = useState(false);
+  // La escena 3D se crea cuando terminó la animación de subida (si no, traba el slide)
+  const [sceneReady, setSceneReady] = useState(false);
+  useEffect(() => {
+    const t = window.setTimeout(() => setSceneReady(true), 380);
+    return () => window.clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     sfx.initTrackModifiers(track.pitchShift ?? 0, track.tempoMultiplier ?? 1.0);
@@ -462,6 +468,7 @@ export default function PerformativePlayer({
           sfx.tap();
         }}
       >
+        {sceneReady && (
         <Canvas
           camera={{ position: [0, 0, 5.2], fov: 42 }}
           dpr={[1, 1.25]}
@@ -479,6 +486,7 @@ export default function PerformativePlayer({
             isDarkStage={isDarkStage}
           />
         </Canvas>
+        )}
       </div>
 
       {/* Top HUD — Apple Music / iOS Liquid Glass (Minimizar · Proyecto · Opciones •••) */}

@@ -76,7 +76,11 @@ import "./motion.css";
 
 const MacInstallerUpload = dynamic(() => import("./MacInstallerUpload"), { ssr: false });
 const DiscSpinner3D = dynamic(() => import("./DiscSpinner3D"), { ssr: false });
-const PerformativePlayer = dynamic(() => import("./PerformativePlayer"), { ssr: false });
+// Reproductor grande: carga manual (sin Suspense de next/dynamic, que demoraba ~1 s la primera apertura)
+type PerformativePlayerComp = typeof import("./PerformativePlayer").default;
+let performativePlayerCache: PerformativePlayerComp | null = null;
+const loadPerformativePlayer = () =>
+  import("./PerformativePlayer").then((m) => (performativePlayerCache = m.default));
 const ManifoldLibrary3D = dynamic(() => import("./ManifoldLibrary3D"), { ssr: false });
 const CreateProjectScreen = dynamic(() => import("./CreateProjectScreen"), { ssr: false });
 const LandingScene = dynamic(() => import("./LandingScene"), { ssr: false });
@@ -1363,6 +1367,8 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     setIsPlaying(true);
     sfx.play();
     const knownAudio = track.customAudioUrl || customAudioMap[track.id];
+    // Desbloquear el audio en el mismo toque (iOS) antes de cualquier espera
+    if (!knownAudio) sfx.primeAudio();
     if (knownAudio) {
       sfx.startGroove(
         track.bpm,
@@ -1413,6 +1419,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       setIsPlaying(true);
       sfx.play();
       const knownAudio = currentTrack.customAudioUrl || customAudioMap[currentTrack.id];
+      if (!knownAudio) sfx.primeAudio();
       if (knownAudio) {
         sfx.resumeGroove(
           currentTrack.bpm,
@@ -1639,6 +1646,41 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   remoteCtlRef.current = { controlling: remote.controlling, send: remote.sendCmd, claim: remote.claim };
   const [devicePickerOpen, setDevicePickerOpen] = useState(false);
   const activeRemoteDevice = remote.devices.find((d) => d.deviceId === remote.activeDeviceId);
+
+  const [PlayerComp, setPlayerComp] = useState<PerformativePlayerComp | null>(() => performativePlayerCache);
+  useEffect(() => {
+    if (playerExpanded && !PlayerComp) void loadPerformativePlayer().then((C) => setPlayerComp(() => C));
+  }, [playerExpanded, PlayerComp]);
+  // Precargar el código del reproductor grande en segundo plano (el primer toque ya no espera la descarga)
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      void loadPerformativePlayer().then((C) => setPlayerComp(() => C));
+    }, 1200);
+    return () => window.clearTimeout(t);
+  }, []);
+
+  // Buscar por adelantado las URLs de audio del proyecto abierto y del que suena (así el play es instantáneo)
+  const prefetchAudioFor = (tracks: Track[]) => {
+    const missing = tracks.filter((t) => !t.customAudioUrl && !customAudioMap[t.id]).slice(0, 12);
+    if (missing.length === 0) return;
+    void Promise.all(
+      missing.map(async (t) => {
+        const url = await resolveTrackAudioUrl(t.id).catch(() => undefined);
+        return url ? ([t.id, url] as const) : null;
+      })
+    ).then((pairs) => {
+      const found = pairs.filter(Boolean) as (readonly [string, string])[];
+      if (found.length) setCustomAudioMap((prev) => ({ ...prev, ...Object.fromEntries(found) }));
+    });
+  };
+  useEffect(() => {
+    if (activeProject && !activeProject.id.startsWith("__")) prefetchAudioFor(activeProject.tracks);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeProject?.id]);
+  useEffect(() => {
+    if (currentProject && currentProject.id !== "standby") prefetchAudioFor(currentProject.tracks);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentProject?.id]);
 
   // Al pasar a ser control remoto, este dispositivo deja de sonar (sin mandar órdenes)
   useEffect(() => {
@@ -5975,7 +6017,8 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                 }
               }}
             >
-              <PerformativePlayer
+              {PlayerComp && (
+              <PlayerComp
                 track={currentTrack}
                 project={
                   projects.find((p) => p.id === currentProject.id) ||
@@ -6019,6 +6062,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                 theme={theme}
                 onToggleTheme={toggleTheme}
               />
+              )}
             </motion.div>
             </motion.div>
           </UniversalPortal>

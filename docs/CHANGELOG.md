@@ -1,5 +1,6 @@
 # Changelog (lo más nuevo arriba · 1–3 líneas por cambio)
 
+- 2026-11-13 · Reproductor: carga manual del grande (sin Suspense de next/dynamic) → primera apertura 940 → 61 ms en build de prod; escena 3D se monta tras el slide; `sfx.primeAudio()` desbloquea el audio en el mismo toque (iOS) y se precargan las URLs de audio del proyecto abierto/sonando.
 - 2026-11-13 · Perfiles de otros artistas: página `viewingArtist` (proyectos públicos + lanzamientos en Spotify + tracks) desde directorio, reproductor (grande y mini) y vista de proyecto; URL `eltablero.blog/@handle` (rewrite en `next.config.ts`, botón atrás del navegador). Sin cuenta abre el modo explorar.
 - 2026-11-13 · "Lo último subido": tracks de ejemplo sin audio abren el álbum en Spotify (no el ruidito procedural).
 - 2026-11-13 · Subidas más rápidas: la sincronización ya no cancela subidas en curso (una corrida a la vez, repite con lo último), cada archivo se sube una sola vez (`persistedUploads`), tapa/canvas/tracks en paralelo (3 a la vez). `App.tsx`, `supabase.ts`.
