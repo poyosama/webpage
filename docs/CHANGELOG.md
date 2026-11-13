@@ -1,4 +1,5 @@
 # Changelog (lo más nuevo arriba · 1–3 líneas por cambio)
+- 2026-11-13 · Mover un track a otro proyecto le pone la portada del proyecto destino; "Editar track" ya no tiene "Cambiar portada" (queda Reemplazar audio). `App.tsx`.
 - 2026-11-13 · Ícono de la pestaña/app: ahora "tab." (recortado del logo, fondo negro). `public/{icon,icon-192,apple-touch-icon}.png`, `favicon.ico`, `src/app/{icon.png,favicon.ico}`, fuente `public/brand/icon-tab.svg`.
 
 - 2026-11-13 · Tablero (web): nombres de artista al lado de cada proyecto legibles (mono 0.6–0.72rem), proyectos sin cortes de línea; sigue entrando en la primera pantalla. Roadmap anotado en `STATE.md` (rotación diaria, fijados a mano, comunidad). SQL completo aplicado y verificado.

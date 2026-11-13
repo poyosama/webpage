@@ -547,7 +547,8 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
         if (p.id === target.id) {
           const updated = {
             ...p,
-            tracks: [...p.tracks, trackToMove],
+            // La portada del track pasa a ser la del proyecto destino
+            tracks: [...p.tracks, { ...trackToMove, coverUrl: target.coverUrl }],
           };
           if (currentProject.id === p.id) setCurrentProject(updated);
           return updated;
@@ -6973,7 +6974,6 @@ function EditTrackModal({
   const [note, setNote] = useState(track.note || "");
   const [c2, setC2] = useState(track.c2);
   const [customAudioUrl, setCustomAudioUrl] = useState<string | undefined>(track.customAudioUrl);
-  const [coverUrl, setCoverUrl] = useState<string | undefined>(track.coverUrl);
 
   return (
     <motion.div
@@ -7046,19 +7046,6 @@ function EditTrackModal({
 
           <div className="modal-field full et-files">
             <label className="et-file-btn">
-              {coverUrl ? <img src={coverUrl} alt="" /> : <DiscIcon size={16} />}
-              <span>Cambiar portada</span>
-              <input
-                type="file"
-                hidden
-                accept="image/*,.png,.jpg,.jpeg,.webp,.gif"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) setCoverUrl(URL.createObjectURL(f));
-                }}
-              />
-            </label>
-            <label className="et-file-btn">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>
               <span>Reemplazar audio</span>
               <input
@@ -7119,7 +7106,6 @@ function EditTrackModal({
                   c2,
                   accent: c2,
                   customAudioUrl,
-                  coverUrl,
                 })
               }
             >
