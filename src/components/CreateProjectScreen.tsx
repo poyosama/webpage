@@ -255,7 +255,7 @@ export default function CreateProjectScreen({
 }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [visibility, setVisibility] = useState<"private" | "public">("private");
+  const [visibility, setVisibility] = useState<"private" | "public" | "friends">("private");
   const [color, setColor] = useState("#e11d48");
   const [coverUrl, setCoverUrl] = useState("");
   const [uploadedClips, setUploadedClips] = useState<ProjectVideoClip[]>([]);
@@ -436,17 +436,7 @@ export default function CreateProjectScreen({
               </button>
               <h1 className="cp-title" style={{ margin: 0 }}>Crear proyecto</h1>
             </div>
-            <div className="seg-pills">
-              <button
-                type="button"
-                className={visibility === "private" ? "on" : ""}
-                onClick={() => {
-                  sfx.tap();
-                  setVisibility("private");
-                }}
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg> Privado
-              </button>
+            <div className="seg-pills visibility-pills">
               <button
                 type="button"
                 className={visibility === "public" ? "on" : ""}
@@ -456,6 +446,26 @@ export default function CreateProjectScreen({
                 }}
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.8 3 2.8 15 0 18M12 3c-2.8 3-2.8 15 0 18"/></svg> Público
+              </button>
+              <button
+                type="button"
+                className={visibility === "friends" ? "on" : ""}
+                onClick={() => {
+                  sfx.tap();
+                  setVisibility("friends");
+                }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><circle cx="17" cy="9" r="2.6"/><path d="M15.5 14.2A4.5 4.5 0 0 1 21 18.5"/></svg> Amigos
+              </button>
+              <button
+                type="button"
+                className={visibility === "private" ? "on" : ""}
+                onClick={() => {
+                  sfx.tap();
+                  setVisibility("private");
+                }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg> Solo yo
               </button>
             </div>
           </div>

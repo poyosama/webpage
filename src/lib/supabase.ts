@@ -422,7 +422,7 @@ export function mapProjectRow(row: any, idx = 0): Project {
     type: row.type || "Mixtape",
     year: row.year || "2026",
     status: row.status || "Publicado",
-    visibility: isPublic ? "public" : "private",
+    visibility: row.visibility === "friends" || row.visibility === "public" || row.visibility === "private" ? row.visibility : isPublic ? "public" : "private",
     createdAt: row.created_at,
     dateLabel: row.date_label || `${row.year || "2026"} · ${row.zone || "Mendoza"}`,
     zone: row.zone || "Mendoza",
@@ -768,7 +768,16 @@ export async function saveProjectToSupabase(project: Project, userId?: string): 
 
     let { error: projErr } = await supabase
       .from("projects")
-      .upsert({ ...baseRow, is_public: project.visibility === "public" }, { onConflict: "id" });
+      .upsert(
+        { ...baseRow, is_public: project.visibility === "public", visibility: project.visibility || "private" },
+        { onConflict: "id" }
+      );
+    if (projErr && /visibility/i.test(projErr.message)) {
+      // la columna visibility todavía no existe (falta migration_privacy.sql): amigos = privado
+      ({ error: projErr } = await supabase
+        .from("projects")
+        .upsert({ ...baseRow, is_public: project.visibility === "public" }, { onConflict: "id" }));
+    }
     if (projErr && /is_public/i.test(projErr.message)) {
       // la columna is_public todavía no existe en la DB (falta correr la migración)
       ({ error: projErr } = await supabase.from("projects").upsert(baseRow, { onConflict: "id" }));

@@ -65,7 +65,7 @@ export type Project = {
   artistId: string;
   type: ProjectType;
   status: "Publicado" | "WIP" | "Privado" | "En mezcla" | "Master";
-  visibility?: "private" | "public";
+  visibility?: "private" | "public" | "friends";
   createdAt?: string;
   year: string;
   dateLabel: string;
@@ -1049,3 +1049,18 @@ export function projectArtistLabel(p: { artist: string; coauthors?: string[] }):
   const extra = (p.coauthors || []).filter((n) => n && !base.toLowerCase().includes(n.toLowerCase()));
   return [base, ...extra].filter(Boolean).join(" · ");
 }
+
+
+export type ProjectVisibility = "public" | "friends" | "private";
+export const VISIBILITY_LABEL: Record<ProjectVisibility, string> = {
+  public: "Público",
+  friends: "Amigos",
+  private: "Solo yo",
+};
+export const VISIBILITY_HINT: Record<ProjectVisibility, string> = {
+  public: "Lo ve todo El tablero.",
+  friends: "Lo ven solo tus amigos (los que se siguen con vos).",
+  private: "Solo lo ves vos (y a quien le pases un link).",
+};
+export const nextVisibility = (v?: string): ProjectVisibility =>
+  v === "public" ? "friends" : v === "friends" ? "private" : "public";

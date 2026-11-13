@@ -1,5 +1,6 @@
 # Changelog (lo más nuevo arriba · 1–3 líneas por cambio)
 
+- 2026-11-13 · Privacidad de proyectos en 3 niveles (Público / Amigos / Solo yo): `projects.visibility` + RLS para amigos mutuos (`migration_privacy.sql`, en `APLICAR_TODO.sql`); selector `VisibilityPills` en compartir, editar y crear proyecto; ciclo en los toggles.
 - 2026-11-13 · Oyentes fuera de "Artistas": faltaba la columna `profiles.account_type` (todos figuraban artistas). `migration_profiles.sql` (en `APLICAR_TODO.sql`); los oyentes se marcan solos al volver a entrar y las cuentas nuevas de oyente se guardan como tales.
 - 2026-11-13 · Seguidores/amigos: tabla `follows` + RPC `social_lists` (`migration_social.sql`, sumada a `APLICAR_TODO.sql` → hay que volver a correrlo). Botón Seguir/Siguiendo/Seguir también/Amigos ✓ y contadores en el perfil de cada artista y en el propio; hoja con la lista.
 - 2026-11-13 · Pases: el validador dice qué pasó exactamente (no existe / ya se usó y quién / reemplazado por pases nuevos / venció el DD/MM); formato inválido se avisa antes de consultar.

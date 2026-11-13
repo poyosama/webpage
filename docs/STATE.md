@@ -3,7 +3,7 @@
 **Qué es:** plataforma (web + PWA, iOS vía Capacitor) para que raperos y productores de la escena guarden, compartan y escuchen sus proyectos. Next.js 16 (App Router, Turbopack) + Supabase (Postgres, Auth Google, Storage, Realtime) + Vercel. Dominio: `eltablero.blog`.
 
 ## Estado del backend
-- **Pendiente:** volver a correr `APLICAR_TODO.sql` (suma `migration_social.sql`, `migration_profiles.sql` y los mensajes nuevos del validador de pases).
+- **Pendiente:** volver a correr `APLICAR_TODO.sql` (suma `migration_social.sql`, `migration_profiles.sql`, `migration_privacy.sql` y los mensajes nuevos del validador de pases).
 - `APLICAR_TODO.sql` **aplicado en Supabase (2026-11-13)**: pases del servidor, compartir, colaboradores, borrar cuenta, me gusta sincronizados y proyectos privados por defecto (`is_public`) están activos. Si se agregan migraciones nuevas, sumarlas al final de `APLICAR_TODO.sql` (idempotente) y pedir que se vuelva a correr.
 - Proyectos existentes quedaron **privados**: para que aparezcan en el Inicio de otros hay que ponerlos en Público (botón compartir).
 - **Pendiente de correr:** `migration_account_type.sql` (ya al final de `APLICAR_TODO.sql`): columna `profiles.account_type` ('artista'|'oyente') y RPC `handle_available`. Sin ella el registro funciona igual (el código tiene fallback) pero el rol no se guarda en la base y los oyentes no se filtran del directorio para otros dispositivos.
@@ -23,6 +23,7 @@
 ## Datos / backend
 - Pases: `invite_codes` (máx. 5 vigentes, vencen a los 14 días, admin ilimitado = `invite_admins`), lógica en `src/lib/invites.ts` con fallback local.
 - Compartir: `project_shares` (token aleatorio, proyecto o track, listen/edit) + `project_members` (+ `is_coauthor` para colaboradores). RLS en `migration_sharing.sql` / `migration_collab.sql`.
+- Privacidad: `projects.visibility` public/friends/private (is_public sincronizado por trigger); amigos = `is_friend_of(owner)`.
 - Seguidores: `follows` (seguidor→seguido); amigos = se siguen los dos; `social_lists(user)` devuelve amigo/seguidor/seguido.
 - Me gusta: `track_likes` + localStorage. Sesión: localStorage + copia en cookies (400 días) en `src/lib/supabase.ts`.
 

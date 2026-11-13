@@ -13,6 +13,10 @@ import {
   STANDBY_PROJECT,
   STANDBY_TRACK,
   projectArtistLabel,
+  VISIBILITY_LABEL,
+  VISIBILITY_HINT,
+  nextVisibility,
+  type ProjectVisibility,
   type ArtistProfile,
   type ProducerDropItem,
   type ProducerDropKind,
@@ -1081,7 +1085,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
         // Privacidad estilo [untitled]: un proyecto privado SOLO lo ve su creador o quien recibió un link
         const visible = allProjs.filter(
           (p) =>
-            p.artistId === u.id || p.visibility === "public" || Boolean(storedInvites[p.id]) || sharedIds.has(p.id)
+            p.artistId === u.id || p.visibility === "public" || p.visibility === "friends" || Boolean(storedInvites[p.id]) || sharedIds.has(p.id)
         );
         const sigs: Record<string, string> = {};
         visible.forEach((p) => (sigs[p.id] = JSON.stringify(p)));
@@ -4224,33 +4228,14 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                                 className="untitled-menu-item"
                                 onClick={() => {
                                   sfx.tick();
-                                  updateProjectMeta(activeProject.id, {
-                                    visibility:
-                                      activeProject.visibility === "public"
-                                        ? "private"
-                                        : "public",
-                                  });
+                                  updateProjectMeta(activeProject.id, { visibility: nextVisibility(activeProject.visibility) });
                                   setProjectMenuOpen(false);
                                 }}
                               >
-                                {activeProject.visibility === "public" ? (
-                                  <>
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                                      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                                    </svg>
-                                    <span>Hacer privado</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                      <circle cx="12" cy="12" r="10" />
-                                      <line x1="2" y1="12" x2="22" y2="12" />
-                                      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z" />
-                                    </svg>
-                                    <span>Publicar en Inicio</span>
-                                  </>
-                                )}
+                                <VisibilityIcon v={nextVisibility(activeProject.visibility)} size={16} />
+                                <span>
+                                  Privacidad: {VISIBILITY_LABEL[(activeProject.visibility as ProjectVisibility) || "private"]} → {VISIBILITY_LABEL[nextVisibility(activeProject.visibility)]}
+                                </span>
                               </button>
                             )}
                             <button
@@ -4880,47 +4865,20 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                                 {activeIsMine ? (
                                   <button
                                     type="button"
-                                    className={`visibility-toggle ${
-                                      activeProject.visibility === "public" ? "on" : ""
-                                    }`}
+                                    className={`visibility-toggle ${activeProject.visibility === "public" ? "on" : ""}`}
                                     onClick={() => {
                                       sfx.tick();
-                                      updateProjectMeta(activeProject.id, {
-                                        visibility:
-                                          activeProject.visibility === "public"
-                                            ? "private"
-                                            : "public",
-                                      });
+                                      updateProjectMeta(activeProject.id, { visibility: nextVisibility(activeProject.visibility) });
                                     }}
-                                    title={
-                                      activeProject.visibility === "public"
-                                        ? "Visible para toda la plataforma. Tocá para hacerlo privado."
-                                        : "Solo lo ve quien tenga el link de invitación. Tocá para publicarlo."
-                                    }
+                                    title={`${VISIBILITY_HINT[(activeProject.visibility as ProjectVisibility) || "private"]} Tocá para cambiar.`}
                                   >
-                                    {activeProject.visibility === "public" ? (
-                                      <>
-                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 5 }}>
-                                          <circle cx="12" cy="12" r="10" />
-                                          <line x1="2" y1="12" x2="22" y2="12" />
-                                          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z" />
-                                        </svg>
-                                        <span>Público</span>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 5 }}>
-                                          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                                          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                                        </svg>
-                                        <span>Privado</span>
-                                      </>
-                                    )}
+                                    <VisibilityIcon v={activeProject.visibility} />
+                                    <span style={{ marginLeft: 5 }}>{VISIBILITY_LABEL[(activeProject.visibility as ProjectVisibility) || "private"]}</span>
                                   </button>
                                 ) : (
                                   <>
                                     <div className="meta-pill-static">
-                                      <b>{activeProject.visibility === "public" ? "Público" : "Privado"}</b>
+                                      <b>{VISIBILITY_LABEL[(activeProject.visibility as ProjectVisibility) || "private"]}</b>
                                     </div>
                                     {activeInviteRole === "edit" && (
                                       <div className="meta-pill-static invite-role-pill edit">
@@ -6443,7 +6401,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                 (p) =>
                   !p.id.startsWith("__") &&
                   (p.artistId === a.id || (p.coauthors || []).some((c) => c.toLowerCase() === nameLc)) &&
-                  (p.visibility === "public" || Boolean(projectInvites[p.id]))
+                  (p.visibility === "public" || p.visibility === "friends" || Boolean(projectInvites[p.id]))
               )
               .sort((x, y) => new Date(y.createdAt || 0).getTime() - new Date(x.createdAt || 0).getTime());
             const releases = DEMO_PROJECTS.filter(
@@ -6916,6 +6874,59 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
 }
 
 /* ==================== COMPONENTE: PANTALLA EDITAR TRACK ==================== */
+/** Íconos de privacidad: planeta (público), dos personas (amigos), candado (solo yo) */
+function VisibilityIcon({ v, size = 13 }: { v?: string; size?: number }) {
+  const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true };
+  if (v === "public")
+    return (
+      <svg {...common}>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M3 12h18M12 3c2.8 3 2.8 15 0 18M12 3c-2.8 3-2.8 15 0 18" />
+      </svg>
+    );
+  if (v === "friends")
+    return (
+      <svg {...common}>
+        <circle cx="9" cy="8" r="3.2" />
+        <path d="M3.5 19a5.5 5.5 0 0 1 11 0" />
+        <circle cx="17" cy="9" r="2.6" />
+        <path d="M15.5 14.2A4.5 4.5 0 0 1 21 18.5" />
+      </svg>
+    );
+  return (
+    <svg {...common}>
+      <rect x="4" y="11" width="16" height="10" rx="2.5" />
+      <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+    </svg>
+  );
+}
+
+/** Selector de privacidad: Público · Amigos · Solo yo */
+function VisibilityPills({ value, onChange }: { value?: string; onChange: (v: ProjectVisibility) => void }) {
+  const cur = (value === "public" || value === "friends" ? value : "private") as ProjectVisibility;
+  return (
+    <div className="seg-pills visibility-pills" role="radiogroup" aria-label="Privacidad">
+      {(["public", "friends", "private"] as ProjectVisibility[]).map((v) => (
+        <button
+          key={v}
+          type="button"
+          role="radio"
+          aria-checked={cur === v}
+          className={cur === v ? "on" : ""}
+          title={VISIBILITY_HINT[v]}
+          onClick={() => {
+            sfx.tick();
+            onChange(v);
+          }}
+        >
+          <VisibilityIcon v={v} />
+          <span>{VISIBILITY_LABEL[v]}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function UniversalPortal({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -7135,7 +7146,7 @@ function EditProjectModal({
 }) {
   const [title, setTitle] = useState(project.title);
   const [artist, setArtist] = useState(project.artist);
-  const [visibility, setVisibility] = useState<"private" | "public">(project.visibility || "private");
+  const [visibility, setVisibility] = useState<ProjectVisibility>((project.visibility as ProjectVisibility) || "private");
   const [description, setDescription] = useState(project.description || "");
   const [coverUrl, setCoverUrl] = useState<string | undefined>(project.coverUrl);
   const [zone, setZone] = useState(project.zone || "Mendoza");
@@ -7176,13 +7187,8 @@ function EditProjectModal({
           </label>
           <div className="modal-field full">
             <span>PRIVACIDAD</span>
-            <div className="seg-pills" style={{ marginTop: 6 }}>
-              <button type="button" className={visibility === "private" ? "on" : ""} onClick={() => setVisibility("private")}>
-                Privado
-              </button>
-              <button type="button" className={visibility === "public" ? "on" : ""} onClick={() => setVisibility("public")}>
-                Público
-              </button>
+            <div style={{ marginTop: 6 }}>
+              <VisibilityPills value={visibility} onChange={setVisibility} />
             </div>
           </div>
           <label className="modal-field">
@@ -7955,7 +7961,7 @@ function InviteProjectModal({
   isOwner: boolean;
   canShareEdit: boolean;
   onCollaboratorsChanged?: () => void;
-  onToggleVisibility: (nextVisibility: "private" | "public") => void;
+  onToggleVisibility: (nextVisibility: ProjectVisibility) => void;
   onCopiedLink: (projectId: string) => void;
   onClose: () => void;
 }) {
@@ -8078,7 +8084,7 @@ function InviteProjectModal({
             </span>
           </div>
           <div className={`invite-privacy-badge ${project.visibility === "public" ? "public" : "private"}`}>
-            {project.visibility === "public" ? "🌐 Público" : "🔒 Privado"}
+            <VisibilityIcon v={project.visibility} /> {VISIBILITY_LABEL[(project.visibility as ProjectVisibility) || "private"]}
           </div>
         </div>
 
@@ -8088,28 +8094,9 @@ function InviteProjectModal({
           <div className="invite-visibility-bar">
             <div className="invite-visibility-copy">
               <b>Visibilidad del {project.type}</b>
-              <small>
-                {project.visibility !== "public"
-                  ? "Solo lo ven vos y quien tenga un link."
-                  : "Lo ve todo El tablero."}
-              </small>
+              <small>{VISIBILITY_HINT[(project.visibility as ProjectVisibility) || "private"]}</small>
             </div>
-            <div className="seg-pills">
-              <button
-                type="button"
-                className={project.visibility !== "public" ? "on" : ""}
-                onClick={() => onToggleVisibility("private")}
-              >
-                🔒 Privado
-              </button>
-              <button
-                type="button"
-                className={project.visibility === "public" ? "on" : ""}
-                onClick={() => onToggleVisibility("public")}
-              >
-                🌐 Público
-              </button>
-            </div>
+            <VisibilityPills value={project.visibility} onChange={(v) => onToggleVisibility(v)} />
           </div>
         )}
 
