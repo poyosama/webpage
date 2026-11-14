@@ -390,6 +390,27 @@ export default function LandingScene({
     } catch {}
   }, []);
 
+  // Si cerraste la ventana de Google (o volviste atrás), el botón no puede quedar en "Conectando..."
+  useEffect(() => {
+    if (!loading) return;
+    const reset = () => setLoading(false);
+    const onVis = () => {
+      if (document.visibilityState === "visible") setTimeout(reset, 800);
+    };
+    const onShow = () => setTimeout(reset, 300);
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("pageshow", onShow);
+    window.addEventListener("focus", onVis);
+    // Red de seguridad: si a los 20 s seguimos acá, se puede volver a tocar
+    const t = setTimeout(reset, 20000);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("pageshow", onShow);
+      window.removeEventListener("focus", onVis);
+      clearTimeout(t);
+    };
+  }, [loading]);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     const mq = window.matchMedia("(max-width: 768px)");

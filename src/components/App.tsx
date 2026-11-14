@@ -1219,6 +1219,22 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       }
     })();
 
+    // Login hecho en la ventanita de Google (iPhone, app en la pantalla de inicio): al volver a la app
+    // se lee la sesión guardada para no quedar trabado en la pantalla de entrada
+    const pickUpSession = () => {
+      if (document.visibilityState !== "visible" || lastUserIdRef.current) return;
+      void supabase.auth.getSession().then(({ data: { session } }) => {
+        const u = session?.user;
+        if (!alive || !u || lastUserIdRef.current) return;
+        lastUserIdRef.current = u.id;
+        setAuthChecked(true);
+        setGoogleConnected(true);
+        void applySession(u, mounted, true);
+      });
+    };
+    document.addEventListener("visibilitychange", pickUpSession);
+    window.addEventListener("pageshow", pickUpSession);
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
@@ -1257,6 +1273,8 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     return () => {
       alive = false;
       subscription.unsubscribe();
+      document.removeEventListener("visibilitychange", pickUpSession);
+      window.removeEventListener("pageshow", pickUpSession);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

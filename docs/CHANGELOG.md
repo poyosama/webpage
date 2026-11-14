@@ -1,4 +1,5 @@
 # Changelog (lo más nuevo arriba · 1–3 líneas por cambio)
+- 2026-11-14 · Login en iPhone (app en pantalla de inicio): el botón ya no queda trabado en "Conectando..." al cerrar/volver de Google; al volver a la app se levanta la sesión hecha en la ventanita de Google. `LandingScene.tsx`, `App.tsx`.
 - 2026-11-14 · Sesión que no se pierde: si falla la red al leer el perfil ya no se trata como cuenta nueva (antes hacía signOut); reintentos al refrescar el token al abrir; "Cerrar sesión" solo cierra ese dispositivo (`scope: "local"`, antes cerraba en todos). `App.tsx`.
 - 2026-11-13 · Reproductor: "Modo Cine" pasa a "Canvas on / off / cine" (on = partículas + canvas, off = solo partículas, cine = solo canvas sin partículas; ciclo al tocar). `PerformativePlayer.tsx`.
 - 2026-11-13 · Campanita de notificaciones: me gusta a un track tuyo, guardaron tu proyecto, te siguen, ahora son amigos. Tabla `notifications` + triggers + RPC `my_notifications` (`migration_notifications.sql`, sumada a `APLICAR_TODO.sql`: **hay que correrla**); `NotificationBell.tsx` (Realtime).
