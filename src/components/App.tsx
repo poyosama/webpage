@@ -968,13 +968,33 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
 
     try {
       // 1 sola ronda de red: pedimos perfil, proyectos, artistas y guardados TODOS EN PARALELO
+      // El perfil se pide con reintentos: si falla la red NO hay que tratarlo como cuenta nueva
+      // (antes eso terminaba en signOut y te pedía loguear de nuevo)
+      const fetchProfile = async () => {
+        for (let i = 0; i < 3; i++) {
+          const r = await supabase.from("profiles").select("*").eq("id", u.id).maybeSingle();
+          if (!r.error) return r;
+          await new Promise((res) => setTimeout(res, 700 * (i + 1)));
+        }
+        return null;
+      };
       const [profileRes, allProjs, profiles, savedIds] = await Promise.all([
-        supabase.from("profiles").select("*").eq("id", u.id).maybeSingle(),
+        fetchProfile(),
         fetchUserProjectsFromSupabase(),
         fetchCommunityProfilesFromSupabase(),
         fetchSavedProjectIdsFromSupabase(u.id),
       ]);
 
+      if (!profileRes) {
+        // Sin red / Supabase lento: la sesión sigue, se reintenta en unos segundos
+        if (mounted()) {
+          setGoogleConnected(true);
+          setTimeout(() => {
+            if (mounted() && lastUserIdRef.current === u.id) void applySession(u, mounted, fresh);
+          }, 5000);
+        }
+        return;
+      }
       const existing = profileRes.data;
       let base: ArtistProfile;
       if (existing) {
@@ -1018,7 +1038,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
               );
               localStorage.removeItem("board_pending_invite_code");
             } catch {}
-            await supabase.auth.signOut();
+            await supabase.auth.signOut({ scope: "local" });
             return;
           }
           inviteMode = consumed;
@@ -1129,9 +1149,19 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
 
     (async () => {
       try {
-        const {
+        // Si refrescar el token falla por la red (PC recién prendida, wifi conectando), reintentar
+        // antes de mostrar la pantalla de entrada: la sesión guardada sigue siendo válida
+        let {
           data: { session },
+          error: sessionError,
         } = await supabase.auth.getSession();
+        for (let i = 0; i < 3 && !session && sessionError && alive; i++) {
+          await new Promise((res) => setTimeout(res, 1200 * (i + 1)));
+          ({
+            data: { session },
+            error: sessionError,
+          } = await supabase.auth.getSession());
+        }
         if (session?.user && alive) {
           lastUserIdRef.current = session.user.id;
           setGoogleConnected(true);
@@ -2881,7 +2911,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
           setOnboarding(null);
           setGoogleConnected(false);
           setShowLanding(true);
-          void supabase.auth.signOut();
+          void supabase.auth.signOut({ scope: "local" });
         }}
       />
     );
@@ -5622,7 +5652,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                                 onClick={async () => {
                                   setProfileSettingsOpen(false);
                                   try {
-                                    await supabase.auth.signOut();
+                                    await supabase.auth.signOut({ scope: "local" });
                                   } catch {}
                                   setGoogleConnected(false);
                                   sfx.drop();
@@ -6200,7 +6230,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
             onSaveProfile={handleSaveProfileAndHandle}
             onSignOut={async () => {
               try {
-                await supabase.auth.signOut();
+                await supabase.auth.signOut({ scope: "local" });
               } catch {}
               setGoogleConnected(false);
               setAuthModalOpen(false);
