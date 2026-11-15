@@ -1,4 +1,4 @@
-# Extensión "El tablero — Importar desde [untitled]"
+# Extensión "El tablero — Importador de proyectos"
 
 Código en `extension/` (Manifest V3, Chrome y Edge). El .zip que bajan los usuarios está en `public/tools/eltablero-extension.zip`:
 **si cambiás algo en `extension/`, regenerá el zip** (y subí `version` en `manifest.json`).
