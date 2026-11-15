@@ -45,7 +45,7 @@ export default function ImportarUntitled() {
         <h1>Llevá tus proyectos a El tablero</h1>
         <p>
           [untitled] no tiene forma de exportar los proyectos. Este botón corre adentro de [untitled] con tu sesión y trae
-          tus proyectos con portada, el orden de los tracks, BPM, key y los audios. Después los revisás y tocás Importar.
+          tus proyectos con portada, el orden de los tracks, BPM, key y los audios en un .zip, que después soltás en El tablero.
         </p>
 
         <div className="iu-card">
@@ -60,14 +60,17 @@ export default function ImportarUntitled() {
               <br />
               <span className="iu-note">¿No ves la barra de favoritos? Ctrl + Shift + B (en Mac, Cmd + Shift + B).</span>
             </li>
-            <li>Tené El tablero abierto con tu sesión iniciada en este navegador.</li>
-            <li>Abrí <b>untitled.stream</b>, logueado, y entrá a tu biblioteca.</li>
-            <li>Tocá el favorito <b>⚡ Llevar a El tablero</b>. Abajo a la derecha aparece la lista de tus proyectos.</li>
+            <li>Abrí <b>untitled.stream/library</b> (tu biblioteca), logueado.</li>
+            <li>Tocá el favorito <b>⚡ Llevar a El tablero</b>. A la derecha aparece la lista de tus proyectos.</li>
             <li>
               Elegí cuáles llevar (tildá &quot;WAV originales&quot; si los querés; si no, se traen en MP3, que es mucho más rápido)
-              y tocá <b>Llevar a El tablero</b>. Si el navegador bloquea la ventana nueva, permití ventanas emergentes para untitled.stream.
+              y tocá <b>Bajar para El tablero</b>. Se descarga un <b>.zip</b> (o varios si es mucho). Si el navegador pregunta si
+              permitir varias descargas, poné que sí.
             </li>
-            <li>Se abre El tablero y van llegando los proyectos. Cuando termine, revisá los nombres y tocá <b>Importar</b>.</li>
+            <li>
+              En El tablero: tu perfil → <b>+</b> → <b>Importar carpetas o .zip</b> → elegí el .zip. Aparecen tus proyectos con portada,
+              orden, BPM y key de [untitled]. Revisá y tocá <b>Importar</b>.
+            </li>
           </ol>
         </div>
 
@@ -102,7 +105,7 @@ export default function ImportarUntitled() {
         <p className="iu-safe">
           Solo se traen <b>tus</b> proyectos (o en los que sos colaborador con permiso de edición). Los de otras cuentas no:
           que los importe su dueño. Tu sesión de [untitled] no sale de tu navegador: el botón baja los archivos como si tocaras
-          &quot;descargar&quot; vos y se los pasa directo a la pestaña de El tablero.
+          &quot;descargar&quot; vos y los junta en un .zip en tu compu.
         </p>
         <details style={{ marginTop: 18, color: "#a1a1aa", fontSize: 14 }}>
           <summary style={{ cursor: "pointer" }}>¿No anda? Favorito de diagnóstico</summary>

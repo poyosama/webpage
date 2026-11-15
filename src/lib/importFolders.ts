@@ -31,6 +31,13 @@ export type ImportProjectDraft = {
 const AUDIO_RE = /\.(wav|wave|mp3|m4a|aac|flac|aif|aiff|aifc|ogg|opus|alac|caf)$/i;
 const IMAGE_RE = /\.(jpe?g|png|webp|gif|avif|heic)$/i;
 const JUNK_RE = /(^|\/)(__MACOSX|\.DS_Store|Thumbs\.db|desktop\.ini)(\/|$)|(^|\/)\._/i;
+/** Datos que arma el favorito de [untitled]: título, orden, BPM, key, duración y quién subió cada track */
+const MANIFEST_RE = /(^|\/)el-tablero\.json$/i;
+type ImportManifest = {
+  title?: string;
+  cover?: string | null;
+  tracks?: { file: string; title?: string; bpm?: number | null; key?: string | null; durationSec?: number | null; uploader?: string | null }[];
+};
 const COVER_NAME_RE = /(cover|artwork|art|front|folder|portada|tapa)/i;
 
 export const isAudioName = (n: string) => AUDIO_RE.test(n);
@@ -67,7 +74,7 @@ export async function expandZip(zip: File): Promise<ImportEntry[]> {
   const files: Record<string, Uint8Array> = await new Promise((resolve, reject) =>
     unzip(
       buf,
-      { filter: (f) => !JUNK_RE.test(f.name) && (AUDIO_RE.test(f.name) || IMAGE_RE.test(f.name)) },
+      { filter: (f) => !JUNK_RE.test(f.name) && (AUDIO_RE.test(f.name) || IMAGE_RE.test(f.name) || MANIFEST_RE.test(f.name)) },
       (err, data) => (err ? reject(err) : resolve(data))
     )
   );
@@ -138,17 +145,21 @@ export async function buildImportDrafts(raw: ImportEntry[], looseTitle = "Import
       } catch (err) {
         console.warn("No se pudo abrir el zip:", e.file.name, err);
       }
-    } else if (AUDIO_RE.test(e.file.name) || IMAGE_RE.test(e.file.name)) {
+    } else if (AUDIO_RE.test(e.file.name) || IMAGE_RE.test(e.file.name) || MANIFEST_RE.test(e.path)) {
       entries.push(e);
     }
   }
 
-  const byDir = new Map<string, { audios: ImportEntry[]; images: ImportEntry[] }>();
+  const byDir = new Map<string, { audios: ImportEntry[]; images: ImportEntry[]; manifest?: ImportManifest }>();
   for (const e of entries) {
     const d = dirOf(e.path);
     if (!byDir.has(d)) byDir.set(d, { audios: [], images: [] });
     const g = byDir.get(d)!;
-    if (AUDIO_RE.test(e.file.name)) g.audios.push(e);
+    if (MANIFEST_RE.test(e.path)) {
+      try {
+        g.manifest = JSON.parse(await e.file.text());
+      } catch {}
+    } else if (AUDIO_RE.test(e.file.name)) g.audios.push(e);
     else g.images.push(e);
   }
 
@@ -160,6 +171,38 @@ export async function buildImportDrafts(raw: ImportEntry[], looseTitle = "Import
     let images = g.images;
     if (!images.length && dir) images = byDir.get(dirOf(dir))?.images || [];
     const cover = [...images].sort((a, b) => Number(COVER_NAME_RE.test(b.file.name)) - Number(COVER_NAME_RE.test(a.file.name)))[0]?.file;
+
+    // Viene del favorito de [untitled]: se usan sus títulos, orden, BPM, key y portada
+    const man = g.manifest;
+    if (man && man.tracks && man.tracks.length) {
+      const byName = new Map(g.audios.map((a) => [a.file.name, a.file]));
+      const mTracks: ImportTrackDraft[] = [];
+      man.tracks.forEach((t) => {
+        const f = byName.get(t.file);
+        if (!f) return;
+        mTracks.push({
+          file: f,
+          title: t.title || cleanTrackTitle(t.file).title,
+          order: mTracks.length,
+          bpm: t.bpm ?? null,
+          key: t.key || null,
+          durationSec: t.durationSec ?? null,
+          note: t.uploader ? `Subido por @${t.uploader} en [untitled]` : undefined,
+        });
+      });
+      const mCover = (man.cover && g.images.find((im) => im.file.name === man.cover)?.file) || cover;
+      if (mTracks.length) {
+        drafts.push({
+          key: dir || "__loose__",
+          title: (man.title || lastSeg(dir) || looseTitle).trim(),
+          cover: mCover,
+          coverPreview: mCover ? URL.createObjectURL(mCover) : undefined,
+          tracks: mTracks,
+          include: true,
+        });
+        continue;
+      }
+    }
 
     const tracks = g.audios
       .map((a) => {
