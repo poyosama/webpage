@@ -202,6 +202,42 @@ export const sfx = {
       hapticPulse(104, 40, 0.009, 0.18, 0.05);
     }, 32);
   },
+  /**
+   * "Pup" suave para el pull-to-refresh (ear candy, tipo Twitter pero bajito):
+   * burbuja de seno con caída de tono + un brillo arriba, ataque corto y cola de ~0,2 s.
+   */
+  pop() {
+    if (muted) return;
+    const c = ac();
+    if (!c) return;
+    const t = c.currentTime + 0.005;
+    const out = c.createGain();
+    out.gain.value = 0.16;
+    const lp = c.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = 3200;
+    out.connect(lp);
+    lp.connect(c.destination);
+
+    const voice = (f0: number, f1: number, peak: number, dur: number, delay = 0) => {
+      const o = c.createOscillator();
+      const g = c.createGain();
+      o.type = "sine";
+      o.frequency.setValueAtTime(f0, t + delay);
+      o.frequency.exponentialRampToValueAtTime(f1, t + delay + dur * 0.45);
+      g.gain.setValueAtTime(0.0001, t + delay);
+      g.gain.exponentialRampToValueAtTime(peak, t + delay + 0.006);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + delay + dur);
+      o.connect(g);
+      g.connect(out);
+      o.start(t + delay);
+      o.stop(t + delay + dur + 0.02);
+    };
+    // cuerpo de la burbuja ("p-u")
+    voice(620, 1180, 0.9, 0.16);
+    // brillo cristalino un toque después ("p")
+    voice(1560, 2340, 0.22, 0.12, 0.045);
+  },
   play() {
     hapticPulse(88, 34, 0.012, 0.24, 0.08);
   },

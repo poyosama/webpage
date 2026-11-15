@@ -1,4 +1,5 @@
 # Changelog (lo más nuevo arriba · 1–3 líneas por cambio)
+- 2026-11-15 · Tirar para abajo para actualizar: vuelve a andar desde cualquier parte de la pantalla (antes solo la franja de arriba), ignora gestos de costado y modales; al soltar hace un "pup" suave (`sfx.pop()`, respeta el mute) y un rebote del ícono. `PullToRefresh.tsx`, `sfx.ts`.
 - 2026-11-14 · Login en iPhone (app en pantalla de inicio): el botón ya no queda trabado en "Conectando..." al cerrar/volver de Google; al volver a la app se levanta la sesión hecha en la ventanita de Google. `LandingScene.tsx`, `App.tsx`.
 - 2026-11-14 · Sesión que no se pierde: si falla la red al leer el perfil ya no se trata como cuenta nueva (antes hacía signOut); reintentos al refrescar el token al abrir; "Cerrar sesión" solo cierra ese dispositivo (`scope: "local"`, antes cerraba en todos). `App.tsx`.
 - 2026-11-13 · Reproductor: "Modo Cine" pasa a "Canvas on / off / cine" (on = partículas + canvas, off = solo partículas, cine = solo canvas sin partículas; ciclo al tocar). `PerformativePlayer.tsx`.
