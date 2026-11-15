@@ -4,15 +4,39 @@
   "short_name": "El tablero",
   "version": "1.0.0",
   "description": "Llevá tus proyectos de [untitled] a El tablero en un toque: tracks, portada, orden, BPM y key.",
-  "icons": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png", "128": "icons/icon128.png" },
-  "action": { "default_title": "El tablero — Importar desde [untitled]", "default_icon": { "16": "icons/icon16.png", "32": "icons/icon32.png" } },
-  "background": { "service_worker": "background.js" },
-  "permissions": ["scripting", "tabs"],
-  "host_permissions": ["https://untitled.stream/*", "https://sb.untitled.stream/*"],
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "El tablero — Importar desde [untitled]",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "scripting",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://untitled.stream/*",
+    "https://sb.untitled.stream/*"
+  ],
   "content_scripts": [
     {
-      "matches": ["https://eltablero.blog/*", "https://www.eltablero.blog/*", "http://localhost/*"],
-      "js": ["bridge.js"],
+      "matches": [
+        "https://eltablero.blog/*",
+        "https://www.eltablero.blog/*"
+      ],
+      "js": [
+        "bridge.js"
+      ],
       "run_at": "document_start"
     }
   ]

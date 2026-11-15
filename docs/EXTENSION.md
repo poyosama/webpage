@@ -6,7 +6,7 @@ Código en `extension/` (Manifest V3, Chrome y Edge). El .zip que bajan los usua
 ```bash
 cd extension && zip -r ../public/tools/eltablero-extension.zip . -x '.*' && cd ..
 ```
-(el zip actual tiene todo adentro de una carpeta `eltablero-extension/`; cualquiera de las dos formas carga bien).
+La tienda exige `manifest.json` en la **raíz** del zip (no adentro de una carpeta). Sin `localhost` en el manifest.
 
 ## Cómo funciona
 - `bridge.js` (solo en eltablero.blog): la página le habla con `window.postMessage({source:"et-page", type, id, payload})`.

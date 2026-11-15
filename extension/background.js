@@ -112,7 +112,7 @@ async function fetchFile(url) {
 chrome.runtime.onMessage.addListener(function (msg, sender, reply) {
   /* Solo responde a la página de El tablero (el puente corre únicamente ahí) */
   var from = sender && sender.url ? sender.url : "";
-  if (!/^https:\/\/(www\.)?eltablero\.blog\//.test(from) && !/^http:\/\/localhost(:\d+)?\//.test(from)) {
+  if (!/^https:\/\/(www\.)?eltablero\.blog\//.test(from)) {
     reply({ error: "origen no permitido" });
     return false;
   }
