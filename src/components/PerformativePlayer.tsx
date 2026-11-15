@@ -318,7 +318,18 @@ export default function PerformativePlayer({
   }, [theme]);
 
   // on = partículas + canvas · off = solo partículas · cine = solo canvas (sin partículas)
-  const [canvasMode, setCanvasMode] = useState<"on" | "off" | "cine">("on");
+  const [canvasMode, setCanvasMode] = useState<"on" | "off" | "cine">(() => {
+    try {
+      const v = localStorage.getItem("eltablero_canvas_mode");
+      if (v === "on" || v === "off" || v === "cine") return v;
+    } catch {}
+    return "on";
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("eltablero_canvas_mode", canvasMode);
+    } catch {}
+  }, [canvasMode]);
   const [impulseSignal, setImpulseSignal] = useState(0);
   const [seed, setSeed] = useState(0);
   const [queueOpen, setQueueOpen] = useState(false);

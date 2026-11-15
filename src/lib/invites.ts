@@ -211,7 +211,7 @@ async function legacy_getOrGenerateUserInvites(
   return {
     codes: userCodes
       .filter((c) => !c.used && Date.now() - new Date(c.createdAt).getTime() < TWO_WEEKS_MS)
-      .slice(0, 5), // solo vigentes, máx. 5
+      .slice(0, 30), // solo vigentes
     canGenerateNewBatch,
     daysUntilNextBatch,
   };
@@ -291,10 +291,7 @@ async function legacy_generateExtraInvitesForUser(
   const registry = readGlobalRegistry();
   const now = new Date().toISOString();
   const n = Math.max(1, Math.min(5, Math.floor(count)));
-  // la tanda nueva reemplaza a los pases sin usar de antes
-  for (const [k, v] of Object.entries(registry)) {
-    if (v.creatorId === userId && !v.used) delete registry[k];
-  }
+  // los pases anteriores siguen valiendo hasta sus 14 días
 
   for (let i = 0; i < n; i++) {
     let code = generateCleanCodeSlug();
@@ -526,7 +523,7 @@ function rowToItem(r: InviteRow): InviteCodeItem {
 }
 
 async function fetchMyServerCodes(userId: string): Promise<InviteCodeItem[] | null> {
-  // Solo los pases vigentes: sin usar, sin reemplazar y dentro de los 14 días (máx. 5)
+  // Solo los pases vigentes: sin usar, sin reemplazar y dentro de los 14 días
   let { data, error } = await supabase
     .from("invite_codes")
     .select("*")
@@ -535,7 +532,7 @@ async function fetchMyServerCodes(userId: string): Promise<InviteCodeItem[] | nu
     .eq("revoked", false)
     .gt("expires_at", new Date().toISOString())
     .order("created_at", { ascending: false })
-    .limit(5);
+    .limit(30);
   if (error && /revoked|expires_at/i.test(error.message || "")) {
     // migración vieja sin vencimiento
     ({ data, error } = await supabase
@@ -544,7 +541,7 @@ async function fetchMyServerCodes(userId: string): Promise<InviteCodeItem[] | nu
       .eq("creator_id", userId)
       .eq("used", false)
       .order("created_at", { ascending: false })
-      .limit(5));
+      .limit(30));
   }
   if (error) {
     if (isMissingRpc(error)) serverMode = false;
@@ -599,7 +596,7 @@ export async function getOrGenerateUserInvites(
       const latest = codes[0] ? new Date(codes[0].createdAt).getTime() : 0;
       const since = Date.now() - latest;
       return {
-        codes: codes.slice(0, 5),
+        codes: codes.slice(0, 30),
         canGenerateNewBatch: codes.length === 0 || since >= TWO_WEEKS_MS,
         daysUntilNextBatch: Math.max(0, Math.ceil((TWO_WEEKS_MS - since) / 86400000)),
       };
@@ -616,7 +613,7 @@ export async function generateNewBatchForUser(
 ): Promise<InviteCodeItem[]> {
   if (serverMode !== false) {
     const res = await rpcCreate(3);
-    if (res.codes) return res.codes.slice(0, 6);
+    if (res.codes) return res.codes.slice(0, 30);
   }
   return legacy_generateNewBatchForUser(userId, userHandle, userName);
 }

@@ -190,6 +190,24 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   const [syncStatus, setSyncStatus] = useState<"idle" | "saving" | "error">("idle");
   const [artistSort, setArtistSort] = useState<"recientes" | "populares">("recientes");
   const lastUserIdRef = useRef<string | null>(null);
+  // Último toque de la persona: si ya está navegando, una carga lenta de la cuenta no la saca al Inicio
+  const lastUserTapRef = useRef(0);
+  useEffect(() => {
+    const mark = () => {
+      lastUserTapRef.current = Date.now();
+    };
+    window.addEventListener("pointerdown", mark, { capture: true, passive: true });
+    return () => window.removeEventListener("pointerdown", mark, { capture: true });
+  }, []);
+
+  // Service worker: la app guardada en el teléfono abre al toque y se actualiza por detrás (public/sw.js)
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "production") return;
+    if (!("serviceWorker" in navigator) || (location.protocol !== "https:" && location.hostname !== "localhost")) return;
+    const reg = () => void navigator.serviceWorker.register("/sw.js").catch(() => {});
+    if (document.readyState === "complete") reg();
+    else window.addEventListener("load", reg, { once: true });
+  }, []);
   const syncedSigRef = useRef<Record<string, string>>({});
 
   // Sistema de invitaciones exclusivas de board. (3 códigos cada 2 semanas)
@@ -735,6 +753,11 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       } else if (cur === "/create") {
         setShowLanding(false);
         setTab("crear-proyecto");
+      } else if (cur.startsWith("/@")) {
+        // perfiles: los maneja su propio listener, no cambiar de pestaña
+      } else if (cur.startsWith("/project/")) {
+        setShowLanding(false);
+        setTab("biblioteca");
       } else {
         setShowLanding(false);
         setTab("inicio");
@@ -957,6 +980,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   // Carga (o crea) el perfil de la cuenta + todos los proyectos en PARALELO (Stale-While-Revalidate)
   const applySession = async (u: any, mounted: () => boolean, fresh: boolean) => {
     if (!u || !mounted()) return;
+    const startedAt = Date.now();
     // La identidad la arma la persona en el registro: no se importa nombre, handle ni foto de Google
 
     // Rol guardado en este dispositivo por versiones viejas (antes no se guardaba en la base)
@@ -1065,7 +1089,9 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       if (!mounted()) return;
       setMeProfile(base);
       setGoogleConnected(true);
-      if (fresh) {
+      // Con conexión lenta esto puede terminar varios segundos después: si mientras tanto la persona
+      // tocó algo (ej. abrió un proyecto), no se la manda al Inicio
+      if (fresh && lastUserTapRef.current < startedAt) {
         setShowLanding(false);
         if (typeof window !== "undefined" && window.location.pathname.startsWith("/project/")) {
           setTab("biblioteca");

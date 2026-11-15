@@ -157,7 +157,7 @@ export function InviteFriendsModal({ profile, onClose }: InviteFriendsModalProps
           {unlimited ? (
             <>
               El tablero. es una plataforma exclusiva para artistas y productores. Tu cuenta tiene{" "}
-              <b>pases ilimitados</b>. Cada tanda trae 5 y reemplaza a la anterior. Cada pase es de un solo uso y vence a los 14 días.
+              <b>pases ilimitados</b>. Cada tanda trae 5 y los anteriores siguen valiendo. Cada pase es de un solo uso y vence a los 14 días de creado.
             </>
           ) : (
             <>

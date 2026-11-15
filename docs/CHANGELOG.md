@@ -1,4 +1,8 @@
 # Changelog (lo más nuevo arriba · 1–3 líneas por cambio)
+- 2026-11-15 · Reproductor recuerda el modo Canvas (on/off/cine) en `localStorage`. `PerformativePlayer.tsx`.
+- 2026-11-15 · Pases: generar nuevos ya no invalida los anteriores; cada uno vence solo a los 14 días (y vuelven a valer los invalidados dentro de su ventana). `migration_invites_no_revoke.sql` (al final de `APLICAR_TODO.sql`: **hay que correrla**), `invites.ts`.
+- 2026-11-15 · Navegación: una carga lenta de la cuenta ya no te saca al Inicio si ya tocaste algo (ej. abriste un proyecto); "atrás" a `/project/…` o `/@…` no te manda al Inicio. `App.tsx`.
+- 2026-11-15 · Arranque rápido: service worker (`public/sw.js`): página red-primero con 3,5 s y respaldo guardado, `/_next/static` desde el teléfono; abre sin señal. Registro en `App.tsx`.
 - 2026-11-15 · Perfil en celu: la página ya no se arrastra de costado (las métricas tracks/proyectos/amigos/seguidores/seguidos desbordaban); ahora número arriba y etiqueta abajo, entran las 5; `overflow-x: hidden` en las páginas con scroll interno. `ui-refresh.css`.
 - 2026-11-15 · Tirar para abajo para actualizar: vuelve a andar desde cualquier parte de la pantalla (antes solo la franja de arriba), ignora gestos de costado y modales; al soltar hace un "pup" suave (`sfx.pop()`, respeta el mute) y un rebote del ícono. `PullToRefresh.tsx`, `sfx.ts`.
 - 2026-11-14 · Login en iPhone (app en pantalla de inicio): el botón ya no queda trabado en "Conectando..." al cerrar/volver de Google; al volver a la app se levanta la sesión hecha en la ventanita de Google. `LandingScene.tsx`, `App.tsx`.

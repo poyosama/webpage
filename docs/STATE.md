@@ -20,7 +20,7 @@
 - **Control remoto entre dispositivos** (`src/lib/remotePlayer.ts`, Supabase Realtime `player:<userId>`): un dispositivo suena, los otros controlan.
 
 ## Datos / backend
-- Pases: `invite_codes` (máx. 5 vigentes, vencen a los 14 días, admin ilimitado = `invite_admins`), lógica en `src/lib/invites.ts` con fallback local.
+- Pases: `invite_codes` (cada pase vence solo a los 14 días de creado; generar nuevos no invalida los anteriores — **pendiente correr** `migration_invites_no_revoke.sql`; admin ilimitado = `invite_admins`), lógica en `src/lib/invites.ts` con fallback local.
 - Compartir: `project_shares` (token aleatorio, proyecto o track, listen/edit) + `project_members` (+ `is_coauthor` para colaboradores). RLS en `migration_sharing.sql` / `migration_collab.sql`.
 - Privacidad: `projects.visibility` public/friends/private (is_public sincronizado por trigger); amigos = `is_friend_of(owner)`.
 - Seguidores: `follows` (seguidor→seguido); amigos = se siguen los dos; `social_lists(user)` devuelve amigo/seguidor/seguido.
@@ -28,6 +28,7 @@
 - Me gusta: `track_likes` + localStorage. Sesión: localStorage + copia en cookies (400 días) en `src/lib/supabase.ts`.
 
 ## Archivos clave
+- `public/sw.js`: service worker (arranque rápido / sin señal). Si cambia la estrategia, subir `VERSION`.
 - `src/components/App.tsx` (~7k líneas): estado global, pantallas, modales.
 - Estilos: `globals.css` → `board-polish.css` → `ui-refresh.css` (overrides actuales, capas z-index documentadas) → `motion.css` (animaciones). Cambios nuevos: en `ui-refresh.css`.
 - `src/lib/mock.ts`: proyectos demo (tapas en `public/covers/`, oficiales de Spotify), artistas.
