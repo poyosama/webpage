@@ -300,6 +300,7 @@ async function uploadToStorageWithRetry(
 }
 
 // ==================== AUDIO: MP3 PARA ESCUCHAR + ORIGINAL PARA DESCARGAR ====================
+const KEEP_ORIGINALS = false;
 // Original (WAV/AIFF/FLAC) que se está subiendo por detrás, por URL del MP3 que suena
 const pendingOriginals = new Map<string, Promise<string | null>>();
 
@@ -353,12 +354,16 @@ export async function optimizeExistingTrackAudio(trackId: string, oldUrl: string
     if (!streamUrl) return null;
     const { data, error } = await supabase
       .from("tracks")
-      .update({ audio_url: streamUrl, original_audio_url: oldUrl })
+      .update({ audio_url: streamUrl })
       .eq("id", toDbId(trackId))
       .eq("audio_url", oldUrl)
       .select("id");
-    if (error) return /original_audio_url/.test(error.message || "") ? "no-column" : null;
-    if (!data || !data.length) return null;
+    if (error || !data || !data.length) return null;
+    // El WAV ya no se usa: se borra del almacenamiento para liberar espacio (solo si lo subiste vos)
+    if (!KEEP_ORIGINALS) {
+      const m = oldUrl.match(/\/storage\/v1\/object\/public\/el-tablero-media\/(.+)$/);
+      if (m) void supabase.storage.from("el-tablero-media").remove([decodeURIComponent(m[1].split("?")[0])]).then(() => {});
+    }
     audioMemCache.set(toDbId(trackId), streamUrl);
     void fastCacheSet(`audio:${toDbId(trackId)}`, streamUrl);
     return streamUrl;
@@ -398,7 +403,9 @@ export async function uploadMediaToSupabase(
         const mp3Name = `tracks/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.mp3`;
         const streamUrl = await uploadToStorageWithRetry(mp3Name, mp3, "tracks", 3);
         if (streamUrl) {
-          void attachOriginalWhenReady(streamUrl, file);
+          // Por ahora NO se guarda el WAV original (el plan gratis de Supabase se llena): solo el MP3.
+          // Para volver a guardarlos, poner KEEP_ORIGINALS = true (ideal con almacenamiento sin costo de tráfico, ej. R2).
+          if (KEEP_ORIGINALS) void attachOriginalWhenReady(streamUrl, file);
           return streamUrl;
         }
       }

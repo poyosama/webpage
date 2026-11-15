@@ -308,7 +308,7 @@ export default function ImportFoldersModal({
                     <p className="imp-ut-note">Los de otras cuentas no se traen (salvo que seas colaborador): que los importe su dueño.</p>
                     <label className="imp-ut-wav">
                       <input type="checkbox" checked={utWav} onChange={(e) => setUtWav(e.target.checked)} />
-                      <span>Traer los <b>WAV originales</b> (tarda mucho más; si no, MP3, que alcanza para escuchar)</span>
+                      <span>Convertir desde los <b>WAV originales</b> (mejor calidad, tarda mucho más; igual se guarda en MP3)</span>
                     </label>
                     <button
                       type="button"
