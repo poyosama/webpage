@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import type { ArtistProfile, Project, Track, ProjectVideoClip } from "./mock";
+import { encodeAudioToMp3, shouldTranscodeAudio } from "./mp3Encode";
 
 export const SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -250,9 +251,13 @@ async function uploadToStorageWithRetry(
   filename: string,
   file: File | Blob,
   folder: string,
-  maxRetries = 3
+  maxRetries = 3,
+  timeoutOverrideMs?: number
 ): Promise<string | null> {
-  const timeoutMs = folder === "tracks" || folder === "videos" ? 45000 : 18000;
+  // Audio/video: el tiempo depende del tamaño (con mala señal 45 s fijos cortaban los WAV a la mitad)
+  const heavy = folder === "tracks" || folder === "videos" || folder === "originals";
+  const byteBudget = Math.ceil((file.size || 0) / (60 * 1024)) * 1000; // ~60 KB/s mínimo
+  const timeoutMs = timeoutOverrideMs ?? (heavy ? Math.max(45000, Math.min(15 * 60000, byteBudget)) : 18000);
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       const uploadPromise = supabase.storage
@@ -290,11 +295,111 @@ async function uploadToStorageWithRetry(
   return null;
 }
 
+// ==================== AUDIO: MP3 PARA ESCUCHAR + ORIGINAL PARA DESCARGAR ====================
+// Original (WAV/AIFF/FLAC) que se está subiendo por detrás, por URL del MP3 que suena
+const pendingOriginals = new Map<string, Promise<string | null>>();
+
+async function attachOriginalWhenReady(streamUrl: string, original: File | Blob) {
+  const ext = ((original as File).name || "").split(".").pop()?.toLowerCase() || "wav";
+  const name = `originals/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const job = uploadToStorageWithRetry(name, original, "originals", 3);
+  pendingOriginals.set(streamUrl, job);
+  const originalUrl = await job;
+  if (!originalUrl) return;
+  // La fila del track puede guardarse después que termine esto: reintentar unos minutos
+  for (let i = 0; i < 30; i++) {
+    const { data, error } = await supabase
+      .from("tracks")
+      .update({ original_audio_url: originalUrl })
+      .eq("audio_url", streamUrl)
+      .select("id");
+    if (error) return; // columna todavía sin crear (falta correr la migración)
+    if (data && data.length) {
+      pendingOriginals.delete(streamUrl);
+      return;
+    }
+    await new Promise((r) => setTimeout(r, 10000));
+  }
+}
+
+/** ¿La URL guardada es un audio sin comprimir (WAV/AIFF/FLAC)? */
+export function isLosslessAudioUrl(url?: string | null): boolean {
+  if (!url || !/^https?:/i.test(url)) return false;
+  try {
+    return /\.(wav|wave|aif|aiff|aifc|flac|alac|caf)$/i.test(new URL(url).pathname);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Pasa un track ya subido en WAV/AIFF/FLAC a MP3 para escuchar, dejando el original para descargar.
+ * Devuelve la URL nueva, "no-column" si falta la migración, o null si falló.
+ */
+export async function optimizeExistingTrackAudio(trackId: string, oldUrl: string): Promise<string | "no-column" | null> {
+  try {
+    const res = await fetch(oldUrl);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    const name = new URL(oldUrl).pathname.split("/").pop() || "track.wav";
+    const mp3 = await encodeAudioToMp3(new File([blob], name, { type: blob.type }));
+    if (!mp3) return null;
+    const mp3Name = `tracks/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.mp3`;
+    const streamUrl = await uploadToStorageWithRetry(mp3Name, mp3, "tracks", 3);
+    if (!streamUrl) return null;
+    const { data, error } = await supabase
+      .from("tracks")
+      .update({ audio_url: streamUrl, original_audio_url: oldUrl })
+      .eq("id", toDbId(trackId))
+      .eq("audio_url", oldUrl)
+      .select("id");
+    if (error) return /original_audio_url/.test(error.message || "") ? "no-column" : null;
+    if (!data || !data.length) return null;
+    audioMemCache.set(toDbId(trackId), streamUrl);
+    void fastCacheSet(`audio:${toDbId(trackId)}`, streamUrl);
+    return streamUrl;
+  } catch (err) {
+    console.warn("optimizeExistingTrackAudio:", err);
+    return null;
+  }
+}
+
+/** URL del archivo original para descargar (si existe); si no, la del audio que suena */
+export async function resolveOriginalAudioUrl(trackId: string, streamUrl?: string): Promise<string | undefined> {
+  if (streamUrl && pendingOriginals.has(streamUrl)) {
+    const u = await pendingOriginals.get(streamUrl);
+    if (u) return u;
+  }
+  try {
+    const { data, error } = await supabase
+      .from("tracks")
+      .select("original_audio_url")
+      .eq("id", toDbId(trackId))
+      .maybeSingle();
+    if (!error && data?.original_audio_url) return data.original_audio_url as string;
+  } catch {}
+  return streamUrl;
+}
+
 export async function uploadMediaToSupabase(
   file: File | Blob,
   folder: "covers" | "tracks" | "videos" | "avatars" = "covers"
 ): Promise<string | null> {
   try {
+    // Audio pesado: se sube un MP3 de 192 kbps para escuchar (rápido con mala señal)
+    // y el original por detrás para descargar
+    if (folder === "tracks" && shouldTranscodeAudio(file as File)) {
+      const mp3 = await encodeAudioToMp3(file as File);
+      if (mp3) {
+        const mp3Name = `tracks/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.mp3`;
+        const streamUrl = await uploadToStorageWithRetry(mp3Name, mp3, "tracks", 3);
+        if (streamUrl) {
+          void attachOriginalWhenReady(streamUrl, file);
+          return streamUrl;
+        }
+      }
+    }
+
     const rawName = (file as File).name || "";
     const mimeExt = (file.type || "").split("/")[1]?.split(";")[0]?.replace("mpeg", "mp3");
     const ext = (rawName.includes(".") ? rawName.split(".").pop() : mimeExt) || "bin";

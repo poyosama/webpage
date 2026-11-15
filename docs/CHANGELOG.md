@@ -1,4 +1,5 @@
 # Changelog (lo más nuevo arriba · 1–3 líneas por cambio)
+- 2026-11-15 · Audio liviano para mala señal: al subir WAV/AIFF/FLAC (o audio >14 MB) se convierte en el navegador a MP3 192 kbps (`src/lib/mp3Encode.ts`, `@breezystack/lamejs`) y eso es lo que suena; el original se sube por detrás a `originals/` y la descarga lo usa. Tracks viejos en WAV se convierten solos desde la compu (uno por vez). Timeout de subida según tamaño. Columna `tracks.original_audio_url` (`migration_audio_original.sql`, al final de `APLICAR_TODO.sql`: **hay que correrla**).
 - 2026-11-15 · Vista del proyecto en celu: no se podía scrollear a los tracks de abajo en iPhone (la hoja era flex en fila y la vista quedaba estirada al alto de pantalla con el contenido desbordando; Safari no lo contaba). Hoja en bloque + vista con alto real. `ui-refresh.css`.
 - 2026-11-15 · Reproductor: el título ya no muestra la sombra cortada en rectángulo (el line-clamp con overflow la recortaba); ahora solo texto con sombra mínima. `ui-refresh.css`.
 - 2026-11-15 · Reproductor recuerda el modo Canvas (on/off/cine) en `localStorage`. `PerformativePlayer.tsx`.

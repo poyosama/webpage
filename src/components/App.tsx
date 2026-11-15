@@ -46,6 +46,9 @@ import {
   fastCacheGet,
   fastCacheSet,
   resolveTrackAudioUrl,
+  resolveOriginalAudioUrl,
+  isLosslessAudioUrl,
+  optimizeExistingTrackAudio,
   hydrateProjectsAudioInBackground,
   makeProjectInviteToken,
   verifyProjectInviteToken,
@@ -2665,6 +2668,47 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     (p) => (meProfile.id && p.artistId === meProfile.id) || Boolean(projectInvites[p.id])
   );
 
+  // Tracks viejos subidos en WAV/AIFF/FLAC → MP3 de 192 kbps por detrás (solo en compu, uno por vez):
+  // así se escuchan bien con mala señal; el original queda para descargar
+  const audioOptRunningRef = useRef(false);
+  const audioOptBlockedRef = useRef(false);
+  const [audioOptTick, setAudioOptTick] = useState(0);
+  useEffect(() => {
+    if (!cloudReady || !googleConnected || !meProfile.id) return;
+    if (audioOptRunningRef.current || audioOptBlockedRef.current) return;
+    if (!window.matchMedia("(pointer: fine)").matches) return;
+    let skip: string[] = [];
+    try {
+      skip = JSON.parse(localStorage.getItem("eltablero_audio_opt_skip") || "[]");
+    } catch {}
+    const target = projects
+      .filter((p) => meProfile.id && p.artistId === meProfile.id)
+      .flatMap((p) => p.tracks)
+      .find((t) => t.id !== currentTrack.id && isLosslessAudioUrl(t.customAudioUrl) && !skip.includes(t.id));
+    if (!target) return;
+    const timer = window.setTimeout(async () => {
+      if (audioOptRunningRef.current) return;
+      audioOptRunningRef.current = true;
+      const oldUrl = target.customAudioUrl as string;
+      const r = await optimizeExistingTrackAudio(target.id, oldUrl);
+      if (r === "no-column") {
+        audioOptBlockedRef.current = true; // falta correr la migración: no insistir
+      } else if (!r) {
+        try {
+          localStorage.setItem("eltablero_audio_opt_skip", JSON.stringify([...skip, target.id]));
+        } catch {}
+      } else {
+        const swap = (t: Track) => (t.id === target.id && t.customAudioUrl === oldUrl ? { ...t, customAudioUrl: r } : t);
+        setProjects((prev) => prev.map((p) => ({ ...p, tracks: p.tracks.map(swap) })));
+        setCustomAudioMap((prev) => (prev[target.id] ? { ...prev, [target.id]: r } : prev));
+      }
+      audioOptRunningRef.current = false;
+      setAudioOptTick((n) => n + 1);
+    }, 6000);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cloudReady, googleConnected, meProfile.id, projects, audioOptTick, currentTrack.id]);
+
   // Proyectos ordenados por lo más nuevo que se va subiendo en tiempo real (excluyendo proyectos privados)
   const userProjectsRecent = [...projects]
     .filter((p) => p.visibility !== "private" && p.status !== "Privado")
@@ -3574,7 +3618,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                                       track.customAudioUrl ||
                                       customAudioMap[track.id] ||
                                       (await resolveTrackAudioUrl(track.id));
-                                    await downloadTrackAudio(track.title, track.artist, url);
+                                    await downloadTrackAudio(track.title, track.artist, await resolveOriginalAudioUrl(track.id, url));
                                   }}
                                 >
                                   ⬇
@@ -4726,7 +4770,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                                           t.customAudioUrl ||
                                           customAudioMap[t.id] ||
                                           (await resolveTrackAudioUrl(t.id));
-                                        await downloadTrackAudio(t.title, t.artist, url);
+                                        await downloadTrackAudio(t.title, t.artist, await resolveOriginalAudioUrl(t.id, url));
                                       }}
                                     >
                                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -5435,7 +5479,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                                           t.customAudioUrl ||
                                           customAudioMap[t.id] ||
                                           (await resolveTrackAudioUrl(t.id));
-                                        await downloadTrackAudio(t.title, t.artist, url);
+                                        await downloadTrackAudio(t.title, t.artist, await resolveOriginalAudioUrl(t.id, url));
                                       }}
                                     >
                                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4v11" /><polyline points="7 10 12 15 17 10" /><path d="M5 19h14" /></svg>

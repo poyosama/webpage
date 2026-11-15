@@ -25,6 +25,7 @@
 - Privacidad: `projects.visibility` public/friends/private (is_public sincronizado por trigger); amigos = `is_friend_of(owner)`.
 - Seguidores: `follows` (seguidor→seguido); amigos = se siguen los dos; `social_lists(user)` devuelve amigo/seguidor/seguido.
 - Notificaciones (campanita en la barra, `NotificationBell.tsx`): `notifications` llenada por triggers de `track_likes`, `saved_projects` y `follows` (like/save/follow/friend); lectura vía RPC `my_notifications`. **Pendiente de correr:** `migration_notifications.sql` (al final de `APLICAR_TODO.sql`); sin ella la campanita no aparece.
+- Audio: suena el MP3 192 kbps (`audio_url`); el original WAV/AIFF/FLAC en `original_audio_url` para descargar. Conversión en el navegador (`mp3Encode.ts`); los WAV viejos se convierten solos desde la compu del dueño. **Pendiente de correr:** `migration_audio_original.sql`.
 - Me gusta: `track_likes` + localStorage. Sesión: localStorage + copia en cookies (400 días) en `src/lib/supabase.ts`.
 
 ## Archivos clave
