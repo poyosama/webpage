@@ -1,4 +1,5 @@
 # Changelog (lo más nuevo arriba · 1–3 líneas por cambio)
+- 2026-11-15 · Reproductor: el título ya no muestra la sombra cortada en rectángulo (el line-clamp con overflow la recortaba); ahora solo texto con sombra mínima. `ui-refresh.css`.
 - 2026-11-15 · Reproductor recuerda el modo Canvas (on/off/cine) en `localStorage`. `PerformativePlayer.tsx`.
 - 2026-11-15 · Pases: generar nuevos ya no invalida los anteriores; cada uno vence solo a los 14 días (y vuelven a valer los invalidados dentro de su ventana). `migration_invites_no_revoke.sql` (al final de `APLICAR_TODO.sql`: **hay que correrla**), `invites.ts`.
 - 2026-11-15 · Navegación: una carga lenta de la cuenta ya no te saca al Inicio si ya tocaste algo (ej. abriste un proyecto); "atrás" a `/project/…` o `/@…` no te manda al Inicio. `App.tsx`.
