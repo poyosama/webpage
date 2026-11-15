@@ -61,9 +61,10 @@ export default function ImportFoldersModal({
     setUtError("");
     setUtBusy("Leyendo tus proyectos de [untitled]…");
     try {
-      const list = await listUntitledProjects();
+      const { projects: list, folderErrors } = await listUntitledProjects();
       setUtList(list);
       setUtSel(new Set(list.filter((p) => p.own || p.collab).map((p) => p.slug)));
+      if (folderErrors) setUtError(`No pude abrir ${folderErrors} ${folderErrors === 1 ? "carpeta" : "carpetas"} de [untitled]. Si falta algún proyecto, sacalo de la carpeta y volvé a tocar.`);
     } catch (e) {
       const m = (e as Error).message || "";
       setUtError(
@@ -295,7 +296,10 @@ export default function ImportFoldersModal({
                               />
                               {p.cover ? <img src={p.cover} alt="" /> : <span className="imp-ut-ph">♪</span>}
                               <span className="imp-ut-title">{p.title}</span>
-                              <span className="imp-ut-tag">{p.own ? "tuyo" : p.collab ? `colaborás · @${p.username}` : `de @${p.username}`}</span>
+                              <span className="imp-ut-tag">
+                                {p.own ? "tuyo" : p.collab ? `colaborás · @${p.username}` : `de @${p.username}`}
+                                {p.folder ? ` · 📁 ${p.folder}` : ""}
+                              </span>
                             </label>
                           </li>
                         );

@@ -25,10 +25,11 @@
   }
   var LIB_ROUTE = routeId(/^routes\/library\._index$/, "routes/library._index");
   var PROJ_ROUTE = routeId(/^routes\/library\.project\.\$[^./]+$/, "routes/library.project.$projectSlug");
+  /* Siempre fresca (si moviste proyectos con la pestaña abierta, los datos de la página quedan viejos) */
   function libraryData() {
-    var ld = ctx.state && ctx.state.loaderData && ctx.state.loaderData[LIB_ROUTE];
-    if (ld && ld.projects && ld.projects.length) return Promise.resolve(ld);
-    return getJson("/library?_data=" + encodeURIComponent(LIB_ROUTE));
+    return getJson("/library?_data=" + encodeURIComponent(LIB_ROUTE)).catch(function () {
+      return (ctx.state && ctx.state.loaderData && ctx.state.loaderData[LIB_ROUTE]) || { projects: [] };
+    });
   }
 
   /* ---------- cartel ---------- */

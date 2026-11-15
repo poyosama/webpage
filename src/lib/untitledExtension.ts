@@ -13,6 +13,7 @@ export type UntitledProjectItem = {
   own: boolean;
   collab: boolean;
   cover?: string | null;
+  folder?: string | null;
 };
 
 type Reply = { source: "et-ext"; type: "reply" | "hello"; id?: string; ok?: boolean; data?: unknown; error?: string; version?: string };
@@ -60,9 +61,9 @@ function call<T>(type: string, payload?: unknown, timeoutMs = 120000): Promise<T
   });
 }
 
-export async function listUntitledProjects(): Promise<UntitledProjectItem[]> {
-  const res = await call<{ projects?: UntitledProjectItem[]; error?: string }>("untitled:list", undefined, 60000);
-  return res.projects || [];
+export async function listUntitledProjects(): Promise<{ projects: UntitledProjectItem[]; folderErrors: number }> {
+  const res = await call<{ projects?: UntitledProjectItem[]; folderErrors?: number; error?: string }>("untitled:list", undefined, 120000);
+  return { projects: res.projects || [], folderErrors: res.folderErrors || 0 };
 }
 
 const NOTE_FIX: Record<string, string> = { Db: "C#", Eb: "D#", Gb: "F#", Ab: "G#", Bb: "A#" };

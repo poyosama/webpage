@@ -47,6 +47,8 @@ import {
   fastCacheSet,
   resolveTrackAudioUrl,
   resolveOriginalAudioUrl,
+  pendingUploadsCount,
+  onPendingUploadsChange,
   isLosslessAudioUrl,
   optimizeExistingTrackAudio,
   hydrateProjectsAudioInBackground,
@@ -202,6 +204,23 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     };
     window.addEventListener("pointerdown", mark, { capture: true, passive: true });
     return () => window.removeEventListener("pointerdown", mark, { capture: true });
+  }, []);
+
+  // Subidas en curso: avisar antes de recargar/cerrar (si no, se pierden los archivos que estaban subiendo)
+  const [pendingUploads, setPendingUploads] = useState(0);
+  useEffect(() => {
+    const off = onPendingUploadsChange(setPendingUploads);
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (pendingUploadsCount() > 0) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      off();
+      window.removeEventListener("beforeunload", onBeforeUnload);
+    };
   }, []);
 
   // Service worker: la app guardada en el teléfono abre al toque y se actualiza por detrás (public/sw.js)
@@ -3232,6 +3251,12 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       </header>
 
       <PullToRefresh />
+      {pendingUploads > 0 && (
+        <div className="upload-pill" role="status" aria-live="polite">
+          <span className="upload-pill-spin" aria-hidden />
+          Subiendo {pendingUploads} {pendingUploads === 1 ? "archivo" : "archivos"}… no cierres la página
+        </div>
+      )}
 
       <AnimatePresence mode="wait">
         <motion.main
@@ -6732,7 +6757,24 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
             setImportRemote(false);
           }}
           onImport={(created) => {
-            setProjects((prev) => [...created, ...prev]);
+            // Si ya había un proyecto tuyo con el mismo nombre y SIN tracks (ej. una importación que se cortó),
+            // se reusa ese en vez de duplicarlo
+            setProjects((prev) => {
+              const used = new Set<string>();
+              const fixed = created.map((c) => {
+                const empty = prev.find(
+                  (p) =>
+                    !used.has(p.id) &&
+                    p.artistId === meProfile.id &&
+                    p.tracks.length === 0 &&
+                    p.title.trim().toLowerCase() === c.title.trim().toLowerCase()
+                );
+                if (!empty) return c;
+                used.add(empty.id);
+                return { ...c, id: empty.id, createdAt: empty.createdAt || c.createdAt, visibility: empty.visibility || c.visibility };
+              });
+              return [...fixed, ...prev.filter((p) => !used.has(p.id))];
+            });
             setImportOpen(false);
             setImportRemote(false);
             setSelectedProjectId(created[0]?.id || "");

@@ -40,31 +40,92 @@ async function inUntitled(func, args) {
 /* ---- funciones que corren ADENTRO de untitled.stream (no pueden usar nada de afuera) ---- */
 async function listProjectsInPage() {
   var ctx = window.__remixContext;
-  var me = ctx && ctx.state && ctx.state.loaderData && ctx.state.loaderData.root && ctx.state.loaderData.root.authUser;
+  var getJ = async function (url) {
+    var r = await fetch(url, { credentials: "include", headers: { accept: "application/json" } });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return r.json();
+  };
+  /* Usuario actual: pedido fresco (la página puede estar abierta desde antes con otra sesión) */
+  var me = null;
+  try { var root = await getJ("/library?_data=root"); me = root && root.authUser; } catch (e) {}
+  if (!me) me = ctx && ctx.state && ctx.state.loaderData && ctx.state.loaderData.root && ctx.state.loaderData.root.authUser;
   if (!me || !me.id) return { error: "login" };
+
   var routes = (window.__remixManifest && window.__remixManifest.routes) || {};
-  var LIB = Object.keys(routes).find(function (k) { return /^routes\/library\._index$/.test(k); }) || "routes/library._index";
-  var data = ctx.state.loaderData[LIB];
-  if (!data || !data.projects) {
-    var r = await fetch("/library?_data=" + encodeURIComponent(LIB), { credentials: "include" });
-    if (!r.ok) return { error: "HTTP " + r.status };
-    data = await r.json();
+  var ids = Object.keys(routes);
+  var LIB = ids.find(function (k) { return /^routes\/library\._index$/.test(k); }) || "routes/library._index";
+  /* Ruta de carpetas (ej. routes/library.folder.$folderSlug) → dirección /library/folder/<slug> */
+  var FOLDER = ids.find(function (k) { return /^routes\/library\.folder[^/]*\.\$[^./]+$/.test(k); }) ||
+    ids.find(function (k) { return /folder/i.test(k) && /\$/.test(k); }) || null;
+  function routePath(id, slug) {
+    return "/" + id.replace(/^routes\//, "").split(".").filter(function (seg) { return seg && seg !== "_index" && seg.charAt(0) !== "_"; })
+      .map(function (seg) { return seg.charAt(0) === "$" ? encodeURIComponent(slug) : seg.replace(/_$/, ""); }).join("/");
   }
-  var list = (data.projects || []).map(function (x) { return x.project; }).filter(Boolean).map(function (p) {
+
+  /* Junta proyectos y carpetas de cualquier respuesta (la forma exacta de las carpetas puede variar) */
+  var projects = {}, folderQueue = [], seenFolders = {};
+  function collect(obj, folderTitle, seen) {
+    if (!obj || typeof obj !== "object" || seen.has(obj)) return;
+    seen.add(obj);
+    if (Array.isArray(obj)) { obj.forEach(function (x) { collect(x, folderTitle, seen); }); return; }
+    if (obj.project && obj.project.slug && obj.project.title) {
+      var pj = obj.project;
+      if (!projects[pj.slug]) projects[pj.slug] = { p: pj, folder: folderTitle || null };
+    }
+    Object.keys(obj).forEach(function (k) {
+      var v = obj[k];
+      if (/folder/i.test(k) && Array.isArray(v)) {
+        v.forEach(function (f) {
+          if (!f || typeof f !== "object") return;
+          var ff = f.folder && typeof f.folder === "object" ? f.folder : f;
+          var slug = ff.slug || ff.access_slug || ff.folder_access_slug;
+          if (slug && !seenFolders[slug]) { seenFolders[slug] = 1; folderQueue.push({ slug: slug, title: ff.title || ff.name || "" }); }
+        });
+      }
+      if (v && typeof v === "object") collect(v, folderTitle, seen);
+    });
+  }
+
+  /* Biblioteca SIEMPRE fresca (si moviste proyectos con la pestaña abierta, se ve igual) */
+  var data;
+  try { data = await getJ("/library?_data=" + encodeURIComponent(LIB)); }
+  catch (e) { data = ctx && ctx.state && ctx.state.loaderData && ctx.state.loaderData[LIB]; }
+  if (!data) return { error: "no pude leer tu biblioteca" };
+  collect(data, null, new Set());
+
+  /* Entrar a las carpetas (y subcarpetas), hasta 60 */
+  var folderErrors = 0;
+  for (var n = 0; n < folderQueue.length && n < 60; n++) {
+    var f = folderQueue[n];
+    if (!FOLDER) { folderErrors++; continue; }
+    try { collect(await getJ(routePath(FOLDER, f.slug) + "?_data=" + encodeURIComponent(FOLDER)), f.title, new Set()); }
+    catch (e) { folderErrors++; }
+  }
+
+  var list = Object.keys(projects).map(function (slug) {
+    var x = projects[slug], p = x.p;
     var own = p.owner_auth_id === me.id;
     var collab = !own && (p.editable === true || p.access_role === "editor" || p.access_role === "collaborator");
-    return { slug: p.slug, title: p.title, username: p.username, own: own, collab: collab, cover: p.artwork_thumbnail_signed_url || p.artwork_small_signed_url || p.artwork_signed_url || null };
+    return { slug: p.slug, title: p.title, username: p.username, own: own, collab: collab, folder: x.folder,
+      cover: p.artwork_thumbnail_signed_url || p.artwork_small_signed_url || p.artwork_signed_url || null };
   });
-  return { projects: list };
+  /* Primero los tuyos, después colaboraciones, al final los ajenos */
+  list.sort(function (a, b) { return (b.own - a.own) || (b.collab - a.collab); });
+  return { projects: list, folders: folderQueue.length, folderErrors: folderErrors, folderRoute: FOLDER };
 }
 
 async function getProjectInPage(slug, wantWav) {
   var ctx = window.__remixContext;
-  var me = ctx && ctx.state && ctx.state.loaderData && ctx.state.loaderData.root && ctx.state.loaderData.root.authUser;
+  var me = null;
+  try {
+    var rr0 = await fetch("/library?_data=root", { credentials: "include", headers: { accept: "application/json" } });
+    if (rr0.ok) { var root = await rr0.json(); me = root && root.authUser; }
+  } catch (e) {}
+  if (!me) me = ctx && ctx.state && ctx.state.loaderData && ctx.state.loaderData.root && ctx.state.loaderData.root.authUser;
   if (!me || !me.id) return { error: "login" };
   var routes = (window.__remixManifest && window.__remixManifest.routes) || {};
   var PROJ = Object.keys(routes).find(function (k) { return /^routes\/library\.project\.\$[^./]+$/.test(k); }) || "routes/library.project.$projectSlug";
-  var r = await fetch("/library/project/" + encodeURIComponent(slug) + "?_data=" + encodeURIComponent(PROJ), { credentials: "include" });
+  var r = await fetch("/library/project/" + encodeURIComponent(slug) + "?_data=" + encodeURIComponent(PROJ), { credentials: "include", headers: { accept: "application/json" } });
   if (!r.ok) return { error: "HTTP " + r.status };
   var d = await r.json();
   var info = d.project && d.project.project;

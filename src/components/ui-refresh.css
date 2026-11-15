@@ -2312,3 +2312,13 @@ html:root body .perf-player.has-cinema-canvas .perf-kicker {
 .imp-ut-go { align-self: flex-end; }
 .imp-ut-wav input { width: 16px !important; height: 16px; flex: none !important; padding: 0 !important; margin: 2px 0 0 !important; }
 .imp-ut-wav span { flex: 1; min-width: 0; text-align: left; }
+
+/* Cartelito de subidas en curso */
+.upload-pill {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 96px); z-index: 300;
+  display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px;
+  background: var(--surface-translucent); color: var(--ink); border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-soft); font-size: 0.8rem; backdrop-filter: blur(14px); pointer-events: none; white-space: nowrap;
+}
+.upload-pill-spin { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--line-strong); border-top-color: var(--accent-red); animation: ptr-spin 0.8s linear infinite; }
+@keyframes ptr-spin { to { transform: rotate(360deg); } }

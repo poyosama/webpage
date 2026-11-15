@@ -452,7 +452,13 @@ export async function ensurePersistentUrl(
   }
   const job = uploadTransient(url, folder);
   persistedUploads.set(url, job);
-  const result = await job;
+  bumpUploads(1);
+  let result: string | null = null;
+  try {
+    result = await job;
+  } finally {
+    bumpUploads(-1);
+  }
   if (!result) persistedUploads.delete(url); // si falló, se puede reintentar
   cache?.set(url, result);
   return result;
@@ -798,10 +804,102 @@ export async function saveUserProfileToSupabase(profile: Partial<ArtistProfile> 
  * Sube a Storage todo archivo temporal (blob:/data:), guarda proyecto + tracks + canvas y
  * devuelve una copia del proyecto con URLs permanentes (o null si falló).
  */
+async function saveProjectSkeleton(project: Project, userId?: string): Promise<void> {
+  try {
+    const dbProjectId = toDbId(project.id);
+    let uid: string | null = userId && UUID_RE.test(userId) ? userId : project.artistId && UUID_RE.test(project.artistId) ? project.artistId : null;
+    if (!uid) {
+      try {
+        const { data } = await supabase.auth.getSession();
+        uid = data.session?.user?.id || null;
+      } catch {}
+    }
+    if (!uid) return;
+    const row: Record<string, unknown> = {
+      id: dbProjectId,
+      title: project.title,
+      artist: project.artist,
+      type: project.type,
+      year: project.year,
+      status: project.status,
+      zone: project.zone,
+      description: project.description || "",
+      user_id: uid,
+      is_public: project.visibility === "public",
+      visibility: project.visibility || "private",
+      updated_at: new Date().toISOString(),
+    };
+    if (!isTransientUrl(project.coverUrl)) row.cover_url = cleanUrl(project.coverUrl) || null;
+    let { error } = await supabase.from("projects").upsert(row, { onConflict: "id" });
+    if (error && /visibility/i.test(error.message)) {
+      delete row.visibility;
+      ({ error } = await supabase.from("projects").upsert(row, { onConflict: "id" }));
+    }
+    if (error) return;
+    const meta = (t: Track, idx: number) => ({
+      id: toDbId(t.id),
+      project_id: dbProjectId,
+      title: t.title,
+      artist: t.artist,
+      feat: t.feat || null,
+      prod: t.prod || null,
+      bpm: t.bpm,
+      musical_key: t.key,
+      duration: t.duration,
+      duration_sec: t.durationSec,
+      version: t.version,
+      note: t.note || null,
+      glyph: t.glyph,
+      c1: t.c1 || "#ffffff",
+      c2: t.c2 || "#888888",
+      accent: t.accent || "#ffffff",
+      audio_freq: t.audioFreq || 80,
+      order_index: idx,
+    });
+    const list = project.tracks || [];
+    // Los que ya tienen audio guardado se mandan con su audio; los pendientes, sin tocar audio/tapa
+    const ready = list.map((t, i) => ({ t, i })).filter(({ t }) => !isTransientUrl(t.customAudioUrl));
+    const pending = list.map((t, i) => ({ t, i })).filter(({ t }) => isTransientUrl(t.customAudioUrl));
+    if (ready.length) {
+      await supabase.from("tracks").upsert(
+        ready.map(({ t, i }) => ({ ...meta(t, i), audio_url: cleanUrl(t.customAudioUrl) || null })),
+        { onConflict: "id" }
+      );
+    }
+    if (pending.length) {
+      await supabase.from("tracks").upsert(pending.map(({ t, i }) => meta(t, i)), { onConflict: "id" });
+    }
+  } catch (err) {
+    console.warn("saveProjectSkeleton:", err);
+  }
+}
+
+// ==================== SUBIDAS EN CURSO (para avisar antes de cerrar/recargar) ====================
+let uploadsInFlight = 0;
+const uploadListeners = new Set<(n: number) => void>();
+export function pendingUploadsCount() {
+  return uploadsInFlight;
+}
+export function onPendingUploadsChange(fn: (n: number) => void): () => void {
+  uploadListeners.add(fn);
+  return () => uploadListeners.delete(fn);
+}
+function bumpUploads(delta: number) {
+  uploadsInFlight = Math.max(0, uploadsInFlight + delta);
+  uploadListeners.forEach((fn) => fn(uploadsInFlight));
+}
+
 export async function saveProjectToSupabase(project: Project, userId?: string): Promise<Project | null> {
   try {
     const cache = new Map<string, string | null>();
     const dbProjectId = toDbId(project.id);
+
+    // Si hay archivos por subir (audios recién importados, WAV que hay que convertir…), PRIMERO se guardan
+    // el proyecto y los tracks sin esos archivos: si la persona recarga a mitad de la subida, los tracks
+    // no desaparecen (antes se guardaban recién al final de todo).
+    if (hasTransientMedia(project)) {
+      await saveProjectSkeleton(project, userId);
+    }
 
     // Todo en paralelo: tapa, canvas y hasta 3 tracks a la vez (antes era de a uno)
     const saveTrack = async (t: Track): Promise<Track> => {
@@ -812,6 +910,10 @@ export async function saveProjectToSupabase(project: Project, userId?: string): 
       } else if (!isTransientUrl(audio)) {
         audioMemCache.set(dbTrackId, audio);
         void fastCacheSet(`audio:${dbTrackId}`, audio);
+        // Recién subido: se guarda ya en su fila (no esperar al resto de los tracks)
+        if (isTransientUrl(t.customAudioUrl)) {
+          void supabase.from("tracks").update({ audio_url: audio }).eq("id", dbTrackId).then(() => {});
+        }
       }
       const cover = await ensurePersistentUrl(t.coverUrl, "covers", cache);
       return {
