@@ -94,6 +94,7 @@ const loadPerformativePlayer = () =>
   import("./PerformativePlayer").then((m) => (performativePlayerCache = m.default));
 const ManifoldLibrary3D = dynamic(() => import("./ManifoldLibrary3D"), { ssr: false });
 const CreateProjectScreen = dynamic(() => import("./CreateProjectScreen"), { ssr: false });
+const ImportFoldersModal = dynamic(() => import("./ImportFoldersModal"), { ssr: false });
 const LandingScene = dynamic(() => import("./LandingScene"), { ssr: false });
 
 type ScreenTab = "inicio" | "subir" | "biblioteca" | "perfil" | "crear-proyecto";
@@ -400,6 +401,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   }, []);
   // Seguidores / amigos: listas por usuario (cache) y hoja con la lista abierta
   const [socialByUser, setSocialByUser] = useState<Record<string, SocialLists>>({});
+  const [importOpen, setImportOpen] = useState(false);
   const [socialSheet, setSocialSheet] = useState<{ title: string; people: { userId: string; handle: string; name: string; avatarUrl?: string }[] } | null>(null);
   const [followBusy, setFollowBusy] = useState(false);
   // Perfil de otro artista (página encima de la pantalla actual)
@@ -5818,6 +5820,9 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                           <button type="button" role="menuitem" onClick={() => { setProfileAddMenuOpen(false); sfx.open(); navigate("subir"); }}>
                             <span>Subir tracks</span>
                           </button>
+                          <button type="button" role="menuitem" onClick={() => { setProfileAddMenuOpen(false); sfx.open(); setImportOpen(true); }}>
+                            <span>Importar carpetas o .zip</span>
+                          </button>
                         </div>
                       </>
                     )}
@@ -6697,6 +6702,23 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
             );
           })()}
       </AnimatePresence>
+
+      {/* ==================== IMPORTAR CARPETAS / ZIP (ej. lo bajado de [untitled]) ==================== */}
+      {importOpen && (
+        <ImportFoldersModal
+          meProfile={meProfile}
+          existingCount={projects.length}
+          onClose={() => setImportOpen(false)}
+          onImport={(created) => {
+            setProjects((prev) => [...created, ...prev]);
+            setImportOpen(false);
+            setSelectedProjectId(created[0]?.id || "");
+            setInsideCubeOpen(false);
+            setLibrarySubTab("proyectos");
+            navigate("biblioteca");
+          }}
+        />
+      )}
 
       {/* ==================== LISTA DE AMIGOS / SEGUIDORES / SEGUIDOS ==================== */}
       <AnimatePresence>

@@ -15,6 +15,7 @@
 - **Inicio:** collage del tablero (click → Spotify), tira de portadas, tracks destacados, artistas, drops de productores.
 - **Biblioteca** (`ManifoldLibrary3D.tsx`): rueda de vinilos (slider en celu) / tapas; primero siempre **Tus me gusta** (proyecto virtual `LIKED_PROJECT_ID`, tapa SVG animada). Vista de proyecto: lista scrolleable, portada en grande, editar track compacto, compartir.
 - **Perfiles de otros:** página encima de la pantalla (`viewingArtist`), URL `/@handle`; se abre tocando un artista en Inicio, el nombre en el reproductor o en la vista del proyecto.
+- **Importar** (`ImportFoldersModal.tsx` + `src/lib/importFolders.ts`): carpetas/.zip → proyectos privados (desde Perfil → +). [untitled] no tiene API y está tras Cloudflare: importar "todo" solo sería posible con algo que corra en el navegador logueado del usuario (bookmarklet), a investigar.
 - **Perfil:** ruedita → Ajustes de cuenta (Google, nombre/@handle, cerrar sesión, borrar cuenta) / Cerrar sesión. "+" → crear proyecto / subir tracks. Invitar (pases).
 - **Reproductor** (`PerformativePlayer.tsx`): grande deslizable hacia abajo, ♥, cola, Media Session (Control Center), autoplay del siguiente con evento `ended`, modo reproductor (solo biblioteca).
 - **Control remoto entre dispositivos** (`src/lib/remotePlayer.ts`, Supabase Realtime `player:<userId>`): un dispositivo suena, los otros controlan.
