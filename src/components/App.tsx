@@ -2833,9 +2833,33 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   };
 
   // Click en un proyecto del tablero: abre su Spotify; si no tiene link, lo reproduce
+  // Lugares del tablero que ya tienen su proyecto real subido a El tablero: se escucha adentro de la app
+  // (en vez del demo con link a Spotify). Se busca por nombre exacto y dueño.
+  const BOARD_REAL: Record<string, { title: string; ownerId: string }> = {
+    chickennugget: { title: "chickennugget", ownerId: "927df5ff-0c13-4088-abc7-52dbf9dbd41b" },
+  };
+  const findRealBoardProject = (key: string): Project | undefined => {
+    const want = BOARD_REAL[key];
+    if (!want) return undefined;
+    const norm = (t: string) => t.toLowerCase().replace(/[^a-z0-9]/g, "");
+    return projects.find(
+      (p) =>
+        !DEMO_IDS.has(p.id) &&
+        norm(p.title) === want.title &&
+        p.artistId === want.ownerId &&
+        p.tracks.length > 0
+    );
+  };
   const openBoardProject = (p?: Project) => {
     if (!p) return;
     sfx.tap();
+    const real = findRealBoardProject(p.id);
+    if (real) {
+      // Arranca el primer track y abre el proyecto: la persona se queda en El tablero
+      playTrack(real.tracks[0], real, false);
+      if (!isGuestRef.current) navigateToProject(real.id);
+      return;
+    }
     if (p.spotifyUrl) {
       window.open(p.spotifyUrl, "_blank", "noopener,noreferrer");
     } else if (p.tracks[0]) {
