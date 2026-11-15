@@ -2195,3 +2195,19 @@ html:root body .perf-player.stage-light.has-cinema-canvas .perf-title {
 html:root body .perf-player.has-cinema-canvas .perf-kicker {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4) !important;
 }
+
+/* Celu: la hoja del proyecto era flex en fila y la vista quedaba ESTIRADA al alto de pantalla con el
+   contenido desbordando por fuera; Safari no contaba ese desborde para el scroll (no se podía bajar).
+   Ahora la hoja es un bloque y la vista crece con su contenido real. */
+@media (max-width: 720px) {
+  html:root body .project-inspector-sheet {
+    display: block !important;
+  }
+  html:root body .project-inspector-sheet .untitled-mobile-project-view {
+    display: flex !important;
+    flex-direction: column !important;
+    height: auto !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+}
