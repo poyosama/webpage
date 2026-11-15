@@ -1340,6 +1340,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       (p) =>
         ((meProfile.id && p.artistId === meProfile.id) || projectInvites[p.id] === "edit") &&
         AUTO.includes(p.type) &&
+        p.tracks.length > 0 && // sin tracks (cargando, o recién importado en otra pestaña) no se toca
         p.type !== wanted(p.tracks.length)
     );
     if (!needs) return;
@@ -1347,6 +1348,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       prev.map((p) =>
         ((meProfile.id && p.artistId === meProfile.id) || projectInvites[p.id] === "edit") &&
         AUTO.includes(p.type) &&
+        p.tracks.length > 0 &&
         p.type !== wanted(p.tracks.length)
           ? { ...p, type: wanted(p.tracks.length) as ProjectType }
           : p

@@ -130,6 +130,10 @@ const cleanUrl = (url?: string | null): string | undefined =>
   url && !url.startsWith("blob:") ? url : undefined;
 
 const audioMemCache = new Map<string, string>();
+// Tracks que ESTA pestaña sabe que están en la nube, por proyecto (de la última carga o guardado).
+// Al guardar solo se borran los que estaban acá y ya no están: una pestaña vieja que nunca vio
+// los tracks nuevos no puede borrarlos (antes borraba todo lo que no conocía).
+const knownCloudTrackIds = new Map<string, Set<string>>();
 
 // ==================== INDEXEDDB CACHE LOCAL ULTRA-RÁPIDO (0 RED EN F5) ====================
 const IDB_NAME = "el_tablero_fast_cache_v1";
@@ -499,6 +503,9 @@ const TRACK_META_COLS =
 
 /** Fila de `projects` (con `tracks` y `project_videos` anidados) → Project */
 export function mapProjectRow(row: any, idx = 0): Project {
+  try {
+    knownCloudTrackIds.set(toDbId(String(row.id)), new Set((row.tracks || []).map((t: any) => toDbId(String(t.id)))));
+  } catch {}
   const tracks = [...(row.tracks || [])]
     .sort((a: any, b: any) => (a.order_index ?? 0) - (b.order_index ?? 0))
     .map((t: any): Track => {
@@ -1026,11 +1033,15 @@ export async function saveProjectToSupabase(project: Project, userId?: string): 
       const { error: trErr } = await supabase.from("tracks").upsert(trackRows, { onConflict: "id" });
       if (trErr) console.warn("Error guardando tracks:", trErr.message);
     }
-    // Borrar de la nube los tracks que ya no existen en el proyecto
+    // Borrar de la nube SOLO los tracks que esta pestaña conocía y ya no están (los sacaste o moviste).
+    // Nunca "todo lo que no conozco": eso borraba tracks subidos desde otra pestaña o dispositivo.
     {
-      let del = supabase.from("tracks").delete().eq("project_id", dbProjectId);
-      if (trackIds.length > 0) del = del.not("id", "in", `(${trackIds.join(",")})`);
-      await del;
+      const known = knownCloudTrackIds.get(dbProjectId) || new Set<string>();
+      const removed = [...known].filter((id) => !trackIds.includes(id));
+      if (removed.length > 0) {
+        await supabase.from("tracks").delete().eq("project_id", dbProjectId).in("id", removed);
+      }
+      knownCloudTrackIds.set(dbProjectId, new Set(trackIds));
     }
 
     const videoIds = videos.map((v) => toDbId(v.id));
