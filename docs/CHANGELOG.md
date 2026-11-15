@@ -1,4 +1,5 @@
 # Changelog (lo más nuevo arriba · 1–3 líneas por cambio)
+- 2026-11-15 · Biblioteca: botón "+" arriba a la derecha (rueda y tapas, web y celu) con las mismas opciones que el perfil (crear, subir, importar carpetas/.zip, importar desde [untitled]). Perfil → + también suma "Importar desde [untitled]". `App.tsx`, `ui-refresh.css`.
 - 2026-11-15 · FIX tracks que desaparecían al recargar después de importar: si hay archivos por subir, primero se guardan proyecto + tracks (sin audio) y cada audio se guarda en su fila apenas sube; aviso antes de cerrar/recargar con subidas en curso + cartelito "Subiendo N archivos…"; re-importar reusa el proyecto vacío con el mismo nombre. `supabase.ts` (`saveProjectSkeleton`, `pendingUploadsCount`), `App.tsx`.
 - 2026-11-15 · Extensión 1.0.2: lista de [untitled] siempre fresca (la pestaña abierta tenía datos viejos) y entra a las carpetas (`📁` en la lista); favorito también pide la lista fresca. `extension/background.js`, `untitled-import.js`.
 - 2026-11-15 · Extensión renombrada a "El tablero — Importador de proyectos" (v1.0.1, sin la marca de [untitled] en el título para la tienda).

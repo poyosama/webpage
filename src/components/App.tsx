@@ -385,6 +385,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
   const [profileSettingsOpen, setProfileSettingsOpen] = useState<boolean>(false);
   const [profileAddMenuOpen, setProfileAddMenuOpen] = useState<boolean>(false);
+  const [libraryAddMenuOpen, setLibraryAddMenuOpen] = useState<boolean>(false);
   // Explorar sin suscribirse: Inicio con el tablero borroneado, 5 tracks y previews de 25 s
   const [guestMode, setGuestMode] = useState<boolean>(false);
   const [guestCta, setGuestCta] = useState<string | null>(null);
@@ -4084,6 +4085,46 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                   }}
                 >
                   {/* Escena 3D de Mis Proyectos (se muestra siempre en Lado a Lado, o cuando estás afuera del cubo en modo Por defecto) */}
+                  {/* "+" de la Biblioteca: las mismas opciones que en el perfil */}
+                  {(libraryLayoutMode === "side-by-side" || !insideCubeOpen || !activeProject) && !isGuest && (
+                    <div className="pf-menu-wrap library-add-wrap">
+                      <button
+                        type="button"
+                        className="pf-btn icon solid"
+                        aria-label="Agregar proyecto"
+                        title="Agregar"
+                        aria-expanded={libraryAddMenuOpen}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          sfx.tap();
+                          setLibraryAddMenuOpen((v) => !v);
+                        }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+                          <path d="M12 5v14M5 12h14" />
+                        </svg>
+                      </button>
+                      {libraryAddMenuOpen && (
+                        <>
+                          <div className="pf-menu-scrim" onClick={() => setLibraryAddMenuOpen(false)} />
+                          <div className="pf-menu" role="menu">
+                            <button type="button" role="menuitem" onClick={() => { setLibraryAddMenuOpen(false); sfx.open(); navigate("crear-proyecto"); }}>
+                              <span>Crear proyecto</span>
+                            </button>
+                            <button type="button" role="menuitem" onClick={() => { setLibraryAddMenuOpen(false); sfx.open(); navigate("subir"); }}>
+                              <span>Subir tracks</span>
+                            </button>
+                            <button type="button" role="menuitem" onClick={() => { setLibraryAddMenuOpen(false); sfx.open(); setImportOpen(true); }}>
+                              <span>Importar carpetas o .zip</span>
+                            </button>
+                            <button type="button" role="menuitem" onClick={() => { setLibraryAddMenuOpen(false); sfx.open(); setImportRemote(true); setImportOpen(true); }}>
+                              <span>Importar desde [untitled]</span>
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
                   {(libraryLayoutMode === "side-by-side" || !insideCubeOpen || !activeProject) && (
                     <ManifoldLibrary3D
                       projects={likedProject ? [likedProject, ...myProjects] : myProjects}

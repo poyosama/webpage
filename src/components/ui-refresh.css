@@ -2322,3 +2322,12 @@ html:root body .perf-player.has-cinema-canvas .perf-kicker {
 }
 .upload-pill-spin { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--line-strong); border-top-color: var(--accent-red); animation: ptr-spin 0.8s linear infinite; }
 @keyframes ptr-spin { to { transform: rotate(360deg); } }
+
+/* "+" de la Biblioteca (arriba a la derecha, en la misma fila que el selector rueda/tapas) */
+.library-inside-stack, .library-side-by-side-grid { position: relative; }
+.library-add-wrap { position: absolute !important; top: 14px; right: 18px; z-index: 40; }
+.library-add-wrap .pf-menu { right: 0; left: auto; top: calc(100% + 8px); }
+@media (max-width: 720px) {
+  .library-add-wrap { top: 6px; right: 8px; }
+}
+.library-add-wrap .pf-menu, .pf-menu { min-width: 228px; }
