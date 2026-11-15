@@ -6172,6 +6172,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
             >
               {PlayerComp && (
               <PlayerComp
+                meId={googleConnected && !isGuest ? meProfile.id || undefined : undefined}
                 track={currentTrack}
                 project={
                   projects.find((p) => p.id === currentProject.id) ||

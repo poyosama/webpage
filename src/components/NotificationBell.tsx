@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase";
 
 type Notif = {
   id: string;
-  kind: "like" | "save" | "follow" | "friend";
+  kind: "like" | "save" | "follow" | "friend" | "comment";
   created_at: string;
   read_at: string | null;
   actor_id: string;
@@ -41,6 +41,8 @@ function text(n: Notif): React.ReactNode {
       return <>{w} empezó a seguirte</>;
     case "friend":
       return <>Ahora vos y {w} son amigos</>;
+    case "comment":
+      return <>{w} comentó en <b>{n.track_title || "un track tuyo"}</b></>;
   }
 }
 
@@ -143,7 +145,7 @@ export default function NotificationBell({
         <div className="notif-panel" role="dialog" aria-label="Notificaciones">
           <div className="notif-head">Notificaciones</div>
           {items.length === 0 ? (
-            <div className="notif-empty">Todavía no hay nada. Cuando te den me gusta, te sigan o guarden tus proyectos, aparece acá.</div>
+            <div className="notif-empty">Todavía no hay nada. Cuando te den me gusta, te comenten, te sigan o guarden tus proyectos, aparece acá.</div>
           ) : (
             <ul className="notif-list">
               {items.map((n) => (

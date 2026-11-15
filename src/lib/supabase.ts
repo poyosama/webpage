@@ -1344,3 +1344,48 @@ export async function setFollowing(me: string, other: string, follow: boolean): 
   const { error } = await supabase.from("follows").delete().eq("follower_id", me).eq("followee_id", other);
   return !error;
 }
+
+// ==================== COMENTARIOS CON TIEMPO EN LOS TRACKS ====================
+export type TrackComment = {
+  id: string;
+  trackId: string;
+  userId: string;
+  atSec: number | null;
+  body: string;
+  createdAt: string;
+  handle?: string;
+  name?: string;
+  avatarUrl?: string;
+};
+
+/** null = la migración de comentarios todavía no está aplicada */
+export async function fetchTrackComments(trackId: string): Promise<TrackComment[] | null> {
+  const { data, error } = await supabase.rpc("track_comments_list", { p_track: toDbId(trackId) });
+  if (error) return null;
+  return ((data || []) as Array<Record<string, unknown>>).map((r) => ({
+    id: r.id as string,
+    trackId: r.track_id as string,
+    userId: r.user_id as string,
+    atSec: r.at_sec == null ? null : Number(r.at_sec),
+    body: r.body as string,
+    createdAt: r.created_at as string,
+    handle: (r.handle as string) || undefined,
+    name: (r.name as string) || undefined,
+    avatarUrl: (r.avatar_url as string) || undefined,
+  }));
+}
+
+export async function addTrackComment(trackId: string, userId: string, body: string, atSec: number | null): Promise<boolean> {
+  const { error } = await supabase.from("track_comments").insert({
+    track_id: toDbId(trackId),
+    user_id: userId,
+    body: body.trim().slice(0, 500),
+    at_sec: atSec == null ? null : Math.max(0, Math.round(atSec * 10) / 10),
+  });
+  return !error;
+}
+
+export async function deleteTrackComment(id: string): Promise<boolean> {
+  const { error } = await supabase.from("track_comments").delete().eq("id", id);
+  return !error;
+}

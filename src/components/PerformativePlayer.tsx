@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { type Project, type ProjectVideoClip, type Track } from "@/lib/mock";
 import { sfx } from "@/lib/sfx";
+import TrackComments, { useCommentCount } from "./TrackComments";
 import TrackStudioEditModal from "./TrackStudioEditModal";
 
 export type RepeatMode = "off" | "all" | "one";
@@ -263,6 +264,7 @@ export default function PerformativePlayer({
   onJumpToProject,
   onOpenEditTrack,
   onOpenArtist,
+  meId,
   onSaveTrack,
   theme,
   onToggleTheme,
@@ -294,6 +296,8 @@ export default function PerformativePlayer({
   onOpenEditTrack: () => void;
   /** Tocar un nombre abre el perfil de ese artista */
   onOpenArtist?: (name: string) => void;
+  /** cuenta logueada (para comentar) */
+  meId?: string;
   onSaveTrack?: (updatedTrack: Track, updatedClip?: ProjectVideoClip) => void;
   theme?: "dark" | "light";
   onToggleTheme?: () => void;
@@ -330,6 +334,11 @@ export default function PerformativePlayer({
       localStorage.setItem("eltablero_canvas_mode", canvasMode);
     } catch {}
   }, [canvasMode]);
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const { count: commentCount, reload: reloadCommentCount } = useCommentCount(
+    track.id,
+    Boolean(meId) && track.id !== "standby-track"
+  );
   const [impulseSignal, setImpulseSignal] = useState(0);
   const [seed, setSeed] = useState(0);
   const [queueOpen, setQueueOpen] = useState(false);
@@ -539,6 +548,24 @@ export default function PerformativePlayer({
         </div>
 
         <div className="perf-top-actions">
+          {commentCount !== null && (
+            <button
+              type="button"
+              className="pill-control perf-comments-btn"
+              onMouseEnter={() => sfx.hover()}
+              onClick={() => {
+                sfx.tap();
+                setCommentsOpen(true);
+              }}
+              aria-label={commentCount ? `Comentarios (${commentCount})` : "Comentarios"}
+              title="Comentarios del track"
+            >
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.3 9.3 0 0 1-3.9-.8L3 20.5l1.5-4.3A8 8 0 0 1 3 11.5 8.5 8.5 0 0 1 12 3a8.5 8.5 0 0 1 9 8.5z" />
+              </svg>
+              {commentCount > 0 && <span className="perf-comments-count">{commentCount > 99 ? "99+" : commentCount}</span>}
+            </button>
+          )}
           <button
             type="button"
             className="pill-control perf-options-btn"
@@ -558,6 +585,25 @@ export default function PerformativePlayer({
           </button>
         </div>
       </header>
+
+      {commentsOpen && (
+        <TrackComments
+          trackId={track.id}
+          trackTitle={track.title}
+          meId={meId}
+          canModerate={Boolean(meId && liveProject.artistId === meId)}
+          getCurrentSec={() => sfx.getPlaybackState().currentSec}
+          onSeek={(sec) => {
+            setCurrentSec(sec);
+            sfx.seek(sec);
+          }}
+          onClose={() => {
+            setCommentsOpen(false);
+            reloadCommentCount();
+          }}
+          onChanged={reloadCommentCount}
+        />
+      )}
 
       {/* Overlay tipográfico central en SF Display (Jerarquía Apple Music: Tapa -> Título -> Artista/Prod) */}
       <div className="perf-center-typo">
