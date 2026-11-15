@@ -43,13 +43,39 @@ export default function ImportarUntitled() {
       <div className="iu-wrap">
         <span className="iu-kicker">EL TABLERO · IMPORTAR DESDE [UNTITLED]</span>
         <h1>Llevá tus proyectos a El tablero</h1>
+        <div className="iu-card" style={{ borderColor: "rgba(34,197,94,.45)" }}>
+          <h2>Con la extensión (recomendado · Chrome o Edge)</h2>
+          <ol>
+            <li>
+              Bajá la extensión:{" "}
+              <a className="iu-bm" href="/tools/eltablero-extension.zip" download style={{ cursor: "pointer" }}>
+                ⬇ Bajar extensión
+              </a>
+              <br />
+              <span className="iu-note">Descomprimí el .zip: queda una carpeta <b>eltablero-extension</b>.</span>
+            </li>
+            <li>
+              Abrí <b>chrome://extensions</b> (en Edge: <b>edge://extensions</b>), prendé <b>Modo de desarrollador</b> y tocá{" "}
+              <b>Cargar descomprimida</b>. Elegí la carpeta <b>eltablero-extension</b>.
+            </li>
+            <li>Iniciá sesión en <b>untitled.stream</b> en ese navegador (si ya estás logueado, listo).</li>
+            <li>
+              Tocá el ícono de El tablero en la barra de extensiones (o en El tablero: tu perfil → <b>+</b> → <b>Importar desde [untitled]</b>).
+              Elegí tus proyectos, tocá <b>Traer</b> y después <b>Importar</b>. Sin favoritos y sin .zip.
+            </li>
+          </ol>
+          <p className="iu-note" style={{ marginTop: 10 }}>
+            Pronto va a estar en la tienda de Chrome y de Edge para instalarla con un clic.
+          </p>
+        </div>
+        <h2 style={{ fontSize: "1.05rem", margin: "26px 0 6px" }}>Sin extensión: con un favorito</h2>
         <p>
           [untitled] no tiene forma de exportar los proyectos. Este botón corre adentro de [untitled] con tu sesión y trae
           tus proyectos con portada, el orden de los tracks, BPM, key y los audios en un .zip, que después soltás en El tablero.
         </p>
 
         <div className="iu-card">
-          <h2>En la compu (recomendado)</h2>
+          <h2>En la compu</h2>
           <ol>
             <li>
               Arrastrá este botón a tu barra de favoritos:

@@ -2292,3 +2292,23 @@ html:root body .perf-player.has-cinema-canvas .perf-kicker {
 .tc-at.is-on { border-color: transparent; background: color-mix(in srgb, var(--accent-red) 14%, transparent); color: var(--accent-red); font-weight: 600; }
 .tc-send { flex: none; border: 0; cursor: pointer; padding: 10px 14px; border-radius: 999px; background: var(--ink); color: var(--bg); font-weight: 700; font-size: 0.86rem; }
 .tc-send:disabled { opacity: 0.4; cursor: default; }
+/* Importar desde [untitled] (extensión) */
+.imp-ut { border: 1px solid var(--line); border-radius: 16px; padding: 12px; margin-bottom: 12px; background: var(--surface); display: flex; flex-direction: column; min-height: 0; }
+.imp-ut-cta { flex-direction: row; align-items: center; gap: 12px; justify-content: space-between; flex-wrap: wrap; font-size: 0.86rem; color: var(--ink-secondary); }
+.imp-ut-cta span { flex: 1 1 220px; }
+.imp-ut-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.imp-ut-x { border: 0; background: none; color: var(--ink-muted); cursor: pointer; font-size: 0.82rem; }
+.imp-ut-busy { margin: 6px 0; color: var(--ink-secondary); font-size: 0.86rem; overflow-wrap: anywhere; }
+.imp-ut-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; max-height: min(38vh, 320px); overflow-y: auto; }
+.imp-ut-list li label { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 10px; background: var(--surface-secondary); cursor: pointer; min-width: 0; }
+.imp-ut-list li.is-off label { opacity: 0.45; cursor: default; }
+.imp-ut-list input { width: 18px; height: 18px; accent-color: var(--accent-red); flex: none; }
+.imp-ut-list img, .imp-ut-ph { width: 34px; height: 34px; border-radius: 7px; object-fit: cover; flex: none; background: var(--surface); display: grid; place-items: center; color: var(--ink-muted); }
+.imp-ut-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; font-size: 0.9rem; color: var(--ink); }
+.imp-ut-tag { flex: none; font-family: var(--font-mono), monospace; font-size: 0.66rem; color: var(--ink-muted); }
+.imp-ut-note { margin: 8px 2px 4px; font-size: 0.76rem; color: var(--ink-muted); }
+.imp-ut-wav { display: flex; gap: 8px; align-items: flex-start; font-size: 0.8rem; color: var(--ink-secondary); margin: 6px 2px 10px; }
+.imp-ut-wav input { margin-top: 2px; accent-color: var(--accent-red); }
+.imp-ut-go { align-self: flex-end; }
+.imp-ut-wav input { width: 16px !important; height: 16px; flex: none !important; padding: 0 !important; margin: 2px 0 0 !important; }
+.imp-ut-wav span { flex: 1; min-width: 0; text-align: left; }

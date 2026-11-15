@@ -5837,6 +5837,9 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                           <button type="button" role="menuitem" onClick={() => { setProfileAddMenuOpen(false); sfx.open(); setImportOpen(true); }}>
                             <span>Importar carpetas o .zip</span>
                           </button>
+                          <button type="button" role="menuitem" onClick={() => { setProfileAddMenuOpen(false); sfx.open(); setImportRemote(true); setImportOpen(true); }}>
+                            <span>Importar desde [untitled]</span>
+                          </button>
                         </div>
                       </>
                     )}

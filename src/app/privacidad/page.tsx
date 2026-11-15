@@ -65,6 +65,14 @@ export default function PrivacidadPage() {
         </li>
       </ul>
 
+      <h2>Extensión para importar desde [untitled]</h2>
+      <p>
+        La extensión &quot;El tablero — Importar desde [untitled]&quot; solo se usa cuando vos tocás importar. Lee la lista de
+        tus proyectos de [untitled] y baja los audios y portadas de los proyectos que elegís (tuyos o en los que sos
+        colaborador), desde tu propio navegador y con tu sesión. Los archivos pasan directo a El tablero. Tu sesión, contraseña y
+        datos de [untitled] no se guardan ni se mandan a nadie. La extensión no lee otras páginas ni tu historial.
+      </p>
+
       <h2>Menores</h2>
       <p>El tablero. no está dirigido a menores de 13 años.</p>
 

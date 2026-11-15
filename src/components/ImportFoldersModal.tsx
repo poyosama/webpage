@@ -10,6 +10,12 @@ import {
   type ImportEntry,
   type ImportProjectDraft,
 } from "@/lib/importFolders";
+import {
+  detectUntitledExtension,
+  listUntitledProjects,
+  fetchUntitledProject,
+  type UntitledProjectItem,
+} from "@/lib/untitledExtension";
 import { sfx } from "@/lib/sfx";
 
 const uid = (p: string) =>
@@ -26,7 +32,7 @@ export default function ImportFoldersModal({
 }: {
   meProfile: ArtistProfile;
   existingCount: number;
-  /** "untitled": llegan los proyectos desde el favorito de [untitled] (otra pestaña) */
+  /** "untitled": abre directo la sección "Desde [untitled]" (extensión) */
   remote?: "untitled";
   onClose: () => void;
   onImport: (projects: Project[]) => void;
@@ -38,59 +44,70 @@ export default function ImportFoldersModal({
   const [error, setError] = useState("");
   const [canPickFolder, setCanPickFolder] = useState(true);
   const folderInputRef = useRef<HTMLInputElement>(null);
-  const [remoteStatus, setRemoteStatus] = useState<"waiting" | "receiving" | "done" | null>(remote ? "waiting" : null);
+  // ---- Desde [untitled] con la extensión de El tablero ----
+  const [extVersion, setExtVersion] = useState<string | null | undefined>(undefined);
+  const [utOpen, setUtOpen] = useState(remote === "untitled");
+  const [utList, setUtList] = useState<UntitledProjectItem[] | null>(null);
+  const [utSel, setUtSel] = useState<Set<string>>(new Set());
+  const [utWav, setUtWav] = useState(false);
+  const [utBusy, setUtBusy] = useState("");
+  const [utError, setUtError] = useState("");
 
-  // Proyectos que manda el favorito de [untitled] desde su pestaña (postMessage con los archivos)
   useEffect(() => {
-    if (!remote) return;
-    const opener = window.opener as Window | null;
-    const allowed = (o: string) => o === "https://untitled.stream" || (location.hostname === "localhost" && /^http:\/\/localhost:\d+$/.test(o));
-    const onMsg = (ev: MessageEvent) => {
-      if (!allowed(ev.origin) || !ev.data || typeof ev.data !== "object") return;
-      const data = ev.data as { type?: string; project?: { title: string; cover?: File | null; tracks: { file: File; title: string; bpm?: number | null; key?: string | null; durationSec?: number | null; uploader?: string | null }[] } };
-      if (data.type === "et-project" && data.project) {
-        const pr = data.project;
-        const key = `untitled:${pr.title}:${Date.now()}`;
-        setRemoteStatus("receiving");
-        setDrafts((prev) => [
-          ...prev,
-          {
-            key,
-            title: pr.title || "Proyecto de [untitled]",
-            cover: pr.cover || undefined,
-            coverPreview: pr.cover ? URL.createObjectURL(pr.cover) : undefined,
-            include: true,
-            tracks: pr.tracks.map((t, i) => ({
-              file: t.file,
-              title: t.title,
-              order: i,
-              bpm: t.bpm,
-              key: t.key,
-              durationSec: t.durationSec,
-              note: t.uploader ? `Subido por @${t.uploader} en [untitled]` : undefined,
-            })),
-          },
-        ]);
-        (ev.source as Window | null)?.postMessage({ type: "et-ack" }, ev.origin);
-      } else if (data.type === "et-done") {
-        setRemoteStatus("done");
-        sfx.drop();
-      }
-    };
-    window.addEventListener("message", onMsg);
-    // Avisar a la pestaña de [untitled] que estamos listos (se repite por si todavía no escuchaba)
-    const hello = () => {
+    void detectUntitledExtension().then((v) => setExtVersion(v));
+  }, []);
+
+  const loadUntitled = async () => {
+    setUtError("");
+    setUtBusy("Leyendo tus proyectos de [untitled]…");
+    try {
+      const list = await listUntitledProjects();
+      setUtList(list);
+      setUtSel(new Set(list.filter((p) => p.own || p.collab).map((p) => p.slug)));
+    } catch (e) {
+      const m = (e as Error).message || "";
+      setUtError(
+        m === "login"
+          ? "Iniciá sesión en untitled.stream en este navegador y volvé a tocar."
+          : `No pude leer [untitled] (${m}). Abrí untitled.stream una vez en este navegador y probá de nuevo.`
+      );
+    } finally {
+      setUtBusy("");
+    }
+  };
+
+  useEffect(() => {
+    if (utOpen && extVersion && utList === null && !utBusy) void loadUntitled();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [utOpen, extVersion]);
+
+  const bringUntitled = async () => {
+    const picked = (utList || []).filter((p) => utSel.has(p.slug) && (p.own || p.collab));
+    if (!picked.length) return;
+    setUtError("");
+    let failed = 0;
+    for (let i = 0; i < picked.length; i++) {
+      const p = picked[i];
+      setUtBusy(`Proyecto ${i + 1}/${picked.length}: ${p.title}…`);
       try {
-        opener?.postMessage({ type: "et-ready" }, location.hostname === "localhost" ? "*" : "https://untitled.stream");
-      } catch {}
-    };
-    hello();
-    const t = window.setInterval(hello, 1500);
-    return () => {
-      window.removeEventListener("message", onMsg);
-      window.clearInterval(t);
-    };
-  }, [remote]);
+        const res = await fetchUntitledProject(p.slug, utWav, (ti, total, title) =>
+          setUtBusy(`Proyecto ${i + 1}/${picked.length}: ${p.title} · track ${ti}/${total}: ${title}`)
+        );
+        failed += res.failed;
+        if (res.draft) {
+          const d = res.draft;
+          setDrafts((prev) => [...prev.filter((x) => x.key !== d.key), d]);
+        }
+      } catch (e) {
+        failed++;
+        console.warn("[untitled]", p.title, e);
+      }
+    }
+    setUtBusy("");
+    sfx.drop();
+    setUtOpen(false);
+    if (failed) setUtError(`${failed} ${failed === 1 ? "track no se pudo" : "tracks no se pudieron"} bajar. El resto está listo para importar.`);
+  };
 
   useEffect(() => {
     // iPhone/iPad no deja elegir carpetas: ahí se usan .zip o varios archivos
@@ -124,7 +141,7 @@ export default function ImportFoldersModal({
 
   const chosen = drafts.filter((d) => d.include && d.tracks.length);
   const totalTracks = useMemo(() => chosen.reduce((a, d) => a + d.tracks.length, 0), [chosen]);
-  const busy = reading || progress !== null;
+  const busy = reading || progress !== null || !!utBusy;
 
   const runImport = async () => {
     if (!chosen.length) return;
@@ -228,20 +245,83 @@ export default function ImportFoldersModal({
           </div>
         ) : (
           <>
-            {remote && (
-              <div className="imp-remote">
-                {remoteStatus === "waiting" && (
-                  <p>Esperando a [untitled]… Volvé a la pestaña de [untitled]: el cartelito ya está mandando tus proyectos.</p>
-                )}
-                {remoteStatus === "receiving" && (
-                  <p>
-                    Recibiendo… <b>{drafts.length}</b> {drafts.length === 1 ? "proyecto" : "proyectos"} hasta ahora. Podés ir revisándolos.
-                  </p>
-                )}
-                {remoteStatus === "done" && <p>✓ Llegó todo. Revisá y tocá Importar.</p>}
+            {/* ---- Desde [untitled] (extensión) ---- */}
+            {extVersion === null && (
+              <div className="imp-ut imp-ut-cta">
+                <span>¿Tenés proyectos en [untitled]? Con la extensión de El tablero los traés en un toque.</span>
+                <a className="apple-btn ghost" href="/importar-untitled" target="_blank" rel="noopener">
+                  Instalar extensión
+                </a>
               </div>
             )}
-            {!remote && (
+            {extVersion && !utOpen && (
+              <div className="imp-ut imp-ut-cta">
+                <span>Traé tus proyectos de [untitled] con portada, orden, BPM y key.</span>
+                <button type="button" className="apple-btn primary" onClick={() => setUtOpen(true)}>
+                  Importar desde [untitled]
+                </button>
+              </div>
+            )}
+            {extVersion && utOpen && (
+              <div className="imp-ut">
+                <div className="imp-ut-head">
+                  <b>Desde [untitled]</b>
+                  <button type="button" className="imp-ut-x" onClick={() => setUtOpen(false)} disabled={!!utBusy}>
+                    Volver
+                  </button>
+                </div>
+                {utBusy && <p className="imp-ut-busy">{utBusy}</p>}
+                {!utBusy && utList && utList.length === 0 && <p className="imp-ut-busy">No encontré proyectos en tu [untitled].</p>}
+                {!utBusy && utList && utList.length > 0 && (
+                  <>
+                    <ul className="imp-ut-list">
+                      {utList.map((p) => {
+                        const can = p.own || p.collab;
+                        return (
+                          <li key={p.slug} className={can ? "" : "is-off"}>
+                            <label>
+                              <input
+                                type="checkbox"
+                                disabled={!can}
+                                checked={can && utSel.has(p.slug)}
+                                onChange={(e) =>
+                                  setUtSel((prev) => {
+                                    const n = new Set(prev);
+                                    if (e.target.checked) n.add(p.slug);
+                                    else n.delete(p.slug);
+                                    return n;
+                                  })
+                                }
+                              />
+                              {p.cover ? <img src={p.cover} alt="" /> : <span className="imp-ut-ph">♪</span>}
+                              <span className="imp-ut-title">{p.title}</span>
+                              <span className="imp-ut-tag">{p.own ? "tuyo" : p.collab ? `colaborás · @${p.username}` : `de @${p.username}`}</span>
+                            </label>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    <p className="imp-ut-note">Los de otras cuentas no se traen (salvo que seas colaborador): que los importe su dueño.</p>
+                    <label className="imp-ut-wav">
+                      <input type="checkbox" checked={utWav} onChange={(e) => setUtWav(e.target.checked)} />
+                      <span>Traer los <b>WAV originales</b> (tarda mucho más; si no, MP3, que alcanza para escuchar)</span>
+                    </label>
+                    <button
+                      type="button"
+                      className="apple-btn primary imp-ut-go"
+                      disabled={!utList.some((p) => utSel.has(p.slug) && (p.own || p.collab))}
+                      onClick={bringUntitled}
+                    >
+                      Traer {utList.filter((p) => utSel.has(p.slug) && (p.own || p.collab)).length} proyectos
+                    </button>
+                  </>
+                )}
+                {!utBusy && utList === null && !utError && <p className="imp-ut-busy">Conectando con [untitled]…</p>}
+              </div>
+            )}
+            {utError && <p className="imp-error">{utError}</p>}
+
+            {!utOpen && (
             <div
               className={`imp-drop ${dragOver ? "is-over" : ""}`}
               onDragOver={(e) => {
