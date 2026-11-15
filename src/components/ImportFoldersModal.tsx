@@ -22,9 +22,12 @@ export default function ImportFoldersModal({
   existingCount,
   onClose,
   onImport,
+  remote,
 }: {
   meProfile: ArtistProfile;
   existingCount: number;
+  /** "untitled": llegan los proyectos desde el favorito de [untitled] (otra pestaña) */
+  remote?: "untitled";
   onClose: () => void;
   onImport: (projects: Project[]) => void;
 }) {
@@ -35,6 +38,59 @@ export default function ImportFoldersModal({
   const [error, setError] = useState("");
   const [canPickFolder, setCanPickFolder] = useState(true);
   const folderInputRef = useRef<HTMLInputElement>(null);
+  const [remoteStatus, setRemoteStatus] = useState<"waiting" | "receiving" | "done" | null>(remote ? "waiting" : null);
+
+  // Proyectos que manda el favorito de [untitled] desde su pestaña (postMessage con los archivos)
+  useEffect(() => {
+    if (!remote) return;
+    const opener = window.opener as Window | null;
+    const allowed = (o: string) => o === "https://untitled.stream" || (location.hostname === "localhost" && /^http:\/\/localhost:\d+$/.test(o));
+    const onMsg = (ev: MessageEvent) => {
+      if (!allowed(ev.origin) || !ev.data || typeof ev.data !== "object") return;
+      const data = ev.data as { type?: string; project?: { title: string; cover?: File | null; tracks: { file: File; title: string; bpm?: number | null; key?: string | null; durationSec?: number | null; uploader?: string | null }[] } };
+      if (data.type === "et-project" && data.project) {
+        const pr = data.project;
+        const key = `untitled:${pr.title}:${Date.now()}`;
+        setRemoteStatus("receiving");
+        setDrafts((prev) => [
+          ...prev,
+          {
+            key,
+            title: pr.title || "Proyecto de [untitled]",
+            cover: pr.cover || undefined,
+            coverPreview: pr.cover ? URL.createObjectURL(pr.cover) : undefined,
+            include: true,
+            tracks: pr.tracks.map((t, i) => ({
+              file: t.file,
+              title: t.title,
+              order: i,
+              bpm: t.bpm,
+              key: t.key,
+              durationSec: t.durationSec,
+              note: t.uploader ? `Subido por @${t.uploader} en [untitled]` : undefined,
+            })),
+          },
+        ]);
+        (ev.source as Window | null)?.postMessage({ type: "et-ack" }, ev.origin);
+      } else if (data.type === "et-done") {
+        setRemoteStatus("done");
+        sfx.drop();
+      }
+    };
+    window.addEventListener("message", onMsg);
+    // Avisar a la pestaña de [untitled] que estamos listos (se repite por si todavía no escuchaba)
+    const hello = () => {
+      try {
+        opener?.postMessage({ type: "et-ready" }, location.hostname === "localhost" ? "*" : "https://untitled.stream");
+      } catch {}
+    };
+    hello();
+    const t = window.setInterval(hello, 1500);
+    return () => {
+      window.removeEventListener("message", onMsg);
+      window.clearInterval(t);
+    };
+  }, [remote]);
 
   useEffect(() => {
     // iPhone/iPad no deja elegir carpetas: ahí se usan .zip o varios archivos
@@ -81,7 +137,16 @@ export default function ImportFoldersModal({
       const tracks: Track[] = [];
       for (let i = 0; i < d.tracks.length; i++) {
         const t = d.tracks[i];
-        const info = await analyzeAudioFile(t.file); // BPM, key y duración del archivo
+        // BPM, key y duración: si vienen de [untitled] se usan; si no, se analizan del archivo
+        const known = t.bpm && t.key && t.durationSec;
+        const info = known
+          ? {
+              bpm: Math.round(t.bpm as number),
+              key: t.key as string,
+              durationSec: Math.round(t.durationSec as number),
+              duration: `${Math.floor((t.durationSec as number) / 60)}:${String(Math.round(t.durationSec as number) % 60).padStart(2, "0")}`,
+            }
+          : await analyzeAudioFile(t.file);
         tracks.push({
           id: `tr-imp-${Date.now()}-${pi}-${i}-${Math.random().toString(36).slice(2, 6)}`,
           title: t.title,
@@ -98,6 +163,7 @@ export default function ImportFoldersModal({
           glyph: String(i + 1).padStart(2, "0"),
           audioFreq: 130.8,
           customAudioUrl: URL.createObjectURL(t.file),
+          note: t.note,
         });
         done++;
         setProgress({ done, total: totalTracks });
@@ -143,8 +209,8 @@ export default function ImportFoldersModal({
       <div className="apple-modal-card imp-card" role="dialog" aria-modal="true" aria-label="Importar proyectos" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <div>
-            <span className="mono-tag">IMPORTAR</span>
-            <h3>Traé tus proyectos</h3>
+            <span className="mono-tag">{remote ? "IMPORTAR DESDE [UNTITLED]" : "IMPORTAR"}</span>
+            <h3>{remote ? "Tus proyectos de [untitled]" : "Traé tus proyectos"}</h3>
           </div>
           <button type="button" className="apple-btn ghost" onClick={onClose} disabled={busy}>
             Cerrar
@@ -162,6 +228,20 @@ export default function ImportFoldersModal({
           </div>
         ) : (
           <>
+            {remote && (
+              <div className="imp-remote">
+                {remoteStatus === "waiting" && (
+                  <p>Esperando a [untitled]… Volvé a la pestaña de [untitled]: el cartelito ya está mandando tus proyectos.</p>
+                )}
+                {remoteStatus === "receiving" && (
+                  <p>
+                    Recibiendo… <b>{drafts.length}</b> {drafts.length === 1 ? "proyecto" : "proyectos"} hasta ahora. Podés ir revisándolos.
+                  </p>
+                )}
+                {remoteStatus === "done" && <p>✓ Llegó todo. Revisá y tocá Importar.</p>}
+              </div>
+            )}
+            {!remote && (
             <div
               className={`imp-drop ${dragOver ? "is-over" : ""}`}
               onDragOver={(e) => {
@@ -210,6 +290,7 @@ export default function ImportFoldersModal({
                 </label>
               </div>
             </div>
+            )}
 
             {error && <p className="imp-error">{error}</p>}
 

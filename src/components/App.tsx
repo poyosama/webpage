@@ -402,6 +402,8 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   // Seguidores / amigos: listas por usuario (cache) y hoja con la lista abierta
   const [socialByUser, setSocialByUser] = useState<Record<string, SocialLists>>({});
   const [importOpen, setImportOpen] = useState(false);
+  const [importRemote, setImportRemote] = useState(false);
+
   const [socialSheet, setSocialSheet] = useState<{ title: string; people: { userId: string; handle: string; name: string; avatarUrl?: string }[] } | null>(null);
   const [followBusy, setFollowBusy] = useState(false);
   // Perfil de otro artista (página encima de la pantalla actual)
@@ -2822,6 +2824,18 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   };
 
   const isGuest = !googleConnected && guestMode && !hasGuestInviteAccessEarly();
+  // Abierto desde el favorito "Llevar a El tablero" de [untitled]: importador en modo recibir
+  useEffect(() => {
+    if (!googleConnected || !meProfile.id || isGuest) return;
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      if (sp.get("import") !== "untitled") return;
+      setImportRemote(true);
+      setImportOpen(true);
+      window.history.replaceState(null, "", window.location.pathname);
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [googleConnected, meProfile.id]);
   isGuestRef.current = isGuest;
   guestPreviewEndRef.current = () => {
     if (!isPlaying) return;
@@ -6709,10 +6723,15 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
         <ImportFoldersModal
           meProfile={meProfile}
           existingCount={projects.length}
-          onClose={() => setImportOpen(false)}
+          remote={importRemote ? "untitled" : undefined}
+          onClose={() => {
+            setImportOpen(false);
+            setImportRemote(false);
+          }}
           onImport={(created) => {
             setProjects((prev) => [...created, ...prev]);
             setImportOpen(false);
+            setImportRemote(false);
             setSelectedProjectId(created[0]?.id || "");
             setInsideCubeOpen(false);
             setLibrarySubTab("proyectos");

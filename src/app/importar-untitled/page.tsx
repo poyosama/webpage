@@ -5,18 +5,22 @@ import { useEffect, useRef, useState } from "react";
 /** Página con el favorito de diagnóstico de [untitled] (paso previo al importador completo) */
 export default function ImportarUntitled() {
   const linkRef = useRef<HTMLAnchorElement>(null);
+  const diagRef = useRef<HTMLAnchorElement>(null);
   const [code, setCode] = useState("");
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    void fetch("/tools/untitled-diag.js")
+    // React bloquea href="javascript:..." en JSX: se pone a mano
+    void fetch("/tools/untitled-import.js")
       .then((r) => r.text())
       .then((src) => {
         const href = "javascript:" + encodeURIComponent(src);
         setCode(href);
-        // React bloquea href="javascript:..." en JSX: se pone a mano
         linkRef.current?.setAttribute("href", href);
       });
+    void fetch("/tools/untitled-diag.js")
+      .then((r) => r.text())
+      .then((src) => diagRef.current?.setAttribute("href", "javascript:" + encodeURIComponent(src)));
   }, []);
 
   return (
@@ -38,10 +42,10 @@ export default function ImportarUntitled() {
       `}</style>
       <div className="iu-wrap">
         <span className="iu-kicker">EL TABLERO · IMPORTAR DESDE [UNTITLED]</span>
-        <h1>Paso 1: diagnóstico</h1>
+        <h1>Llevá tus proyectos a El tablero</h1>
         <p>
-          [untitled] no tiene forma de exportar los proyectos, así que vamos a armar un botón que corra adentro de
-          [untitled] con tu sesión y traiga todo. Para armarlo necesito ver cómo carga [untitled] sus datos. Para eso es este favorito.
+          [untitled] no tiene forma de exportar los proyectos. Este botón corre adentro de [untitled] con tu sesión y trae
+          tus proyectos con portada, el orden de los tracks, BPM, key y los audios. Después los revisás y tocás Importar.
         </p>
 
         <div className="iu-card">
@@ -51,17 +55,19 @@ export default function ImportarUntitled() {
               Arrastrá este botón a tu barra de favoritos:
               <br />
               <a ref={linkRef} className="iu-bm" href="#" onClick={(e) => e.preventDefault()} draggable>
-                ⚡ Diagnóstico El tablero
+                ⚡ Llevar a El tablero
               </a>
               <br />
               <span className="iu-note">¿No ves la barra de favoritos? Ctrl + Shift + B (en Mac, Cmd + Shift + B).</span>
             </li>
-            <li>Abrí <b>untitled.stream</b>, logueado, y entrá a un proyecto tuyo.</li>
-            <li>Tocá el favorito <b>⚡ Diagnóstico El tablero</b>. Abajo a la derecha aparece un cartelito.</li>
+            <li>Tené El tablero abierto con tu sesión iniciada en este navegador.</li>
+            <li>Abrí <b>untitled.stream</b>, logueado, y entrá a tu biblioteca.</li>
+            <li>Tocá el favorito <b>⚡ Llevar a El tablero</b>. Abajo a la derecha aparece la lista de tus proyectos.</li>
             <li>
-              Con el cartelito abierto: <b>dale play a un track</b>, <b>abrí otro proyecto</b> y <b>volvé a tu biblioteca</b>.
+              Elegí cuáles llevar (tildá &quot;WAV originales&quot; si los querés; si no, se traen en MP3, que es mucho más rápido)
+              y tocá <b>Llevar a El tablero</b>. Si el navegador bloquea la ventana nueva, permití ventanas emergentes para untitled.stream.
             </li>
-            <li>Tocá <b>Listo, copiar</b> y pegá el texto en el chat con Claude.</li>
+            <li>Se abre El tablero y van llegando los proyectos. Cuando termine, revisá los nombres y tocá <b>Importar</b>.</li>
           </ol>
         </div>
 
@@ -89,13 +95,26 @@ export default function ImportarUntitled() {
             <li>En Safari agregá esta página a favoritos (botón compartir → Agregar marcador).</li>
             <li>Abrí Favoritos, mantené apretado ese marcador → Editar, y en la dirección borrá todo y pegá el código.</li>
             <li>Entrá a untitled.stream en Safari y abrí ese favorito. Seguí los pasos 4 y 5 de arriba.</li>
+            <li style={{ color: "#a1a1aa" }}>En el iPhone puede andar lento con muchos proyectos: si podés, hacelo en la compu.</li>
           </ol>
         </div>
 
         <p className="iu-safe">
-          Es solo lectura: no manda nada a ningún lado. Copia una lista de nombres de campos y direcciones de la API para que yo
-          entienda cómo están armados los datos. No copia tu contraseña, ni tokens, ni mails, ni archivos. Los textos se recortan.
+          Solo se traen <b>tus</b> proyectos (o en los que sos colaborador con permiso de edición). Los de otras cuentas no:
+          que los importe su dueño. Tu sesión de [untitled] no sale de tu navegador: el botón baja los archivos como si tocaras
+          &quot;descargar&quot; vos y se los pasa directo a la pestaña de El tablero.
         </p>
+        <details style={{ marginTop: 18, color: "#a1a1aa", fontSize: 14 }}>
+          <summary style={{ cursor: "pointer" }}>¿No anda? Favorito de diagnóstico</summary>
+          <p style={{ marginTop: 10 }}>
+            Si [untitled] cambió algo y el botón falla, arrastrá este otro favorito, tocalo en [untitled], dale play a un track,
+            abrí otro proyecto, tocá &quot;Listo, copiar&quot; y mandale el texto a quien mantiene El tablero. Es solo lectura y tapa
+            tokens y mails.
+          </p>
+          <a ref={diagRef} className="iu-btn" href="#" onClick={(e) => e.preventDefault()} draggable style={{ display: "inline-block", textDecoration: "none" }}>
+            Diagnóstico El tablero
+          </a>
+        </details>
         <p style={{ marginTop: 24 }}>
           <a className="iu-back" href="/">
             ← Volver a El tablero

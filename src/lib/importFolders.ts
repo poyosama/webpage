@@ -12,6 +12,11 @@ export type ImportTrackDraft = {
   file: File;
   title: string;
   order: number;
+  /** datos que ya vienen de otra plataforma (ej. [untitled]): si están, no hace falta analizar */
+  bpm?: number | null;
+  key?: string | null;
+  durationSec?: number | null;
+  note?: string;
 };
 
 export type ImportProjectDraft = {
