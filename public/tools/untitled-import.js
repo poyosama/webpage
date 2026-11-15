@@ -17,6 +17,20 @@
   }
   var myId = me.id;
 
+  /* Remix pide los datos con ?_data=<id de la ruta>: los ids salen del manifiesto de la propia página */
+  function routeId(re, fallback) {
+    var m = window.__remixManifest && window.__remixManifest.routes;
+    if (m) for (var k in m) if (re.test(k)) return k;
+    return fallback;
+  }
+  var LIB_ROUTE = routeId(/^routes\/library\._index$/, "routes/library._index");
+  var PROJ_ROUTE = routeId(/^routes\/library\.project\.\$[^./]+$/, "routes/library.project.$projectSlug");
+  function libraryData() {
+    var ld = ctx.state && ctx.state.loaderData && ctx.state.loaderData[LIB_ROUTE];
+    if (ld && ld.projects && ld.projects.length) return Promise.resolve(ld);
+    return getJson("/library?_data=" + encodeURIComponent(LIB_ROUTE));
+  }
+
   /* ---------- cartel ---------- */
   var box = document.createElement("div");
   box.setAttribute("style", "position:fixed;z-index:2147483647;right:16px;bottom:16px;width:380px;max-width:calc(100vw - 32px);max-height:calc(100vh - 32px);display:flex;flex-direction:column;background:#0b0b0e;color:#fff;font:13px/1.45 -apple-system,system-ui,sans-serif;border:1px solid rgba(255,255,255,.18);border-radius:16px;box-shadow:0 18px 50px rgba(0,0,0,.5);padding:14px");
@@ -82,7 +96,7 @@
 
   /* ---------- 1. lista de proyectos ---------- */
   var projects = [];
-  getJson("/library?_data").then(function (data) {
+  libraryData().then(function (data) {
     projects = (data.projects || []).map(function (x) { return x.project; }).filter(Boolean);
     var mine = 0;
     var html = projects.map(function (p, i) {
@@ -96,7 +110,7 @@
         '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(p.title) + "</span>" +
         '<span style="opacity:.55;font-size:11px">' + (own ? "tuyo" : collab ? "colaborás · @" + esc(p.username) : "de @" + esc(p.username)) + "</span></label>";
     }).join("");
-    $("[data-list]").innerHTML = html || '<div style="opacity:.7">No encontré proyectos.</div>';
+    $("[data-list]").innerHTML = html || '<div style="opacity:.7">No encontré proyectos. Abrí <b>untitled.stream/library</b> (tu biblioteca), recargá la página y tocá el favorito de nuevo.</div>';
     msg("Elegí qué proyectos llevar (" + mine + " tuyos). Los de otras cuentas no se traen (salvo que seas colaborador): que los importe su dueño.");
     $("[data-wavrow]").style.display = "flex";
     var go = $("[data-go]");
@@ -146,7 +160,7 @@
       picked.forEach(function (p, pi) {
         chain = chain.then(function () {
           msg("Proyecto " + (pi + 1) + "/" + picked.length + ": <b>" + esc(p.title) + "</b> — leyendo tracks…");
-          return getJson("/library/project/" + encodeURIComponent(p.slug) + "?_data").then(function (d) {
+          return getJson("/library/project/" + encodeURIComponent(p.slug) + "?_data=" + encodeURIComponent(PROJ_ROUTE)).then(function (d) {
             var info = (d.project && d.project.project) || p;
             var tracks = (d.project && d.project.tracks) || [];
             var cover = null, files = [];
