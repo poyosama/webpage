@@ -179,7 +179,7 @@ export default function ImportFoldersModal({
           c2: color,
           accent: color,
           glyph: String(i + 1).padStart(2, "0"),
-          audioFreq: 130.8,
+          audioFreq: 131,
           customAudioUrl: URL.createObjectURL(t.file),
           note: t.note,
         });

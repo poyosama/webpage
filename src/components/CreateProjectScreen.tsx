@@ -306,7 +306,7 @@ export default function CreateProjectScreen({
         c2: color,
         accent: color,
         glyph: String(startIdx + i + 1).padStart(2, "0"),
-        audioFreq: 130.8,
+        audioFreq: 131,
         customAudioUrl: URL.createObjectURL(file),
       };
     });

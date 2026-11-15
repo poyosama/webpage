@@ -130,6 +130,11 @@ const cleanUrl = (url?: string | null): string | undefined =>
   url && !url.startsWith("blob:") ? url : undefined;
 
 const audioMemCache = new Map<string, string>();
+/** Columnas enteras de la base (bpm, duration_sec, version, audio_freq, order_index): un decimal hace fallar TODO el guardado */
+const int = (v: unknown, fallback: number): number => {
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) ? n : fallback;
+};
 // Tracks que ESTA pestaña sabe que están en la nube, por proyecto (de la última carga o guardado).
 // Al guardar solo se borran los que estaban acá y ya no están: una pestaña vieja que nunca vio
 // los tracks nuevos no puede borrarlos (antes borraba todo lo que no conocía).
@@ -857,17 +862,17 @@ async function saveProjectSkeleton(project: Project, userId?: string): Promise<v
       artist: t.artist,
       feat: t.feat || null,
       prod: t.prod || null,
-      bpm: t.bpm,
+      bpm: int(t.bpm, 140),
       musical_key: t.key,
       duration: t.duration,
-      duration_sec: t.durationSec,
-      version: t.version,
+      duration_sec: int(t.durationSec, 150),
+      version: int(t.version, 1),
       note: t.note || null,
       glyph: t.glyph,
       c1: t.c1 || "#ffffff",
       c2: t.c2 || "#888888",
       accent: t.accent || "#ffffff",
-      audio_freq: t.audioFreq || 80,
+      audio_freq: int(t.audioFreq, 80),
       order_index: idx,
     });
     const list = project.tracks || [];
@@ -1022,17 +1027,17 @@ export async function saveProjectToSupabase(project: Project, userId?: string): 
         artist: t.artist,
         feat: t.feat || null,
         prod: t.prod || null,
-        bpm: t.bpm,
+        bpm: int(t.bpm, 140),
         musical_key: t.key,
         duration: t.duration,
-        duration_sec: t.durationSec,
-        version: t.version,
+        duration_sec: int(t.durationSec, 150),
+        version: int(t.version, 1),
         note: t.note || null,
         glyph: t.glyph,
         c1: t.c1 || "#ffffff",
         c2: t.c2 || "#888888",
         accent: t.accent || "#ffffff",
-        audio_freq: t.audioFreq || 80,
+        audio_freq: int(t.audioFreq, 80),
         audio_url: cleanUrl(t.customAudioUrl) || null,
         cover_url: cleanUrl(t.coverUrl) || coverUrl || null,
         order_index: idx,
@@ -1149,17 +1154,17 @@ export async function saveTrackToSupabase(projectId: string, track: Track, order
         artist: track.artist,
         feat: track.feat || null,
         prod: track.prod || null,
-        bpm: track.bpm,
+        bpm: int(track.bpm, 140),
         musical_key: track.key,
         duration: track.duration,
-        duration_sec: track.durationSec,
-        version: track.version,
+        duration_sec: int(track.durationSec, 150),
+        version: int(track.version, 1),
         note: track.note || null,
         glyph: track.glyph,
         c1: track.c1 || "#ffffff",
         c2: track.c2 || "#888888",
         accent: track.accent || "#ffffff",
-        audio_freq: track.audioFreq || 80,
+        audio_freq: int(track.audioFreq, 80),
         audio_url: audio,
         cover_url: cover,
         order_index: orderIndex,
@@ -1362,7 +1367,7 @@ export async function saveSharedTrackMeta(track: Track, projectId: string): Prom
       artist: track.artist,
       feat: track.feat || null,
       prod: track.prod || null,
-      bpm: track.bpm,
+      bpm: int(track.bpm, 140),
       musical_key: track.key,
       note: track.note || null,
       glyph: track.glyph,
