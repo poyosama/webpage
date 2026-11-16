@@ -49,11 +49,19 @@ export async function r2Exists(key: string): Promise<boolean> {
 export async function r2Put(key: string, body: ArrayBuffer, contentType: string): Promise<string> {
   const cfg = r2Config();
   if (!cfg) return "sin configuración";
-  const r = await cfg.client.fetch(`${cfg.endpoint}/${encKey(key)}`, {
+  // R2 exige Content-Length: se firma el pedido y se manda el archivo entero (no como "stream" sin tamaño)
+  const bytes = new Uint8Array(body);
+  const signed = await cfg.client.sign(`${cfg.endpoint}/${encKey(key)}`, {
     method: "PUT",
-    body,
-    headers: { "content-type": (contentType || "application/octet-stream").split(";")[0].trim() },
+    body: bytes,
+    headers: {
+      "content-type": (contentType || "application/octet-stream").split(";")[0].trim(),
+      "content-length": String(bytes.byteLength),
+    },
   });
+  const headers = new Headers(signed.headers);
+  headers.set("content-length", String(bytes.byteLength));
+  const r = await fetch(signed.url, { method: "PUT", headers, body: bytes });
   if (r.ok) return "";
   const txt = (await r.text().catch(() => "")).replace(/\s+/g, " ").slice(0, 220);
   return `R2 ${r.status} ${txt}`;
