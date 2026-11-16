@@ -745,13 +745,13 @@ function VoxelDivePortal({
 }
 
 export default function ManifoldLibrary3D({
-  projects,
-  selectedProjectId,
+  projects: allProjects,
+  selectedProjectId: selectedProjectIdProp,
   poppedProjectId,
   viewMode = "manifold",
   onChangeViewMode,
-  onSelectProject,
-  onDiveIntoProject,
+  onSelectProject: onSelectProjectProp,
+  onDiveIntoProject: onDiveIntoProjectProp,
   onOpenCreateProject,
   onDeleteProject,
   onUploadProjectVideo,
@@ -763,6 +763,7 @@ export default function ManifoldLibrary3D({
   dropTargetProjectId = null,
   transferAnimation = null,
   folders = null,
+  folderOf = {},
   meId,
   onFolderDrop,
   onRenameFolder,
@@ -787,11 +788,70 @@ export default function ManifoldLibrary3D({
   transferAnimation?: { trackTitle: string; targetProjectId: string } | null;
   /** Carpetas (null = sin carpetas: falta la migración o no es la Biblioteca) */
   folders?: FolderItem[] | null;
+  /** En qué carpeta tiene este usuario cada proyecto */
+  folderOf?: Record<string, string>;
   meId?: string;
   onFolderDrop?: (projectId: string, target: DropTarget) => void;
   onRenameFolder?: (folderId: string, title: string) => void;
   onUngroupFolder?: (folderId: string) => void;
 }) {
+  // ---- Carpetas: estado compartido entre la vista de tapas y la rueda ----
+  const [openFolderId, setOpenFolderId] = useState<string | null>(null);
+  const [focusFolderKey, setFocusFolderKey] = useState<string | null>(null);
+  const foldersOn = Array.isArray(folders) && !!onFolderDrop;
+  const folderIds = new Set((folders || []).map((f) => f.id));
+  const folderKey = (id: string) => `__folder__:${id}`;
+  const isFolderKey = (id: string) => id.startsWith("__folder__:");
+  const inFolder = (p: Project) => {
+    const f = folderOf[p.id];
+    return f && folderIds.has(f) ? f : null;
+  };
+  const openFolder = openFolderId ? (folders || []).find((f) => f.id === openFolderId) || null : null;
+  const [modeForFolders, setModeForFolders] = useState<"wheel" | "grid">("grid");
+  /** Lista que ve la rueda: carpetas como un vinilo más + proyectos sueltos (o los de la carpeta abierta) */
+  const projects: Project[] = (() => {
+    if (!foldersOn || modeForFolders !== "wheel") return allProjects;
+    if (openFolder) return allProjects.filter((p) => inFolder(p) === openFolder.id);
+    const folderVinyls: Project[] = (folders || [])
+      .map((f) => {
+        const inside = allProjects.filter((p) => inFolder(p) === f.id);
+        if (!inside.length) return null;
+        const first = inside[0];
+        return {
+          ...first,
+          id: folderKey(f.id),
+          title: f.title,
+          artist: `Carpeta · ${inside.length} ${inside.length === 1 ? "proyecto" : "proyectos"}`,
+          type: "Carpeta" as unknown as Project["type"],
+          coverUrl: inside.find((x) => x.coverUrl)?.coverUrl,
+          tracks: inside.flatMap((x) => x.tracks),
+          videos: [],
+          spotifyUrl: undefined,
+        } as Project;
+      })
+      .filter(Boolean) as Project[];
+    return [...folderVinyls, ...allProjects.filter((p) => !inFolder(p))];
+  })();
+  const selectedProjectId = focusFolderKey || selectedProjectIdProp;
+  const onSelectProject = (p: Project) => {
+    if (isFolderKey(p.id)) {
+      setFocusFolderKey(p.id);
+      return;
+    }
+    setFocusFolderKey(null);
+    onSelectProjectProp(p);
+  };
+  const onDiveIntoProject = onDiveIntoProjectProp
+    ? (p: Project) => {
+        if (isFolderKey(p.id)) {
+          setFocusFolderKey(null);
+          setOpenFolderId(p.id.slice("__folder__:".length));
+          return;
+        }
+        onDiveIntoProjectProp(p);
+      }
+    : undefined;
+
   const activeProject =
     projects.find((p) => p.id === selectedProjectId) || projects[0] || null;
 
@@ -805,29 +865,30 @@ export default function ManifoldLibrary3D({
   const [arcOffset, setArcOffset] = useState<number>(selectedIndex);
   const [confirmDeleteProjectId, setConfirmDeleteProjectId] = useState<string | null>(null);
   // ---- Carpetas (vista de tapas) ----
-  const [openFolderId, setOpenFolderId] = useState<string | null>(null);
   const [editingFolderTitle, setEditingFolderTitle] = useState<string | null>(null);
-  const foldersOn = Array.isArray(folders) && !!onFolderDrop;
-  const folderIds = new Set((folders || []).map((f) => f.id));
-  const canFolder = (p: Project) => foldersOn && !!meId && p.artistId === meId && !p.id.startsWith("__");
+  const canFolder = (p: Project) => foldersOn && !!meId && !isFolderKey(p.id);
   const { drag, over, dragHandlers, suppressClick } = useProjectDrag((projectId, target) => {
     onFolderDrop?.(projectId, target);
   });
-  const openFolder = openFolderId ? (folders || []).find((f) => f.id === openFolderId) || null : null;
   useEffect(() => {
     if (openFolderId && !folderIds.has(openFolderId)) setOpenFolderId(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [folders, openFolderId]);
   const gridProjects = !foldersOn
-    ? projects
+    ? allProjects
     : openFolder
-    ? projects.filter((p) => p.folderId === openFolder.id)
-    : projects.filter((p) => !p.folderId || !folderIds.has(p.folderId));
+    ? allProjects.filter((p) => inFolder(p) === openFolder.id)
+    : allProjects.filter((p) => !inFolder(p));
   const [isMobileViewport, setIsMobileViewport] = useState<boolean>(false);
 
   const [activeMode, setActiveMode] = useState<"wheel" | "grid">(
     compact || hideSwitcher ? "grid" : viewMode === "manifold" ? "grid" : "wheel"
   );
+  // La lista de la rueda (con carpetas) depende de la vista
+  useEffect(() => {
+    setModeForFolders(activeMode);
+    setFocusFolderKey(null);
+  }, [activeMode]);
 
   useEffect(() => {
     if (compact || hideSwitcher) {
@@ -1049,6 +1110,12 @@ export default function ManifoldLibrary3D({
           activeMode === "wheel" ? "vinyl-arc-stage" : "catalog-grid-stage"
         }`}
       >
+        {/* Rueda adentro de una carpeta: volver */}
+        {activeMode === "wheel" && foldersOn && openFolder && (
+          <button type="button" className="lib-wheel-folder-back" onClick={() => setOpenFolderId(null)}>
+            ← 📁 {openFolder.title}
+          </button>
+        )}
         {/* Switcher permanente arriba a la izquierda: [ 💿 Rueda | ⊞ Tapas ] (oculto en perfil/celular) */}
         {!hideSwitcher && !(compact && isMobileViewport) && (
           <div className="library-top-left-switcher" role="group" aria-label="Cambiar modo de vista">
@@ -1196,7 +1263,7 @@ export default function ManifoldLibrary3D({
                 {foldersOn &&
                   !openFolder &&
                   (folders || []).map((f) => {
-                    const inside = projects.filter((p) => p.folderId === f.id);
+                    const inside = allProjects.filter((p) => inFolder(p) === f.id);
                     return (
                       <div
                         key={`folder-${f.id}`}
@@ -1831,7 +1898,7 @@ export default function ManifoldLibrary3D({
                         )}
                         <div className="vinyl-right-action-row">
                           <span className="vinyl-right-enter-chip">
-                            Abrir proyecto
+                            {activeProject && isFolderKey(activeProject.id) ? "Abrir carpeta" : "Abrir proyecto"}
                             <svg
                               width="12"
                               height="12"

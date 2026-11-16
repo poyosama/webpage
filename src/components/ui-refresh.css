@@ -2353,3 +2353,4 @@ html:root body .perf-player.has-cinema-canvas .perf-kicker {
 .lib-folder-out { flex-basis: 100%; display: none; text-align: center; padding: 14px; border: 1.5px dashed var(--line-strong); border-radius: 14px; color: var(--ink-muted); font-size: .85rem; }
 .lib-folder-out.is-visible { display: block; }
 .lib-folder-out.is-over { border-color: var(--accent-red); color: var(--accent-red); background: color-mix(in srgb, var(--accent-red) 8%, transparent); }
+.lib-wheel-folder-back { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); z-index: 30; border: 1px solid var(--line-strong); background: var(--surface-translucent); color: var(--ink); border-radius: 999px; padding: 8px 14px; font-weight: 700; font-size: .85rem; cursor: pointer; backdrop-filter: blur(12px); }

@@ -586,7 +586,6 @@ export function mapProjectRow(row: any, idx = 0): Project {
     status: row.status || "Publicado",
     visibility: row.visibility === "friends" || row.visibility === "public" || row.visibility === "private" ? row.visibility : isPublic ? "public" : "private",
     createdAt: row.created_at,
-    folderId: row.folder_id === undefined ? undefined : row.folder_id || null,
     dateLabel: row.date_label || `${row.year || "2026"} · ${row.zone || "Mendoza"}`,
     zone: row.zone || "Mendoza",
     genre: row.genre || "",
@@ -1024,8 +1023,6 @@ export async function saveProjectToSupabase(project: Project, userId?: string): 
       user_id: safeUserId,
       updated_at: new Date().toISOString(),
     };
-    // Carpeta: solo si la base ya tiene la columna (si el proyecto vino de la nube con folder_id)
-    if (project.folderId !== undefined) baseRow.folder_id = project.folderId;
 
     let { error: projErr } = await supabase
       .from("projects")
@@ -1033,12 +1030,6 @@ export async function saveProjectToSupabase(project: Project, userId?: string): 
         { ...baseRow, is_public: project.visibility === "public", visibility: project.visibility || "private" },
         { onConflict: "id" }
       );
-    if (projErr && /folder_id/i.test(projErr.message)) {
-      delete baseRow.folder_id;
-      ({ error: projErr } = await supabase
-        .from("projects")
-        .upsert({ ...baseRow, is_public: project.visibility === "public", visibility: project.visibility || "private" }, { onConflict: "id" }));
-    }
     if (projErr && /visibility/i.test(projErr.message)) {
       // la columna visibility todavía no existe (falta migration_privacy.sql): amigos = privado
       ({ error: projErr } = await supabase
@@ -1591,7 +1582,23 @@ export async function deleteProjectFolder(folderId: string): Promise<boolean> {
   return !error;
 }
 
-export async function setProjectFolderInDb(projectId: string, folderId: string | null): Promise<boolean> {
-  const { error } = await supabase.from("projects").update({ folder_id: folderId }).eq("id", toDbId(projectId));
+/** Qué proyecto tengo en qué carpeta (de esta cuenta). null = falta la migración */
+export async function fetchFolderItems(userId: string): Promise<Record<string, string> | null> {
+  const { data, error } = await supabase.from("project_folder_items").select("project_id, folder_id").eq("user_id", userId);
+  if (error) return null;
+  const out: Record<string, string> = {};
+  (data || []).forEach((r: { project_id: string; folder_id: string }) => (out[r.project_id] = r.folder_id));
+  return out;
+}
+
+/** Mete (o saca, con folderId null) un proyecto de una carpeta propia */
+export async function setProjectFolderInDb(userId: string, projectId: string, folderId: string | null): Promise<boolean> {
+  if (!folderId) {
+    const { error } = await supabase.from("project_folder_items").delete().eq("user_id", userId).eq("project_id", projectId);
+    return !error;
+  }
+  const { error } = await supabase
+    .from("project_folder_items")
+    .upsert({ user_id: userId, project_id: projectId, folder_id: folderId }, { onConflict: "user_id,project_id" });
   return !error;
 }

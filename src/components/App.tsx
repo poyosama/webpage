@@ -52,6 +52,7 @@ import {
   renameProjectFolder,
   deleteProjectFolder,
   setProjectFolderInDb,
+  fetchFolderItems,
   type ProjectFolder,
   pendingUploadsCount,
   onPendingUploadsChange,
@@ -446,6 +447,8 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   const [importOpen, setImportOpen] = useState(false);
   /** Carpetas de la Biblioteca (null = todavía sin migración / sin cargar) */
   const [projectFolders, setProjectFolders] = useState<ProjectFolder[] | null>(null);
+  /** En qué carpeta tengo cada proyecto de mi Biblioteca (propios, compartidos, guardados) */
+  const [folderOf, setFolderOf] = useState<Record<string, string>>({});
   const [importRemote, setImportRemote] = useState(false);
 
   const [socialSheet, setSocialSheet] = useState<{ title: string; people: { userId: string; handle: string; name: string; avatarUrl?: string }[] } | null>(null);
@@ -1145,8 +1148,10 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       if (!mounted()) return;
       setMeProfile(base);
       setGoogleConnected(true);
-      void fetchProjectFolders(u.id).then((f) => {
-        if (mounted()) setProjectFolders(f);
+      void Promise.all([fetchProjectFolders(u.id), fetchFolderItems(u.id)]).then(([f, items]) => {
+        if (!mounted()) return;
+        setProjectFolders(f && items ? f : null);
+        setFolderOf(items || {});
       });
       // Con conexión lenta esto puede terminar varios segundos después: si mientras tanto la persona
       // tocó algo (ej. abrió un proyecto), no se la manda al Inicio
@@ -2904,10 +2909,19 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     }
   };
 
-  // ---- Carpetas de la Biblioteca (arrastrar en la vista de tapas) ----
+  // ---- Carpetas de la Biblioteca (arrastrar en la vista de tapas; se ven también en la rueda) ----
+  // Son de CADA usuario: sirven para cualquier proyecto de su Biblioteca (propios, compartidos, guardados)
   const setProjectsFolder = (ids: string[], folderId: string | null) => {
-    setProjects((prev) => prev.map((p) => (ids.includes(p.id) ? { ...p, folderId } : p)));
-    ids.forEach((id) => void setProjectFolderInDb(id, folderId));
+    if (!meProfile.id) return;
+    setFolderOf((prev) => {
+      const next = { ...prev };
+      ids.forEach((id) => {
+        if (folderId) next[id] = folderId;
+        else delete next[id];
+      });
+      return next;
+    });
+    ids.forEach((id) => void setProjectFolderInDb(meProfile.id, id, folderId));
   };
   const handleFolderDrop = async (projectId: string, target: { kind: "project" | "folder" | "out"; id?: string }) => {
     if (!meProfile.id || !projectFolders) return;
@@ -2922,11 +2936,10 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       return;
     }
     if (target.kind === "project" && target.id) {
-      const other = projects.find((p) => p.id === target.id);
-      if (!other || other.artistId !== meProfile.id) return;
-      if (other.folderId && projectFolders.some((f) => f.id === other.folderId)) {
+      const existing = folderOf[target.id];
+      if (existing && projectFolders.some((f) => f.id === existing)) {
         sfx.drop();
-        setProjectsFolder([projectId], other.folderId);
+        setProjectsFolder([projectId], existing);
         return;
       }
       const folder = await createProjectFolder(meProfile.id);
@@ -2941,9 +2954,9 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     void renameProjectFolder(folderId, title);
   };
   const handleUngroupFolder = (folderId: string) => {
-    setProjects((prev) => prev.map((p) => (p.folderId === folderId ? { ...p, folderId: null } : p)));
+    setFolderOf((prev) => Object.fromEntries(Object.entries(prev).filter(([, f]) => f !== folderId)));
     setProjectFolders((prev) => (prev || []).filter((f) => f.id !== folderId));
-    void deleteProjectFolder(folderId); // en la base, los proyectos quedan sueltos solos (on delete set null)
+    void deleteProjectFolder(folderId); // en la base, los ítems de la carpeta se borran solos (on delete cascade)
   };
 
   /** Lugar del tablero ligado a un proyecto real por id: lo reproduce y lo abre; si todavía no está
@@ -4268,6 +4281,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                   {(libraryLayoutMode === "side-by-side" || !insideCubeOpen || !activeProject) && (
                     <ManifoldLibrary3D
                       folders={projectFolders}
+                      folderOf={folderOf}
                       meId={meProfile.id}
                       onFolderDrop={handleFolderDrop}
                       onRenameFolder={handleRenameFolder}
