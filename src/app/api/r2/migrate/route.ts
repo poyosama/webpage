@@ -55,9 +55,9 @@ export async function POST(request: Request) {
         errors.push(`${f.name}: HTTP ${src.status}`);
         continue;
       }
-      const ok = await r2Put(f.name, await src.arrayBuffer(), src.headers.get("content-type") || f.type);
-      if (ok) copied++;
-      else errors.push(`${f.name}: no se pudo subir a R2`);
+      const why = await r2Put(f.name, await src.arrayBuffer(), src.headers.get("content-type") || f.type);
+      if (!why) copied++;
+      else errors.push(`${f.name}: ${why}`);
     } catch (e) {
       errors.push(`${f.name}: ${(e as Error).message}`);
     }
