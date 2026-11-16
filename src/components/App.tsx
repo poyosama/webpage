@@ -141,6 +141,22 @@ const PRODUCER_KIND_LABEL: Record<string, string> = {
 };
 const kindLabel = (k: string) => PRODUCER_KIND_LABEL[k] || k;
 
+/** Los links "blob:" solo viven en la pestaña que los creó: guardados en la copia local quedan
+ *  muertos al recargar y tapaban el MP3 real (el track quedaba mudo). Se descartan al guardar/restaurar. */
+const isBlobUrl = (u?: string) => !!u && u.startsWith("blob:");
+function dropDeadBlobs<T extends Project>(list: T[]): T[] {
+  return list.map((p) => ({
+    ...p,
+    coverUrl: isBlobUrl(p.coverUrl) ? undefined : p.coverUrl,
+    tracks: (p.tracks || []).map((t) => ({
+      ...t,
+      customAudioUrl: isBlobUrl(t.customAudioUrl) ? undefined : t.customAudioUrl,
+      coverUrl: isBlobUrl(t.coverUrl) ? undefined : t.coverUrl,
+    })),
+    videos: (p.videos || []).map((v) => (isBlobUrl(v.url) ? { ...v, url: undefined as unknown as string } : v)),
+  }));
+}
+
 const STORAGE_PROJECTS_KEY = "eltablero_real_projects_v1";
 const STORAGE_PROFILE_KEY = "eltablero_real_profile_v1";
 const STORAGE_DROPS_KEY = "eltablero_real_drops_v1";
@@ -857,7 +873,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
           setCommunityArtists(snap.communityArtists);
         }
         if (Array.isArray(snap?.projects) && snap.projects.length > 0) {
-          setProjects(snap.projects);
+          setProjects(dropDeadBlobs(snap.projects as Project[]));
           const first = snap.projects[0];
           if (first) {
             setSelectedProjectId((prev) => prev || first.id);
@@ -871,7 +887,8 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     }
 
     // Restaurar desde IndexedDB local (~3ms) cualquier portada/canvas pesado sin esperar a la red
-    void fastCacheGet<Project[]>("eltablero_full_projects_v2").then((cachedProjs) => {
+    void fastCacheGet<Project[]>("eltablero_full_projects_v2").then((rawCached) => {
+      const cachedProjs = Array.isArray(rawCached) ? dropDeadBlobs(rawCached) : rawCached;
       if (Array.isArray(cachedProjs) && cachedProjs.length > 0) {
         const cachedMap = new Map(cachedProjs.map((cp) => [cp.id, cp]));
         setProjects((prev) => {
@@ -911,7 +928,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   useEffect(() => {
     if (!hydrated || !googleConnected || !meProfile.id) return;
     try {
-      const stripHeavy = (u?: string) => (u && u.length > 90000 ? undefined : u);
+      const stripHeavy = (u?: string) => (u && (u.length > 90000 || isBlobUrl(u)) ? undefined : u);
       const lightProjects = projects.map((p) => ({
         ...p,
         coverUrl: stripHeavy(p.coverUrl),
@@ -939,7 +956,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     } catch {
       // ignore quota errors
     }
-    void fastCacheSet("eltablero_full_projects_v2", projects);
+    void fastCacheSet("eltablero_full_projects_v2", dropDeadBlobs(projects));
   }, [projects, meProfile, communityArtists, hydrated, googleConnected]);
 
   useEffect(() => {
