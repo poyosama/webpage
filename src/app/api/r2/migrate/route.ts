@@ -1,4 +1,4 @@
-import { ADMIN_IDS, r2Config, r2Exists, r2Put, SUPABASE_ANON, SUPABASE_BUCKET, SUPABASE_URL, userFromRequest } from "@/lib/r2Server";
+import { ADMIN_IDS, r2Config, r2Missing, r2Exists, r2Put, SUPABASE_ANON, SUPABASE_BUCKET, SUPABASE_URL, userFromRequest } from "@/lib/r2Server";
 
 export const maxDuration = 60;
 
@@ -24,7 +24,13 @@ async function listAll(): Promise<{ name: string; type: string }[]> {
 
 /** Copia (de a tandas) los archivos de Supabase Storage a R2 con la misma ruta. Solo admins. */
 export async function POST(request: Request) {
-  if (!r2Config()) return Response.json({ error: "Faltan las variables de R2 en Vercel" }, { status: 503 });
+  if (!r2Config()) {
+    const missing = r2Missing();
+    return Response.json(
+      { error: `Faltan en este deploy: ${missing.join(", ") || "(ninguna: revisá que los valores no estén vacíos)"}. Cargalas en Vercel y hacé Redeploy.` },
+      { status: 503 }
+    );
+  }
   const user = await userFromRequest(request);
   if (!user || !ADMIN_IDS.has(user.id)) return Response.json({ error: "solo admin" }, { status: 403 });
   let body: { cursor?: number; batch?: number } = {};

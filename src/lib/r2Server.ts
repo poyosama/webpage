@@ -6,6 +6,12 @@ export const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://txh
 export const SUPABASE_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "sb_publishable_UvC4vGCFOnN0FGbRAux0nw_wneVnyhC";
 export const SUPABASE_BUCKET = "el-tablero-media";
 
+/** Nombres (nunca valores) de las variables de R2 que faltan en este deploy */
+export function r2Missing(): string[] {
+  const need = ["R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "NEXT_PUBLIC_R2_PUBLIC_URL"];
+  return need.filter((k) => !process.env[k]);
+}
+
 export function r2Config() {
   const accountId = process.env.R2_ACCOUNT_ID;
   const accessKeyId = process.env.R2_ACCESS_KEY_ID;
