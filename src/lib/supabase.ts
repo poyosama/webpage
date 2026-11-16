@@ -255,6 +255,36 @@ async function blobToDataUrl(blob: Blob): Promise<string | null> {
   });
 }
 
+// ==================== CLOUDFLARE R2 (archivos nuevos) ====================
+// Si están las variables de R2 en Vercel, los archivos se suben a R2 (sin costo de tráfico al escuchar).
+// El servidor firma la subida (/api/r2/sign-upload); si algo falla, se cae a Supabase Storage.
+const R2_PUBLIC = (process.env.NEXT_PUBLIC_R2_PUBLIC_URL || "").replace(/\/+$/, "");
+async function uploadToR2(filename: string, file: File | Blob, folder: string): Promise<string | null> {
+  if (!R2_PUBLIC || typeof window === "undefined") return null;
+  try {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) return null;
+    const ext = (filename.split(".").pop() || "bin").toLowerCase();
+    const sign = await fetch("/api/r2/sign-upload", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+      body: JSON.stringify({ folder: folder.split("/")[0], ext }),
+    });
+    if (!sign.ok) return null;
+    const { uploadUrl, publicUrl } = (await sign.json()) as { uploadUrl: string; publicUrl: string };
+    const put = await fetch(uploadUrl, {
+      method: "PUT",
+      body: file,
+      headers: { "content-type": file.type || (folder === "tracks" ? "audio/mpeg" : "application/octet-stream") },
+    });
+    return put.ok ? publicUrl : null;
+  } catch (err) {
+    console.warn("R2 upload falló, uso Supabase:", err);
+    return null;
+  }
+}
+
 // ==================== STORAGE: SUBIR AUDIO / TAPAS / VIDEOS AL BUCKET ====================
 async function uploadToStorageWithRetry(
   filename: string,
@@ -263,6 +293,8 @@ async function uploadToStorageWithRetry(
   maxRetries = 3,
   timeoutOverrideMs?: number
 ): Promise<string | null> {
+  const r2 = await uploadToR2(filename, file, folder);
+  if (r2) return r2;
   // Audio/video: el tiempo depende del tamaño (con mala señal 45 s fijos cortaban los WAV a la mitad)
   const heavy = folder === "tracks" || folder === "videos" || folder === "originals";
   const byteBudget = Math.ceil((file.size || 0) / (60 * 1024)) * 1000; // ~60 KB/s mínimo

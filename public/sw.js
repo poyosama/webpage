@@ -5,7 +5,7 @@
  * - Imágenes/íconos propios: del teléfono y se actualizan por detrás.
  * - Supabase y otros dominios: no se tocan (siempre red).
  */
-const VERSION = "v2";
+const VERSION = "v3";
 const PAGES = `et-pages-${VERSION}`;
 const STATIC = `et-static-${VERSION}`;
 const ASSETS = `et-assets-${VERSION}`;
@@ -38,7 +38,7 @@ self.addEventListener("fetch", (event) => {
 
   // Página: todas las rutas de la app sirven la misma app, se guarda bajo "/"
   // (las páginas sueltas como privacidad o importar-untitled van directo a la red)
-  if (req.mode === "navigate" && /^\/(privacidad|terminos|importar-untitled)(\/|$)/.test(url.pathname)) return;
+  if (req.mode === "navigate" && /^\/(privacidad|terminos|importar-untitled|admin)(\/|$)/.test(url.pathname)) return;
   if (req.mode === "navigate") {
     event.respondWith(
       (async () => {

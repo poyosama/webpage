@@ -32,6 +32,7 @@
 - Me gusta: `track_likes` + localStorage. Sesión: localStorage + copia en cookies (400 días) en `src/lib/supabase.ts`.
 
 ## Archivos clave
+- **Cloudflare R2** (archivos): `src/lib/r2Server.ts` (firma S3 con aws4fetch), `/api/r2/sign-upload` (subidas del navegador con URL firmada), `/api/r2/migrate` + página `/admin/r2` (copia Supabase→R2, solo admin). Variables en Vercel: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `NEXT_PUBLIC_R2_PUBLIC_URL` (= https://pub-2c3ed1e009e747ebb40aff4518db40c8.r2.dev). Sin variables, todo sigue en Supabase Storage.
 - `public/sw.js`: service worker (arranque rápido / sin señal). Si cambia la estrategia, subir `VERSION`.
 - `src/components/App.tsx` (~7k líneas): estado global, pantallas, modales.
 - Estilos: `globals.css` → `board-polish.css` → `ui-refresh.css` (overrides actuales, capas z-index documentadas) → `motion.css` (animaciones). Cambios nuevos: en `ui-refresh.css`.
