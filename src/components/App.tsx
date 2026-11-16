@@ -2895,18 +2895,19 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   const openBoardProject = (p?: Project) => {
     if (!p) return;
     sfx.tap();
-    const real = findRealBoardProject(p.id);
+    // El lugar del tablero se identifica por el demo (la búsqueda por nombre puede traer cualquier copia)
+    const norm = (t: string) => (t || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const demo = DEMO_PROJECTS.find((d) => d.id === p.id) || DEMO_PROJECTS.find((d) => norm(d.title) === norm(p.title));
+    const real = findRealBoardProject(demo?.id || p.id);
     if (real) {
-      // Arranca el primer track y abre el proyecto: la persona se queda en El tablero
+      // Proyecto real y público en El tablero: arranca el primer track y se abre adentro de la app
       playTrack(real.tracks[0], real, false);
       if (!isGuestRef.current) navigateToProject(real.id);
       return;
     }
-    if (p.spotifyUrl) {
-      window.open(p.spotifyUrl, "_blank", "noopener,noreferrer");
-    } else if (p.tracks[0]) {
-      playTrack(p.tracks[0], p, false);
-    }
+    // Sin proyecto real: SIEMPRE a Spotify. Nunca reproducir los tracks de ejemplo (beat de relleno)
+    const url = demo?.spotifyUrl || p.spotifyUrl;
+    if (url) window.open(url, "_blank", "noopener,noreferrer");
   };
 
   // ---- Carpetas de la Biblioteca (arrastrar en la vista de tapas; se ven también en la rueda) ----
@@ -6098,6 +6099,18 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                   }
                 />
               </section>
+              )}
+
+              {/* ==================== GUÍA: TRAER PROYECTOS DE [UNTITLED] ==================== */}
+              {meProfile.accountType !== "oyente" && (
+                <a className="untitled-guide-card" href="/importar-untitled" target="_blank" rel="noopener">
+                  <span className="untitled-guide-icon" aria-hidden>⇪</span>
+                  <span className="untitled-guide-text">
+                    <b>¿Venís de [untitled]? Traé todos tus proyectos</b>
+                    <small>Guía paso a paso: instalá la extensión de El tablero (en Chrome o Edge) y traés tracks, portadas, BPM y key en un toque.</small>
+                  </span>
+                  <span className="untitled-guide-cta">Ver guía →</span>
+                </a>
               )}
 
               {/* ==================== 2. INVITACIONES EXCLUSIVAS (AL FINAL DE PROYECTOS) ==================== */}
