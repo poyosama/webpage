@@ -3226,6 +3226,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
           {!isGuest && googleConnected && meProfile.id && (
             <NotificationBell
               meId={meProfile.id}
+              meHandle={meProfile.handle}
               onOpenActor={(n) => {
                 const prof = findArtistProfile(n.handle);
                 if (prof) openArtistProfile(prof);

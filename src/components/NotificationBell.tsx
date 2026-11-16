@@ -30,27 +30,34 @@ function who(n: Notif): string {
   return h ? `@${h}` : n.actor_name || "Alguien";
 }
 
-function text(n: Notif): React.ReactNode {
-  const w = <b>{who(n)}</b>;
+/** Siempre "quién hizo qué a quién": usuario1 = quien lo hizo, usuario2 = dueño de esta bandeja */
+function text(n: Notif, meHandle: string): React.ReactNode {
+  const u1 = <b>{who(n)}</b>;
+  const u2 = <b>{meHandle}</b>;
+  const track = n.track_title ? <> <b>{n.track_title}</b></> : null;
+  const project = n.project_title ? <> <b>{n.project_title}</b></> : null;
   switch (n.kind) {
     case "like":
-      return <>{w} le dio me gusta a <b>{n.track_title || "un track tuyo"}</b></>;
+      return <>A {u1} le gustó el track{track} de {u2}</>;
     case "save":
-      return <>{w} guardó tu proyecto <b>{n.project_title || ""}</b></>;
+      return <>{u1} guardó el proyecto{project} de {u2}</>;
     case "follow":
-      return <>{w} empezó a seguirte</>;
+      return <>{u1} siguió a {u2}</>;
     case "friend":
-      return <>Ahora vos y {w} son amigos</>;
+      return <>¡{u1} y {u2} ahora son amigos!</>;
     case "comment":
-      return <>{w} comentó en <b>{n.track_title || "un track tuyo"}</b></>;
+      return <>{u1} comentó en el track{track} de {u2}</>;
   }
 }
 
 export default function NotificationBell({
   meId,
+  meHandle,
   onOpenActor,
 }: {
   meId: string;
+  /** @handle del dueño de esta bandeja (usuario2 en los textos) */
+  meHandle?: string;
   onOpenActor: (n: { id: string; handle: string }) => void;
 }) {
   const [items, setItems] = useState<Notif[]>([]);
@@ -163,7 +170,7 @@ export default function NotificationBell({
                     ) : (
                       <span className="notif-avatar notif-avatar-ph">{(n.actor_name || n.actor_handle || "?").replace(/^@+/, "").charAt(0).toUpperCase()}</span>
                     )}
-                    <span className="notif-text">{text(n)}</span>
+                    <span className="notif-text">{text(n, meHandle ? `@${meHandle.replace(/^@+/, "")}` : "vos")}</span>
                     <span className="notif-time">{ago(n.created_at)}</span>
                   </button>
                 </li>
