@@ -862,7 +862,11 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
         if (Array.isArray(parsedDrops)) setProducerDrops(parsedDrops);
       }
 
-      const rawSnap = localStorage.getItem("eltablero_fast_snapshot_v2");
+      // Migración a Cloudflare R2: las copias viejas tenían links de Supabase; se descartan
+      try {
+        localStorage.removeItem("eltablero_fast_snapshot_v2");
+      } catch {}
+      const rawSnap = localStorage.getItem("eltablero_fast_snapshot_v3");
       if (rawSnap) {
         const snap = JSON.parse(rawSnap);
         if (snap?.meProfile?.id) {
@@ -887,7 +891,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     }
 
     // Restaurar desde IndexedDB local (~3ms) cualquier portada/canvas pesado sin esperar a la red
-    void fastCacheGet<Project[]>("eltablero_full_projects_v2").then((rawCached) => {
+    void fastCacheGet<Project[]>("eltablero_full_projects_v3").then((rawCached) => {
       const cachedProjs = Array.isArray(rawCached) ? dropDeadBlobs(rawCached) : rawCached;
       if (Array.isArray(cachedProjs) && cachedProjs.length > 0) {
         const cachedMap = new Map(cachedProjs.map((cp) => [cp.id, cp]));
@@ -943,7 +947,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
         })),
       }));
       localStorage.setItem(
-        "eltablero_fast_snapshot_v2",
+        "eltablero_fast_snapshot_v3",
         JSON.stringify({
           meProfile: { ...meProfile, avatarUrl: stripHeavy(meProfile.avatarUrl) },
           projects: lightProjects,
@@ -956,7 +960,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     } catch {
       // ignore quota errors
     }
-    void fastCacheSet("eltablero_full_projects_v2", dropDeadBlobs(projects));
+    void fastCacheSet("eltablero_full_projects_v3", dropDeadBlobs(projects));
   }, [projects, meProfile, communityArtists, hydrated, googleConnected]);
 
   useEffect(() => {
@@ -1313,9 +1317,9 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
         lastUserIdRef.current = null;
         syncedSigRef.current = {};
         try {
-          localStorage.removeItem("eltablero_fast_snapshot_v2");
+          localStorage.removeItem("eltablero_fast_snapshot_v3");
         } catch {}
-        void fastCacheSet("eltablero_full_projects_v2", []);
+        void fastCacheSet("eltablero_full_projects_v3", []);
         setGoogleConnected(false);
         setCloudReady(false);
         setProjects([]);
@@ -8231,7 +8235,7 @@ function GoogleAuthModal({
                             return;
                           }
                           try {
-                            localStorage.removeItem("eltablero_fast_snapshot_v2");
+                            localStorage.removeItem("eltablero_fast_snapshot_v3");
                           } catch {}
                           onSignOut();
                         }}

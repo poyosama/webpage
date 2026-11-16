@@ -402,7 +402,7 @@ export async function optimizeExistingTrackAudio(trackId: string, oldUrl: string
       if (m) void supabase.storage.from("el-tablero-media").remove([decodeURIComponent(m[1].split("?")[0])]).then(() => {});
     }
     audioMemCache.set(toDbId(trackId), streamUrl);
-    void fastCacheSet(`audio:${toDbId(trackId)}`, streamUrl);
+    void fastCacheSet(`audio3:${toDbId(trackId)}`, streamUrl);
     return streamUrl;
   } catch (err) {
     console.warn("optimizeExistingTrackAudio:", err);
@@ -651,7 +651,7 @@ export async function resolveTrackAudioUrl(trackId: string): Promise<string | un
   const mem = audioMemCache.get(dbId);
   if (mem) return mem;
 
-  const disk = await fastCacheGet<string>(`audio:${dbId}`);
+  const disk = await fastCacheGet<string>(`audio3:${dbId}`);
   if (disk) {
     audioMemCache.set(dbId, disk);
     return disk;
@@ -666,7 +666,7 @@ export async function resolveTrackAudioUrl(trackId: string): Promise<string | un
     const url = cleanUrl(data?.audio_url);
     if (url) {
       audioMemCache.set(dbId, url);
-      void fastCacheSet(`audio:${dbId}`, url);
+      void fastCacheSet(`audio3:${dbId}`, url);
       return url;
     }
   } catch {
@@ -960,7 +960,7 @@ export async function saveProjectToSupabase(project: Project, userId?: string): 
         audio = (await resolveTrackAudioUrl(t.id)) ?? null;
       } else if (!isTransientUrl(audio)) {
         audioMemCache.set(dbTrackId, audio);
-        void fastCacheSet(`audio:${dbTrackId}`, audio);
+        void fastCacheSet(`audio3:${dbTrackId}`, audio);
         // Recién subido: se guarda ya en su fila (no esperar al resto de los tracks)
         if (isTransientUrl(t.customAudioUrl)) {
           void supabase.from("tracks").update({ audio_url: audio }).eq("id", dbTrackId).then(() => {});
