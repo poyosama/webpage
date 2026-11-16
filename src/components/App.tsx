@@ -2727,6 +2727,8 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     const target = projects
       .filter((p) => meProfile.id && p.artistId === meProfile.id)
       .flatMap((p) => p.tracks)
+      // El audio puede estar en el track o en el mapa que se llena después de cargar (la lista de la nube no lo trae)
+      .map((t) => ({ ...t, customAudioUrl: t.customAudioUrl || customAudioMap[t.id] }))
       .find((t) => t.id !== currentTrack.id && isLosslessAudioUrl(t.customAudioUrl) && !skip.includes(t.id));
     if (!target) return;
     const timer = window.setTimeout(async () => {
@@ -2741,7 +2743,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
           localStorage.setItem("eltablero_audio_opt_skip", JSON.stringify([...skip, target.id]));
         } catch {}
       } else {
-        const swap = (t: Track) => (t.id === target.id && t.customAudioUrl === oldUrl ? { ...t, customAudioUrl: r } : t);
+        const swap = (t: Track) => (t.id === target.id && (t.customAudioUrl === oldUrl || !t.customAudioUrl) ? { ...t, customAudioUrl: r } : t);
         setProjects((prev) => prev.map((p) => ({ ...p, tracks: p.tracks.map(swap) })));
         setCustomAudioMap((prev) => (prev[target.id] ? { ...prev, [target.id]: r } : prev));
       }
@@ -2750,7 +2752,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     }, 6000);
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cloudReady, googleConnected, meProfile.id, projects, audioOptTick, currentTrack.id]);
+  }, [cloudReady, googleConnected, meProfile.id, projects, customAudioMap, audioOptTick, currentTrack.id]);
 
   // Proyectos ordenados por lo más nuevo que se va subiendo en tiempo real (excluyendo proyectos privados)
   const userProjectsRecent = [...projects]
