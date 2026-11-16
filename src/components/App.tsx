@@ -47,6 +47,12 @@ import {
   fastCacheSet,
   resolveTrackAudioUrl,
   resolveOriginalAudioUrl,
+  fetchProjectFolders,
+  createProjectFolder,
+  renameProjectFolder,
+  deleteProjectFolder,
+  setProjectFolderInDb,
+  type ProjectFolder,
   pendingUploadsCount,
   onPendingUploadsChange,
   isLosslessAudioUrl,
@@ -438,6 +444,8 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   // Seguidores / amigos: listas por usuario (cache) y hoja con la lista abierta
   const [socialByUser, setSocialByUser] = useState<Record<string, SocialLists>>({});
   const [importOpen, setImportOpen] = useState(false);
+  /** Carpetas de la Biblioteca (null = todavía sin migración / sin cargar) */
+  const [projectFolders, setProjectFolders] = useState<ProjectFolder[] | null>(null);
   const [importRemote, setImportRemote] = useState(false);
 
   const [socialSheet, setSocialSheet] = useState<{ title: string; people: { userId: string; handle: string; name: string; avatarUrl?: string }[] } | null>(null);
@@ -1137,6 +1145,9 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       if (!mounted()) return;
       setMeProfile(base);
       setGoogleConnected(true);
+      void fetchProjectFolders(u.id).then((f) => {
+        if (mounted()) setProjectFolders(f);
+      });
       // Con conexión lenta esto puede terminar varios segundos después: si mientras tanto la persona
       // tocó algo (ej. abrió un proyecto), no se la manda al Inicio
       if (fresh && lastUserTapRef.current < startedAt) {
@@ -2893,6 +2904,48 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     }
   };
 
+  // ---- Carpetas de la Biblioteca (arrastrar en la vista de tapas) ----
+  const setProjectsFolder = (ids: string[], folderId: string | null) => {
+    setProjects((prev) => prev.map((p) => (ids.includes(p.id) ? { ...p, folderId } : p)));
+    ids.forEach((id) => void setProjectFolderInDb(id, folderId));
+  };
+  const handleFolderDrop = async (projectId: string, target: { kind: "project" | "folder" | "out"; id?: string }) => {
+    if (!meProfile.id || !projectFolders) return;
+    if (target.kind === "folder" && target.id) {
+      sfx.drop();
+      setProjectsFolder([projectId], target.id);
+      return;
+    }
+    if (target.kind === "out") {
+      sfx.drop();
+      setProjectsFolder([projectId], null);
+      return;
+    }
+    if (target.kind === "project" && target.id) {
+      const other = projects.find((p) => p.id === target.id);
+      if (!other || other.artistId !== meProfile.id) return;
+      if (other.folderId && projectFolders.some((f) => f.id === other.folderId)) {
+        sfx.drop();
+        setProjectsFolder([projectId], other.folderId);
+        return;
+      }
+      const folder = await createProjectFolder(meProfile.id);
+      if (!folder) return;
+      sfx.drop();
+      setProjectFolders((prev) => [...(prev || []), folder]);
+      setProjectsFolder([target.id, projectId], folder.id);
+    }
+  };
+  const handleRenameFolder = (folderId: string, title: string) => {
+    setProjectFolders((prev) => (prev || []).map((f) => (f.id === folderId ? { ...f, title } : f)));
+    void renameProjectFolder(folderId, title);
+  };
+  const handleUngroupFolder = (folderId: string) => {
+    setProjects((prev) => prev.map((p) => (p.folderId === folderId ? { ...p, folderId: null } : p)));
+    setProjectFolders((prev) => (prev || []).filter((f) => f.id !== folderId));
+    void deleteProjectFolder(folderId); // en la base, los proyectos quedan sueltos solos (on delete set null)
+  };
+
   /** Lugar del tablero ligado a un proyecto real por id: lo reproduce y lo abre; si todavía no está
    *  cargado (o es invitado), abre el perfil del artista. Siempre adentro de la app. */
   const openRealBoardProject = (projectId: string, artistHandle: string) => {
@@ -4214,6 +4267,11 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                   )}
                   {(libraryLayoutMode === "side-by-side" || !insideCubeOpen || !activeProject) && (
                     <ManifoldLibrary3D
+                      folders={projectFolders}
+                      meId={meProfile.id}
+                      onFolderDrop={handleFolderDrop}
+                      onRenameFolder={handleRenameFolder}
+                      onUngroupFolder={handleUngroupFolder}
                       projects={likedProject ? [likedProject, ...myProjects] : myProjects}
                       selectedProjectId={activeProject?.id || ""}
                       viewMode={libraryViewMode}

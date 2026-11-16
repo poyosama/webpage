@@ -2331,3 +2331,25 @@ html:root body .perf-player.has-cinema-canvas .perf-kicker {
   .library-add-wrap { top: 6px; right: 8px; }
 }
 .library-add-wrap .pf-menu, .pf-menu { min-width: 228px; }
+
+/* ===== Carpetas en la vista de tapas ===== */
+.lib-folder-mosaic { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 3px; padding: 3px; background: var(--surface-secondary); }
+.lib-folder-mosaic > span { border-radius: 6px; background: color-mix(in srgb, var(--ink) 6%, transparent); }
+.lib-folder-badge { position: absolute; right: 8px; bottom: 8px; color: #fff; filter: drop-shadow(0 1px 3px rgba(0,0,0,.6)); }
+.lib-folder-cover { position: relative; overflow: hidden; }
+.untitled-catalog-card.is-drop-over { outline: 2px solid var(--accent-red); outline-offset: 3px; transform: scale(1.04); transition: transform .15s ease; }
+.untitled-catalog-card.is-drag-source { opacity: .35; }
+.untitled-catalog-grid.is-dragging .untitled-catalog-card { user-select: none; -webkit-user-select: none; }
+.untitled-catalog-card[data-drop-kind="project"] { -webkit-touch-callout: none; }
+.lib-drag-ghost { position: fixed; z-index: 9999; transform: translate(-50%, -60%) rotate(-3deg); pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.lib-drag-ghost span { width: 84px; height: 84px; border-radius: 12px; box-shadow: 0 16px 40px rgba(0,0,0,.5); border: 2px solid rgba(255,255,255,.8); }
+.lib-drag-ghost b { font-size: 12px; padding: 4px 10px; border-radius: 999px; background: rgba(9,9,11,.85); color: #fff; white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+.lib-folder-head { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 4px; }
+.lib-folder-back, .lib-folder-ungroup { border: 1px solid var(--line-strong); background: transparent; color: var(--ink); border-radius: 999px; padding: 7px 12px; font-size: .82rem; cursor: pointer; }
+.lib-folder-ungroup { margin-left: auto; color: var(--ink-muted); }
+.lib-folder-title { border: 0; background: none; color: var(--ink); font-weight: 800; font-size: 1.1rem; cursor: pointer; }
+.lib-folder-title span { opacity: .45; font-size: .85rem; }
+.lib-folder-title-input { font: inherit; font-weight: 800; font-size: 1.1rem; background: var(--surface-secondary); color: var(--ink); border: 1px solid var(--line-strong); border-radius: 10px; padding: 4px 10px; }
+.lib-folder-out { flex-basis: 100%; display: none; text-align: center; padding: 14px; border: 1.5px dashed var(--line-strong); border-radius: 14px; color: var(--ink-muted); font-size: .85rem; }
+.lib-folder-out.is-visible { display: block; }
+.lib-folder-out.is-over { border-color: var(--accent-red); color: var(--accent-red); background: color-mix(in srgb, var(--accent-red) 8%, transparent); }

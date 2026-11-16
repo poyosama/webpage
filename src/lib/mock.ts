@@ -75,6 +75,8 @@ export type Project = {
   targetTrackCount?: number;
   coverUrl?: string;
   spotifyUrl?: string;
+  /** Carpeta del dueño en la Biblioteca (vista de tapas) */
+  folderId?: string | null;
   /** Coautores (colaboradores que figuran como dueños): solo para mostrar, no se guarda en el proyecto */
   coauthors?: string[];
   c1: string;

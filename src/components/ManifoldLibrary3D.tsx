@@ -3,10 +3,12 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import * as THREE from "three";
 import { type Project, type ProjectVideoClip, projectArtistLabel } from "@/lib/mock";
 import { sfx } from "@/lib/sfx";
 import "./library-polish.css";
+import { useProjectDrag, FolderCover, type FolderItem, type DropTarget } from "./libraryFolders";
 
 function ResponsiveSceneGroup({
   children,
@@ -760,6 +762,11 @@ export default function ManifoldLibrary3D({
   hideSwitcher = false,
   dropTargetProjectId = null,
   transferAnimation = null,
+  folders = null,
+  meId,
+  onFolderDrop,
+  onRenameFolder,
+  onUngroupFolder,
 }: {
   projects: Project[];
   selectedProjectId: string;
@@ -778,6 +785,12 @@ export default function ManifoldLibrary3D({
   hideSwitcher?: boolean;
   dropTargetProjectId?: string | null;
   transferAnimation?: { trackTitle: string; targetProjectId: string } | null;
+  /** Carpetas (null = sin carpetas: falta la migración o no es la Biblioteca) */
+  folders?: FolderItem[] | null;
+  meId?: string;
+  onFolderDrop?: (projectId: string, target: DropTarget) => void;
+  onRenameFolder?: (folderId: string, title: string) => void;
+  onUngroupFolder?: (folderId: string) => void;
 }) {
   const activeProject =
     projects.find((p) => p.id === selectedProjectId) || projects[0] || null;
@@ -791,6 +804,25 @@ export default function ManifoldLibrary3D({
   );
   const [arcOffset, setArcOffset] = useState<number>(selectedIndex);
   const [confirmDeleteProjectId, setConfirmDeleteProjectId] = useState<string | null>(null);
+  // ---- Carpetas (vista de tapas) ----
+  const [openFolderId, setOpenFolderId] = useState<string | null>(null);
+  const [editingFolderTitle, setEditingFolderTitle] = useState<string | null>(null);
+  const foldersOn = Array.isArray(folders) && !!onFolderDrop;
+  const folderIds = new Set((folders || []).map((f) => f.id));
+  const canFolder = (p: Project) => foldersOn && !!meId && p.artistId === meId && !p.id.startsWith("__");
+  const { drag, over, dragHandlers, suppressClick } = useProjectDrag((projectId, target) => {
+    onFolderDrop?.(projectId, target);
+  });
+  const openFolder = openFolderId ? (folders || []).find((f) => f.id === openFolderId) || null : null;
+  useEffect(() => {
+    if (openFolderId && !folderIds.has(openFolderId)) setOpenFolderId(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [folders, openFolderId]);
+  const gridProjects = !foldersOn
+    ? projects
+    : openFolder
+    ? projects.filter((p) => p.folderId === openFolder.id)
+    : projects.filter((p) => !p.folderId || !folderIds.has(p.folderId));
   const [isMobileViewport, setIsMobileViewport] = useState<boolean>(false);
 
   const [activeMode, setActiveMode] = useState<"wheel" | "grid">(
@@ -1117,19 +1149,97 @@ export default function ManifoldLibrary3D({
                 )}
               </div>
             ) : (
-              <div className="untitled-catalog-grid">
-                {projects.map((p) => {
+              <div className={`untitled-catalog-grid ${drag ? "is-dragging" : ""}`}>
+                {/* Adentro de una carpeta: volver, nombre editable, desagrupar y zona para sacar */}
+                {foldersOn && openFolder && (
+                  <div className="lib-folder-head">
+                    <button type="button" className="lib-folder-back" onClick={() => setOpenFolderId(null)}>
+                      ← Biblioteca
+                    </button>
+                    {editingFolderTitle !== null ? (
+                      <input
+                        className="lib-folder-title-input"
+                        autoFocus
+                        value={editingFolderTitle}
+                        onChange={(e) => setEditingFolderTitle(e.target.value)}
+                        onBlur={() => {
+                          if (editingFolderTitle.trim() && editingFolderTitle !== openFolder.title) onRenameFolder?.(openFolder.id, editingFolderTitle.trim());
+                          setEditingFolderTitle(null);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                          if (e.key === "Escape") setEditingFolderTitle(null);
+                        }}
+                      />
+                    ) : (
+                      <button type="button" className="lib-folder-title" onClick={() => setEditingFolderTitle(openFolder.title)} title="Cambiar nombre">
+                        📁 {openFolder.title} <span aria-hidden>✎</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="lib-folder-ungroup"
+                      onClick={() => {
+                        onUngroupFolder?.(openFolder.id);
+                        setOpenFolderId(null);
+                      }}
+                    >
+                      Desagrupar
+                    </button>
+                    <div className={`lib-folder-out ${drag ? "is-visible" : ""} ${over?.kind === "out" ? "is-over" : ""}`} data-drop-kind="out">
+                      Soltá acá para sacarlo de la carpeta
+                    </div>
+                  </div>
+                )}
+
+                {/* Carpetas (solo en la vista principal) */}
+                {foldersOn &&
+                  !openFolder &&
+                  (folders || []).map((f) => {
+                    const inside = projects.filter((p) => p.folderId === f.id);
+                    return (
+                      <div
+                        key={`folder-${f.id}`}
+                        role="button"
+                        tabIndex={0}
+                        data-drop-kind="folder"
+                        data-drop-id={f.id}
+                        className={`untitled-catalog-card lib-folder-card ${over?.kind === "folder" && over.id === f.id ? "is-drop-over" : ""}`}
+                        onClick={() => {
+                          if (suppressClick.current) return;
+                          sfx.open();
+                          setOpenFolderId(f.id);
+                        }}
+                      >
+                        <div className="untitled-catalog-cover lib-folder-cover">
+                          <FolderCover projects={inside} />
+                        </div>
+                        <div className="untitled-catalog-info">
+                          <h4 className="untitled-catalog-title">{f.title}</h4>
+                          <span className="untitled-catalog-meta">
+                            CARPETA · {inside.length} {inside.length === 1 ? "proyecto" : "proyectos"}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                {gridProjects.map((p) => {
                   const isSelected = p.id === activeProject?.id;
+                  const draggable = canFolder(p);
                   return (
                     <div
                       key={p.id}
                       data-project-id={p.id}
+                      {...(draggable ? { "data-drop-kind": "project", "data-drop-id": p.id } : {})}
+                      {...(draggable ? dragHandlers(p) : {})}
                       role="button"
                       tabIndex={0}
                       className={`untitled-catalog-card ${isSelected ? "is-selected" : ""} ${
                         dropTargetProjectId === p.id ? "is-drop-target" : ""
-                      }`}
+                      } ${drag?.id === p.id ? "is-drag-source" : ""} ${over?.kind === "project" && over.id === p.id ? "is-drop-over" : ""}`}
                       onClick={() => {
+                        if (suppressClick.current) return;
                         sfx.tap();
                         onSelectProject(p);
                         if (onDiveIntoProject) {
@@ -1195,7 +1305,17 @@ export default function ManifoldLibrary3D({
                   );
                 })}
 
-                {onOpenCreateProject && (
+                {drag &&
+                  typeof document !== "undefined" &&
+                  createPortal(
+                    <div className="lib-drag-ghost" style={{ left: drag.x, top: drag.y }} aria-hidden>
+                      <span style={{ background: drag.cover ? `url(${drag.cover}) center / cover no-repeat` : "#333" }} />
+                      <b>{over?.kind === "project" ? "Crear carpeta" : over?.kind === "folder" ? "Meter en la carpeta" : over?.kind === "out" ? "Sacar de la carpeta" : drag.title}</b>
+                    </div>,
+                    document.body
+                  )}
+
+                {onOpenCreateProject && !openFolder && (
                   <button
                     type="button"
                     className="untitled-catalog-card untitled-catalog-add-card"
