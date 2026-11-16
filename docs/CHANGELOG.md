@@ -1,4 +1,5 @@
 # Changelog (lo más nuevo arriba · 1–3 líneas por cambio)
+- 2026-11-16 · Tablero: "jajajaqlacreo" (último lanzamiento de @heyimloudd) en la fila de PERDÓN LA DEMORA; se escucha y abre en la app. REGLA: al tablero solo van proyectos en Público (también chickenNugget). `App.tsx` (`openRealBoardProject`).
 - 2026-11-16 · FIX conversor de WAV viejos a MP3: nunca arrancaba porque buscaba el audio en el track y la lista de la nube no lo trae (está en `customAudioMap`). `App.tsx`.
 - 2026-11-16 · Notificaciones con los dos usuarios: "@u1 siguió a @u2", "¡@u1 y @u2 ahora son amigos!", "A @u1 le gustó el track X de @u2", "@u1 guardó el proyecto X de @u2", "@u1 comentó en el track X de @u2". `NotificationBell.tsx` (prop `meHandle`).
 - 2026-11-16 · FIX tracks mudos después de importar y recargar: la copia local (localStorage/IndexedDB) guardaba los links temporales `blob:` de la importación; al recargar estaban muertos y tapaban el MP3 real (la reproducción prioriza `customAudioUrl`). Ahora se descartan al guardar y al restaurar (`dropDeadBlobs` en `App.tsx`). Archivos verificados en storage: OK.

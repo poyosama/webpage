@@ -2868,6 +2868,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
         !DEMO_IDS.has(p.id) &&
         norm(p.title) === want.title &&
         p.artistId === want.ownerId &&
+        p.visibility === "public" && // REGLA: al tablero solo van proyectos en Público
         p.tracks.length > 0
     );
   };
@@ -2886,6 +2887,21 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     } else if (p.tracks[0]) {
       playTrack(p.tracks[0], p, false);
     }
+  };
+
+  /** Lugar del tablero ligado a un proyecto real por id: lo reproduce y lo abre; si todavía no está
+   *  cargado (o es invitado), abre el perfil del artista. Siempre adentro de la app. */
+  const openRealBoardProject = (projectId: string, artistHandle: string) => {
+    sfx.tap();
+    // REGLA: al tablero solo van proyectos en Público
+    const real = projects.find((p) => p.id === projectId && p.visibility === "public" && p.tracks.length > 0);
+    if (real) {
+      playTrack(real.tracks[0], real, false);
+      if (!isGuestRef.current) navigateToProject(real.id);
+      return;
+    }
+    const prof = findArtistProfile(artistHandle);
+    if (prof) openArtistProfile(prof);
   };
 
   const isGuest = !googleConnected && guestMode && !hasGuestInviteAccessEarly();
@@ -3410,6 +3426,27 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                         <sup className="sup-tag">mixtape · Tizianolased</sup>
                       </button>
                       <span className="cutout-pill dark">8 tracks · 23 min</span>
+
+                      {/* Último lanzamiento de @heyimloudd: proyecto real de El tablero (se escucha en la app).
+                          Solo se muestra mientras el proyecto esté en Público. */}
+                      {projects.some((p) => p.id === "ee40119d-ecc4-4cf2-908d-8997dbac82ff" && p.visibility === "public") && (
+                      <button
+                        type="button"
+                        className="collage-item clean-editorial-word"
+                        onMouseEnter={() => sfx.hover()}
+                        onClick={() => openRealBoardProject("ee40119d-ecc4-4cf2-908d-8997dbac82ff", "heyimloudd")}
+                      >
+                        <img
+                          src="https://txhrbfgejcwmmurriccw.supabase.co/storage/v1/object/public/el-tablero-media/covers/1794789101654-a6fzj3.png"
+                          alt="jajajaqlacreo"
+                          className="collage-cover-thumb"
+                        />
+                        <span className="roster-word">
+                          jajaja<span className="inline-swatch lime">qlacreo</span>
+                        </span>
+                        <sup className="sup-tag">single · heyimloudd</sup>
+                      </button>
+                      )}
                     </div>
 
                     {/* Fila 3: chickenNugget (poyo · dorkke) + ESTO ES ESTAR EN SONIDO (V4lentin0) */}
