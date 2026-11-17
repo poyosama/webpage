@@ -1300,6 +1300,14 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
             syncedSigRef.current = sigs;
             setProjects(visible);
             setCloudReady(true);
+            // Link directo a un proyecto PÚBLICO: se escucha sin pasar por la pantalla de entrada
+            const linkedId = decodeURIComponent(window.location.pathname.replace("/project/", "")).trim();
+            const linked = visible.find((p) => p.id === linkedId && p.visibility === "public");
+            if (linked) {
+              setProjectInvites((prev) => ({ ...prev, [linked.id]: prev[linked.id] || "listen" }));
+              setSelectedProjectId(linked.id);
+              setInsideCubeOpen(true);
+            }
             void hydrateProjectsAudioInBackground(visible, (trackId, audioUrl) => {
               if (!alive) return;
               setCustomAudioMap((prev) => (prev[trackId] === audioUrl ? prev : { ...prev, [trackId]: audioUrl }));

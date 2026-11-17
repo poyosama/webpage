@@ -38,6 +38,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.eltablero.blog"),
   title: "El tablero.",
   description:
     "Tus proyectos. Tu identidad. Tu gente. Tu música. Entorno 3D Manifold y reproductor de partículas para la escena.",
@@ -49,6 +50,12 @@ export const metadata: Metadata = {
     ],
     shortcut: "/favicon.ico",
     apple: "/apple-touch-icon.png",
+  },
+  openGraph: {
+    title: "El tablero.",
+    description: "Tus proyectos. Tu identidad. Tu gente. Tu música.",
+    siteName: "El tablero.",
+    images: [{ url: "/icon.png", width: 512, height: 512 }],
   },
   appleWebApp: {
     capable: true,

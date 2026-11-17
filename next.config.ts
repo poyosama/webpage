@@ -21,7 +21,7 @@ const nextConfig: NextConfig = isCapacitorBuild
           { source: "/create", destination: "/" },
           { source: "/crear-proyecto", destination: "/" },
           { source: "/landing", destination: "/" },
-          { source: "/project/:id*", destination: "/" },
+          // /project/:id tiene su propia página (vista previa del link); no se redirige
           { source: "/invite/:code*", destination: "/" },
           // Perfiles públicos: eltablero.blog/@handle
           { source: "/:handle(@[A-Za-z0-9_\\.]+)", destination: "/" },

@@ -32,6 +32,9 @@
 - Comentarios: `track_comments` (track_id = id en la base, `at_sec` opcional) + RPC `track_comments_list`; trigger avisa al dueño (notificación `comment`). UI: globito en el reproductor grande (`TrackComments.tsx`). **Pendiente de correr:** `migration_comments.sql`.
 - Me gusta: `track_likes` + localStorage. Sesión: localStorage + copia en cookies (400 días) en `src/lib/supabase.ts`.
 
+## Links de proyecto
+- `/project/[id]` tiene página propia (`src/app/project/[id]/page.tsx`): misma App + vista previa para WhatsApp/Discord/iMessage (og: tapa, título, @artista; solo públicos). Sin sesión, un proyecto público se abre directo para escuchar (no pasa por la entrada). iOS no deja que un link abra la web agregada a inicio: para eso haría falta app nativa (Capacitor + Universal Links, cuenta Apple Developer + Mac). Ojo: `build:capacitor` (export estático) necesitaría `generateStaticParams` en esa ruta.
+
 ## Discord
 - Avisos de lanzamientos: trigger en `projects`/`tracks` → `discord_announce_if_ready()` manda un embed (una vez por proyecto, tabla `discord_announcements`) al webhook guardado en **Vault** como `discord_webhook_url` (pg_net). Prueba: `select public.discord_test();`. `migration_discord.sql` (aplicada 16/11). Pendiente: comandos (/tablero) y previews de links.
 
