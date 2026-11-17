@@ -35,6 +35,10 @@
 ## Links de proyecto
 - `/project/[id]` tiene página propia (`src/app/project/[id]/page.tsx`): misma App + vista previa para WhatsApp/Discord/iMessage (og: tapa, título, @artista; solo públicos). Sin sesión, un proyecto público se abre directo para escuchar (no pasa por la entrada). iOS no deja que un link abra la web agregada a inicio: para eso haría falta app nativa (Capacitor + Universal Links, cuenta Apple Developer + Mac). Ojo: `build:capacitor` (export estático) necesitaría `generateStaticParams` en esa ruta.
 
+## Modo TV
+- `/tv` (`src/components/TvApp.tsx` + `src/app/tv/tv.css`): la tele NO inicia sesión. Muestra código de 6 letras + QR (`src/lib/qr.ts`) y escucha el canal `tvpair:<código>`; el celu logueado (Dispositivos → "Vincular una tele", o el QR → `/?tv=CÓDIGO`, que sobrevive al login con sessionStorage) le manda `{userId, name, handle}`. La tele lo guarda (`eltablero_tv_pair`) y se suma a `player:<userId>` con `kind: "tv"`. Como no tiene sesión, el celu le manda `media` (proyecto + links de audio, `buildTvMedia`) en `play_track`/`transfer`. Flechas mueven el foco, OK activa, teclas multimedia y MediaSession. Si el navegador bloquea el autoplay, aparece "Apretá OK para escuchar".
+- **Pendiente:** empaquetar como app de Android TV / Google TV (TWA con Bubblewrap, `fallbackType: webview` porque Google TV no trae Chrome, intent LEANBACK + banner 320×180, `/.well-known/assetlinks.json`). Necesita cuenta de Google Play (USD 25) y que el entorno deje bajar el SDK (dl.google.com, maven.google.com).
+
 ## Discord
 - Avisos de lanzamientos: trigger en `projects`/`tracks` → `discord_announce_if_ready()` manda un embed (una vez por proyecto, tabla `discord_announcements`) al webhook guardado en **Vault** como `discord_webhook_url` (pg_net). Prueba: `select public.discord_test();`. `migration_discord.sql` (aplicada 16/11). Pendiente: comandos (/tablero) y previews de links.
 

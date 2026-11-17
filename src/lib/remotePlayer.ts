@@ -11,7 +11,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
 
-export type RemoteDevice = { deviceId: string; name: string; isMe: boolean };
+export type RemoteDevice = { deviceId: string; name: string; isMe: boolean; kind?: "tv" };
+
+/** Lo que necesita una tele (que no tiene sesión) para reproducir: el proyecto con los links de audio */
+export type TvMedia = {
+  project: { id: string; title: string; artist: string; cover?: string };
+  tracks: { id: string; title: string; artist: string; url: string; cover?: string; canvas?: string; durationSec?: number }[];
+};
 
 export type RemoteState = {
   deviceId: string;
@@ -33,8 +39,8 @@ export type RemoteCommand =
   | { action: "prev" }
   | { action: "seek"; sec: number }
   | { action: "volume"; value: number }
-  | { action: "play_track"; trackId: string; projectId: string }
-  | { action: "transfer"; trackId: string; projectId: string; position: number; playing: boolean }
+  | { action: "play_track"; trackId: string; projectId: string; media?: TvMedia }
+  | { action: "transfer"; trackId: string; projectId: string; position: number; playing: boolean; media?: TvMedia }
   | { action: "pause_local" };
 
 function getDeviceId(): string {
@@ -66,7 +72,12 @@ export function useRemotePlayer({
   userId,
   getLocalState,
   onCommand,
+  deviceName,
+  kind,
 }: {
+  /** Nombre fijo del dispositivo (ej. "Tele") y tipo */
+  deviceName?: string;
+  kind?: "tv";
   userId: string | null | undefined;
   /** Estado actual de ESTE dispositivo (se manda cuando es el que suena) */
   getLocalState: () => Omit<RemoteState, "deviceId" | "at"> | null;
@@ -74,7 +85,7 @@ export function useRemotePlayer({
   onCommand: (cmd: RemoteCommand) => void;
 }) {
   const [myDeviceId] = useState<string>(() => (typeof window === "undefined" ? "ssr" : getDeviceId()));
-  const myName = useRef<string>(typeof window === "undefined" ? "" : getDeviceName());
+  const myName = useRef<string>(typeof window === "undefined" ? "" : deviceName || getDeviceName());
   const [devices, setDevices] = useState<RemoteDevice[]>([]);
   const [activeDeviceId, setActiveDeviceId] = useState<string | null>(null);
   const [remoteState, setRemoteState] = useState<RemoteState | null>(null);
@@ -94,11 +105,12 @@ export function useRemotePlayer({
     channelRef.current = ch;
 
     ch.on("presence", { event: "sync" }, () => {
-      const st = ch.presenceState() as Record<string, { name?: string }[]>;
+      const st = ch.presenceState() as Record<string, { name?: string; kind?: "tv" }[]>;
       const list: RemoteDevice[] = Object.entries(st).map(([deviceId, metas]) => ({
         deviceId,
         name: metas?.[0]?.name || "Dispositivo",
         isMe: deviceId === myDeviceId,
+        kind: metas?.[0]?.kind,
       }));
       list.sort((a, b) => (a.isMe ? -1 : b.isMe ? 1 : a.name.localeCompare(b.name)));
       setDevices(list);
@@ -147,13 +159,14 @@ export function useRemotePlayer({
     });
 
     ch.subscribe((status) => {
-      if (status === "SUBSCRIBED") void ch.track({ name: myName.current, at: Date.now() });
+      if (status === "SUBSCRIBED") void ch.track({ name: myName.current, kind, at: Date.now() });
     });
 
     return () => {
       void supabase.removeChannel(ch);
       channelRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, myDeviceId]);
 
   /** ¿Este dispositivo es un control remoto de otro? */
@@ -190,7 +203,7 @@ export function useRemotePlayer({
 
   /** Pasar la música a otro dispositivo (o traerla a este con myDeviceId) */
   const transferTo = useCallback(
-    (deviceId: string, current: { trackId: string; projectId: string; position: number; playing: boolean } | null) => {
+    (deviceId: string, current: { trackId: string; projectId: string; position: number; playing: boolean; media?: TvMedia } | null) => {
       const ch = channelRef.current;
       if (!ch) return;
       if (deviceId === myDeviceId) {

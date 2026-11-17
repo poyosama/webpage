@@ -1,0 +1,86 @@
+/* Modo TV: 10-foot UI. Todo en vh/vw para que escale igual en 720p, 1080p y 4K. Margen de "overscan" 5%. */
+html.tv-mode, html.tv-mode body { background: #060608 !important; overflow: hidden !important; }
+.tv-root {
+  position: fixed; inset: 0; color: #f4f4f5; background: #060608; overflow: hidden;
+  font-family: var(--font-sans), system-ui, sans-serif; padding: 6vh 6vw; box-sizing: border-box;
+}
+.tv-root *, .tv-root *::before, .tv-root *::after { box-sizing: border-box; }
+.tv-logo { height: 5.5vh; width: auto; display: block; opacity: 0.95; }
+.tv-root button { font: inherit; color: inherit; cursor: pointer; outline: none; -webkit-tap-highlight-color: transparent; }
+
+/* ---------- vincular ---------- */
+.tv-pair { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 6vw; }
+.tv-pair h1 { font-family: var(--font-serif), Georgia, serif; font-weight: 400; font-size: 7vh; line-height: 1.02; margin: 5vh 0 4vh; letter-spacing: -0.01em; }
+.tv-pair ol { margin: 0 0 3vh; padding-left: 1.2em; font-size: 2.6vh; line-height: 1.5; color: #d4d4d8; max-width: 52vw; }
+.tv-pair ol li { margin-bottom: 1.2vh; }
+.tv-pair ol span { color: #8b8b93; }
+.tv-pair b { color: #fff; }
+.tv-code { display: flex; gap: 1.2vh; margin: 1vh 0 4vh; }
+.tv-code span {
+  width: 9vh; height: 11vh; display: grid; place-items: center; border-radius: 1.6vh;
+  background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.14);
+  font-family: var(--font-mono), ui-monospace, monospace; font-size: 6vh; font-weight: 500;
+}
+.tv-hint { font-size: 2.2vh; color: #8b8b93; margin: 0; }
+.tv-qr { width: 42vh; height: 42vh; padding: 0; border-radius: 2.4vh; overflow: hidden; background: #fff; box-shadow: 0 3vh 8vh -3vh rgba(0, 0, 0, 0.8); }
+.tv-qr svg { width: 100%; height: 100%; display: block; }
+
+/* ---------- reproductor ---------- */
+.tv-bg { position: absolute; inset: 0; z-index: 0; }
+.tv-bg::after { content: ""; position: absolute; inset: 0; background: radial-gradient(120% 90% at 30% 50%, rgba(6, 6, 8, 0.35), rgba(6, 6, 8, 0.88)); }
+.tv-bg video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.55; }
+.tv-bg-cover { position: absolute; inset: -10%; background: center / cover no-repeat; filter: blur(60px) saturate(1.3); opacity: 0.6; transform: scale(1.1); }
+.tv-player > section, .tv-player > footer { position: relative; z-index: 1; }
+.tv-now { height: 100%; display: grid; grid-template-columns: auto 1fr; gap: 5vw; align-items: center; padding-bottom: 6vh; }
+.tv-cover {
+  width: 58vh; height: 58vh; border-radius: 2vh; background: linear-gradient(135deg, #27272a, #3f3f46) center / cover no-repeat;
+  box-shadow: 0 4vh 10vh -3vh rgba(0, 0, 0, 0.85);
+}
+.tv-info { min-width: 0; }
+.tv-kicker { font-family: var(--font-mono), monospace; font-size: 2vh; letter-spacing: 0.14em; text-transform: uppercase; color: #a1a1aa; }
+.tv-info h1 { font-size: 8vh; line-height: 1.02; font-weight: 700; letter-spacing: -0.025em; margin: 1.6vh 0 1vh; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.tv-artist { font-size: 3.4vh; color: #d4d4d8; margin: 0 0 5vh; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tv-bar { height: 0.8vh; border-radius: 1vh; background: rgba(255, 255, 255, 0.18); overflow: hidden; }
+.tv-bar i { display: block; height: 100%; background: #fff; border-radius: inherit; transition: width 0.25s linear; }
+.tv-times { display: flex; justify-content: space-between; font-family: var(--font-mono), monospace; font-size: 2vh; color: #a1a1aa; margin-top: 1.2vh; }
+.tv-controls { display: flex; align-items: center; gap: 3vh; margin-top: 4vh; }
+.tv-controls button {
+  width: 10vh; height: 10vh; border-radius: 50%; border: 0; background: rgba(255, 255, 255, 0.1); display: grid; place-items: center;
+  transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+.tv-controls button svg { width: 4.4vh; height: 4.4vh; }
+.tv-controls .tv-play { width: 13vh; height: 13vh; background: #fff; color: #0a0a0c; }
+.tv-controls .tv-play svg { width: 5.6vh; height: 5.6vh; }
+.tv-root button[data-tv]:focus-visible, .tv-root button[data-tv]:focus { box-shadow: 0 0 0 0.6vh #4ade80; transform: scale(1.08); }
+.tv-upnext { margin: 4vh 0 0; font-size: 2.2vh; color: #8b8b93; }
+.tv-upnext b { color: #e4e4e7; font-weight: 600; }
+
+.tv-idle { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding-bottom: 8vh; }
+.tv-idle .tv-logo { height: 8vh; }
+.tv-idle h1 { font-family: var(--font-serif), Georgia, serif; font-weight: 400; font-size: 9vh; margin: 4vh 0 2vh; }
+.tv-idle p { font-size: 3vh; color: #a1a1aa; max-width: 60vw; line-height: 1.45; margin: 0; }
+.tv-idle b { color: #fff; }
+
+.tv-foot { position: absolute !important; left: 6vw; right: 6vw; bottom: 5vh; display: flex; justify-content: space-between; align-items: center; font-size: 2vh; color: #8b8b93; }
+.tv-dot { display: inline-block; width: 1vh; height: 1vh; border-radius: 50%; background: #4ade80; margin-right: 0.8vh; vertical-align: middle; }
+.tv-unpair { border: 1px solid rgba(255, 255, 255, 0.16); background: transparent; border-radius: 99px; padding: 1vh 2.4vh; font-size: 2vh; color: #a1a1aa; transition: transform 0.15s ease, box-shadow 0.15s ease; }
+.tv-unpair.is-confirm { color: #fca5a5; border-color: #f87171; }
+
+.tv-tap { position: absolute; inset: 0; z-index: 5; display: grid; place-items: center; background: rgba(6, 6, 8, 0.82); backdrop-filter: blur(8px); text-align: center; }
+.tv-tap h2 { font-size: 6vh; margin: 0 0 1.5vh; }
+.tv-tap p { font-size: 2.6vh; color: #a1a1aa; margin: 0 0 4vh; }
+.tv-tap button { border: 0; border-radius: 99px; padding: 2vh 5vh; background: #fff; color: #0a0a0c; font-size: 3vh; font-weight: 700; }
+
+/* Pantallas angostas (por si alguien abre /tv en el celu) */
+@media (max-aspect-ratio: 1/1) {
+  .tv-root { padding: 5vh 6vw; overflow-y: auto; }
+  .tv-pair { grid-template-columns: 1fr; gap: 4vh; align-content: start; }
+  .tv-pair h1 { font-size: 4.6vh; }
+  .tv-pair ol { max-width: none; font-size: 2vh; }
+  .tv-code span { width: 12vw; height: 7vh; font-size: 4vh; }
+  .tv-qr { width: 70vw; height: 70vw; justify-self: center; }
+  .tv-now { grid-template-columns: 1fr; gap: 3vh; justify-items: center; text-align: center; padding-top: 2vh; }
+  .tv-cover { width: 70vw; height: 70vw; }
+  .tv-info h1 { font-size: 4.4vh; }
+  .tv-controls { justify-content: center; }
+}

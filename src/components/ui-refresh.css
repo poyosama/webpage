@@ -2364,3 +2364,24 @@ html:root body .perf-player.has-cinema-canvas .perf-kicker {
 .untitled-guide-text small { font-size: .8rem; color: var(--ink-muted); line-height: 1.4; }
 .untitled-guide-cta { flex: none; font-weight: 700; font-size: .82rem; padding: 8px 12px; border-radius: 999px; background: var(--ink); color: var(--bg); }
 @media (max-width: 720px) { .untitled-guide-cta { display: none; } }
+
+/* Vincular una tele (hoja de Dispositivos) */
+.device-tv-link {
+  margin-top: 10px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;
+  height: 42px; border-radius: 12px; border: 1px dashed var(--line, rgba(127,127,127,.35));
+  background: transparent; color: var(--ink); font-weight: 600; font-size: 0.86rem;
+}
+.device-tv-link:hover { background: var(--surface-secondary); }
+.device-tv-pair { margin-top: 10px; padding: 12px; border-radius: 14px; background: var(--surface-secondary); display: flex; flex-direction: column; gap: 10px; }
+.device-tv-pair p { margin: 0; font-size: 0.8rem; line-height: 1.4; color: var(--ink-secondary); }
+.device-tv-row { display: flex; gap: 8px; }
+.device-tv-row input {
+  flex: 1; min-width: 0; height: 44px; border-radius: 10px; border: 1px solid var(--line, rgba(127,127,127,.3));
+  background: var(--surface, #fff); color: var(--ink); text-align: center; letter-spacing: 0.3em;
+  font: 700 1.1rem ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase;
+}
+.device-tv-row button { height: 44px; padding: 0 16px; border-radius: 10px; border: 0; background: var(--ink); color: var(--surface, #fff); font-weight: 700; }
+.device-tv-row button:disabled { opacity: 0.4; }
+.device-tv-pair small { font-size: 0.76rem; }
+.device-tv-pair small.is-ok { color: #16a34a; }
+.device-tv-pair small.is-fail { color: #dc2626; }

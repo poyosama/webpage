@@ -26,7 +26,7 @@ import {
   type Track,
 } from "@/lib/mock";
 import { sfx } from "@/lib/sfx";
-import { useRemotePlayer, type RemoteCommand } from "@/lib/remotePlayer";
+import { useRemotePlayer, type RemoteCommand, type TvMedia } from "@/lib/remotePlayer";
 import type { QueueEntry, RepeatMode } from "./PerformativePlayer";
 import {
   supabase,
@@ -351,7 +351,9 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     controlling: boolean;
     send: (cmd: RemoteCommand) => void;
     claim: () => void;
-  }>({ controlling: false, send: () => {}, claim: () => {} });
+    /** El que suena es una tele (no tiene sesión: hay que mandarle los links de audio) */
+    activeIsTv: boolean;
+  }>({ controlling: false, send: () => {}, claim: () => {}, activeIsTv: false });
   const guestPreviewEndRef = useRef<() => void>(() => {});
   const miniPlayerTouchRef = useRef<{ startY: number; startX: number } | null>(null);
 
@@ -1504,9 +1506,34 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     projects[0] ||
     null;
 
+  /** Proyecto + links de audio para la tele (resuelve los que falten) */
+  const buildTvMedia = async (project: Project): Promise<TvMedia> => {
+    const list = project.tracks.slice(0, 60);
+    const urls = await Promise.all(
+      list.map(async (t) => t.customAudioUrl || customAudioMap[t.id] || (await resolveTrackAudioUrl(t.id).catch(() => undefined)))
+    );
+    return {
+      project: { id: project.id, title: project.title, artist: project.artist, cover: project.coverUrl },
+      tracks: list
+        .map((t, i) => ({
+          id: t.id,
+          title: t.title,
+          artist: t.artist,
+          url: urls[i] || "",
+          cover: t.coverUrl || project.coverUrl,
+          canvas: t.videoUrl,
+          durationSec: t.durationSec,
+        }))
+        .filter((t) => /^https?:/.test(t.url)),
+    };
+  };
+
   const playTrack = (track: Track, project: Project, openFull = false) => {
     if (remoteCtlRef.current.controlling) {
-      remoteCtlRef.current.send({ action: "play_track", trackId: track.id, projectId: project.id });
+      if (remoteCtlRef.current.activeIsTv) {
+        const send = remoteCtlRef.current.send;
+        void buildTvMedia(project).then((media) => send({ action: "play_track", trackId: track.id, projectId: project.id, media }));
+      } else remoteCtlRef.current.send({ action: "play_track", trackId: track.id, projectId: project.id });
       setCurrentTrack(track);
       setCurrentProject(project);
       if (openFull) setPlayerExpanded(true);
@@ -1804,8 +1831,77 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       window.setTimeout(() => remote.publishNow(), 600);
     },
   });
-  remoteCtlRef.current = { controlling: remote.controlling, send: remote.sendCmd, claim: remote.claim };
+  const activeRemoteIsTv = remote.devices.some((d) => d.deviceId === remote.activeDeviceId && d.kind === "tv");
+  remoteCtlRef.current = { controlling: remote.controlling, send: remote.sendCmd, claim: remote.claim, activeIsTv: activeRemoteIsTv };
   const [devicePickerOpen, setDevicePickerOpen] = useState(false);
+
+  // ==================== VINCULAR UNA TELE (/tv) ====================
+  // La tele muestra un código; el celu (logueado) le manda por un canal temporal quién es.
+  // La tele no recibe ninguna sesión: solo se suma al control remoto de esta cuenta.
+  const [tvCode, setTvCode] = useState("");
+  const [tvPairOpen, setTvPairOpen] = useState(false);
+  const [tvPairStatus, setTvPairStatus] = useState<null | "sending" | "ok" | "fail">(null);
+  const pairTv = async (raw: string) => {
+    const code = raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (code.length !== 6 || !meProfile.id) {
+      setTvPairStatus("fail");
+      return;
+    }
+    setTvPairStatus("sending");
+    const ch = supabase.channel(`tvpair:${code}`, { config: { broadcast: { self: false } } });
+    const ok = await new Promise<boolean>((resolve) => {
+      let timer = 0;
+      const done = (v: boolean) => {
+        window.clearInterval(timer);
+        resolve(v);
+      };
+      ch.on("broadcast", { event: "paired" }, () => done(true));
+      ch.subscribe((status) => {
+        if (status !== "SUBSCRIBED") return;
+        const payload = { userId: meProfile.id, name: meProfile.name, handle: meProfile.handle };
+        let tries = 0;
+        const send = () => {
+          if (++tries > 6) return done(false);
+          void ch.send({ type: "broadcast", event: "pair", payload });
+        };
+        send();
+        timer = window.setInterval(send, 1500);
+      });
+    });
+    void supabase.removeChannel(ch);
+    setTvPairStatus(ok ? "ok" : "fail");
+    if (ok) {
+      sfx.pop();
+      setTvCode("");
+      window.setTimeout(() => {
+        setTvPairOpen(false);
+        setTvPairStatus(null);
+      }, 2200);
+    }
+  };
+  // Link del QR de la tele: eltablero.blog/?tv=CODIGO (si no hay sesión, se guarda para después del login)
+  useEffect(() => {
+    let code: string | null = null;
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      code = sp.get("tv");
+      if (code) {
+        sessionStorage.setItem("eltablero_pending_tv", code);
+        sp.delete("tv");
+        const q = sp.toString();
+        window.history.replaceState(null, "", window.location.pathname + (q ? `?${q}` : ""));
+      } else code = sessionStorage.getItem("eltablero_pending_tv");
+    } catch {}
+    if (!code || !googleConnected || !meProfile.id) return;
+    try {
+      sessionStorage.removeItem("eltablero_pending_tv");
+    } catch {}
+    setTvCode(code.toUpperCase());
+    setTvPairOpen(true);
+    setDevicePickerOpen(true);
+    void pairTv(code);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [googleConnected, meProfile.id]);
   const activeRemoteDevice = remote.devices.find((d) => d.deviceId === remote.activeDeviceId);
 
   const [PlayerComp, setPlayerComp] = useState<PerformativePlayerComp | null>(() => performativePlayerCache);
@@ -1884,12 +1980,16 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       return;
     }
     const pos = sfx.getPlaybackState().currentSec || 0;
-    remote.transferTo(deviceId, {
+    const current = {
       trackId: currentTrack.id,
       projectId: currentProject.id,
       position: pos,
       playing: isPlaying || currentTrack.id !== "standby-track",
-    });
+    };
+    if (remote.devices.some((d) => d.deviceId === deviceId && d.kind === "tv")) {
+      const proj = currentProject;
+      void buildTvMedia(proj).then((media) => remote.transferTo(deviceId, { ...current, media }));
+    } else remote.transferTo(deviceId, current);
     if (isPlaying) {
       sfx.pause();
       sfx.pauseGroove();
@@ -6363,7 +6463,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                   style={{ ["--fill" as string]: `${(muted ? 0 : volume) * 100}%` }}
                   aria-label="Volumen"
                 />
-                {remote.devices.length > 1 && (
+                {(remote.devices.length > 1 || googleConnected) && (
                   <button
                     type="button"
                     className={`mini-device-btn ${remote.controlling ? "is-remote" : ""}`}
@@ -6771,7 +6871,11 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                           }}
                         >
                           <span className="device-icon" aria-hidden>
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="4" width="13" height="10" rx="2" /><rect x="15" y="9" width="6" height="11" rx="1.5" /><path d="M7 18h5" /></svg>
+                            {d.kind === "tv" ? (
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="2" /><path d="M8 21h8M12 17v4" /></svg>
+                            ) : (
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="4" width="13" height="10" rx="2" /><rect x="15" y="9" width="6" height="11" rx="1.5" /><path d="M7 18h5" /></svg>
+                            )}
                           </span>
                           <span className="device-meta">
                             <b>{d.isMe ? `Este dispositivo (${d.name})` : d.name}</b>
@@ -6783,6 +6887,44 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                     );
                   })}
                 </ul>
+                {!tvPairOpen ? (
+                  <button type="button" className="device-tv-link" onClick={() => setTvPairOpen(true)}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="2" /><path d="M8 21h8M12 17v4" /></svg>
+                    Vincular una tele
+                  </button>
+                ) : (
+                  <form
+                    className="device-tv-pair"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      void pairTv(tvCode);
+                    }}
+                  >
+                    <p>
+                      En la tele abrí <b>eltablero.blog/tv</b> (o la app de El tablero) y escribí el código que aparece. También podés escanear el QR con la cámara.
+                    </p>
+                    <div className="device-tv-row">
+                      <input
+                        value={tvCode}
+                        onChange={(e) => {
+                          setTvCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6));
+                          setTvPairStatus(null);
+                        }}
+                        placeholder="CÓDIGO"
+                        inputMode="text"
+                        autoCapitalize="characters"
+                        autoComplete="off"
+                        maxLength={6}
+                        aria-label="Código de la tele"
+                      />
+                      <button type="submit" disabled={tvCode.length !== 6 || tvPairStatus === "sending"}>
+                        {tvPairStatus === "sending" ? "…" : "Vincular"}
+                      </button>
+                    </div>
+                    {tvPairStatus === "ok" && <small className="is-ok">¡Listo! La tele ya aparece en la lista: tocala para pasar la música.</small>}
+                    {tvPairStatus === "fail" && <small className="is-fail">No encontré esa tele. Fijate el código (y que la pantalla siga abierta).</small>}
+                  </form>
+                )}
               </motion.div>
             </motion.div>
           </UniversalPortal>
