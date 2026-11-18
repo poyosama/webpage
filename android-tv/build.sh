@@ -18,5 +18,5 @@ cp "$OUT/base.apk" "$OUT/unsigned.apk"
 "$BT/zipalign" -f -p 4 "$OUT/unsigned.apk" "$OUT/aligned.apk"
 "$BT/apksigner" sign --ks "$KEYSTORE" --ks-pass "pass:$KS_PASS" --out ../public/tv.apk "$OUT/aligned.apk"
 "$BT/apksigner" verify --print-certs ../public/tv.apk | head -3
-rm -rf "$OUT"
+rm -rf "$OUT" ../public/tv.apk.idsig
 ls -la ../public/tv.apk
