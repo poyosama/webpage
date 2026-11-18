@@ -2385,3 +2385,44 @@ html:root body .perf-player.has-cinema-canvas .perf-kicker {
 .device-tv-pair small { font-size: 0.76rem; }
 .device-tv-pair small.is-ok { color: #16a34a; }
 .device-tv-pair small.is-fail { color: #dc2626; }
+
+/* ==================== Actividad de amigos (panel al costado, tipo Spotify) ==================== */
+.friends-btn.is-on { color: #16a34a; }
+:root[data-theme="dark"] .friends-btn.is-on { color: #4ade80; }
+.friends-panel {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 2400; width: min(320px, 88vw);
+  display: flex; flex-direction: column; background: var(--surface, #fff); color: var(--ink);
+  border-left: 1px solid var(--line, rgba(127,127,127,.2)); box-shadow: -18px 0 40px -24px rgba(0,0,0,.45);
+  padding: max(14px, env(safe-area-inset-top)) 0 max(12px, env(safe-area-inset-bottom));
+  animation: friendsIn .26s cubic-bezier(.2,.8,.2,1);
+}
+@keyframes friendsIn { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+.friends-backdrop { position: fixed; inset: 0; z-index: 2399; background: rgba(0,0,0,.35); }
+@media (min-width: 1100px) {
+  .friends-backdrop { display: none; } /* en compu queda abierto al costado sin tapar */
+  .friends-panel { top: 76px; bottom: 96px; right: 12px; border-radius: 18px; border: 1px solid var(--line, rgba(127,127,127,.2)); }
+}
+.friends-head { display: flex; justify-content: space-between; align-items: flex-start; padding: 4px 16px 10px; }
+.friends-head h3 { margin: 2px 0 0; font-size: 1.05rem; }
+.friends-close { border: 0; background: var(--surface-secondary); color: var(--ink); width: 30px; height: 30px; border-radius: 50%; }
+.friends-list { flex: 1; overflow-y: auto; padding: 0 8px; overscroll-behavior: contain; }
+.friends-empty { padding: 18px 10px; font-size: .84rem; color: var(--ink-secondary); line-height: 1.45; }
+.friend-row { display: flex; gap: 10px; padding: 10px 8px; border-radius: 14px; }
+.friend-row:hover { background: var(--surface-secondary); }
+.friend-avatar { position: relative; flex: none; width: 42px; height: 42px; border-radius: 50%; border: 0; padding: 0; background: var(--surface-secondary); color: var(--ink); font-weight: 700; display: grid; place-items: center; }
+.friend-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+.friend-online { position: absolute; right: 0; bottom: 0; width: 11px; height: 11px; border-radius: 50%; background: #22c55e; border: 2px solid var(--surface, #fff); }
+.friend-main { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.friend-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.friend-name { border: 0; background: none; padding: 0; color: var(--ink); font-weight: 650; font-size: .88rem; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.friend-time { flex: none; font-size: .72rem; color: var(--ink-muted); }
+.friend-row.is-live .friend-time { color: #16a34a; }
+:root[data-theme="dark"] .friend-row.is-live .friend-time { color: #4ade80; }
+.friend-track { display: flex; align-items: center; gap: 8px; border: 0; background: none; padding: 0; color: inherit; text-align: left; min-width: 0; }
+.friend-track img { width: 34px; height: 34px; border-radius: 6px; object-fit: cover; flex: none; }
+.friend-track span { display: flex; flex-direction: column; min-width: 0; }
+.friend-track b { font-size: .8rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.friend-track small, .friend-none { font-size: .72rem; color: var(--ink-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.friends-foot { border-top: 1px solid var(--line, rgba(127,127,127,.2)); padding: 10px 16px 0; display: flex; flex-direction: column; gap: 8px; }
+.friends-share { display: flex; align-items: center; gap: 8px; font-size: .78rem; color: var(--ink-secondary); cursor: pointer; }
+.friends-admin { font-size: .8rem; font-weight: 650; color: var(--ink); text-decoration: none; }

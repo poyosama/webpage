@@ -27,6 +27,7 @@ import {
 } from "@/lib/mock";
 import { sfx } from "@/lib/sfx";
 import { useRemotePlayer, type RemoteCommand, type TvMedia } from "@/lib/remotePlayer";
+import FriendsActivity, { readShareActivity, SHARE_KEY } from "@/components/FriendsActivity";
 import type { QueueEntry, RepeatMode } from "./PerformativePlayer";
 import {
   supabase,
@@ -46,6 +47,7 @@ import {
   fastCacheGet,
   fastCacheSet,
   resolveTrackAudioUrl,
+  reportActivity,
   resolveOriginalAudioUrl,
   fetchProjectFolders,
   createProjectFolder,
@@ -343,6 +345,30 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   const [likedTrackIds, setLikedTrackIds] = useState<string[]>([]);
   const likesLoadedRef = useRef(false);
   const [userQueue, setUserQueue] = useState<QueueEntry[]>([]);
+  // Fila según DÓNDE le diste play (ej. "Lo último subido" de Inicio): sigue con lo que aparecía ahí.
+  // Se borra si das play desde otro lado (un proyecto, la biblioteca…).
+  const [playContext, setPlayContext] = useState<{ label: string; items: QueueEntry[] } | null>(null);
+  const keepContextRef = useRef(false);
+  const playFromContext = (ctx: { label: string; items: QueueEntry[] }, entry: QueueEntry, openFull = false) => {
+    setPlayContext(ctx);
+    keepContextRef.current = true;
+    playTrack(entry.track, entry.project, openFull);
+  };
+  /** Siguiente/anterior dentro de la fila de contexto (null si el track actual no está ahí) */
+  const contextStep = (dir: 1 | -1, wrap: boolean): QueueEntry | null | "end" => {
+    if (!playContext) return null;
+    const items = playContext.items;
+    const idx = items.findIndex((e) => e.track.id === currentTrack.id);
+    if (idx < 0) return null;
+    if (shuffle && items.length > 1) {
+      const others = items.filter((_, i) => i !== idx);
+      return others[Math.floor(Math.random() * others.length)];
+    }
+    const n = idx + dir;
+    if (n >= 0 && n < items.length) return items[n];
+    if (!wrap) return "end";
+    return items[(n + items.length) % items.length];
+  };
   const [customAudioMap, setCustomAudioMap] = useState<Record<string, string>>({});
 
   const onTrackEndedRef = useRef<() => void>(() => {});
@@ -1529,6 +1555,8 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   };
 
   const playTrack = (track: Track, project: Project, openFull = false) => {
+    if (keepContextRef.current) keepContextRef.current = false;
+    else setPlayContext(null);
     if (remoteCtlRef.current.controlling) {
       if (remoteCtlRef.current.activeIsTv) {
         const send = remoteCtlRef.current.send;
@@ -1750,7 +1778,14 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     if (dir === 1 && userQueue.length > 0) {
       const [nextItem, ...rest] = userQueue;
       setUserQueue(rest);
+      keepContextRef.current = true;
       playTrack(nextItem.track, nextItem.project, playerExpanded);
+      return;
+    }
+    const ctxNext = contextStep(dir, true);
+    if (ctxNext && ctxNext !== "end") {
+      keepContextRef.current = true;
+      playTrack(ctxNext.track, ctxNext.project, playerExpanded);
       return;
     }
 
@@ -1903,6 +1938,62 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [googleConnected, meProfile.id]);
   const activeRemoteDevice = remote.devices.find((d) => d.deviceId === remote.activeDeviceId);
+
+  // ==================== ACTIVIDAD: latido "conectado / escuchando esto" ====================
+  const isAdmin = meProfile.id === "927df5ff-0c13-4088-abc7-52dbf9dbd41b";
+  const [friendsOpen, setFriendsOpen] = useState(false);
+  const [shareActivity, setShareActivity] = useState(true);
+  useEffect(() => {
+    setShareActivity(readShareActivity());
+    try {
+      // en compu queda abierto si lo dejaste abierto
+      if (window.innerWidth >= 1100 && localStorage.getItem("eltablero_friends_open") === "1") setFriendsOpen(true);
+    } catch {}
+  }, []);
+  const toggleFriends = (v?: boolean) => {
+    setFriendsOpen((prev) => {
+      const next = v ?? !prev;
+      try {
+        localStorage.setItem("eltablero_friends_open", next ? "1" : "0");
+      } catch {}
+      return next;
+    });
+  };
+  const activityRef = useRef<() => void>(() => {});
+  activityRef.current = () => {
+    if (!googleConnected || !meProfile.id || isGuest) return;
+    const rs = remote.controlling ? remote.remoteState : null;
+    const standby = currentTrack.id === "standby-track";
+    const playingNow = rs ? rs.isPlaying : isPlaying && !standby;
+    // pestaña escondida y sin música: no avisar (así figura desconectado a los 2 min)
+    if (document.visibilityState !== "visible" && !playingNow) return;
+    void reportActivity(meProfile.id, {
+      trackId: rs ? rs.trackId : standby ? null : currentTrack.id,
+      trackTitle: rs ? rs.title : standby ? null : currentTrack.title,
+      artist: rs ? rs.artist : standby ? null : currentTrack.artist,
+      projectId: rs ? rs.projectId : standby ? null : currentProject.id,
+      projectTitle: rs ? findTrackAnywhere(rs.trackId, rs.projectId)?.project.title || null : standby ? null : currentProject.title,
+      coverUrl: rs ? rs.cover || null : standby ? null : currentTrack.coverUrl || currentProject.coverUrl || null,
+      isPlaying: playingNow,
+      device: (rs ? activeRemoteDevice?.name : remote.devices.find((d) => d.isMe)?.name) || "web",
+      share: shareActivity,
+    });
+  };
+  useEffect(() => {
+    if (!googleConnected || !meProfile.id) return;
+    const t = window.setTimeout(() => activityRef.current(), 1500);
+    return () => window.clearTimeout(t);
+  }, [googleConnected, meProfile.id, currentTrack.id, isPlaying, remote.controlling, remote.remoteState?.trackId, remote.remoteState?.isPlaying, shareActivity]);
+  useEffect(() => {
+    if (!googleConnected || !meProfile.id) return;
+    const id = window.setInterval(() => activityRef.current(), 45000);
+    const onVis = () => document.visibilityState === "visible" && activityRef.current();
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [googleConnected, meProfile.id]);
 
   const [PlayerComp, setPlayerComp] = useState<PerformativePlayerComp | null>(() => performativePlayerCache);
   useEffect(() => {
@@ -2145,7 +2236,21 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     if (userQueue.length > 0) {
       const [nextItem, ...rest] = userQueue;
       setUserQueue(rest);
+      keepContextRef.current = true;
       playTrack(nextItem.track, nextItem.project, playerExpanded);
+      return;
+    }
+    const ctxNext = contextStep(1, repeatMode === "all");
+    if (ctxNext === "end") {
+      setIsPlaying(false);
+      sfx.stopGroove(false);
+      sfx.seek(0);
+      setMiniPlayback((prev) => ({ ...prev, currentSec: 0 }));
+      return;
+    }
+    if (ctxNext) {
+      keepContextRef.current = true;
+      playTrack(ctxNext.track, ctxNext.project, playerExpanded);
       return;
     }
 
@@ -3421,6 +3526,20 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
           </button>
 
           {!isGuest && googleConnected && meProfile.id && (
+            <button
+              type="button"
+              className={`ios-icon-btn friends-btn ${friendsOpen ? "is-on" : ""}`}
+              aria-label="Actividad de amigos"
+              title="Actividad de amigos"
+              onClick={() => {
+                sfx.tap();
+                toggleFriends();
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2" /><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5" /><circle cx="17.5" cy="9" r="2.4" /><path d="M16.5 14.6c2.6.2 4.5 2 4.5 4.9" /></svg>
+            </button>
+          )}
+          {!isGuest && googleConnected && meProfile.id && (
             <NotificationBell
               meId={meProfile.id}
               meHandle={meProfile.handle}
@@ -3805,10 +3924,16 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                     <h3>Lo último subido & Rotación</h3>
                   </div>
                   <div className="track-list-clean">
-                    {boardProjects
-                      .flatMap((p) => p.tracks.map((t) => ({ track: t, proj: p })))
-                      .slice(0, 10)
-                      .map(({ track, proj }, i) => {
+                    {(() => {
+                      const rows = boardProjects.flatMap((p) => p.tracks.map((t) => ({ track: t, proj: p }))).slice(0, 10);
+                      // Fila: los tracks de esta lista que se pueden escuchar acá (sin los de ejemplo que van a Spotify)
+                      const homeCtx = {
+                        label: "Lo último subido",
+                        items: rows
+                          .filter(({ track, proj }, i) => !(isGuest && i >= GUEST_FREE_TRACKS) && !(isDemoProject(proj) && !track.customAudioUrl && !customAudioMap[track.id]))
+                          .map(({ track, proj }) => ({ track, project: proj })),
+                      };
+                      return rows.map(({ track, proj }, i) => {
                           const active = currentTrack.id === track.id;
                           const locked = isGuest && i >= GUEST_FREE_TRACKS;
                           return (
@@ -3826,7 +3951,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                                   if (proj.spotifyUrl) window.open(proj.spotifyUrl, "_blank", "noopener,noreferrer");
                                   return;
                                 }
-                                playTrack(track, proj, false);
+                                playFromContext(homeCtx, { track, project: proj }, false);
                               }}
                             >
                               <span className="row-num">{String(i + 1).padStart(2, "0")}</span>
@@ -3957,7 +4082,8 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                               </div>
                             </div>
                           );
-                        })}
+                        });
+                    })()}
                   </div>
                 </div>
 
@@ -6551,10 +6677,14 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                 repeatMode={repeatMode}
                 likedTrackIds={likedTrackIds}
                 userQueue={userQueue}
+                playContext={playContext}
                 onTogglePlay={togglePlay}
                 onNext={() => stepTrack(1)}
                 onPrev={() => stepTrack(-1)}
-                onSelectTrack={(t, p) => playTrack(t, p, true)}
+                onSelectTrack={(t, p) => {
+                  if (playContext?.items.some((e) => e.track.id === t.id)) keepContextRef.current = true;
+                  playTrack(t, p, true);
+                }}
                 onToggleShuffle={() => setShuffle((s) => !s)}
                 onCycleRepeat={() =>
                   setRepeatMode((m) => (m === "off" ? "all" : m === "all" ? "one" : "off"))
@@ -6827,6 +6957,37 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
             );
           })()}
       </AnimatePresence>
+
+      {/* ==================== ACTIVIDAD DE AMIGOS ==================== */}
+      {!isGuest && googleConnected && meProfile.id && (
+        <UniversalPortal>
+          <FriendsActivity
+            open={friendsOpen}
+            onClose={() => toggleFriends(false)}
+            isAdmin={isAdmin}
+            share={shareActivity}
+            onShareChange={(v) => {
+              setShareActivity(v);
+              try {
+                localStorage.setItem(SHARE_KEY, v ? "1" : "0");
+              } catch {}
+            }}
+            onOpenProfile={(handle) => {
+              const prof = findArtistProfile(handle);
+              if (prof) {
+                if (window.innerWidth < 1100) toggleFriends(false);
+                openArtistProfile(prof);
+              }
+            }}
+            onPlay={(trackId, projectId) => {
+              const found = findTrackAnywhere(trackId, projectId || undefined);
+              if (!found) return false;
+              playTrack(found.track, found.project, false);
+              return true;
+            }}
+          />
+        </UniversalPortal>
+      )}
 
       {/* ==================== DISPOSITIVOS (control remoto) ==================== */}
       <AnimatePresence>

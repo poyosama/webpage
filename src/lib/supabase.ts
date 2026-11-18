@@ -1602,3 +1602,91 @@ export async function setProjectFolderInDb(userId: string, projectId: string, fo
     .upsert({ user_id: userId, project_id: projectId, folder_id: folderId }, { onConflict: "user_id,project_id" });
   return !error;
 }
+
+// ==================== ACTIVIDAD (qué escucha cada uno) ====================
+export type ActivityReport = {
+  trackId: string | null;
+  trackTitle: string | null;
+  artist: string | null;
+  projectId: string | null;
+  projectTitle: string | null;
+  coverUrl: string | null;
+  isPlaying: boolean;
+  device: string;
+  share: boolean;
+};
+/** Latido: "estoy conectado y escuchando esto" (la hora la pone el servidor) */
+export async function reportActivity(userId: string, a: ActivityReport): Promise<void> {
+  try {
+    await supabase.from("listening_activity").upsert(
+      {
+        user_id: userId,
+        track_id: a.trackId,
+        track_title: a.trackTitle,
+        artist: a.artist,
+        project_id: a.projectId,
+        project_title: a.projectTitle,
+        cover_url: a.coverUrl && /^https?:/.test(a.coverUrl) ? a.coverUrl : null,
+        is_playing: a.isPlaying,
+        device: a.device,
+        share: a.share,
+      },
+      { onConflict: "user_id" }
+    );
+  } catch {}
+}
+
+export type FriendActivity = {
+  user_id: string;
+  handle: string | null;
+  name: string | null;
+  avatar_url: string | null;
+  track_id: string | null;
+  track_title: string | null;
+  artist: string | null;
+  project_id: string | null;
+  project_title: string | null;
+  cover_url: string | null;
+  is_playing: boolean;
+  last_seen: string | null;
+};
+export async function fetchFriendsActivity(): Promise<FriendActivity[] | null> {
+  const { data, error } = await supabase.rpc("friends_activity");
+  return error ? null : ((data || []) as FriendActivity[]);
+}
+
+export type AdminUserRow = {
+  user_id: string;
+  handle: string | null;
+  name: string | null;
+  avatar_url: string | null;
+  account_type: string | null;
+  email: string | null;
+  registered_at: string;
+  last_sign_in_at: string | null;
+  track_title: string | null;
+  artist: string | null;
+  project_title: string | null;
+  cover_url: string | null;
+  is_playing: boolean;
+  device: string | null;
+  share: boolean | null;
+  last_seen: string | null;
+};
+export async function fetchAdminUsers(): Promise<{ rows: AdminUserRow[]; error?: string }> {
+  const { data, error } = await supabase.rpc("admin_users_activity");
+  return error ? { rows: [], error: error.message } : { rows: (data || []) as AdminUserRow[] };
+}
+
+/** Conectado = latido de hace menos de 2 minutos */
+export const ONLINE_MS = 2 * 60 * 1000;
+export const isOnline = (lastSeen: string | null | undefined) => Boolean(lastSeen && Date.now() - new Date(lastSeen).getTime() < ONLINE_MS);
+export function agoEs(iso: string | null | undefined): string {
+  if (!iso) return "nunca";
+  const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 60) return "recién";
+  if (s < 3600) return `hace ${Math.floor(s / 60)} min`;
+  if (s < 86400) return `hace ${Math.floor(s / 3600)} h`;
+  if (s < 86400 * 30) return `hace ${Math.floor(s / 86400)} d`;
+  return new Date(iso).toLocaleDateString("es-AR", { day: "numeric", month: "short", year: "2-digit" });
+}

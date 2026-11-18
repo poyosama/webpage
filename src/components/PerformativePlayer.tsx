@@ -248,6 +248,7 @@ export default function PerformativePlayer({
   repeatMode,
   likedTrackIds,
   userQueue,
+  playContext,
   onTogglePlay,
   onNext,
   onPrev,
@@ -279,6 +280,8 @@ export default function PerformativePlayer({
   repeatMode: RepeatMode;
   likedTrackIds: string[];
   userQueue: QueueEntry[];
+  /** Fila según dónde se le dio play (ej. "Lo último subido"); si está, reemplaza "Siguiente de: proyecto" */
+  playContext?: { label: string; items: QueueEntry[] } | null;
   onTogglePlay: () => void;
   onNext: () => void;
   onPrev: () => void;
@@ -399,6 +402,13 @@ export default function PerformativePlayer({
   const progressPct = durationSec > 0 ? Math.min(100, (currentSec / durationSec) * 100) : 0;
   const isLiked = likedTrackIds.includes(track.id);
   const isStandby = track.id === "standby-track";
+
+  const contextNext = useMemo(() => {
+    if (!playContext) return null;
+    const idx = playContext.items.findIndex((e) => e.track.id === track.id);
+    if (idx < 0) return null;
+    return playContext.items.slice(idx + 1);
+  }, [playContext, track.id]);
 
   const projectNextTracks = useMemo(() => {
     const idx = liveProject.tracks.findIndex((t) => t.id === track.id);
@@ -734,6 +744,35 @@ export default function PerformativePlayer({
             </div>
           )}
 
+          {contextNext && playContext && (
+            <div className="queue-section">
+              <span className="queue-sec-label">SIGUIENTE DE: {playContext.label}</span>
+              {contextNext.length === 0 && <span className="queue-item-meta" style={{ padding: "6px 4px", opacity: 0.6 }}>Es el último de la lista</span>}
+              {contextNext.map((item) => (
+                <div key={item.track.id} className="queue-item" onClick={() => onSelectTrack(item.track, item.project)}>
+                  <div
+                    className="queue-item-art"
+                    style={{
+                      background: item.project.coverUrl
+                        ? `url(${item.project.coverUrl}) center / cover no-repeat`
+                        : `linear-gradient(135deg, ${item.track.c1}, ${item.track.c2})`,
+                    }}
+                  >
+                    {!item.project.coverUrl && item.track.glyph}
+                  </div>
+                  <div className="queue-item-meta">
+                    <b>{item.track.title}</b>
+                    <span>
+                      {item.track.artist} · {item.project.title}
+                    </span>
+                  </div>
+                  <span className="queue-item-dur">{item.track.duration}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {!contextNext && (
           <div className="queue-section">
             <span className="queue-sec-label">SIGUIENTE DE: {project.title}</span>
             {projectNextTracks.map((t) => (
@@ -772,6 +811,7 @@ export default function PerformativePlayer({
               </div>
             ))}
           </div>
+          )}
 
           <div className="queue-section">
             <span className="queue-sec-label">AGREGAR DE OTROS PROYECTOS</span>
