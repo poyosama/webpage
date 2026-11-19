@@ -2512,3 +2512,61 @@ html:root body .perf-player.has-cinema-canvas .perf-kicker {
 .dm-new .dm-group-title { flex: none; min-height: 0; }
 .dm-new .dm-results { flex: 1; }
 .dm-track .dm-track-ph { flex: none; display: grid; width: 44px; height: 44px; }
+
+/* ==================== Tablero: selector Canciones/Proyectos, timer y vista de canciones ==================== */
+html:root body .strip-top-meta span.board-meta-left,
+html:root body .strip-top-meta span.board-meta-right,
+html:root body .strip-top-meta span.board-view-switch,
+html:root body .strip-top-meta span.board-countdown {
+  background: none !important; border: 0 !important; padding: 0 !important; color: inherit !important; border-radius: 0 !important; font-weight: inherit;
+}
+html:root body .strip-top-meta span.board-meta-left > span:first-child {
+  background: rgba(56, 189, 248, 0.14) !important; color: #0284c7 !important; border: 1px solid rgba(56, 189, 248, 0.3) !important;
+  border-radius: 999px !important; padding: 3px 9px !important; font-weight: 600;
+}
+:root[data-theme="dark"] body .strip-top-meta span.board-meta-left > span:first-child { background: rgba(56, 189, 248, 0.18) !important; color: #38bdf8 !important; }
+.board-meta-left, .board-meta-right { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+html:root body .strip-top-meta span.board-view-switch {
+  position: relative; display: inline-grid; grid-template-columns: 1fr 1fr; padding: 2px !important; border-radius: 999px !important;
+  background: var(--surface-secondary) !important; border: 1px solid var(--line, rgba(127,127,127,.25)) !important;
+}
+.board-view-switch i {
+  position: absolute; top: 2px; bottom: 2px; left: 2px; width: calc(50% - 2px); border-radius: 999px;
+  background: var(--ink); transition: transform .28s cubic-bezier(.3,1.4,.5,1);
+}
+.board-view-switch i.is-right { transform: translateX(100%); }
+.board-view-switch button {
+  position: relative; z-index: 1; border: 0; background: none; color: var(--ink-secondary); cursor: pointer;
+  font: 600 0.66rem var(--font-mono), monospace; letter-spacing: .04em; padding: 3px 10px; text-transform: uppercase;
+  transition: color .2s;
+}
+.board-view-switch button.on { color: var(--surface, #fff); }
+html:root body .strip-top-meta span.board-countdown { color: var(--ink-muted) !important; letter-spacing: .02em; }
+.board-countdown b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.track-board { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 18px 8px 8px; position: relative; z-index: 1; }
+.track-board.is-loading, .track-board.is-empty { min-height: 220px; justify-content: center; color: var(--ink-muted); font: 500 .8rem var(--font-mono), monospace; }
+.track-board-item { position: relative; }
+.track-board-rank { font: 600 .62rem var(--font-mono), monospace; color: var(--ink-muted); align-self: flex-start; margin-right: 2px; }
+.track-board-ph { display: inline-grid; place-items: center; background: var(--surface-secondary); color: var(--ink-muted); }
+html:root body .track-board-line.is-t1 .roster-word { font-size: clamp(2.6rem, 6.4vw, 5.2rem) !important; }
+html:root body .track-board-line.is-t1 .collage-cover-thumb { width: 64px; height: 64px; border-radius: 14px; }
+html:root body .track-board-line.is-t1 .track-board-rank { font-size: .9rem; color: var(--ink); }
+html:root body .track-board-line.is-t2 .roster-word { font-size: clamp(2rem, 4.6vw, 3.6rem) !important; }
+html:root body .track-board-line.is-t2 .collage-cover-thumb { width: 48px; height: 48px; }
+html:root body .track-board-line.is-t3 .roster-word { font-size: clamp(1.6rem, 3.4vw, 2.7rem) !important; }
+html:root body .track-board-line.is-t4 .roster-word { font-size: clamp(1.35rem, 2.6vw, 2.1rem) !important; }
+html:root body .track-board-line.is-t5 .roster-word { font-size: clamp(1.15rem, 2vw, 1.6rem) !important; }
+html:root body .track-board-line.is-t6 .roster-word { font-size: clamp(1rem, 1.6vw, 1.25rem) !important; }
+html:root body .track-board-line.is-t5 .collage-cover-thumb, html:root body .track-board-line.is-t6 .collage-cover-thumb { width: 28px; height: 28px; border-radius: 7px; }
+.track-board-item.is-playing .inline-swatch { box-shadow: 0 0 0 3px rgba(74, 222, 128, .55); }
+@media (max-width: 720px) {
+  html:root body .track-board-line.is-t1 .roster-word { font-size: clamp(2rem, 11vw, 3rem) !important; }
+  html:root body .track-board-line.is-t2 .roster-word { font-size: clamp(1.6rem, 8vw, 2.2rem) !important; }
+  html:root body .track-board-line.is-t3 .roster-word { font-size: clamp(1.35rem, 6.6vw, 1.8rem) !important; }
+  html:root body .track-board-line.is-t4 .roster-word, html:root body .track-board-line.is-t5 .roster-word { font-size: 1.2rem !important; }
+  html:root body .track-board-line.is-t6 .roster-word { font-size: 1rem !important; }
+  .board-countdown { font-size: .62rem; }
+}
+.plays-chip { font-variant-numeric: tabular-nums; }
+.play-counts-field small { display: block; margin-top: 6px; font-size: .72rem; color: var(--ink-muted); }

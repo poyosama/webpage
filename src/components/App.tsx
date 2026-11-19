@@ -29,6 +29,7 @@ import { sfx } from "@/lib/sfx";
 import { useRemotePlayer, type RemoteCommand, type TvMedia } from "@/lib/remotePlayer";
 import FriendsActivity, { readShareActivity, SHARE_KEY } from "@/components/FriendsActivity";
 import DirectMessages, { DmPolicyField } from "@/components/DirectMessages";
+import TrackBoard, { BoardCountdown, PlayCountsField, type BoardTrack } from "@/components/TrackBoard";
 import { useDmInbox, type DmPerson, type DmTrack } from "@/lib/dms";
 import type { QueueEntry, RepeatMode } from "./PerformativePlayer";
 import {
@@ -50,6 +51,7 @@ import {
   fastCacheSet,
   resolveTrackAudioUrl,
   reportActivity,
+  toDbId,
   resolveOriginalAudioUrl,
   fetchProjectFolders,
   createProjectFolder,
@@ -2011,6 +2013,25 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       url,
     };
   };
+  // ==================== REPRODUCCIONES ====================
+  // Se cuenta una al escuchar ~30 s (o casi entero si es corto). El servidor no cuenta la misma persona 2 veces en 10 min.
+  const [playCounts, setPlayCounts] = useState<Record<string, number>>({});
+  const playCountsAskedRef = useRef<Set<string>>(new Set());
+  const loadPlayCounts = async (ids: string[], force = false) => {
+    const want = ids.filter((id) => /^[0-9a-f-]{36}$/i.test(id) && (force || !playCountsAskedRef.current.has(id)));
+    if (!want.length) return;
+    want.forEach((id) => playCountsAskedRef.current.add(id));
+    const { data } = await supabase.rpc("track_play_counts", { p_tracks: want.slice(0, 200) });
+    if (Array.isArray(data)) {
+      const got: Record<string, number> = {};
+      (data as { track_id: string; plays: number }[]).forEach((r) => (got[r.track_id] = r.plays));
+      setPlayCounts((prev) => ({ ...prev, ...got }));
+    }
+  };
+  const fmtPlays = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(".0", "")}k` : String(n));
+  /** "▶ 1,2k" o null si el dueño lo tiene oculto (o no hay dato) */
+  const playsLabel = (trackId: string) => (!playCounts[trackId] ? null : `▶ ${fmtPlays(playCounts[trackId])}`);
+  const listenRef = useRef<{ id: string; secs: number; sent: boolean }>({ id: "", secs: 0, sent: false });
   const activityRef = useRef<() => void>(() => {});
   activityRef.current = () => {
     if (!googleConnected || !meProfile.id || isGuest) return;
@@ -2046,6 +2067,40 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       document.removeEventListener("visibilitychange", onVis);
     };
   }, [googleConnected, meProfile.id]);
+
+  // Contar la reproducción: suena acá, o en una tele manejada desde acá (la tele no tiene sesión)
+  const countingTrackId =
+    !remote.controlling && isPlaying && currentTrack.id !== "standby-track"
+      ? currentTrack.id
+      : remote.controlling && activeRemoteIsTv && remote.remoteState?.isPlaying
+        ? remote.remoteState.trackId
+        : null;
+  useEffect(() => {
+    if (!countingTrackId || !googleConnected || !meProfile.id || isGuest) return;
+    if (listenRef.current.id !== countingTrackId) listenRef.current = { id: countingTrackId, secs: 0, sent: false };
+    const dur = (countingTrackId === currentTrack.id ? currentTrack.durationSec : remote.remoteState?.duration) || 0;
+    const need = dur > 0 ? Math.min(30, dur * 0.9) : 30;
+    const id = window.setInterval(() => {
+      const L = listenRef.current;
+      if (L.sent || L.id !== countingTrackId) return;
+      L.secs += 1;
+      if (L.secs >= need) {
+        L.sent = true;
+        const dbId = toDbId(countingTrackId);
+        if (!/^[0-9a-f-]{36}$/i.test(countingTrackId)) return; // los de ejemplo no cuentan
+        void supabase.rpc("register_play", { p_track: dbId }).then(({ data }) => {
+          if (data === true) setPlayCounts((prev) => (prev[countingTrackId] === undefined ? prev : { ...prev, [countingTrackId]: prev[countingTrackId] + 1 }));
+        });
+      }
+    }, 1000);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [countingTrackId, googleConnected, meProfile.id]);
+  useEffect(() => {
+    const ids = [...(activeProject?.tracks.map((t) => t.id) || []), currentTrack.id];
+    void loadPlayCounts(ids);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeProject?.id, activeProject?.tracks.length, currentTrack.id]);
 
   const [PlayerComp, setPlayerComp] = useState<PerformativePlayerComp | null>(() => performativePlayerCache);
   useEffect(() => {
@@ -3062,6 +3117,43 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
         )
     ),
   ];
+  // Tablero: vista de proyectos (collage curado) o de canciones (ranking diario de las 18:00)
+  const [boardView, setBoardView] = useState<"proyectos" | "canciones">("proyectos");
+  const [boardReload, setBoardReload] = useState(0);
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem("eltablero_board_view");
+      if (v === "canciones" || v === "proyectos") setBoardView(v);
+    } catch {}
+  }, []);
+  const pickBoardView = (v: "proyectos" | "canciones") => {
+    sfx.tap();
+    setBoardView(v);
+    try {
+      localStorage.setItem("eltablero_board_view", v);
+    } catch {}
+  };
+  const bumpBoard = useCallback(() => setBoardReload((n) => n + 1), []);
+  const playFromBoard = (rows: BoardTrack[], index: number) => {
+    const items = rows
+      .map((r) => findTrackAnywhere(r.track_id, r.project_id))
+      .filter((x): x is { track: Track; project: Project } => Boolean(x))
+      .map((x) => ({ track: x.track, project: x.project }));
+    const clicked = rows[index];
+    const entry = items.find((e) => e.track.id === clicked.track_id);
+    if (!entry) {
+      // proyecto que esta sesión todavía no cargó: abrir su página
+      window.location.href = `/project/${clicked.project_id}`;
+      return;
+    }
+    playFromContext({ label: "El tablero", items }, entry, false);
+  };
+  // Contadores de la lista "Lo último subido"
+  const homeTrackIdsKey = boardProjects.flatMap((p) => p.tracks.map((t) => t.id)).slice(0, 10).join(",");
+  useEffect(() => {
+    if (homeTrackIdsKey) void loadPlayCounts(homeTrackIdsKey.split(","));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [homeTrackIdsKey]);
   const allAccessibleProjects: Project[] = [
     ...projects,
     ...DEMO_PROJECTS.filter(
@@ -3700,8 +3792,22 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
             <div className="explore-page">
               <section className="secondstory-strip-card">
                 <div className="strip-top-meta">
-                  <span>EL TABLERO // UG SCENE</span>
-                  <span className="spine-badge-static">El tablero.</span>
+                  <span className="board-meta-left">
+                    <span>EL TABLERO // ESCENA UG</span>
+                    <span className="board-view-switch" role="tablist" aria-label="Tipo de vista">
+                      <i className={boardView === "proyectos" ? "is-right" : ""} aria-hidden />
+                      <button type="button" role="tab" aria-selected={boardView === "canciones"} className={boardView === "canciones" ? "on" : ""} onClick={() => pickBoardView("canciones")}>
+                        Canciones
+                      </button>
+                      <button type="button" role="tab" aria-selected={boardView === "proyectos"} className={boardView === "proyectos" ? "on" : ""} onClick={() => pickBoardView("proyectos")}>
+                        Proyectos
+                      </button>
+                    </span>
+                  </span>
+                  <span className="board-meta-right">
+                    {boardView === "canciones" && <BoardCountdown onZero={bumpBoard} />}
+                    <span className="spine-badge-static">El tablero.</span>
+                  </span>
                 </div>
 
                 {/* 1º: EL RUIDO EN EL MEDIO DE LA PANTALLA (TIPOGRAFÍA LIMPIA Y UNIFICADA + TAPAS REALES) */}
@@ -3716,6 +3822,17 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                       <span className="guest-lock-cta">Suscribirme</span>
                     </button>
                   )}
+                  {boardView === "canciones" ? (
+                    <TrackBoard
+                      currentTrackId={currentTrack.id}
+                      isPlaying={isPlaying}
+                      playsLabel={playsLabel}
+                      onPlay={playFromBoard}
+                      onLoaded={(rows) => void loadPlayCounts(rows.map((r) => r.track_id))}
+                      reloadKey={boardReload}
+                    />
+                  ) : (
+                  <>
                   <div className="neon-spine" aria-hidden />
 
                   <div className="Roster-collage">
@@ -3920,6 +4037,8 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                       </button>
                     </div>
                   </div>
+                  </>
+                  )}
                 </div>
 
                 {/* 2º: NOMBRE DE LA WEB ("El tablero.") */}
@@ -4077,6 +4196,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                                 </span>
                               </div>
                               <div className="row-pills">
+                                {playsLabel(track.id) && <span className="meta-chip plays-chip" title="Reproducciones">{playsLabel(track.id)}</span>}
                                 <span className="meta-chip">{track.bpm} BPM</span>
                                 <span className="meta-chip">{track.key}</span>
                               </div>
@@ -5270,6 +5390,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                                     <span>
                                       {t.artist}
                                       {t.feat ? ` · ft. ${t.feat}` : ""} · {t.bpm} BPM · {t.key}
+                                      {playsLabel(t.id) ? ` · ${playsLabel(t.id)}` : ""}
                                     </span>
                                   </div>
 
@@ -6006,6 +6127,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                                       setEditingTrack(t);
                                     }}
                                   >
+                                    {playsLabel(t.id) && <span className="meta-chip plays-chip" title="Reproducciones">{playsLabel(t.id)}</span>}
                                     <span className="meta-chip">{t.bpm} BPM</span>
                                     <span className="meta-chip">{t.key}</span>
                                   </div>
@@ -8693,6 +8815,7 @@ function GoogleAuthModal({
             />
           </label>
           {connected && profile.id && <DmPolicyField meId={profile.id} />}
+          {connected && profile.id && <PlayCountsField meId={profile.id} />}
         </div>
 
         <div className="google-auth-actions" style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
