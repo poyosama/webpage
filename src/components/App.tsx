@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { AnimatePresence, motion, useDragControls, useMotionValue, useTransform, animate } from "framer-motion";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import PullToRefresh from "./PullToRefresh";
 import {
@@ -28,6 +28,8 @@ import {
 import { sfx } from "@/lib/sfx";
 import { useRemotePlayer, type RemoteCommand, type TvMedia } from "@/lib/remotePlayer";
 import FriendsActivity, { readShareActivity, SHARE_KEY } from "@/components/FriendsActivity";
+import DirectMessages, { DmPolicyField } from "@/components/DirectMessages";
+import { useDmInbox, type DmPerson, type DmTrack } from "@/lib/dms";
 import type { QueueEntry, RepeatMode } from "./PerformativePlayer";
 import {
   supabase,
@@ -1979,6 +1981,36 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       return next;
     });
   };
+  // ==================== MENSAJES DIRECTOS ====================
+  const dm = useDmInbox(googleConnected && meProfile.id ? meProfile.id : null);
+  const [dmOpen, setDmOpen] = useState(false);
+  const [dmStartWith, setDmStartWith] = useState<DmPerson | null>(null);
+  const [dmShare, setDmShare] = useState<DmTrack | null>(null);
+  const clearDmStart = useCallback(() => setDmStartWith(null), []);
+  // mensaje nuevo con el panel cerrado: ¡pup!
+  useEffect(() => {
+    if (dm.lastIncoming && dm.lastIncoming.sender_id !== meProfile.id && !dmOpen) sfx.pop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dm.lastIncoming]);
+  /** Track → mensaje (con link para abrirlo: público, o link de escucha si se puede crear) */
+  const buildDmTrack = async (track: Track, project: Project): Promise<DmTrack> => {
+    const origin = window.location.origin;
+    let url: string | null = null;
+    if (project.visibility === "public") url = `${origin}/project/${project.id}`;
+    else {
+      const tok = await createProjectShareToken(project.id, track.id, "listen").catch(() => null);
+      if (tok && tok !== "missing") url = `${origin}/project/${project.id}?invite=${tok}`;
+    }
+    return {
+      trackId: track.id,
+      projectId: project.id,
+      title: track.title,
+      artist: track.artist,
+      cover: track.coverUrl || project.coverUrl || null,
+      projectTitle: project.title,
+      url,
+    };
+  };
   const activityRef = useRef<() => void>(() => {});
   activityRef.current = () => {
     if (!googleConnected || !meProfile.id || isGuest) return;
@@ -3545,6 +3577,21 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
             )}
           </button>
 
+          {!isGuest && googleConnected && meProfile.id && (
+            <button
+              type="button"
+              className={`ios-icon-btn dm-btn ${dm.unread > 0 ? "has-unread" : ""}`}
+              aria-label={dm.unread ? `Mensajes (${dm.unread} sin leer)` : "Mensajes"}
+              title="Mensajes"
+              onClick={() => {
+                sfx.open();
+                setDmOpen(true);
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" /></svg>
+              {dm.unread > 0 && <span className="notif-badge">{dm.unread > 9 ? "9+" : dm.unread}</span>}
+            </button>
+          )}
           {!isGuest && googleConnected && meProfile.id && (
             <button
               type="button"
@@ -6801,6 +6848,16 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                 onToggleVisibility={() => {}}
                 onCopiedLink={() => {}}
                 onClose={() => setInvitingTrack(null)}
+                onShareDm={
+                  googleConnected && meProfile.id
+                    ? async () => {
+                        const t = invitingTrack.track;
+                        setInvitingTrack(null);
+                        setDmShare(await buildDmTrack(t, proj));
+                        setDmOpen(true);
+                      }
+                    : undefined
+                }
               />
             );
           })()}
@@ -6977,6 +7034,42 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
             );
           })()}
       </AnimatePresence>
+
+      {/* ==================== MENSAJES DIRECTOS ==================== */}
+      {!isGuest && googleConnected && meProfile.id && (
+        <UniversalPortal>
+          <DirectMessages
+            open={dmOpen}
+            onClose={() => {
+              setDmOpen(false);
+              setDmShare(null);
+            }}
+            meId={meProfile.id}
+            threads={dm.threads}
+            reloadInbox={dm.reload}
+            lastIncoming={dm.lastIncoming}
+            startWith={dmStartWith}
+            onStartedWith={clearDmStart}
+            pendingShare={dmShare}
+            onShareDone={() => setDmShare(null)}
+            onPlayTrack={(t) => {
+              const found = findTrackAnywhere(t.trackId, t.projectId);
+              if (found) {
+                playTrack(found.track, found.project, false);
+                return;
+              }
+              if (t.url) window.location.href = t.url;
+            }}
+            onOpenProfile={(handle) => {
+              const prof = findArtistProfile(handle);
+              if (prof) {
+                setDmOpen(false);
+                openArtistProfile(prof);
+              }
+            }}
+          />
+        </UniversalPortal>
+      )}
 
       {/* ==================== ACTIVIDAD DE AMIGOS ==================== */}
       {!isGuest && googleConnected && meProfile.id && (
@@ -7196,6 +7289,19 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                                   >
                                     {followBusy ? "…" : label}
                                   </button>
+                                  {a.id && a.id !== meProfile.id && (
+                                    <button
+                                      type="button"
+                                      className="pf-btn dm-profile-btn"
+                                      onClick={() => {
+                                        sfx.open();
+                                        setDmStartWith({ id: a.id, handle: a.handle, name: a.name, avatar_url: a.avatarUrl || null });
+                                        setDmOpen(true);
+                                      }}
+                                    >
+                                      Mensaje
+                                    </button>
+                                  )}
                                   {rel.followsMe && !rel.iFollow && <small className="follows-you">Te sigue</small>}
                                 </div>
                               )}
@@ -8586,6 +8692,7 @@ function GoogleAuthModal({
               placeholder="@tu_handle"
             />
           </label>
+          {connected && profile.id && <DmPolicyField meId={profile.id} />}
         </div>
 
         <div className="google-auth-actions" style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
@@ -8705,7 +8812,10 @@ function InviteProjectModal({
   onToggleVisibility,
   onCopiedLink,
   onClose,
+  onShareDm,
 }: {
+  /** Mandar el track por mensaje directo */
+  onShareDm?: () => void;
   project: Project;
   /** Si viene, el link es SOLO para este track */
   track?: Track;
@@ -8838,6 +8948,13 @@ function InviteProjectModal({
             <VisibilityIcon v={project.visibility} /> {VISIBILITY_LABEL[(project.visibility as ProjectVisibility) || "private"]}
           </div>
         </div>
+
+        {track && onShareDm && (
+          <button type="button" className="apple-btn primary invite-dm-btn" onClick={onShareDm}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" /></svg>
+            Mandar por mensaje
+          </button>
+        )}
 
         {linkError && <p className="invite-link-error">{linkError}</p>}
 
