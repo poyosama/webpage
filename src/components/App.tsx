@@ -1804,6 +1804,24 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   };
 
   // ==================== CONTROL REMOTO ENTRE DISPOSITIVOS ====================
+  // Llave secreta del canal del control remoto (la tele la recibe al vincularse)
+  const [playerKey, setPlayerKey] = useState<string | null>(null);
+  const loadPlayerKey = async () => {
+    const { data, error } = await supabase.rpc("my_player_key");
+    if (!error && typeof data === "string") setPlayerKey(data);
+  };
+  useEffect(() => {
+    if (googleConnected && meProfile.id) void loadPlayerKey();
+    else setPlayerKey(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [googleConnected, meProfile.id]);
+  const unlinkAllTvs = async () => {
+    if (!window.confirm("¿Desconectar todas las teles vinculadas? Para volver a usarlas hay que vincularlas de nuevo.")) return;
+    await remote.announceRekey();
+    const { data, error } = await supabase.rpc("rotate_player_key");
+    if (!error && typeof data === "string") setPlayerKey(data);
+    setDevicePickerOpen(false);
+  };
   const findTrackAnywhere = (trackId: string, projectId?: string): { track: Track; project: Project } | null => {
     const pool = [...projects, ...DEMO_PROJECTS];
     const proj = (projectId && pool.find((p) => p.id === projectId)) || pool.find((p) => p.tracks.some((t) => t.id === trackId));
@@ -1812,6 +1830,8 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   };
   const remote = useRemotePlayer({
     userId: googleConnected ? meProfile.id : null,
+    channelKey: playerKey,
+    onRekey: () => window.setTimeout(() => void loadPlayerKey(), 2500),
     getLocalState: () =>
       currentTrack.id === "standby-track"
         ? null
@@ -1878,7 +1898,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   const [tvPairStatus, setTvPairStatus] = useState<null | "sending" | "ok" | "fail">(null);
   const pairTv = async (raw: string) => {
     const code = raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
-    if (code.length !== 6 || !meProfile.id) {
+    if (code.length !== 6 || !meProfile.id || !playerKey) {
       setTvPairStatus("fail");
       return;
     }
@@ -1893,7 +1913,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       ch.on("broadcast", { event: "paired" }, () => done(true));
       ch.subscribe((status) => {
         if (status !== "SUBSCRIBED") return;
-        const payload = { userId: meProfile.id, name: meProfile.name, handle: meProfile.handle };
+        const payload = { userId: meProfile.id, key: playerKey, name: meProfile.name, handle: meProfile.handle };
         let tries = 0;
         const send = () => {
           if (++tries > 6) return done(false);
@@ -7085,6 +7105,11 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                     {tvPairStatus === "ok" && <small className="is-ok">¡Listo! La tele ya aparece en la lista: tocala para pasar la música.</small>}
                     {tvPairStatus === "fail" && <small className="is-fail">No encontré esa tele. Fijate el código (y que la pantalla siga abierta).</small>}
                   </form>
+                )}
+                {remote.devices.some((d) => d.kind === "tv") && (
+                  <button type="button" className="device-tv-unlink" onClick={() => void unlinkAllTvs()}>
+                    Desconectar todas las teles
+                  </button>
                 )}
               </motion.div>
             </motion.div>

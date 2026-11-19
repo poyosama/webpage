@@ -1,8 +1,11 @@
 -- ==================== SEGURIDAD (auditoría 19/11/2026) ====================
 
--- 1) Perfiles: la política "ALL" también dejaba CREAR perfil sin pase (las políticas se suman con OR),
---    salteando "Perfil nuevo solo con invitacion". Se separa en ver / editar / borrar.
+-- 1) Perfiles: la política "ALL" se separa en crear / editar / borrar (más claro).
+--    OJO: "Perfil nuevo solo con invitacion" es RESTRICTIVA (se suma con AND): sigue haciendo falta un pase,
+--    pero además tiene que existir una política PERMISIVA de insert, si no nadie puede guardar su perfil.
 drop policy if exists "Usuarios editan su propio perfil" on public.profiles;
+drop policy if exists "Crear mi perfil" on public.profiles;
+create policy "Crear mi perfil" on public.profiles for insert with check (auth.uid() = id);
 drop policy if exists "Editar mi perfil" on public.profiles;
 create policy "Editar mi perfil" on public.profiles for update using (auth.uid() = id) with check (auth.uid() = id);
 drop policy if exists "Borrar mi perfil" on public.profiles;

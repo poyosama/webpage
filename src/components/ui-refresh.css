@@ -2426,3 +2426,4 @@ html:root body .perf-player.has-cinema-canvas .perf-kicker {
 .friends-foot { border-top: 1px solid var(--line, rgba(127,127,127,.2)); padding: 10px 16px 0; display: flex; flex-direction: column; gap: 8px; }
 .friends-share { display: flex; align-items: center; gap: 8px; font-size: .78rem; color: var(--ink-secondary); cursor: pointer; }
 .friends-admin { font-size: .8rem; font-weight: 650; color: var(--ink); text-decoration: none; }
+.device-tv-unlink { margin-top: 8px; width: 100%; border: 0; background: none; color: var(--ink-muted); font-size: 0.76rem; text-decoration: underline; padding: 6px; }

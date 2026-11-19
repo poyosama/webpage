@@ -12,7 +12,7 @@ import { useRemotePlayer, type RemoteCommand, type TvMedia } from "@/lib/remoteP
 import { qrSvg } from "@/lib/qr";
 
 const PAIR_KEY = "eltablero_tv_pair";
-type Pair = { userId: string; name?: string; handle?: string };
+type Pair = { userId: string; key: string; name?: string; handle?: string };
 
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // sin 0/O ni 1/I
 function newCode() {
@@ -80,7 +80,9 @@ export default function TvApp() {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(PAIR_KEY);
-      if (raw) setPair(JSON.parse(raw));
+      const p = raw ? (JSON.parse(raw) as Pair) : null;
+      // vínculos viejos (sin llave secreta) ya no sirven: se vuelve a vincular
+      if (p && typeof p.key === "string" && /^[0-9a-f]{20,64}$/.test(p.key)) setPair(p);
     } catch {}
     setReady(true);
     document.documentElement.classList.add("tv-mode");
@@ -124,8 +126,9 @@ function TvPairing({ onPaired }: { onPaired: (p: Pair) => void }) {
     ch.on("broadcast", { event: "pair" }, ({ payload }) => {
       const p = payload as Pair;
       if (!p || typeof p.userId !== "string" || !/^[0-9a-f-]{36}$/i.test(p.userId)) return;
+      if (typeof p.key !== "string" || !/^[0-9a-f]{20,64}$/.test(p.key)) return;
       void ch.send({ type: "broadcast", event: "paired", payload: { ok: true } });
-      window.setTimeout(() => onPaired({ userId: p.userId, name: String(p.name || "").slice(0, 60), handle: String(p.handle || "").slice(0, 40) }), 300);
+      window.setTimeout(() => onPaired({ userId: p.userId, key: p.key, name: String(p.name || "").slice(0, 60), handle: String(p.handle || "").slice(0, 40) }), 300);
     });
     ch.subscribe();
     return () => {
@@ -279,6 +282,12 @@ function TvPlayer({ pair, onUnpair }: { pair: Pair; onUnpair: () => void }) {
 
   const remote = useRemotePlayer({
     userId: pair.userId,
+    channelKey: pair.key,
+    onRekey: () => {
+      // el dueño desconectó las teles
+      audioRef.current?.pause();
+      onUnpair();
+    },
     deviceName: "Tele",
     kind: "tv",
     getLocalState: () => {

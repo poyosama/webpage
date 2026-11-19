@@ -74,7 +74,13 @@ export function useRemotePlayer({
   onCommand,
   deviceName,
   kind,
+  channelKey,
+  onRekey,
 }: {
+  /** Llave secreta del canal (my_player_key): sin ella nadie de afuera puede escuchar ni mandar órdenes */
+  channelKey: string | null | undefined;
+  /** Otro dispositivo de la cuenta cambió la llave (desvinculó las teles): hay que pedir la nueva */
+  onRekey?: () => void;
   /** Nombre fijo del dispositivo (ej. "Tele") y tipo */
   deviceName?: string;
   kind?: "tv";
@@ -94,12 +100,14 @@ export function useRemotePlayer({
   const onCmdRef = useRef(onCommand);
   getLocalRef.current = getLocalState;
   onCmdRef.current = onCommand;
+  const onRekeyRef = useRef(onRekey);
+  onRekeyRef.current = onRekey;
   const activeRef = useRef<string | null>(null);
   activeRef.current = activeDeviceId;
 
   useEffect(() => {
-    if (!userId || typeof window === "undefined") return;
-    const ch = supabase.channel(`player:${userId}`, {
+    if (!userId || !channelKey || typeof window === "undefined") return;
+    const ch = supabase.channel(`player:${userId}:${channelKey}`, {
       config: { presence: { key: myDeviceId }, broadcast: { self: false } },
     });
     channelRef.current = ch;
@@ -149,6 +157,8 @@ export function useRemotePlayer({
       onCmdRef.current(cmd);
     });
 
+    ch.on("broadcast", { event: "rekey" }, () => onRekeyRef.current?.());
+
     ch.on("broadcast", { event: "claim" }, ({ payload }) => {
       // otro dispositivo empezó a sonar: este deja de ser el activo
       const { deviceId } = (payload || {}) as { deviceId: string };
@@ -167,7 +177,7 @@ export function useRemotePlayer({
       channelRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, myDeviceId]);
+  }, [userId, myDeviceId, channelKey]);
 
   /** ¿Este dispositivo es un control remoto de otro? */
   const controlling = Boolean(activeDeviceId && activeDeviceId !== myDeviceId);
@@ -235,5 +245,11 @@ export function useRemotePlayer({
     void ch.send({ type: "broadcast", event: "claim", payload: { deviceId: myDeviceId } });
   }, [myDeviceId]);
 
-  return { myDeviceId, devices, activeDeviceId, controlling, remoteState, sendCmd, transferTo, claim, publishNow };
+  /** Avisar a los demás dispositivos que la llave cambió (se manda por el canal VIEJO, antes de cambiarla) */
+  const announceRekey = useCallback(async () => {
+    const ch = channelRef.current;
+    if (ch) await ch.send({ type: "broadcast", event: "rekey", payload: {} });
+  }, []);
+
+  return { announceRekey, myDeviceId, devices, activeDeviceId, controlling, remoteState, sendCmd, transferTo, claim, publishNow };
 }
