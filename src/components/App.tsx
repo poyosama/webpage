@@ -53,6 +53,7 @@ import {
   resolveTrackAudioUrl,
   reportActivity,
   toDbId,
+  compressImageBlobToDataUrl,
   resolveOriginalAudioUrl,
   fetchProjectFolders,
   createProjectFolder,
@@ -1217,7 +1218,8 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
         }
       }
 
-      setCommunityArtists(profiles);
+      // si el servidor falló justo ahora, no se pisa la lista buena (de la memoria rápida) con una vacía
+      if (profiles.length) setCommunityArtists(profiles);
       if (savedIds.length) setSavedProjectIds((prev) => Array.from(new Set([...prev, ...savedIds])));
       // Link de compartir pendiente (proyecto o track): la cuenta queda como miembro y se recargan los proyectos
       let projsForSession = allProjs;
@@ -2842,7 +2844,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
         handle: res.cleanHandle!,
       }));
       const fresh = await fetchCommunityProfilesFromSupabase();
-      setCommunityArtists(fresh);
+      if (fresh.length) setCommunityArtists(fresh);
       return { success: true };
     }
 
@@ -3435,6 +3437,27 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isGuest]);
+
+  // Red de seguridad: con sesión, si la lista de artistas quedó vacía (o solo con vos) porque el servidor falló
+  // un instante, se vuelve a pedir a los pocos segundos y cada vez que volvés a la app.
+  const fewArtists = communityArtists.length <= 1;
+  useEffect(() => {
+    if (isGuest || !googleConnected || !fewArtists) return;
+    let alive = true;
+    const refetch = () =>
+      void fetchCommunityProfilesFromSupabase().then((profs) => {
+        if (alive && profs.length > 1) setCommunityArtists(profs);
+      });
+    const t = window.setTimeout(refetch, 4000);
+    const onVis = () => document.visibilityState === "visible" && refetch();
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      alive = false;
+      window.clearTimeout(t);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isGuest, googleConnected, fewArtists]);
 
   // Sincronización con la nube (tabla track_likes): se mezclan los de la nube con los de este dispositivo
   const likesCloudRef = useRef<"unknown" | "on" | "off">("unknown");
@@ -8467,13 +8490,18 @@ function EditProfileModal({
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        const reader = new FileReader();
-                        reader.onload = () => {
-                          if (typeof reader.result === "string") {
-                            setAvatarUrl(reader.result);
+                        // se achica ya (máx. 512 px): una foto de cámara entera pesa varios MB
+                        void compressImageBlobToDataUrl(file, 512, 0.85).then((small) => {
+                          if (small) {
+                            setAvatarUrl(small);
+                            return;
                           }
-                        };
-                        reader.readAsDataURL(file);
+                          const reader = new FileReader();
+                          reader.onload = () => {
+                            if (typeof reader.result === "string") setAvatarUrl(reader.result);
+                          };
+                          reader.readAsDataURL(file);
+                        });
                       }
                     }}
                   />

@@ -193,7 +193,7 @@ export async function fastCacheSet(key: string, value: unknown): Promise<void> {
   });
 }
 
-function compressImageBlobToDataUrl(blob: Blob, maxDim = 720, quality = 0.85): Promise<string | null> {
+export function compressImageBlobToDataUrl(blob: Blob, maxDim = 720, quality = 0.85): Promise<string | null> {
   if (typeof document === "undefined") return Promise.resolve(null);
   return new Promise((resolve) => {
     const url = URL.createObjectURL(blob);
@@ -717,10 +717,13 @@ export async function purgeJaimeMartinezProfile(): Promise<void> {
 export async function fetchCommunityProfilesFromSupabase(): Promise<ArtistProfile[]> {
   try {
     const cols = "id, name, handle, role, zone, crew, bio, color, stickers, avatar_url, created_at";
-    let { data, error }: { data: any[] | null; error: any } = await supabase
-      .from("profiles")
-      .select(`${cols}, account_type`)
-      .order("created_at", { ascending: false });
+    // El servidor a veces falla un instante (ej. mientras recarga su esquema): se reintenta antes de rendirse
+    let { data, error }: { data: any[] | null; error: any } = { data: null, error: null };
+    for (let attempt = 0; attempt < 3; attempt++) {
+      ({ data, error } = await supabase.from("profiles").select(`${cols}, account_type`).order("created_at", { ascending: false }));
+      if (!error || /account_type/i.test(error.message || "")) break;
+      await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
+    }
     if (error && /account_type/i.test(error.message || "")) {
       // Servidor sin la migración de tipo de cuenta
       ({ data, error } = await supabase.from("profiles").select(cols).order("created_at", { ascending: false }));
@@ -823,7 +826,19 @@ export async function saveUserProfileToSupabase(profile: Partial<ArtistProfile> 
       };
     }
 
-    const avatarUrl = await ensurePersistentUrl(profile.avatarUrl, "avatars");
+    let avatarUrl = await ensurePersistentUrl(profile.avatarUrl, "avatars");
+    // Foto elegida del dispositivo (llega como texto "data:"): se sube a R2. Nunca se guarda una foto gigante
+    // como texto en la base (una de 14 MB hacía que la lista de artistas no cargara en los celus).
+    if (avatarUrl && avatarUrl.startsWith("data:")) {
+      try {
+        const blob = await (await fetch(avatarUrl)).blob();
+        const uploaded = await uploadMediaToSupabase(blob, "avatars");
+        if (uploaded) avatarUrl = uploaded;
+        else if (avatarUrl.length > 120000) avatarUrl = (await compressImageBlobToDataUrl(blob, 400, 0.82)) || null;
+      } catch {
+        if (avatarUrl && avatarUrl.length > 120000) avatarUrl = null;
+      }
+    }
 
     const row: Record<string, unknown> = {
       id: profile.id,
@@ -1502,7 +1517,10 @@ export async function fetchSocialLists(userId: string): Promise<SocialLists | nu
 
 export async function setFollowing(me: string, other: string, follow: boolean): Promise<boolean> {
   if (follow) {
-    const { error } = await supabase.from("follows").upsert({ follower_id: me, followee_id: other }, { onConflict: "follower_id,followee_id" });
+    // Solo insertar (si ya existe, no hace nada): la tabla no permite "actualizar", y el upsert común daba 403
+    const { error } = await supabase
+      .from("follows")
+      .upsert({ follower_id: me, followee_id: other }, { onConflict: "follower_id,followee_id", ignoreDuplicates: true });
     return !error;
   }
   const { error } = await supabase.from("follows").delete().eq("follower_id", me).eq("followee_id", other);
