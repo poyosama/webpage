@@ -29,6 +29,7 @@ import { sfx } from "@/lib/sfx";
 import { useRemotePlayer, type RemoteCommand, type TvMedia } from "@/lib/remotePlayer";
 import FriendsActivity, { readShareActivity, SHARE_KEY } from "@/components/FriendsActivity";
 import DirectMessages, { DmPolicyField } from "@/components/DirectMessages";
+import { InstallAppCard } from "@/components/InstallApp";
 import TrackBoard, { BoardCountdown, PlayCountsField, type BoardTrack } from "@/components/TrackBoard";
 import { useDmInbox, type DmPerson, type DmTrack } from "@/lib/dms";
 import type { QueueEntry, RepeatMode } from "./PerformativePlayer";
@@ -4115,6 +4116,9 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                 </div>
               </section>
 
+              {/* Instalar la app (se puede cerrar; vuelve a los 14 días) */}
+              {!isGuest && <InstallAppCard />}
+
               {/* Grilla de proyectos fijados y artistas (Primero) */}
               <section className="explore-bottom-grid">
                 <div className="apple-card">
@@ -6538,6 +6542,9 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                 />
               </section>
               )}
+
+              {/* ==================== INSTALAR LA APP (ícono en el inicio / escritorio) ==================== */}
+              <InstallAppCard dismissible={false} />
 
               {/* ==================== GUÍA: TRAER PROYECTOS DE [UNTITLED] ==================== */}
               {meProfile.accountType !== "oyente" && (
