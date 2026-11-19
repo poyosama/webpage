@@ -2655,3 +2655,6 @@ html:root body .track-board-line.is-t5 .collage-cover-thumb, html:root body .tra
 .notif-req-actions small { font-size: .74rem; color: var(--ink-muted); }
 .notif-req-btn { border: 1px solid var(--line, rgba(127,127,127,.3)); background: transparent; color: var(--ink); border-radius: 99px; padding: 5px 12px; font-size: .76rem; font-weight: 600; cursor: pointer; }
 .notif-req-btn.is-primary { background: var(--ink); color: var(--bg, #fff); border-color: var(--ink); }
+/* Tablero de tracks con formato collage: el #1 apenas más grande */
+html:root body .track-board-collage .track-board-item.is-top .roster-word { font-size: clamp(2rem, 4.4vw, 3.6rem) !important; }
+@media (max-width: 720px) { html:root body .corecore-stage .track-board-collage .track-board-item.is-top .roster-word { font-size: clamp(1.25rem, 6.4vw, 1.8rem) !important; } }

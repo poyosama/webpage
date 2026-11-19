@@ -89,47 +89,108 @@ export default function TrackBoard({
   if (rows === null) return <div className="track-board is-loading">Cargando el tablero…</div>;
   if (!rows.length) return <div className="track-board is-empty">Todavía no hay tracks públicos para armar el tablero.</div>;
 
-  // Jerarquía: el 1 enorme, 2–3 grandes, 4–6 medianos, 7–10 más chicos
-  // Se muestran solo los 10 primeros (el servidor guarda más por si hace falta)
-  const tiers: BoardTrack[][] = [rows.slice(0, 1), rows.slice(1, 3), rows.slice(3, 6), rows.slice(6, 10)];
-  const sizes = ["is-t1", "is-t2", "is-t3", "is-t4", "is-t5", "is-t6"];
+  // Collage como el de Proyectos: 10 tracks en 5 renglones (2·1·2·2·3), en orden de ranking de arriba a abajo
+  // y de izquierda a derecha. Los títulos se parten en gris + color como en los proyectos ("bla|blabla").
+  const top = rows.slice(0, 10);
+  const pattern = [2, 1, 2, 2, 3];
+  const lines: BoardTrack[][] = [];
+  for (let i = 0, k = 0; k < top.length; i++) {
+    const n = pattern[i] ?? 3;
+    lines.push(top.slice(k, k + n));
+    k += n;
+  }
+
+  const item = (r: BoardTrack) => {
+    const idx = top.indexOf(r);
+    const active = currentTrackId === r.track_id;
+    const plays = playsLabel(r.track_id);
+    const [pre, sw, post] = splitTitle(r.title, idx);
+    return (
+      <button
+        key={r.track_id}
+        type="button"
+        className={`collage-item clean-editorial-word track-board-item ${active ? "is-playing" : ""} ${idx === 0 ? "is-top" : ""}`}
+        onClick={() => onPlay(top, idx)}
+        title={`#${r.rank} · ${r.listeners} oyentes · ${r.likers} me gusta · ${r.commenters} comentaron`}
+      >
+        {r.cover_url ? <img src={r.cover_url} alt="" className="collage-cover-thumb" /> : <span className="collage-cover-thumb track-board-ph">♪</span>}
+        <span className="roster-word">
+          {pre}
+          <span className={`inline-swatch ${COLORS[idx % COLORS.length]}`}>{sw}</span>
+          {post}
+        </span>
+        <sup className="sup-tag">
+          #{r.rank} · {r.artist}
+          {plays ? ` · ${plays}` : ""}
+        </sup>
+      </button>
+    );
+  };
 
   return (
-    <div className="track-board">
-      {tiers.map((tier, ti) =>
-        tier.length ? (
-          <div key={ti} className={`collage-line track-board-line ${sizes[ti]}`}>
-            {tier.map((r) => {
-              const idx = rows.indexOf(r);
-              const active = currentTrackId === r.track_id;
-              const plays = playsLabel(r.track_id);
-              return (
-                <button
-                  key={r.track_id}
-                  type="button"
-                  className={`collage-item clean-editorial-word track-board-item ${active ? "is-playing" : ""}`}
-                  onClick={() => onPlay(rows.slice(0, 10), idx)}
-                  title={`#${r.rank} · ${r.listeners} oyentes · ${r.likers} me gusta · ${r.commenters} comentaron`}
-                >
-                  <span className="track-board-rank">{r.rank}</span>
-                  {r.cover_url ? <img src={r.cover_url} alt="" className="collage-cover-thumb" /> : <span className="collage-cover-thumb track-board-ph">♪</span>}
-                  <span className="roster-word">
-                    <span className={`inline-swatch ${COLORS[idx % COLORS.length]}`}>
-                      {r.title}
-                    </span>
-                  </span>
-                  <sup className="sup-tag">
-                    {r.artist}
-                    {plays ? ` · ${plays}` : ""}
-                  </sup>
-                </button>
-              );
-            })}
+    <>
+      <div className="neon-spine" aria-hidden />
+      <div className="Roster-collage track-board-collage">
+        {lines.map((line, li) => (
+          <div key={li} className="collage-line">
+            {li === 0 && (
+              <>
+                <span className="cluster-dots">
+                  <i style={{ background: "#e11d48" }} />
+                  <i style={{ background: "#0284c7" }} />
+                  <i style={{ background: "#ca8a04" }} />
+                </span>
+                <span className="pixel-tag coral-badge">TOP // 10</span>
+              </>
+            )}
+            {line.map(item)}
+            {li === 0 && <span className="cutout-pill">Escena UG</span>}
+            {li === 1 && <span className="cutout-pill dark">se arma todos los días a las 18:00</span>}
           </div>
-        ) : null
-      )}
-    </div>
+        ))}
+      </div>
+    </>
   );
+}
+
+/** Parte el título en [gris, color, gris] para que se vea como el collage de proyectos */
+function splitTitle(title: string, i: number): [string, string, string] {
+  const t = title.trim();
+  // los guiones / signos sueltos se pegan a la palabra anterior ("mientes -" + "1leiito")
+  const words: string[] = [];
+  t.split(/\s+/).forEach((w) => {
+    if (words.length && !/[\p{L}\p{N}]/u.test(w)) words[words.length - 1] += " " + w;
+    else words.push(w);
+  });
+  if (words.length >= 3) {
+    // alterna: "ESTO [ES ESTAR EN SONIDO]" o "[un dia] mas, sin mas"
+    if (i % 2 === 0) return [words[0] + " ", words.slice(1).join(" "), ""];
+    const half = Math.ceil(words.length / 2);
+    return ["", words.slice(0, half).join(" "), " " + words.slice(half).join(" ")];
+  }
+  if (words.length === 2) return i % 3 === 2 ? ["", words[0], " " + words[1]] : [words[0] + " ", words[1], ""];
+  const cut = syllableCut(t);
+  return cut ? [t.slice(0, cut), t.slice(cut), ""] : ["", t, ""];
+}
+
+/** Dónde cortar una palabra sola por sílaba (cerca del 45 %): antes de consonante+vocal o de grupos como "cr", "pl". */
+function syllableCut(w: string): number | null {
+  if (w.length < 7) return null;
+  const V = /[aeiouáéíóúüy]/i;
+  const C = /[bcdfghjklmnñpqrstvwxyz]/i;
+  const CLUSTER = /^(bl|br|cl|cr|dr|fl|fr|gl|gr|pl|pr|tr|ch|ll|rr)$/i;
+  const target = w.length * 0.45;
+  let best: number | null = null;
+  for (let k = 2; k <= w.length - 3; k++) {
+    const a = w[k], b = w[k + 1] || "", prev = w[k - 1];
+    const startsSyllable =
+      (C.test(a) && V.test(b) && !(prev && CLUSTER.test(prev + a))) ||
+      (CLUSTER.test(a + b) && V.test(w[k + 2] || "")) ||
+      (a.toLowerCase() === "q" && V.test(prev)); // la "q" siempre arranca sílaba ("jajaja|qlacreo")
+    if (!startsSyllable || !V.test(prev) && !C.test(prev)) continue;
+    if (best === null || Math.abs(k - target) < Math.abs(best - target)) best = k;
+  }
+  return best;
 }
 
 /** Configuración de cuenta: el contador de reproducciones de tus tracks lo ven todos o solo vos */
