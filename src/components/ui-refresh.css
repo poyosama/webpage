@@ -2570,3 +2570,35 @@ html:root body .track-board-line.is-t5 .collage-cover-thumb, html:root body .tra
 }
 .plays-chip { font-variant-numeric: tabular-nums; }
 .play-counts-field small { display: block; margin-top: 6px; font-size: .72rem; color: var(--ink-muted); }
+
+/* Menú de los 3 puntitos de un track (celu): flota arriba de la lista, no empuja los tracks */
+@media (max-width: 720px) {
+  html:root body .untitled-mobile-track-item { position: relative !important; }
+  html:root body .untitled-mobile-track-item:has(.untitled-track-inline-menu) { z-index: 40 !important; }
+  html:root body .untitled-track-inline-menu {
+    position: absolute !important; top: calc(100% - 10px) !important; right: 6px !important; left: auto !important;
+    margin: 0 !important; z-index: 60 !important; animation: tbMenuIn .16s ease-out;
+  }
+  html:root body .untitled-track-inline-menu.is-up { top: auto !important; bottom: calc(100% - 10px) !important; }
+}
+@keyframes tbMenuIn { from { opacity: 0; transform: translateY(-4px) scale(.98); } to { opacity: 1; transform: none; } }
+
+/* Tablero de canciones en el celu: todo entra en pantalla, los títulos largos bajan de línea */
+@media (max-width: 720px) {
+  .track-board { gap: 10px; padding: 14px 2px 6px; }
+  html:root body .track-board-line { gap: 8px 10px !important; max-width: 100%; }
+  html:root body .track-board-item { max-width: 100%; min-width: 0; align-items: center; gap: 6px; }
+  html:root body .track-board-item .roster-word { min-width: 0; max-width: 100%; letter-spacing: -0.04em; }
+  html:root body .track-board-item .inline-swatch { white-space: normal; overflow-wrap: anywhere; line-height: 1.02; text-align: left; }
+  html:root body .track-board-line.is-t1 .roster-word { font-size: clamp(1.9rem, 9.6vw, 2.6rem) !important; }
+  html:root body .track-board-line.is-t1 .collage-cover-thumb { width: 46px; height: 46px; border-radius: 12px; }
+  html:root body .track-board-line.is-t2 .roster-word { font-size: clamp(1.5rem, 7.4vw, 2rem) !important; }
+  html:root body .track-board-line.is-t2 .collage-cover-thumb { width: 38px; height: 38px; }
+  html:root body .track-board-line.is-t3 .roster-word { font-size: clamp(1.3rem, 6.2vw, 1.65rem) !important; }
+  html:root body .track-board-line.is-t4 .roster-word { font-size: 1.2rem !important; }
+  html:root body .track-board-line.is-t5 .roster-word { font-size: 1.05rem !important; }
+  html:root body .track-board-line.is-t6 .roster-word { font-size: .95rem !important; }
+  html:root body .track-board-line.is-t3 .collage-cover-thumb, html:root body .track-board-line.is-t4 .collage-cover-thumb { width: 32px; height: 32px; border-radius: 8px; }
+  .track-board-rank { font-size: .58rem; }
+  .track-board-item.is-playing .inline-swatch { box-shadow: 0 0 0 2px rgba(74, 222, 128, .7); }
+}

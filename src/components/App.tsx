@@ -521,6 +521,17 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   const [projectSearchQuery, setProjectSearchQuery] = useState<string>("");
   const [projectMenuOpen, setProjectMenuOpen] = useState<boolean>(false);
   const [mobileTrackMenuId, setMobileTrackMenuId] = useState<string | null>(null);
+  // El menú de los 3 puntitos flota arriba de los tracks: tocar afuera lo cierra
+  useEffect(() => {
+    if (!mobileTrackMenuId) return;
+    const onDown = (e: PointerEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (el?.closest?.(".untitled-track-inline-menu, .untitled-mobile-track-actions")) return;
+      setMobileTrackMenuId(null);
+    };
+    document.addEventListener("pointerdown", onDown, true);
+    return () => document.removeEventListener("pointerdown", onDown, true);
+  }, [mobileTrackMenuId]);
 
   // Edición rápida / inline del título del proyecto directamente desde la vista del proyecto
   const [editingTitleProjectId, setEditingTitleProjectId] = useState<string | null>(null);
@@ -5338,9 +5349,11 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                               t.key.toLowerCase().includes(q)
                             );
                           })
-                          .map((t, idx) => {
+                          .map((t, idx, arr) => {
                             const isCurrent = currentTrack.id === t.id;
                             const menuOpen = mobileTrackMenuId === t.id;
+                            // en los últimos tracks el menú se abre hacia arriba (si no, lo tapa el reproductor)
+                            const menuUp = arr.length > 3 && idx >= arr.length - 2;
                             const isDragged = draggedTrack?.track.id === t.id;
                             const isDropBefore = dropTargetTrackIndex === idx && draggedTrack && draggedTrack.sourceIndex > idx;
                             const isDropAfter = dropTargetTrackIndex === idx && draggedTrack && draggedTrack.sourceIndex < idx;
@@ -5421,7 +5434,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
 
                                 {menuOpen && (
                                   <div
-                                    className="untitled-track-inline-menu"
+                                    className={`untitled-track-inline-menu ${menuUp ? "is-up" : ""}`}
                                     onClick={(e) => e.stopPropagation()}
                                   >
                                     <button

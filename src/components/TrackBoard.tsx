@@ -114,7 +114,6 @@ export default function TrackBoard({
                   {r.cover_url ? <img src={r.cover_url} alt="" className="collage-cover-thumb" /> : <span className="collage-cover-thumb track-board-ph">♪</span>}
                   <span className="roster-word">
                     <span className={`inline-swatch ${COLORS[idx % COLORS.length]}`}>
-                      {active && isPlaying ? "❚❚ " : ""}
                       {r.title}
                     </span>
                   </span>
