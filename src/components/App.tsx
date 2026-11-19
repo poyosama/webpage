@@ -79,6 +79,8 @@ import {
   fetchCoauthors,
   fetchSocialLists,
   setFollowing,
+  rejectFriendRequest,
+  removeFriend,
   type SocialLists,
   type ProjectCollaborator,
   isLegacyInviteToken,
@@ -484,7 +486,13 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   const [folderOf, setFolderOf] = useState<Record<string, string>>({});
   const [importRemote, setImportRemote] = useState(false);
 
-  const [socialSheet, setSocialSheet] = useState<{ title: string; people: { userId: string; handle: string; name: string; avatarUrl?: string }[] } | null>(null);
+  const [socialSheet, setSocialSheet] = useState<{
+    title: string;
+    people: { userId: string; handle: string; name: string; avatarUrl?: string }[];
+    /** Solicitudes de amistad: `people` = recibidas (Aceptar/Rechazar), `sent` = enviadas (Cancelar) */
+    mode?: "requests";
+    sent?: { userId: string; handle: string; name: string; avatarUrl?: string }[];
+  } | null>(null);
   const [followBusy, setFollowBusy] = useState(false);
   // Perfil de otro artista (página encima de la pantalla actual)
   const [viewingArtist, setViewingArtist] = useState<ArtistProfile | null>(null);
@@ -2920,30 +2928,55 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     if (googleConnected && meProfile.id) loadSocial(meProfile.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [googleConnected, meProfile.id]);
-  /** Relación conmigo según las listas del otro: ¿lo sigo? ¿me sigue? */
+  /** Relación con otra persona según MIS listas (de otros solo se ven sus amigos):
+   *  iFollow = le mandé solicitud (o somos amigos) · followsMe = me mandó (o somos amigos) */
   const relationWith = (otherId: string) => {
-    const l = socialByUser[otherId];
-    if (!l || !meProfile.id) return { iFollow: false, followsMe: false, known: Boolean(l) };
-    const me = meProfile.id;
-    const amigo = l.amigos.some((p) => p.userId === me);
+    const l = meProfile.id ? socialByUser[meProfile.id] : undefined;
+    if (!l) return { iFollow: false, followsMe: false, known: false };
+    const amigo = l.amigos.some((p) => p.userId === otherId);
     return {
-      iFollow: amigo || l.seguidores.some((p) => p.userId === me),
-      followsMe: amigo || l.seguidos.some((p) => p.userId === me),
+      iFollow: amigo || l.seguidos.some((p) => p.userId === otherId),
+      followsMe: amigo || l.seguidores.some((p) => p.userId === otherId),
       known: true,
     };
   };
-  const toggleFollow = async (other: ArtistProfile) => {
+
+  /** Amigos: agregar / aceptar (enviar la vuelta), cancelar, rechazar o eliminar */
+  const friendAction = async (otherId: string, action: "add" | "cancel" | "reject" | "remove", otherName = "") => {
     if (!meProfile.id || followBusy) return;
-    const rel = relationWith(other.id);
+    if (action === "remove" && !window.confirm(`¿Eliminar a ${otherName || "esta persona"} de tus amigos?`)) return;
+    if (action === "cancel" && !window.confirm("¿Cancelar la solicitud de amistad?")) return;
     setFollowBusy(true);
     sfx.tap();
-    const ok = await setFollowing(meProfile.id, other.id, !rel.iFollow);
+    const ok =
+      action === "add"
+        ? await setFollowing(meProfile.id, otherId, true)
+        : action === "cancel"
+          ? await setFollowing(meProfile.id, otherId, false)
+          : action === "reject"
+            ? await rejectFriendRequest(meProfile.id, otherId)
+            : await removeFriend(meProfile.id, otherId);
     setFollowBusy(false);
     if (ok) {
-      loadSocial(other.id);
+      if (action === "add") sfx.pop();
+      loadSocial(otherId);
       loadSocial(meProfile.id);
     }
+    return ok;
   };
+  const openRequestsSheet = () => {
+    const mine = socialByUser[meProfile.id];
+    if (!mine) return;
+    sfx.open();
+    setSocialSheet({ title: "Solicitudes de amistad", people: mine.seguidores, mode: "requests", sent: mine.seguidos });
+  };
+  // La hoja de solicitudes se actualiza sola cuando cambian las listas
+  useEffect(() => {
+    if (socialSheet?.mode !== "requests") return;
+    const mine = socialByUser[meProfile.id];
+    if (mine) setSocialSheet((s) => (s && s.mode === "requests" ? { ...s, people: mine.seguidores, sent: mine.seguidos } : s));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [socialByUser[meProfile.id]]);
   const openSocialSheet = (title: string, people: { userId: string; handle: string; name: string; avatarUrl?: string }[]) => {
     sfx.open();
     setSocialSheet({ title, people });
@@ -6457,13 +6490,13 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                         <b>{socialByUser[meProfile.id].amigos.length}</b>
                         <span>AMIGOS</span>
                       </button>
-                      <button type="button" className="pf-metric-btn" onClick={() => openSocialSheet("Te siguen", socialByUser[meProfile.id].seguidores)}>
+                      <button
+                        type="button"
+                        className={`pf-metric-btn ${socialByUser[meProfile.id].seguidores.length ? "has-requests" : ""}`}
+                        onClick={openRequestsSheet}
+                      >
                         <b>{socialByUser[meProfile.id].seguidores.length}</b>
-                        <span>SEGUIDORES</span>
-                      </button>
-                      <button type="button" className="pf-metric-btn" onClick={() => openSocialSheet("Seguís a", socialByUser[meProfile.id].seguidos)}>
-                        <b>{socialByUser[meProfile.id].seguidos.length}</b>
-                        <span>SEGUIDOS</span>
+                        <span>SOLICITUDES</span>
                       </button>
                     </>
                   )}
@@ -7409,19 +7442,15 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                           const l = socialByUser[a.id];
                           const rel = relationWith(a.id);
                           if (!l) return null;
-                          const label = rel.iFollow && rel.followsMe ? "Amigos ✓" : rel.iFollow ? "Siguiendo" : rel.followsMe ? "Seguir también" : "Seguir";
+                          const friends = rel.iFollow && rel.followsMe;
+                          const label = friends ? "Amigos ✓" : rel.iFollow ? "Solicitud enviada" : rel.followsMe ? "Aceptar solicitud" : "Agregar amigo";
                           return (
                             <>
                               <div className="artist-page-social">
                                 <button type="button" onClick={() => openSocialSheet(`Amigos de ${a.name}`, l.amigos)}>
                                   <b>{l.amigos.length}</b> amigos
                                 </button>
-                                <button type="button" onClick={() => openSocialSheet(`Seguidores de ${a.name}`, l.seguidores)}>
-                                  <b>{l.seguidores.length}</b> seguidores
-                                </button>
-                                <button type="button" onClick={() => openSocialSheet(`${a.name} sigue a`, l.seguidos)}>
-                                  <b>{l.seguidos.length}</b> seguidos
-                                </button>
+
                               </div>
                               {googleConnected && meProfile.id && (
                                 <div className="artist-page-actions">
@@ -7429,10 +7458,18 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                                     type="button"
                                     className={`pf-btn ${rel.iFollow ? "" : "primary"} follow-btn`}
                                     disabled={followBusy}
-                                    onClick={() => void toggleFollow(a)}
+                                    onClick={() =>
+                                      void friendAction(a.id, friends ? "remove" : rel.iFollow ? "cancel" : "add", a.name)
+                                    }
+                                    title={friends ? "Tocá para eliminar de tus amigos" : rel.iFollow ? "Tocá para cancelar la solicitud" : undefined}
                                   >
                                     {followBusy ? "…" : label}
                                   </button>
+                                  {rel.followsMe && !rel.iFollow && (
+                                    <button type="button" className="pf-btn" disabled={followBusy} onClick={() => void friendAction(a.id, "reject")}>
+                                      Rechazar
+                                    </button>
+                                  )}
                                   {a.id && a.id !== meProfile.id && (
                                     <button
                                       type="button"
@@ -7446,7 +7483,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                                       Mensaje
                                     </button>
                                   )}
-                                  {rel.followsMe && !rel.iFollow && <small className="follows-you">Te sigue</small>}
+                                  {rel.followsMe && !rel.iFollow && <small className="follows-you">Te mandó una solicitud de amistad</small>}
                                 </div>
                               )}
                             </>
@@ -7610,8 +7647,11 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                     Cerrar
                   </button>
                 </div>
+                {socialSheet.mode === "requests" && socialSheet.people.length === 0 && (
+                  <p className="move-sheet-empty">No tenés solicitudes pendientes.</p>
+                )}
                 {socialSheet.people.length === 0 ? (
-                  <p className="move-sheet-empty">Todavía nadie.</p>
+                  socialSheet.mode === "requests" ? null : <p className="move-sheet-empty">Todavía nadie.</p>
                 ) : (
                   <ul className="social-list">
                     {socialSheet.people.map((p) => (
@@ -7633,9 +7673,43 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                             <b>{p.name}</b> <em>{p.handle}</em>
                           </span>
                         </button>
+                        {socialSheet.mode === "requests" && (
+                          <span className="friend-req-actions">
+                            <button type="button" className="pf-btn primary" disabled={followBusy} onClick={() => void friendAction(p.userId, "add")}>
+                              Aceptar
+                            </button>
+                            <button type="button" className="pf-btn" disabled={followBusy} onClick={() => void friendAction(p.userId, "reject")}>
+                              Rechazar
+                            </button>
+                          </span>
+                        )}
                       </li>
                     ))}
                   </ul>
+                )}
+                {socialSheet.mode === "requests" && (socialSheet.sent?.length || 0) > 0 && (
+                  <>
+                    <p className="friend-req-sub">Enviadas (esperando respuesta)</p>
+                    <ul className="social-list">
+                      {socialSheet.sent!.map((p) => (
+                        <li key={p.userId}>
+                          <span className="friend-req-person">
+                            <span className="collab-avatar">
+                              {p.avatarUrl ? <img src={p.avatarUrl} alt="" /> : (p.name || p.handle).charAt(0).toUpperCase()}
+                            </span>
+                            <span className="collab-name">
+                              <b>{p.name}</b> <em>{p.handle}</em>
+                            </span>
+                          </span>
+                          <span className="friend-req-actions">
+                            <button type="button" className="pf-btn" disabled={followBusy} onClick={() => void friendAction(p.userId, "cancel")}>
+                              Cancelar
+                            </button>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
                 )}
               </motion.div>
             </motion.div>

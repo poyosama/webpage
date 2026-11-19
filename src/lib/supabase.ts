@@ -1509,6 +1509,18 @@ export async function setFollowing(me: string, other: string, follow: boolean): 
   return !error;
 }
 
+/** Amigos: rechazar la solicitud que te mandó `other` */
+export async function rejectFriendRequest(me: string, other: string): Promise<boolean> {
+  const { error } = await supabase.from("follows").delete().eq("follower_id", other).eq("followee_id", me);
+  return !error;
+}
+/** Amigos: dejar de ser amigos (se borran las dos direcciones) */
+export async function removeFriend(me: string, other: string): Promise<boolean> {
+  const a = await supabase.from("follows").delete().eq("follower_id", me).eq("followee_id", other);
+  const b = await supabase.from("follows").delete().eq("follower_id", other).eq("followee_id", me);
+  return !a.error && !b.error;
+}
+
 // ==================== COMENTARIOS CON TIEMPO EN LOS TRACKS ====================
 export type TrackComment = {
   id: string;

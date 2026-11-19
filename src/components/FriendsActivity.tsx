@@ -2,7 +2,7 @@
 
 /**
  * Actividad de amigos (tipo Spotify): panel al costado con lo que escuchan tus amigos
- * (los que se siguen mutuamente con vos). En compu queda abierto al costado; en el celu es una hoja.
+ * (solicitud de amistad aceptada). En compu queda abierto al costado; en el celu es una hoja.
  */
 import { useCallback, useEffect, useState } from "react";
 import { agoEs, fetchFriendsActivity, isOnline, type FriendActivity } from "@/lib/supabase";
@@ -83,7 +83,7 @@ export default function FriendsActivity({
           {rows === null && <p className="friends-empty">Cargando…</p>}
           {rows && rows.length === 0 && (
             <p className="friends-empty">
-              Todavía no tenés amigos. Cuando vos y alguien se sigan mutuamente, acá ves lo que está escuchando.
+              Todavía no tenés amigos. Mandá una solicitud de amistad desde el perfil de alguien: cuando la acepte, acá ves lo que está escuchando.
             </p>
           )}
           {sorted.map((r) => {

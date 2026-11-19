@@ -2642,3 +2642,16 @@ html:root body .track-board-line.is-t5 .collage-cover-thumb, html:root body .tra
 .install-steps .install-note { list-style: none; margin-left: -20px; color: var(--ink-muted); font-size: .8rem; }
 .install-ico { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 6px; background: var(--surface-secondary); vertical-align: middle; color: #0a84ff; }
 .install-sheet-ok { width: 100%; height: 46px; border: 0; border-radius: 14px; background: var(--ink); color: var(--bg, #fff); font-weight: 700; font-size: .92rem; }
+
+/* ==================== Amigos: solicitudes ==================== */
+.pf-metric-btn.has-requests b { color: #16a34a; }
+:root[data-theme="dark"] .pf-metric-btn.has-requests b { color: #4ade80; }
+.social-list li:has(.friend-req-actions) { display: flex; align-items: center; gap: 8px; }
+.social-list li:has(.friend-req-actions) > button, .friend-req-person { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; }
+.friend-req-actions { display: inline-flex; gap: 6px; flex: none; }
+.friend-req-actions .pf-btn { height: 32px; padding: 0 12px; font-size: .78rem; }
+.friend-req-sub { margin: 14px 4px 6px; font-size: .74rem; color: var(--ink-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.notif-req-actions { display: flex; gap: 6px; padding: 0 12px 10px 58px; }
+.notif-req-actions small { font-size: .74rem; color: var(--ink-muted); }
+.notif-req-btn { border: 1px solid var(--line, rgba(127,127,127,.3)); background: transparent; color: var(--ink); border-radius: 99px; padding: 5px 12px; font-size: .76rem; font-weight: 600; cursor: pointer; }
+.notif-req-btn.is-primary { background: var(--ink); color: var(--bg, #fff); border-color: var(--ink); }

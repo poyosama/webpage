@@ -87,7 +87,7 @@ export async function searchPeople(q: string, meId: string): Promise<DmPerson[]>
 }
 export async function getDmPolicy(userId: string): Promise<DmPolicy> {
   const { data } = await supabase.from("profiles").select("dm_policy").eq("id", userId).maybeSingle();
-  return ((data as { dm_policy?: DmPolicy } | null)?.dm_policy || "followers") as DmPolicy;
+  return ((data as { dm_policy?: DmPolicy } | null)?.dm_policy || "friends") as DmPolicy;
 }
 export async function setDmPolicy(userId: string, policy: DmPolicy): Promise<boolean> {
   const { error } = await supabase.from("profiles").update({ dm_policy: policy }).eq("id", userId);

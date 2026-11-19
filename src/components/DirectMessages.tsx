@@ -449,7 +449,6 @@ export function DmPolicyField({ meId }: { meId: string }) {
   }, [meId]);
   const opts: { v: import("@/lib/dms").DmPolicy; label: string }[] = [
     { v: "everyone", label: "Todos" },
-    { v: "followers", label: "Mis seguidores" },
     { v: "friends", label: "Solo amigos" },
     { v: "nobody", label: "Nadie" },
   ];
@@ -475,7 +474,7 @@ export function DmPolicyField({ meId }: { meId: string }) {
           </button>
         ))}
       </div>
-      <small>{saved ? "Guardado ✓" : "Amigos = se siguen mutuamente. Las conversaciones que ya tenés siguen igual."}</small>
+      <small>{saved ? "Guardado ✓" : "Las conversaciones que ya tenés siguen igual."}</small>
     </div>
   );
 }

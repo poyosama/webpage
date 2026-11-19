@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase, setFollowing, rejectFriendRequest } from "@/lib/supabase";
 
 type Notif = {
   id: string;
@@ -42,7 +42,7 @@ function text(n: Notif, meHandle: string): React.ReactNode {
     case "save":
       return <>{u1} guardó el proyecto{project} de {u2}</>;
     case "follow":
-      return <>{u1} siguió a {u2}</>;
+      return <>{u1} le mandó una solicitud de amistad a {u2}</>;
     case "friend":
       return <>¡{u1} y {u2} ahora son amigos!</>;
     case "comment":
@@ -63,6 +63,7 @@ export default function NotificationBell({
   const [items, setItems] = useState<Notif[]>([]);
   const [open, setOpen] = useState(false);
   const [available, setAvailable] = useState(true);
+  const [answered, setAnswered] = useState<Record<string, "ok" | "no">>({});
   const wrapRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
@@ -152,7 +153,7 @@ export default function NotificationBell({
         <div className="notif-panel" role="dialog" aria-label="Notificaciones">
           <div className="notif-head">Notificaciones</div>
           {items.length === 0 ? (
-            <div className="notif-empty">Todavía no hay nada. Cuando te den me gusta, te comenten, te sigan o guarden tus proyectos, aparece acá.</div>
+            <div className="notif-empty">Todavía no hay nada. Cuando te den me gusta, te comenten, te manden una solicitud de amistad o guarden tus proyectos, aparece acá.</div>
           ) : (
             <ul className="notif-list">
               {items.map((n) => (
@@ -173,6 +174,34 @@ export default function NotificationBell({
                     <span className="notif-text">{text(n, meHandle ? `@${meHandle.replace(/^@+/, "")}` : "vos")}</span>
                     <span className="notif-time">{ago(n.created_at)}</span>
                   </button>
+                  {n.kind === "follow" && (
+                    <div className="notif-req-actions">
+                      {answered[n.actor_id] ? (
+                        <small>{answered[n.actor_id] === "ok" ? "¡Ahora son amigos!" : "Solicitud rechazada"}</small>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            className="notif-req-btn is-primary"
+                            onClick={async () => {
+                              if (await setFollowing(meId, n.actor_id, true)) setAnswered((x) => ({ ...x, [n.actor_id]: "ok" }));
+                            }}
+                          >
+                            Aceptar
+                          </button>
+                          <button
+                            type="button"
+                            className="notif-req-btn"
+                            onClick={async () => {
+                              if (await rejectFriendRequest(meId, n.actor_id)) setAnswered((x) => ({ ...x, [n.actor_id]: "no" }));
+                            }}
+                          >
+                            Rechazar
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>
