@@ -2602,3 +2602,19 @@ html:root body .track-board-line.is-t5 .collage-cover-thumb, html:root body .tra
   .track-board-rank { font-size: .58rem; }
   .track-board-item.is-playing .inline-swatch { box-shadow: 0 0 0 2px rgba(74, 222, 128, .7); }
 }
+
+/* Celu: la marca y los íconos entran en UN renglón (si no, la píldora pasa a 3 renglones y empuja todo hacia abajo:
+   la Biblioteca terminaba con "Subir track / Subir Canva" encima del reproductor). Tu @ ya está en las pestañas. */
+@media (max-width: 720px) {
+  html:root body .ios-navbar .ios-nav-right { gap: 4px !important; flex-wrap: nowrap !important; min-width: 0; }
+  html:root body .ios-navbar .ios-nav-right .ios-icon-btn { width: 30px !important; min-width: 30px !important; padding: 0 !important; justify-content: center; flex: none; }
+  html:root body .ios-navbar .nav-account-btn.is-logged .nav-account-handle { display: none !important; }
+  html:root body .ios-navbar .nav-account-btn:not(.is-logged) { width: auto !important; padding: 0 10px !important; }
+  html:root body .ios-navbar .nav-account-btn img, html:root body .ios-navbar .nav-account-btn > span:first-child { width: 22px !important; height: 22px !important; }
+}
+@media (max-width: 379px) {
+  html:root body .ios-navbar .ios-nav-right .ios-icon-btn { width: 27px !important; min-width: 27px !important; }
+}
+@media (max-width: 365px) {
+  html:root body .ios-navbar .theme-toggle-btn { display: none !important; }
+}

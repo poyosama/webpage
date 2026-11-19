@@ -3724,7 +3724,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
 
           <button
             type="button"
-            className="ios-icon-btn"
+            className={`ios-icon-btn nav-account-btn ${googleConnected ? "is-logged" : ""}`}
             style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
             onMouseEnter={() => sfx.hover()}
             aria-label={isGuest ? "Suscribirme" : "Ir a mi perfil"}
@@ -3750,7 +3750,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                     {meProfile.name.charAt(0).toUpperCase()}
                   </span>
                 )}
-                <span>{meProfile.handle}</span>
+                <span className="nav-account-handle">{meProfile.handle}</span>
               </>
             ) : (
               <>
