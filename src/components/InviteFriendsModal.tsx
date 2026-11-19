@@ -96,6 +96,18 @@ export function InviteFriendsModal({ profile, onClose }: InviteFriendsModalProps
     }
   };
 
+  // Solo se muestra la última tanda (5, o 3 en cuentas comunes). Las anteriores NO se anulan:
+  // siguen valiendo hasta que vencen a los 14 días, pero no se listan.
+  const batchSize = unlimited ? 5 : 3;
+  const sortedInvites = [...invites].sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+  const newest = sortedInvites[0] ? new Date(sortedInvites[0].createdAt).getTime() : 0;
+  const shownInvites = sortedInvites
+    .filter((c) => !newest || Math.abs(newest - new Date(c.createdAt).getTime()) < 2 * 60 * 1000)
+    .slice(0, batchSize);
+  const olderStillValid = sortedInvites.filter(
+    (c) => !shownInvites.includes(c) && !c.used && new Date(c.createdAt).getTime() + 14 * 86400000 > Date.now()
+  ).length;
+
   const handleGenerateExtra = async (count: number) => {
     if (generating) return;
     sfx.drop();
@@ -167,13 +179,19 @@ export function InviteFriendsModal({ profile, onClose }: InviteFriendsModalProps
           )}
         </p>
 
+        {!loading && olderStillValid > 0 && (
+          <p className="invite-older-note">
+            Además tenés {olderStillValid} {olderStillValid === 1 ? "pase anterior que sigue" : "pases anteriores que siguen"} valiendo hasta que venzan (14 días desde que los creaste). No se muestran acá para no llenarte la pantalla.
+          </p>
+        )}
+
         {loading ? (
           <div className="invite-loading-box">
             <span>Cargando tus invitaciones...</span>
           </div>
         ) : (
           <div className="invite-cards-grid">
-            {invites.map((inv, idx) => {
+            {shownInvites.map((inv, idx) => {
               const inviteUrl = buildInviteUrl(inv.code);
               const isCopied = copiedCode === inv.code;
 
