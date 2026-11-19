@@ -1,6 +1,7 @@
 "use client";
 
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { canvasDpr, isLowPowerDevice } from "@/lib/perf";
 import { motion, AnimatePresence } from "framer-motion";
 import { Unbounded } from "next/font/google";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -265,7 +266,7 @@ export default function CreateProjectScreen({
   const mobile = useIsMobile();
   const theme = useTheme();
   const fontFamily = display.style.fontFamily;
-  const count = mobile ? 9000 : 22000;
+  const count = mobile ? 3200 : isLowPowerDevice() ? 9000 : 22000;
   const inkColor = theme === "light" ? "#0f0f11" : "#f4f4f5";
 
   useEffect(() => {
@@ -399,7 +400,7 @@ export default function CreateProjectScreen({
       <div className="cp-stage" aria-hidden>
         <Canvas
           camera={{ position: [0, 0, 5.2], fov: 40 }}
-          dpr={[1, 1.5]}
+          dpr={canvasDpr([1, 1.5])}
           gl={{ antialias: false, alpha: true, powerPreference: "high-performance" }}
         >
           <MorphSwarm

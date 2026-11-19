@@ -1,6 +1,7 @@
 "use client";
 
 import { Canvas, useFrame } from "@react-three/fiber";
+import { canvasDpr, isLowPowerDevice } from "@/lib/perf";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { sfx } from "@/lib/sfx";
@@ -473,12 +474,12 @@ export default function LandingScene({
       <div className="landing-canvas-container" style={{ pointerEvents: "none" }}>
         <Canvas
           camera={{ position: [0, 0, 4.8], fov: 42 }}
-          dpr={isMobile ? [1, 1.15] : [1, 1.35]}
+          dpr={canvasDpr([1, 1.35])}
           gl={{ antialias: false, powerPreference: "high-performance" }}
           style={{ pointerEvents: "none" }}
         >
           <color attach="background" args={["#070709"]} />
-          <MicroDiscsSwarm count={isMobile ? 3800 : 7600} />
+          <MicroDiscsSwarm count={isMobile ? 1600 : isLowPowerDevice() ? 4000 : 7600} />
         </Canvas>
       </div>
 

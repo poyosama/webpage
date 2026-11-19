@@ -30,6 +30,8 @@ import { useRemotePlayer, type RemoteCommand, type TvMedia } from "@/lib/remoteP
 import FriendsActivity, { readShareActivity, SHARE_KEY } from "@/components/FriendsActivity";
 import DirectMessages, { DmPolicyField } from "@/components/DirectMessages";
 import { InstallAppCard } from "@/components/InstallApp";
+import UserNotices from "@/components/UserNotices";
+import { installErrorLogging, setErrorUser, logClientError } from "@/lib/errorLog";
 import TrackBoard, { BoardCountdown, PlayCountsField, type BoardTrack } from "@/components/TrackBoard";
 import { useDmInbox, type DmPerson, type DmTrack } from "@/lib/dms";
 import type { QueueEntry, RepeatMode } from "./PerformativePlayer";
@@ -254,6 +256,11 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       off();
       window.removeEventListener("beforeunload", onBeforeUnload);
     };
+  }, []);
+
+  // Registro automático de errores (se ven en /admin/errores)
+  useEffect(() => {
+    installErrorLogging();
   }, []);
 
   // Service worker: la app guardada en el teléfono abre al toque y se actualiza por detrás (public/sw.js)
@@ -2005,6 +2012,11 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       return next;
     });
   };
+  // el registro de errores sabe quién es (para ver a quién le pasa qué)
+  useEffect(() => {
+    setErrorUser(googleConnected && meProfile.id ? meProfile.id : null);
+  }, [googleConnected, meProfile.id]);
+
   // ==================== MENSAJES DIRECTOS ====================
   const dm = useDmInbox(googleConnected && meProfile.id ? meProfile.id : null);
   const [dmOpen, setDmOpen] = useState(false);
@@ -7235,6 +7247,9 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
           })()}
       </AnimatePresence>
 
+      {/* ==================== AVISOS PUNTUALES (pop-up al entrar) ==================== */}
+      <UserNotices meId={!isGuest && googleConnected && meProfile.id ? meProfile.id : null} />
+
       {/* ==================== MENSAJES DIRECTOS ==================== */}
       {!isGuest && googleConnected && meProfile.id && (
         <UniversalPortal>
@@ -8940,6 +8955,20 @@ function GoogleAuthModal({
           </label>
           {connected && profile.id && <DmPolicyField meId={profile.id} />}
           {connected && profile.id && <PlayCountsField meId={profile.id} />}
+          {connected && (
+            <button
+              type="button"
+              className="report-problem-btn"
+              onClick={async () => {
+                const what = window.prompt("Contanos qué pasó (qué tocaste, qué esperabas y qué hizo la app):");
+                if (!what || !what.trim()) return;
+                await logClientError("report", what.trim());
+                window.alert("¡Gracias! Ya le llegó a @poyo.");
+              }}
+            >
+              Reportar un problema
+            </button>
+          )}
         </div>
 
         <div className="google-auth-actions" style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>

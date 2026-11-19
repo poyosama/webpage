@@ -150,6 +150,11 @@ export default function FriendsActivity({
               Panel de usuarios →
             </a>
           )}
+          {isAdmin && (
+            <a className="friends-admin" href="/admin/errores">
+              Errores y reportes →
+            </a>
+          )}
         </div>
       </aside>
     </>

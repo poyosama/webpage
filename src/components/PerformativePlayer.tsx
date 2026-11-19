@@ -1,6 +1,7 @@
 "use client";
 
 import { Canvas, useFrame } from "@react-three/fiber";
+import { canvasDpr, isLowPowerDevice } from "@/lib/perf";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { type Project, type ProjectVideoClip, type Track } from "@/lib/mock";
@@ -34,7 +35,9 @@ function HighResFlowParticles({
   const pointsRef = useRef<THREE.Points>(null!);
   const matRef = useRef<THREE.PointsMaterial>(null!);
   const count = useMemo(() => {
-    if (typeof window !== "undefined" && window.innerWidth <= 720) return 8000;
+    // celus / equipos flojos: bastante menos partículas (el canvas ya aporta lo visual)
+    if (typeof window !== "undefined" && window.innerWidth <= 720) return 2800;
+    if (isLowPowerDevice()) return 6000;
     return 16000;
   }, []);
   const lastImpulseRef = useRef(0);
@@ -504,7 +507,7 @@ export default function PerformativePlayer({
         {sceneReady && !hideParticles && (
         <Canvas
           camera={{ position: [0, 0, 5.2], fov: 42 }}
-          dpr={[1, 1.25]}
+          dpr={canvasDpr([1, 1.25])}
           gl={{ alpha: true, antialias: false, powerPreference: "high-performance" }}
         >
           <ambientLight intensity={isDarkStage ? 1.15 : 1.7} />
