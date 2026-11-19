@@ -265,7 +265,14 @@ async function uploadToR2(filename: string, file: File | Blob, folder: string): 
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
     if (!token) return null;
-    const ext = (filename.split(".").pop() || "bin").toLowerCase();
+    // Extensión real del archivo; si no tiene (ej. "blob"), se saca del tipo (el servidor solo acepta audio/imagen/video)
+    let ext = (filename.includes(".") ? filename.split(".").pop() || "" : "").toLowerCase();
+    if (!/^(mp3|wav|m4a|aac|flac|ogg|opus|aif|aiff|jpg|jpeg|png|webp|gif|avif|heic|mp4|mov|webm|m4v)$/.test(ext)) {
+      const sub = (file.type.split("/")[1] || "").replace("mpeg", "mp3").replace("x-wav", "wav").replace("quicktime", "mov").replace("jpeg", "jpg");
+      ext = /^(mp3|wav|m4a|aac|flac|ogg|webm|jpg|png|webp|gif|avif|mp4|mov)$/.test(sub)
+        ? sub
+        : folder.startsWith("tracks") || folder.startsWith("originals") ? "mp3" : folder.startsWith("videos") ? "mp4" : "jpg";
+    }
     const sign = await fetch("/api/r2/sign-upload", {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${token}` },

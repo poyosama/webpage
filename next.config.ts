@@ -9,6 +9,25 @@ const nextConfig: NextConfig = isCapacitorBuild
     }
   : {
       cacheComponents: true,
+      poweredByHeader: false,
+      // Headers de seguridad: nadie puede meter El tablero adentro de otra página (clickjacking),
+      // el navegador no "adivina" tipos de archivo, no se filtra la URL completa a otros sitios
+      // y la página no puede pedir cámara/micrófono/ubicación.
+      async headers() {
+        return [
+          {
+            source: "/:path*",
+            headers: [
+              { key: "X-Frame-Options", value: "SAMEORIGIN" },
+              { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
+              { key: "X-Content-Type-Options", value: "nosniff" },
+              { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+              { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
+              { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
+            ],
+          },
+        ];
+      },
       partialPrefetching: true,
       async rewrites() {
         return [
