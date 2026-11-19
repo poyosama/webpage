@@ -78,7 +78,7 @@ export default function TrackBoard({
       if (!alive) return;
       const r = error ? [] : ((data || []) as BoardTrack[]);
       setRows(r);
-      onLoaded?.(r);
+      onLoaded?.(r.slice(0, 10));
     });
     return () => {
       alive = false;
@@ -89,8 +89,9 @@ export default function TrackBoard({
   if (rows === null) return <div className="track-board is-loading">Cargando el tablero…</div>;
   if (!rows.length) return <div className="track-board is-empty">Todavía no hay tracks públicos para armar el tablero.</div>;
 
-  // Jerarquía: el 1 enorme, 2–3 grandes, 4–10 medianos, el resto chicos y de a varios por línea
-  const tiers: BoardTrack[][] = [rows.slice(0, 1), rows.slice(1, 3), rows.slice(3, 6), rows.slice(6, 10), rows.slice(10, 16), rows.slice(16, 40)];
+  // Jerarquía: el 1 enorme, 2–3 grandes, 4–6 medianos, 7–10 más chicos
+  // Se muestran solo los 10 primeros (el servidor guarda más por si hace falta)
+  const tiers: BoardTrack[][] = [rows.slice(0, 1), rows.slice(1, 3), rows.slice(3, 6), rows.slice(6, 10)];
   const sizes = ["is-t1", "is-t2", "is-t3", "is-t4", "is-t5", "is-t6"];
 
   return (
@@ -107,7 +108,7 @@ export default function TrackBoard({
                   key={r.track_id}
                   type="button"
                   className={`collage-item clean-editorial-word track-board-item ${active ? "is-playing" : ""}`}
-                  onClick={() => onPlay(rows, idx)}
+                  onClick={() => onPlay(rows.slice(0, 10), idx)}
                   title={`#${r.rank} · ${r.listeners} oyentes · ${r.likers} me gusta · ${r.commenters} comentaron`}
                 >
                   <span className="track-board-rank">{r.rank}</span>

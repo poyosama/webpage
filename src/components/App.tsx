@@ -3115,13 +3115,15 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     });
 
   // board. Inicio muestra lo que se va subiendo en tiempo real + catálogo base curado (exclusivamente proyectos públicos)
+  // Un proyecto recién creado sin tracks no entra en la rotación hasta que tenga al menos 1 tema
+  const rotationUserProjects = userProjectsRecent.filter((p) => p.tracks.length > 0);
   const boardProjects: Project[] = [
-    ...userProjectsRecent,
+    ...rotationUserProjects,
     ...DEMO_PROJECTS.filter(
       (d) =>
         d.visibility !== "private" &&
         d.status !== "Privado" &&
-        !userProjectsRecent.some(
+        !rotationUserProjects.some(
           (p) =>
             p.id.toLowerCase() === d.id.toLowerCase() ||
             p.title.trim().toLowerCase() === d.title.trim().toLowerCase()
@@ -3807,8 +3809,8 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                     <span>EL TABLERO // ESCENA UG</span>
                     <span className="board-view-switch" role="tablist" aria-label="Tipo de vista">
                       <i className={boardView === "proyectos" ? "is-right" : ""} aria-hidden />
-                      <button type="button" role="tab" aria-selected={boardView === "canciones"} className={boardView === "canciones" ? "on" : ""} onClick={() => pickBoardView("canciones")}>
-                        Canciones
+                      <button type="button" role="tab" aria-selected={boardView === "canciones"} aria-label="Tracks" className={boardView === "canciones" ? "on" : ""} onClick={() => pickBoardView("canciones")}>
+                        Tracks
                       </button>
                       <button type="button" role="tab" aria-selected={boardView === "proyectos"} className={boardView === "proyectos" ? "on" : ""} onClick={() => pickBoardView("proyectos")}>
                         Proyectos
@@ -3816,7 +3818,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                     </span>
                   </span>
                   <span className="board-meta-right">
-                    {boardView === "canciones" && <BoardCountdown onZero={bumpBoard} />}
+                    <BoardCountdown onZero={bumpBoard} />
                     <span className="spine-badge-static">El tablero.</span>
                   </span>
                 </div>
@@ -4302,7 +4304,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                             setArtistSort(k);
                           }}
                         >
-                          {k === "recientes" ? "Más recientes" : "Populares"}
+                          {k === "recientes" ? "Recientes" : "En repetición"}
                         </button>
                       ))}
                     </div>
