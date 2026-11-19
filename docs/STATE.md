@@ -3,6 +3,7 @@
 **Qué es:** plataforma (web + PWA, iOS vía Capacitor) para que raperos y productores de la escena guarden, compartan y escuchen sus proyectos. Next.js 16 (App Router, Turbopack) + Supabase (Postgres, Auth Google, Storage, Realtime) + Vercel. Dominio: `eltablero.blog`.
 
 ## Estado del backend
+- **Auth (Supabase):** Site URL `https://www.eltablero.blog`; Redirect URLs `https://www.eltablero.blog/**`, `https://eltablero.blog/**`, `https://*.vercel.app/**`. La app pide volver a `${origin}/`: si se suma otro dominio, agregarlo acá o el login vuelve a la Site URL.
 - `APLICAR_TODO.sql` **aplicado completo en Supabase (2026-11-13, incluye social, account_type y privacidad)**: pases del servidor, compartir, colaboradores, borrar cuenta, me gusta sincronizados y proyectos privados por defecto (`is_public`) están activos. Si se agregan migraciones nuevas, sumarlas al final de `APLICAR_TODO.sql` (idempotente) y pedir que se vuelva a correr.
 - Proyectos existentes quedaron **privados**: para que aparezcan en el Inicio de otros hay que ponerlos en Público (botón compartir).
 - **Pendiente de correr:** `migration_account_type.sql` (ya al final de `APLICAR_TODO.sql`): columna `profiles.account_type` ('artista'|'oyente') y RPC `handle_available`. Sin ella el registro funciona igual (el código tiene fallback) pero el rol no se guarda en la base y los oyentes no se filtran del directorio para otros dispositivos.
