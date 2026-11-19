@@ -7,6 +7,7 @@ import {
   fetchTrackComments,
   addTrackComment,
   deleteTrackComment,
+  setCommentLike,
   type TrackComment,
 } from "@/lib/supabase";
 import { sfx } from "@/lib/sfx";
@@ -170,6 +171,32 @@ export default function TrackComments({
                     </div>
                     <p>{c.body}</p>
                   </div>
+                  <button
+                    type="button"
+                    className={`tc-like ${c.liked ? "is-on" : ""}`}
+                    disabled={!meId}
+                    aria-pressed={c.liked}
+                    aria-label={c.liked ? "Sacar me gusta" : "Me gusta"}
+                    title={c.liked ? "Sacar me gusta" : "Me gusta"}
+                    onClick={async () => {
+                      if (!meId) return;
+                      const on = !c.liked;
+                      if (on) sfx.pop();
+                      else sfx.tap();
+                      // al toque en pantalla; si el servidor falla, se vuelve atrás
+                      const flip = (v: boolean) =>
+                        setItems((prev) =>
+                          (prev || []).map((x) => (x.id === c.id ? { ...x, liked: v, likeCount: Math.max(0, x.likeCount + (v ? 1 : -1)) } : x))
+                        );
+                      flip(on);
+                      if (!(await setCommentLike(c.id, meId, on))) flip(!on);
+                    }}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill={c.liked ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z" />
+                    </svg>
+                    {c.likeCount > 0 && <span>{c.likeCount}</span>}
+                  </button>
                   {canDelete && (
                     <button
                       type="button"

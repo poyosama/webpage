@@ -5,7 +5,7 @@ import { supabase, setFollowing, rejectFriendRequest } from "@/lib/supabase";
 
 type Notif = {
   id: string;
-  kind: "like" | "save" | "follow" | "friend" | "comment";
+  kind: "like" | "save" | "follow" | "friend" | "comment" | "comment_like";
   created_at: string;
   read_at: string | null;
   actor_id: string;
@@ -47,6 +47,8 @@ function text(n: Notif, meHandle: string): React.ReactNode {
       return <>¡{u1} y {u2} ahora son amigos!</>;
     case "comment":
       return <>{u1} comentó en el track{track} de {u2}</>;
+    case "comment_like":
+      return <>A {u1} le gustó el comentario de {u2} en el track{track}</>;
   }
 }
 

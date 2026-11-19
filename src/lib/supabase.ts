@@ -1532,6 +1532,8 @@ export type TrackComment = {
   handle?: string;
   name?: string;
   avatarUrl?: string;
+  likeCount: number;
+  liked: boolean;
 };
 
 /** null = la migración de comentarios todavía no está aplicada */
@@ -1548,7 +1550,19 @@ export async function fetchTrackComments(trackId: string): Promise<TrackComment[
     handle: (r.handle as string) || undefined,
     name: (r.name as string) || undefined,
     avatarUrl: (r.avatar_url as string) || undefined,
+    likeCount: Number(r.like_count || 0),
+    liked: r.liked === true,
   }));
+}
+
+/** Me gusta en un comentario (on = dar, off = sacar) */
+export async function setCommentLike(commentId: string, userId: string, on: boolean): Promise<boolean> {
+  if (on) {
+    const { error } = await supabase.from("comment_likes").upsert({ comment_id: commentId, user_id: userId }, { onConflict: "comment_id,user_id" });
+    return !error;
+  }
+  const { error } = await supabase.from("comment_likes").delete().eq("comment_id", commentId).eq("user_id", userId);
+  return !error;
 }
 
 export async function addTrackComment(trackId: string, userId: string, body: string, atSec: number | null): Promise<boolean> {
