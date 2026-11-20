@@ -593,6 +593,7 @@ export function mapProjectRow(row: any, idx = 0): Project {
     status: row.status || "Publicado",
     visibility: row.visibility === "friends" || row.visibility === "public" || row.visibility === "private" ? row.visibility : isPublic ? "public" : "private",
     createdAt: row.created_at,
+    visualsBy: row.visuals_by || undefined,
     dateLabel: row.date_label || `${row.year || "2026"} · ${row.zone || "Mendoza"}`,
     zone: row.zone || "Mendoza",
     genre: row.genre || "",
@@ -900,6 +901,7 @@ async function saveProjectSkeleton(project: Project, userId?: string): Promise<v
       user_id: uid,
       is_public: project.visibility === "public",
       visibility: project.visibility || "private",
+      visuals_by: project.visualsBy || null,
       updated_at: new Date().toISOString(),
     };
     if (!isTransientUrl(project.coverUrl)) row.cover_url = cleanUrl(project.coverUrl) || null;
@@ -1043,6 +1045,7 @@ export async function saveProjectToSupabase(project: Project, userId?: string): 
       description: project.description || "",
       cover_url: coverUrl,
       user_id: safeUserId,
+      visuals_by: project.visualsBy || null,
       updated_at: new Date().toISOString(),
     };
 

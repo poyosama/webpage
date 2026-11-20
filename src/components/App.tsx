@@ -5323,6 +5323,11 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
                             {activeProject.tracks.length === 1 ? "track" : "tracks"} ·{" "}
                             {formatProjectTotalDuration(activeProject.tracks)}
                           </p>
+                          {activeProject.visualsBy === "2kolorstudio" && (
+                            <a className="visuals-credit-badge" href="/estudio/2kolorstudio" onClick={(e) => e.stopPropagation()}>
+                              <span aria-hidden>◆</span> Visuales por 2kolorstudio
+                            </a>
+                          )}
                         </div>
 
                         <button
@@ -8266,6 +8271,7 @@ function EditProjectModal({
   const [description, setDescription] = useState(project.description || "");
   const [coverUrl, setCoverUrl] = useState<string | undefined>(project.coverUrl);
   const [zone, setZone] = useState(project.zone || "Mendoza");
+  const [visualsBy, setVisualsBy] = useState(project.visualsBy === "2kolorstudio");
 
   return (
     <motion.div
@@ -8348,6 +8354,16 @@ function EditProjectModal({
               placeholder="Descripción (opcional)"
             />
           </label>
+          <label className="modal-field full visuals-credit-field">
+            <span>VISUALES</span>
+            <span className="visuals-credit-check">
+              <input type="checkbox" checked={visualsBy} onChange={(e) => setVisualsBy(e.target.checked)} />
+              <span>
+                Los visuales (tapa, canvas o video) los hizo <b>2kolorstudio</b>
+                <small>Aparece un sello en el proyecto y entra en la página del estudio.</small>
+              </span>
+            </span>
+          </label>
         </div>
 
         <div className="modal-foot">
@@ -8372,6 +8388,7 @@ function EditProjectModal({
                   zone,
                   description,
                   coverUrl,
+                  visualsBy: visualsBy ? "2kolorstudio" : undefined,
                 });
               }}
             >

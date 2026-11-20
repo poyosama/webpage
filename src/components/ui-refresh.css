@@ -2686,3 +2686,10 @@ html:root body .filmstrip-caption .track-artist-link-btn {
   html:root body .filmstrip-caption b { font-size: 0.9rem !important; }
   html:root body .filmstrip-caption .track-artist-link-btn { font-size: 0.7rem !important; }
 }
+
+/* Crédito de visuales (ej. 2kolorstudio) */
+.visuals-credit-badge { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; padding: 4px 10px; border-radius: 99px; border: 1px solid var(--line, rgba(127,127,127,.3)); color: var(--ink); font-size: .74rem; font-weight: 600; text-decoration: none; }
+.visuals-credit-badge span { color: #a855f7; font-size: .7rem; }
+.visuals-credit-check { display: flex; gap: 10px; align-items: flex-start; font-size: .86rem; color: var(--ink); text-transform: none; letter-spacing: 0; }
+.visuals-credit-check input { margin-top: 3px; width: 18px; height: 18px; flex: none; }
+.visuals-credit-check small { display: block; color: var(--ink-muted); font-size: .76rem; margin-top: 2px; }

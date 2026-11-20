@@ -66,6 +66,8 @@ export type Project = {
   type: ProjectType;
   status: "Publicado" | "WIP" | "Privado" | "En mezcla" | "Master";
   visibility?: "private" | "public" | "friends";
+  /** Quién hizo los visuales (tapa/canvas/video), ej. "2kolorstudio" */
+  visualsBy?: string;
   createdAt?: string;
   year: string;
   dateLabel: string;
