@@ -1,4 +1,5 @@
 # Changelog (lo más nuevo arriba · 1–3 líneas por cambio)
+- 2026-11-20 · Notificación de solicitud: "@usuario te envió una solicitud de amistad!". `NotificationBell.tsx`.
 - 2026-11-20 · Integración con 2kolorstudio (estudio de visuales): crédito "Visuales por 2kolorstudio" al editar un proyecto (`projects.visuals_by`) con sello en el proyecto; página `/estudio/2kolorstudio`; recuadros para otras webs `/embed/estudio/2kolorstudio` (sus proyectos, se escuchan ahí) y `/embed/tablero` (top 10). Solo `/embed/*` se puede meter en un iframe (`next.config.ts`). `Showcase.tsx`, `showcase.css`.
 - 2026-11-20 · Bug grave: varios pedidos a Supabase se disparaban con `void supabase.from(...)` sin `.then`/`await` y la librería NUNCA los mandaba. Por eso los me gusta de tracks no se guardaban (0 en la base) y el "Entendido" del aviso no quedaba. Arreglado en me gusta (ahora con ignoreDuplicates), aviso, tipo de cuenta y purga. Regla: todo pedido de Supabase necesita `.then(() => {})` o `await`.
 - 2026-11-20 · Tira de tapas de Inicio: el nombre del proyecto/track va grande y el artista chico debajo (antes el artista se leía más). `ui-refresh.css`.

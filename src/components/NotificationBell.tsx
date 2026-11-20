@@ -42,7 +42,7 @@ function text(n: Notif, meHandle: string): React.ReactNode {
     case "save":
       return <>{u1} guardó el proyecto{project} de {u2}</>;
     case "follow":
-      return <>{u1} le mandó una solicitud de amistad a {u2}</>;
+      return <>{u1} te envió una solicitud de amistad!</>;
     case "friend":
       return <>¡{u1} y {u2} ahora son amigos!</>;
     case "comment":
