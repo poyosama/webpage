@@ -1160,7 +1160,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
         // Cuentas viejas que eligieron "oyente" solo en este dispositivo: se sube a la base (una vez)
         if (legacyRole === "oyente" && existing.account_type !== "oyente") {
           base.accountType = "oyente";
-          void supabase.from("profiles").update({ account_type: "oyente" }).eq("id", u.id);
+          void supabase.from("profiles").update({ account_type: "oyente" }).eq("id", u.id).then(() => {});
         }
       } else {
         // Cuenta nueva: antes de crear el perfil hay que gastar un pase de invitación (lo valida el servidor)
@@ -3493,9 +3493,11 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
         const merged = Array.from(new Set([...cloud, ...local]));
         const missing = local.filter((id) => !cloud.includes(id));
         if (missing.length) {
+          // OJO: los pedidos de Supabase solo salen si alguien espera la respuesta (.then / await)
           void supabase
             .from("track_likes")
-            .upsert(missing.map((track_id) => ({ user_id: meProfile.id, track_id })), { onConflict: "user_id,track_id" });
+            .upsert(missing.map((track_id) => ({ user_id: meProfile.id, track_id })), { onConflict: "user_id,track_id", ignoreDuplicates: true })
+            .then(() => {});
         }
         return merged;
       });
@@ -3509,11 +3511,12 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       const liked = prev.includes(trackId);
       if (googleConnected && meProfile.id && likesCloudRef.current !== "off") {
         if (liked) {
-          void supabase.from("track_likes").delete().eq("user_id", meProfile.id).eq("track_id", trackId);
+          void supabase.from("track_likes").delete().eq("user_id", meProfile.id).eq("track_id", trackId).then(() => {});
         } else {
           void supabase
             .from("track_likes")
-            .upsert({ user_id: meProfile.id, track_id: trackId }, { onConflict: "user_id,track_id" });
+            .upsert({ user_id: meProfile.id, track_id: trackId }, { onConflict: "user_id,track_id", ignoreDuplicates: true })
+            .then(() => {});
         }
       }
       return liked ? prev.filter((x) => x !== trackId) : [...prev, trackId];

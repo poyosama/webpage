@@ -32,7 +32,8 @@ export default function UserNotices({ meId }: { meId: string | null }) {
   const n = queue[0];
   if (!n || typeof document === "undefined") return null;
   const close = () => {
-    void supabase.from("user_notices").update({ seen_at: new Date().toISOString() }).eq("id", n.id);
+    // (.then hace que el pedido salga de verdad: sin esto nunca se marcaba como visto)
+    void supabase.from("user_notices").update({ seen_at: new Date().toISOString() }).eq("id", n.id).then(() => {});
     setQueue((q) => q.slice(1));
   };
   return createPortal(

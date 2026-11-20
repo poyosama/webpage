@@ -737,7 +737,7 @@ export async function fetchCommunityProfilesFromSupabase(): Promise<ArtistProfil
       const h = (row.handle || "").toLowerCase();
       const n = (row.name || "").toLowerCase();
       if (h.includes("jm2100553") || n.includes("jaime martinez")) {
-        void supabase.from("profiles").delete().eq("id", row.id);
+        void supabase.from("profiles").delete().eq("id", row.id).then(() => {});
         return false;
       }
       return true;
