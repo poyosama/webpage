@@ -2675,3 +2675,14 @@ html:root body .track-board-collage .track-board-item.is-top .roster-word { font
 .notice-card p { margin: 0 0 16px; font-size: .88rem; line-height: 1.5; color: var(--ink-secondary); white-space: pre-line; }
 .notice-card button { width: 100%; height: 46px; border: 0; border-radius: 14px; background: var(--ink); color: var(--bg, #fff); font-weight: 700; }
 .report-problem-btn { align-self: flex-start; margin-top: 4px; border: 1px solid var(--line, rgba(127,127,127,.3)); background: transparent; color: var(--ink-secondary); border-radius: 99px; padding: 7px 14px; font-size: .8rem; font-weight: 600; cursor: pointer; }
+
+/* Tira de tapas de Inicio: el nombre del proyecto/track grande y el artista chico (antes era al revés) */
+html:root body .filmstrip-caption b { font-size: 1rem !important; font-weight: 650 !important; line-height: 1.2; margin-top: 2px; }
+html:root body .filmstrip-caption .track-artist-link-btn {
+  display: block; font-size: 0.74rem !important; font-weight: 500 !important; color: var(--ink-muted) !important;
+  line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+@media (max-width: 720px) {
+  html:root body .filmstrip-caption b { font-size: 0.9rem !important; }
+  html:root body .filmstrip-caption .track-artist-link-btn { font-size: 0.7rem !important; }
+}
