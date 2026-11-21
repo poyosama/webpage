@@ -2693,3 +2693,4 @@ html:root body .filmstrip-caption .track-artist-link-btn {
 .visuals-credit-check { display: flex; gap: 10px; align-items: flex-start; font-size: .86rem; color: var(--ink); text-transform: none; letter-spacing: 0; }
 .visuals-credit-check input { margin-top: 3px; width: 18px; height: 18px; flex: none; }
 .visuals-credit-check small { display: block; color: var(--ink-muted); font-size: .76rem; margin-top: 2px; }
+.verifying-pill { position: fixed; left: 50%; bottom: calc(28px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 4000; display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 99px; background: rgba(20,20,24,.92); color: #f4f4f5; font-size: .85rem; font-weight: 600; box-shadow: 0 12px 30px -12px rgba(0,0,0,.7); backdrop-filter: blur(10px); }

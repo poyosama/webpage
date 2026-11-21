@@ -382,13 +382,19 @@ export default function LandingScene({
 
   // Si un intento de suscripción fue rechazado (sin pase válido), mostrar el motivo
   useEffect(() => {
-    try {
-      const msg = localStorage.getItem("eltablero_auth_error");
-      if (msg) {
-        setErrorMsg(msg);
-        localStorage.removeItem("eltablero_auth_error");
-      }
-    } catch {}
+    const read = () => {
+      try {
+        const msg = localStorage.getItem("eltablero_auth_error");
+        if (msg) {
+          setErrorMsg(msg);
+          setLoading(false);
+          localStorage.removeItem("eltablero_auth_error");
+        }
+      } catch {}
+    };
+    read();
+    window.addEventListener("eltablero-auth-error", read);
+    return () => window.removeEventListener("eltablero-auth-error", read);
   }, []);
 
   // Si cerraste la ventana de Google (o volviste atrás), el botón no puede quedar en "Conectando..."

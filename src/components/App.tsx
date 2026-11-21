@@ -227,6 +227,23 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   const [producerFilter, setProducerFilter] = useState<"Todos" | ProducerDropKind>("Todos");
   const [hydrated, setHydrated] = useState<boolean>(false);
   const [authChecked, setAuthChecked] = useState<boolean>(false);
+  // Cuenta de Google nueva (o desconocida en este navegador): hasta verificar perfil/pase NO se muestra la app,
+  // se queda en la portada con "Verificando tu cuenta…" (antes se veía el tablero un instante y después lo echaba)
+  const [verifyingAccount, setVerifyingAccount] = useState(false);
+  const isKnownAccount = (uid: string) => {
+    try {
+      if (localStorage.getItem(`eltablero_has_profile_${uid}`) === "1") return true;
+      const snap = JSON.parse(localStorage.getItem("eltablero_fast_snapshot_v3") || "null");
+      return snap?.meProfile?.id === uid;
+    } catch {
+      return false;
+    }
+  };
+  /** Sesión de Google detectada: si ya la conocemos, entra al toque; si no, primero se verifica */
+  const markSignedIn = (uid: string) => {
+    if (isKnownAccount(uid)) setGoogleConnected(true);
+    else setVerifyingAccount(true);
+  };
   const [cloudReady, setCloudReady] = useState<boolean>(false);
   const [syncStatus, setSyncStatus] = useState<"idle" | "saving" | "error">("idle");
   const [artistSort, setArtistSort] = useState<"recientes" | "populares">("recientes");
@@ -1131,7 +1148,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       if (!profileRes) {
         // Sin red / Supabase lento: la sesión sigue, se reintenta en unos segundos
         if (mounted()) {
-          setGoogleConnected(true);
+          markSignedIn(u.id);
           setTimeout(() => {
             if (mounted() && lastUserIdRef.current === u.id) void applySession(u, mounted, fresh);
           }, 5000);
@@ -1182,6 +1199,9 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
               localStorage.removeItem("board_pending_invite_code");
             } catch {}
             await supabase.auth.signOut({ scope: "local" });
+            setVerifyingAccount(false);
+            // la portada nunca se cerró: se le avisa para que muestre el motivo ya
+            window.dispatchEvent(new Event("eltablero-auth-error"));
             return;
           }
           inviteMode = consumed;
@@ -1194,6 +1214,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
           inviteMode,
           pendingInvite,
         });
+        setVerifyingAccount(false);
         setGoogleConnected(true);
         setShowLanding(false);
         return;
@@ -1206,6 +1227,10 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
         localStorage.setItem(`eltablero_role_${u.id}`, base.accountType || "artista");
       } catch {}
       if (!mounted()) return;
+      try {
+        localStorage.setItem(`eltablero_has_profile_${u.id}`, "1");
+      } catch {}
+      setVerifyingAccount(false);
       setMeProfile(base);
       setGoogleConnected(true);
       void Promise.all([fetchProjectFolders(u.id), fetchFolderItems(u.id)]).then(([f, items]) => {
@@ -1289,7 +1314,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       setCloudReady(true);
     } catch (e) {
       console.warn("Fallo sincronizar la cuenta con Supabase:", e);
-      if (mounted()) setGoogleConnected(true);
+      if (mounted()) markSignedIn(u.id);
     }
   };
 
@@ -1315,7 +1340,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
         }
         if (session?.user && alive) {
           lastUserIdRef.current = session.user.id;
-          setGoogleConnected(true);
+          markSignedIn(session.user.id);
           setAuthChecked(true);
           await applySession(session.user, mounted, false);
           return;
@@ -1387,7 +1412,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
         if (!alive || !u || lastUserIdRef.current) return;
         lastUserIdRef.current = u.id;
         setAuthChecked(true);
-        setGoogleConnected(true);
+        markSignedIn(u.id);
         void applySession(u, mounted, true);
       });
     };
@@ -1406,6 +1431,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
         } catch {}
         void fastCacheSet("eltablero_full_projects_v3", []);
         setGoogleConnected(false);
+        setVerifyingAccount(false);
         setCloudReady(false);
         setProjects([]);
         setMeProfile(EMPTY_ME_PROFILE);
@@ -1423,7 +1449,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       if (lastUserIdRef.current === u.id) return;
       lastUserIdRef.current = u.id;
       setAuthChecked(true);
-      setGoogleConnected(true);
+      markSignedIn(u.id);
       setTimeout(() => {
         applySession(u, mounted, true);
       }, 0);
@@ -3628,6 +3654,11 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
           }}
           onOpenGoogleAuth={() => setAuthModalOpen(true)}
         />
+        {verifyingAccount && (
+          <div className="verifying-pill" role="status" aria-live="polite">
+            <span className="upload-pill-spin" aria-hidden /> Verificando tu cuenta…
+          </div>
+        )}
         <AnimatePresence>
           {authModalOpen && (
             <GoogleAuthModal
