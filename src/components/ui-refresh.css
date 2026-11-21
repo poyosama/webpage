@@ -2694,3 +2694,24 @@ html:root body .filmstrip-caption .track-artist-link-btn {
 .visuals-credit-check input { margin-top: 3px; width: 18px; height: 18px; flex: none; }
 .visuals-credit-check small { display: block; color: var(--ink-muted); font-size: .76rem; margin-top: 2px; }
 .verifying-pill { position: fixed; left: 50%; bottom: calc(28px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 4000; display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 99px; background: rgba(20,20,24,.92); color: #f4f4f5; font-size: .85rem; font-weight: 600; box-shadow: 0 12px 30px -12px rgba(0,0,0,.7); backdrop-filter: blur(10px); }
+
+/* Biblioteca: "Subir track / Subir Canva" — compu: abajo de la rueda · celu: adentro de la tarjeta del proyecto */
+.vinyl-card-uploads { display: none; }
+@media (max-width: 720px) {
+  html:root body .library-bottom-actions { display: none !important; }
+  html:root body .vinyl-card-uploads { display: flex; justify-content: center; gap: 8px; margin-top: 10px; position: relative; z-index: 2; }
+  html:root body .vinyl-card-uploads .library-action-btn {
+    height: 34px !important; min-height: 0 !important; padding: 0 12px !important; font-size: .78rem !important;
+    border-radius: 99px !important; display: inline-flex; align-items: center; gap: 6px; box-shadow: none !important;
+  }
+  html:root body .vinyl-card-uploads .library-action-btn svg { width: 13px; height: 13px; }
+}
+@media (max-width: 720px) {
+  /* los discos vecinos de la rueda se cortaban en seco arriba (franja gris al lado del +): se desvanecen */
+  html:root body .vinyl-fan-arc-viewport {
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 56px);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 56px);
+  }
+  html:root body .library-inside-stack > .library-add-wrap,
+  html:root body .library-add-wrap { margin-top: 10px; }
+}

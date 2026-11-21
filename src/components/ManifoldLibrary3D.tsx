@@ -1076,6 +1076,78 @@ export default function ManifoldLibrary3D({
     ? THREE.MathUtils.smoothstep(diveProgress, 0.64, 0.96)
     : 0;
 
+  // "Subir track" / "Subir Canva" del proyecto activo. En compu van abajo de la rueda; en el celu, adentro de la
+  // tarjeta del proyecto (abajo chocaban con el reproductor).
+  const renderUploadActions = () =>
+    activeProject ? (
+      <>
+          {onUploadProjectTrack && (
+            <label className="apple-btn ghost library-action-btn" onMouseEnter={() => sfx.hover()}>
+              <span>+ Subir track</span>
+              <input
+                type="file"
+                accept=".wav,.mp3,.m4a,.flac,.aac,.ogg,.aiff,.alac,.opus,audio/wav,audio/x-wav,audio/wave,audio/mpeg,audio/mp3,audio/mp4,audio/x-m4a,audio/aac,audio/flac,application/octet-stream"
+                hidden
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    sfx.drop();
+                    onUploadProjectTrack(activeProject.id, file);
+                    e.target.value = "";
+                  }
+                }}
+              />
+            </label>
+          )}
+
+          {onUploadProjectVideo && (
+            <label
+              className="apple-btn primary library-action-btn library-canvas-btn"
+              onMouseEnter={() => sfx.hover()}
+              title="Subir Canva (Video o Imagen)"
+            >
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+                <circle cx="9" cy="9" r="2" />
+                <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+              </svg>
+              <span>{activeCanvasClip ? "Cambiar Canva" : "Subir Canva"}</span>
+              <input
+                type="file"
+                accept="video/mp4,video/webm,image/gif,image/*,video/*"
+                hidden
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    sfx.drop();
+                    // Si el usuario en iPhone seleccionó un audio en este botón, lo mandamos a track
+                    if (
+                      onUploadProjectTrack &&
+                      (file.type.startsWith("audio/") || /\.(wav|mp3|m4a|flac|aac|ogg|aiff|alac)$/i.test(file.name))
+                    ) {
+                      onUploadProjectTrack(activeProject.id, file);
+                    } else if (onUploadProjectVideo) {
+                      onUploadProjectVideo(activeProject.id, file);
+                    }
+                    e.target.value = "";
+                  }
+                }}
+              />
+            </label>
+          )}
+      </>
+    ) : null;
+
   return (
     <div
       className={`manifold-3d-wrapper ${compact ? "is-compact" : ""} ${activeCanvasClip ? "has-library-canva" : ""}`}
@@ -1915,6 +1987,15 @@ export default function ManifoldLibrary3D({
                             </svg>
                           </span>
                         </div>
+                        {!isFolderKey(activeProject.id) && !activeProject.id.startsWith("__") && (
+                          <div
+                            className="vinyl-card-uploads"
+                            onClick={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => e.stopPropagation()}
+                          >
+                            {renderUploadActions()}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ) : null}
@@ -1926,70 +2007,7 @@ export default function ManifoldLibrary3D({
 
       {activeProject && activeMode === "wheel" && (
         <div className={`library-bottom-actions ${activeProject?.id?.startsWith("__") ? "is-hidden" : ""}`}>
-          {onUploadProjectTrack && (
-            <label className="apple-btn ghost library-action-btn" onMouseEnter={() => sfx.hover()}>
-              <span>+ Subir track</span>
-              <input
-                type="file"
-                accept=".wav,.mp3,.m4a,.flac,.aac,.ogg,.aiff,.alac,.opus,audio/wav,audio/x-wav,audio/wave,audio/mpeg,audio/mp3,audio/mp4,audio/x-m4a,audio/aac,audio/flac,application/octet-stream"
-                hidden
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    sfx.drop();
-                    onUploadProjectTrack(activeProject.id, file);
-                    e.target.value = "";
-                  }
-                }}
-              />
-            </label>
-          )}
-
-          {onUploadProjectVideo && (
-            <label
-              className="apple-btn primary library-action-btn library-canvas-btn"
-              onMouseEnter={() => sfx.hover()}
-              title="Subir Canva (Video o Imagen)"
-            >
-              <svg
-                width="15"
-                height="15"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden
-              >
-                <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-                <circle cx="9" cy="9" r="2" />
-                <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
-              </svg>
-              <span>{activeCanvasClip ? "Cambiar Canva" : "Subir Canva"}</span>
-              <input
-                type="file"
-                accept="video/mp4,video/webm,image/gif,image/*,video/*"
-                hidden
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    sfx.drop();
-                    // Si el usuario en iPhone seleccionó un audio en este botón, lo mandamos a track
-                    if (
-                      onUploadProjectTrack &&
-                      (file.type.startsWith("audio/") || /\.(wav|mp3|m4a|flac|aac|ogg|aiff|alac)$/i.test(file.name))
-                    ) {
-                      onUploadProjectTrack(activeProject.id, file);
-                    } else if (onUploadProjectVideo) {
-                      onUploadProjectVideo(activeProject.id, file);
-                    }
-                    e.target.value = "";
-                  }
-                }}
-              />
-            </label>
-          )}
+          {renderUploadActions()}
         </div>
       )}
     </div>
