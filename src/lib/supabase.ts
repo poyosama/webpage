@@ -1726,6 +1726,9 @@ export type AdminUserRow = {
   device: string | null;
   share: boolean | null;
   last_seen: string | null;
+  invite_code: string | null;
+  invited_by: string | null;
+  entry: "pase" | "admin" | "anterior" | "sin_pase" | null;
 };
 export async function fetchAdminUsers(): Promise<{ rows: AdminUserRow[]; error?: string }> {
   const { data, error } = await supabase.rpc("admin_users_activity");

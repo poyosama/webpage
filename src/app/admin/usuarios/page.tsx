@@ -136,6 +136,15 @@ export default function AdminUsuarios() {
                       <small>
                         {r.account_type || "—"} · se registró {agoEs(r.registered_at)}
                       </small>
+                      <small style={{ color: r.entry === "sin_pase" ? "#f87171" : "#8b8b93" }}>
+                        {r.entry === "pase"
+                          ? `Entró con el pase ${r.invite_code}${r.invited_by ? ` de ${r.invited_by}` : ""}`
+                          : r.entry === "admin"
+                            ? "Admin"
+                            : r.entry === "anterior"
+                              ? "Cuenta anterior a los pases"
+                              : "Sin pase (se borra sola)"}
+                      </small>
                     </div>
                     <div className="au-when">
                       {on ? <b className="on">● Conectado</b> : <b>{r.last_seen ? `Visto ${agoEs(r.last_seen)}` : "Sin actividad registrada"}</b>}

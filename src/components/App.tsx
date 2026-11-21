@@ -1198,6 +1198,8 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
               );
               localStorage.removeItem("board_pending_invite_code");
             } catch {}
+            // la cuenta de Google que se creó al entrar no queda colgada: se borra (si no tenía pase)
+            await supabase.rpc("discard_unverified_account").then(() => {}, () => {});
             await supabase.auth.signOut({ scope: "local" });
             setVerifyingAccount(false);
             // la portada nunca se cerró: se le avisa para que muestre el motivo ya
