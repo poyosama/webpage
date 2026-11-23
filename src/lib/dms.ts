@@ -19,6 +19,9 @@ export type DmThread = {
 };
 /** Track compartido: foto del momento + link para abrirlo aunque no lo tengas en tu biblioteca */
 export type DmTrack = {
+  /** "project" = se compartió el proyecto entero (sin kind = un track) */
+  kind?: "project";
+  trackCount?: number;
   trackId: string;
   projectId: string;
   title: string;

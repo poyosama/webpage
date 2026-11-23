@@ -397,9 +397,13 @@ export default function DirectMessages({
                         {m.track.cover ? <img src={m.track.cover} alt="" /> : <span className="dm-track-ph">♪</span>}
                         <span>
                           <b>{m.track.title}</b>
-                          <small>{[m.track.artist, m.track.projectTitle].filter(Boolean).join(" · ")}</small>
+                          <small>
+                            {m.track.kind === "project"
+                              ? [m.track.projectTitle || "Proyecto", m.track.artist, m.track.trackCount ? `${m.track.trackCount} tracks` : ""].filter(Boolean).join(" · ")
+                              : [m.track.artist, m.track.projectTitle].filter(Boolean).join(" · ")}
+                          </small>
                         </span>
-                        <i aria-hidden>▶</i>
+                        <i aria-hidden>{m.track.kind === "project" ? "↗" : "▶"}</i>
                       </button>
                     )}
                     {m.body && <p className="dm-bubble">{m.body}</p>}

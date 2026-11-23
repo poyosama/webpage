@@ -2094,6 +2094,27 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
   /** "▶ 1,2k" o null si el dueño lo tiene oculto (o no hay dato) */
   const playsLabel = (trackId: string) => (!playCounts[trackId] ? null : `▶ ${fmtPlays(playCounts[trackId])}`);
   const listenRef = useRef<{ id: string; secs: number; sent: boolean }>({ id: "", secs: 0, sent: false });
+  /** Proyecto entero → mensaje (link público o de escucha si se puede crear) */
+  const buildDmProject = async (project: Project): Promise<DmTrack> => {
+    const origin = window.location.origin;
+    let url: string | null = null;
+    if (project.visibility === "public") url = `${origin}/project/${project.id}`;
+    else {
+      const tok = await createProjectShareToken(project.id, null, "listen").catch(() => null);
+      if (tok && tok !== "missing") url = `${origin}/project/${project.id}?invite=${tok}`;
+    }
+    return {
+      kind: "project",
+      trackCount: project.tracks.length,
+      trackId: project.tracks[0]?.id || "",
+      projectId: project.id,
+      title: project.title,
+      artist: projectArtistLabel(project),
+      cover: project.coverUrl || null,
+      projectTitle: project.type,
+      url,
+    };
+  };
   const activityRef = useRef<() => void>(() => {});
   activityRef.current = () => {
     if (!googleConnected || !meProfile.id || isGuest) return;
@@ -7082,6 +7103,16 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
               }, 2600);
             }}
             onClose={() => setInvitingProjectId(null)}
+            onShareDm={
+              googleConnected && meProfile.id
+                ? async () => {
+                    const pr = invitingProject;
+                    setInvitingProjectId(null);
+                    setDmShare(await buildDmProject(pr));
+                    setDmOpen(true);
+                  }
+                : undefined
+            }
           />
         )}
       </AnimatePresence>
@@ -7309,6 +7340,14 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
             pendingShare={dmShare}
             onShareDone={() => setDmShare(null)}
             onPlayTrack={(t) => {
+              if (t.kind === "project") {
+                const pr = projects.find((x) => x.id === t.projectId);
+                if (pr) {
+                  setDmOpen(false);
+                  navigateToProject(pr.id);
+                } else if (t.url) window.location.href = t.url;
+                return;
+              }
               const found = findTrackAnywhere(t.trackId, t.projectId);
               if (found) {
                 playTrack(found.track, found.project, false);
@@ -9278,7 +9317,7 @@ function InviteProjectModal({
           </div>
         </div>
 
-        {track && onShareDm && (
+        {onShareDm && (
           <button type="button" className="apple-btn primary invite-dm-btn" onClick={onShareDm}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" /></svg>
             Mandar por mensaje
