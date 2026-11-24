@@ -49,6 +49,54 @@ let subFloor = 0.04;
 let endedConsumed = false;
 
 /** Evento `ended` real del <audio>: funciona aunque iOS congele los timers en segundo plano */
+// ==================== WAV con respaldo en MP3 ====================
+// Si suena el WAV (máxima calidad) y la conexión no da (se traba cargando más de unos segundos),
+// se pasa solo al MP3 320 en el mismo punto del tema.
+const losslessFallback = new Map<string, string>();
+const losslessFailed = new Set<string>();
+/** ¿Este WAV ya se trabó? (entonces seguir con el MP3 hasta recargar) */
+export function isLosslessBlocked(hqUrl: string) {
+  return losslessFailed.has(hqUrl);
+}
+let stallTimer: ReturnType<typeof setTimeout> | null = null;
+export function setLosslessFallback(hqUrl: string, mp3Url: string) {
+  if (hqUrl && mp3Url && hqUrl !== mp3Url) losslessFallback.set(hqUrl, mp3Url);
+}
+function clearStall() {
+  if (stallTimer) clearTimeout(stallTimer);
+  stallTimer = null;
+}
+function armStall(el: HTMLAudioElement, ms: number) {
+  const fb = losslessFallback.get(el.src);
+  if (!fb) return;
+  clearStall();
+  stallTimer = setTimeout(() => {
+    stallTimer = null;
+    if (el.readyState >= 3 || !losslessFallback.has(el.src)) return; // ya carga bien (o ya no es el WAV)
+    const t = el.currentTime || 0;
+    const wasPlaying = !el.paused;
+    losslessFailed.add(el.src);
+    losslessFallback.delete(el.src);
+    el.src = fb;
+    const resume = () => {
+      try {
+        el.currentTime = t;
+      } catch {}
+      if (wasPlaying || el.autoplay) el.play().catch(() => {});
+    };
+    el.addEventListener("loadedmetadata", resume, { once: true });
+    el.load();
+    el.play().catch(() => {});
+  }, ms);
+}
+function watchLossless(el: HTMLAudioElement) {
+  el.addEventListener("waiting", () => armStall(el, 5000));
+  el.addEventListener("stalled", () => armStall(el, 5000));
+  el.addEventListener("loadstart", () => armStall(el, 7000)); // arranque: si en 7 s no puede sonar, MP3
+  el.addEventListener("playing", clearStall);
+  el.addEventListener("canplaythrough", clearStall);
+}
+
 function handleAudioElEnded() {
   if (reusableAudioEl && reusableAudioEl.src === SILENT_WAV) return; // terminó el silencio de desbloqueo
   if (endedConsumed) return;
@@ -331,6 +379,7 @@ export const sfx = {
       reusableAudioEl.setAttribute("webkit-playsinline", "true");
       reusableAudioEl.preload = "auto";
       reusableAudioEl.addEventListener("ended", handleAudioElEnded);
+      watchLossless(reusableAudioEl);
     }
     const el = reusableAudioEl;
     if (!el.paused) return; // ya está sonando: está desbloqueado
@@ -465,6 +514,7 @@ export const sfx = {
           reusableAudioEl.setAttribute("webkit-playsinline", "true");
           reusableAudioEl.preload = "auto";
           reusableAudioEl.addEventListener("ended", handleAudioElEnded);
+          watchLossless(reusableAudioEl);
         }
         currentAudioEl = reusableAudioEl;
         currentAudioEl.src = audioUrl;

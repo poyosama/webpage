@@ -3,6 +3,7 @@
 **Qué es:** plataforma (web + PWA, iOS vía Capacitor) para que raperos y productores de la escena guarden, compartan y escuchen sus proyectos. Next.js 16 (App Router, Turbopack) + Supabase (Postgres, Auth Google, Storage, Realtime) + Vercel. Dominio: `eltablero.blog`.
 
 ## Estado del backend
+- **Audio:** subida = MP3 320 (`mp3Encode.ts`, `STREAM_KBPS`) en `tracks.audio_url` + original WAV/FLAC en `tracks.original_audio_url` (R2, `KEEP_ORIGINALS = true`). Reproducción: `pickAudio` en `App.tsx` usa el original si `wantLossless()` (preferencia `eltablero_audio_quality` + conexión no lenta) con respaldo automático al MP3 si se traba (`sfx.ts`: `setLosslessFallback`, `isLosslessBlocked`). Tracks subidos antes del 24/11 no tienen original.
 - **Regla de oro:** un pedido de supabase-js (`supabase.from(...)...`, `.rpc(...)`) solo sale si se espera: `await` o `.then(() => {})`. `void supabase.from(...)` solo NO hace nada.
 - **Errores:** `client_errors` (insert anon/auth, anti-spam 60/h) ← `src/lib/errorLog.ts` (window error/unhandledrejection, 1 vez por error por sesión) + `src/app/error.tsx`. Panel `/admin/errores` (`admin_client_errors`, solo @poyo). "Reportar un problema" en Cuenta (kind `report`).
 - **Avisos puntuales:** `user_notices` (title/body por usuario) → pop-up `UserNotices.tsx` al entrar; "Entendido" marca `seen_at`. Para avisarle algo a alguien: insertar una fila.

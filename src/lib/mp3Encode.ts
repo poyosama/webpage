@@ -8,7 +8,7 @@
 
 const LOSSLESS_EXT = /\.(wav|wave|aif|aiff|aifc|flac|alac|caf)$/i;
 const LOSSLESS_MIME = /(wav|wave|aiff|flac|alac|x-caf)/i;
-export const STREAM_KBPS = 192;
+export const STREAM_KBPS = 320; // máxima calidad de MP3 (antes 192)
 
 /** ¿Conviene convertir este archivo? (lossless, o cualquier audio muy pesado) */
 export function shouldTranscodeAudio(file: Blob & { name?: string }): boolean {

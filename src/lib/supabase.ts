@@ -344,7 +344,8 @@ async function uploadToStorageWithRetry(
 }
 
 // ==================== AUDIO: MP3 PARA ESCUCHAR + ORIGINAL PARA DESCARGAR ====================
-const KEEP_ORIGINALS = false;
+// Con R2 el tráfico no se cobra: se guarda el WAV/FLAC original (se escucha en "WAV" y se descarga)
+const KEEP_ORIGINALS = true;
 // Original (WAV/AIFF/FLAC) que se está subiendo por detrás, por URL del MP3 que suena
 const pendingOriginals = new Map<string, Promise<string | null>>();
 
@@ -681,6 +682,49 @@ export async function resolveTrackAudioUrl(trackId: string): Promise<string | un
     // ignore
   }
   return undefined;
+}
+
+// ==================== CALIDAD DE REPRODUCCIÓN: WAV o MP3 320 ====================
+export type AudioQuality = "wav" | "mp3";
+const QUALITY_KEY = "eltablero_audio_quality";
+/** Preferencia guardada; por defecto WAV en compu y MP3 320 en el celu (datos móviles) */
+export function getAudioQuality(): AudioQuality {
+  if (typeof window === "undefined") return "mp3";
+  try {
+    const q = localStorage.getItem(QUALITY_KEY);
+    if (q === "wav" || q === "mp3") return q;
+  } catch {}
+  return window.innerWidth <= 900 || window.matchMedia?.("(pointer: coarse)").matches ? "mp3" : "wav";
+}
+export function setAudioQuality(q: AudioQuality) {
+  try {
+    localStorage.setItem(QUALITY_KEY, q);
+  } catch {}
+}
+/** ¿La conexión es mala? (datos lentos o "ahorro de datos") → mejor MP3 */
+export function isSlowConnection(): boolean {
+  const c = (typeof navigator !== "undefined" ? (navigator as Navigator & { connection?: { effectiveType?: string; saveData?: boolean } }).connection : undefined) || undefined;
+  return Boolean(c && (c.saveData || /^(slow-2g|2g|3g)$/.test(c.effectiveType || "")));
+}
+/** ¿Hay que intentar el WAV ahora? */
+export function wantLossless(): boolean {
+  return getAudioQuality() === "wav" && !isSlowConnection();
+}
+const losslessCache = new Map<string, string | null>();
+/** Link del original sin comprimir (WAV/FLAC) que el navegador puede reproducir, o null */
+export async function resolveLosslessUrl(trackId: string): Promise<string | null> {
+  const dbId = toDbId(trackId);
+  if (losslessCache.has(dbId)) return losslessCache.get(dbId) ?? null;
+  try {
+    const { data } = await supabase.from("tracks").select("original_audio_url").eq("id", dbId).maybeSingle();
+    const u = (data?.original_audio_url as string | undefined) || null;
+    // AIFF no lo reproducen todos los navegadores: solo WAV / FLAC
+    const ok = u && /^https?:/i.test(u) && /\.(wav|wave|flac)(\?|$)/i.test(u) ? u : null;
+    losslessCache.set(dbId, ok);
+    return ok;
+  } catch {
+    return null;
+  }
 }
 
 /** Hidrata en segundo plano los audio_url de los proyectos sin bloquear la pantalla inicial. */

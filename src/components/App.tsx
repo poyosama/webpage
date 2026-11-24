@@ -25,12 +25,13 @@ import {
   type ProjectVideoClip,
   type Track,
 } from "@/lib/mock";
-import { sfx } from "@/lib/sfx";
+import { sfx, setLosslessFallback, isLosslessBlocked } from "@/lib/sfx";
 import { useRemotePlayer, type RemoteCommand, type TvMedia } from "@/lib/remotePlayer";
 import FriendsActivity, { readShareActivity, SHARE_KEY } from "@/components/FriendsActivity";
 import DirectMessages, { DmPolicyField } from "@/components/DirectMessages";
 import { InstallAppCard } from "@/components/InstallApp";
 import UserNotices from "@/components/UserNotices";
+import AudioQualityField from "@/components/AudioQualityField";
 import { installErrorLogging, setErrorUser, logClientError } from "@/lib/errorLog";
 import TrackBoard, { BoardCountdown, PlayCountsField, type BoardTrack } from "@/components/TrackBoard";
 import { useDmInbox, type DmPerson, type DmTrack } from "@/lib/dms";
@@ -54,6 +55,8 @@ import {
   fastCacheSet,
   resolveTrackAudioUrl,
   reportActivity,
+  resolveLosslessUrl,
+  wantLossless,
   toDbId,
   compressImageBlobToDataUrl,
   resolveOriginalAudioUrl,
@@ -1643,7 +1646,9 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     setCurrentProject(project);
     setIsPlaying(true);
     sfx.play();
-    const knownAudio = track.customAudioUrl || customAudioMap[track.id];
+    // si conviene el WAV y todavía no sabemos si este track lo tiene, se averigua antes de arrancar
+    const hqUnknown = wantLossless() && hqAudioMap[track.id] === undefined && /^[0-9a-f-]{36}$/i.test(track.id);
+    const knownAudio = hqUnknown ? undefined : pickAudio(track);
     // Desbloquear el audio en el mismo toque (iOS) antes de cualquier espera
     if (!knownAudio) sfx.primeAudio();
     if (knownAudio) {
@@ -1656,14 +1661,16 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       );
     } else {
       // Resolver desde IndexedDB (1ms) o Supabase bajo demanda si el usuario tocó Play enseguida
-      void resolveTrackAudioUrl(track.id).then((resolved) => {
+      void Promise.all([resolveTrackAudioUrl(track.id), wantLossless() ? resolveLosslessUrl(track.id) : null]).then(([resolved, hq]) => {
         if (resolved) {
           setCustomAudioMap((prev) => ({ ...prev, [track.id]: resolved }));
         }
+        if (hq) setHqAudioMap((prev) => ({ ...prev, [track.id]: hq }));
+        if (hq && resolved) setLosslessFallback(hq, resolved);
         sfx.startGroove(
           track.bpm,
           track.audioFreq,
-          resolved,
+          hq && resolved ? hq : resolved,
           track.durationSec,
           isDifferentTrack
         );
@@ -1695,7 +1702,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       }
       setIsPlaying(true);
       sfx.play();
-      const knownAudio = currentTrack.customAudioUrl || customAudioMap[currentTrack.id];
+      const knownAudio = pickAudio(currentTrack);
       if (!knownAudio) sfx.primeAudio();
       if (knownAudio) {
         sfx.resumeGroove(
@@ -2197,8 +2204,31 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     return () => window.clearTimeout(t);
   }, []);
 
+  // WAV originales (máxima calidad). Se usan si la preferencia es "WAV" y la conexión da; si se traba, el
+  // reproductor pasa solo al MP3 320 (setLosslessFallback).
+  const [hqAudioMap, setHqAudioMap] = useState<Record<string, string>>({});
+  const prefetchLossless = (tracks: Track[]) => {
+    if (!wantLossless()) return;
+    const missing = tracks.filter((t) => hqAudioMap[t.id] === undefined && /^[0-9a-f-]{36}$/i.test(t.id)).slice(0, 12);
+    if (!missing.length) return;
+    void Promise.all(missing.map(async (t) => [t.id, (await resolveLosslessUrl(t.id)) || ""] as const)).then((pairs) =>
+      setHqAudioMap((prev) => ({ ...prev, ...Object.fromEntries(pairs) }))
+    );
+  };
+  /** Qué archivo suena: el WAV si corresponde (con el MP3 de respaldo), si no el MP3 */
+  const pickAudio = (t: Track, mp3?: string) => {
+    const base = mp3 || t.customAudioUrl || customAudioMap[t.id];
+    const hq = wantLossless() && hqAudioMap[t.id] && !isLosslessBlocked(hqAudioMap[t.id]) ? hqAudioMap[t.id] : "";
+    if (hq && base) {
+      setLosslessFallback(hq, base);
+      return hq;
+    }
+    return base;
+  };
+
   // Buscar por adelantado las URLs de audio del proyecto abierto y del que suena (así el play es instantáneo)
   const prefetchAudioFor = (tracks: Track[]) => {
+    prefetchLossless(tracks);
     const missing = tracks.filter((t) => !t.customAudioUrl && !customAudioMap[t.id]).slice(0, 12);
     if (missing.length === 0) return;
     void Promise.all(
@@ -2417,7 +2447,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
       sfx.resumeGroove(
         currentTrack.bpm,
         currentTrack.audioFreq,
-        currentTrack.customAudioUrl || customAudioMap[currentTrack.id],
+        pickAudio(currentTrack),
         currentTrack.durationSec
       );
       return;
@@ -2641,7 +2671,7 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
         sfx.startGroove(
           updatedTrack.bpm,
           updatedTrack.audioFreq,
-          updatedTrack.customAudioUrl || customAudioMap[updatedTrack.id],
+          pickAudio(updatedTrack),
           updatedTrack.durationSec,
           false
         );
@@ -9047,6 +9077,7 @@ function GoogleAuthModal({
           </label>
           {connected && profile.id && <DmPolicyField meId={profile.id} />}
           {connected && profile.id && <PlayCountsField meId={profile.id} />}
+          <AudioQualityField />
           {connected && (
             <button
               type="button"
