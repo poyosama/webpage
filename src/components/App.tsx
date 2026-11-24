@@ -2364,9 +2364,11 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
     const standalone =
       (navigator as Navigator & { standalone?: boolean }).standalone === true ||
       window.matchMedia("(display-mode: standalone)").matches;
+    // solo iPhone/iPad: en la Mac (app del Dock) la ventana es más chica que la pantalla y se cortaba abajo
+    const iosLike = /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
     const apply = () => {
       let h = window.innerHeight;
-      if (standalone) {
+      if (standalone && iosLike) {
         const portrait = window.matchMedia("(orientation: portrait)").matches;
         const screenH = portrait
           ? Math.max(window.screen.height, window.screen.width)

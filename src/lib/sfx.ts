@@ -6,6 +6,10 @@ const isIOS =
   typeof navigator !== "undefined" &&
   (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
     (navigator.platform === "MacIntel" && (navigator.maxTouchPoints || 0) > 1));
+// Safari de Mac (y la web app agregada al Dock): pasar el audio por Web Audio puede dejarlo mudo
+// (el motor queda "suspendido" o bloquea audio de otro dominio). Ahí el audio sale directo, como en iPhone.
+const isSafariWebKit =
+  typeof navigator !== "undefined" && /Safari\//.test(navigator.userAgent) && !/Chrome|Chromium|CriOS|Edg|OPR|Firefox/.test(navigator.userAgent);
 
 if (typeof document !== "undefined") {
   document.addEventListener("visibilitychange", () => {
@@ -527,7 +531,8 @@ export const sfx = {
         }
         // En iOS WebKit: NO pasar por createMediaElementSource para evitar que iOS mutee el audio al bloquear pantalla.
         // En desktop/Chrome: conectar para alimentar el analizador FFT de hardware.
-        if (!isIOS && c && analyserNode && !connectedElements.has(currentAudioEl)) {
+        if (c && c.state === "suspended") c.resume().catch(() => {});
+        if (!isIOS && !isSafariWebKit && c && analyserNode && !connectedElements.has(currentAudioEl)) {
           try {
             mediaSourceNode = c.createMediaElementSource(currentAudioEl);
             mediaSourceNode.connect(analyserNode);
