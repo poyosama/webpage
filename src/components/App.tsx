@@ -4728,7 +4728,8 @@ export default function App({ initialInviteCode }: { initialInviteCode?: string 
               </div>
 
               {/* Si es oyente o eligió la pestaña Guardados, se muestran los proyectos guardados */}
-              {(meProfile.accountType === "oyente" || librarySubTab === "guardados") ? (
+              {/* (si se pidió abrir un proyecto —desde Inicio, un link o una tarjeta— se muestra el proyecto, también a oyentes) */}
+              {(meProfile.accountType === "oyente" || librarySubTab === "guardados") && !(insideCubeOpen && activeProject) ? (
                 <div className="saved-library-section">
                   {savedProjectsList.length === 0 ? (
                     <div className="manifold-empty-cluster-overlay" style={{ position: "relative", inset: "auto", margin: "40px auto", textAlign: "center" }}>

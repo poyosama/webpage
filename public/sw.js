@@ -5,7 +5,7 @@
  * - Imágenes/íconos propios: del teléfono y se actualizan por detrás.
  * - Supabase y otros dominios: no se tocan (siempre red).
  */
-const VERSION = "v3";
+const VERSION = "v4";
 const PAGES = `et-pages-${VERSION}`;
 const STATIC = `et-static-${VERSION}`;
 const ASSETS = `et-assets-${VERSION}`;

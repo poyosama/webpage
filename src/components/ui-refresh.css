@@ -2715,3 +2715,11 @@ html:root body .filmstrip-caption .track-artist-link-btn {
   html:root body .library-inside-stack > .library-add-wrap,
   html:root body .library-add-wrap { margin-top: 10px; }
 }
+
+/* Compu (mouse, sin táctil) — incluida la app agregada al Dock de la Mac: el reproductor mide la ventana,
+   nunca "la pantalla entera" (eso es solo para la app del iPhone y dejaba los controles fuera de la ventana) */
+@media (hover: hover) and (pointer: fine) {
+  html.is-standalone, html.is-standalone body { min-height: 0 !important; }
+  html:root body .perf-modal-layer,
+  html:root body .perf-player { height: 100dvh !important; min-height: 0 !important; max-height: 100dvh !important; }
+}
