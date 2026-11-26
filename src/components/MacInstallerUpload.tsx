@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useProducerExample } from "@/lib/examples";
 import { motion, AnimatePresence } from "framer-motion";
 import { type Project, type Track, type ArtistProfile } from "@/lib/mock";
 import { sfx } from "@/lib/sfx";
@@ -47,6 +48,8 @@ export default function MacInstallerUpload({
   onOpenCreateProject: () => void;
   onGoToProject?: (projectId: string) => void;
 }) {
+  const prodExample = useProducerExample(2);
+  const prodExampleOne = useProducerExample(1);
   const [selectedProjectId, setSelectedProjectId] = useState<string>(projects[0]?.id || "");
   const [batchItems, setBatchItems] = useState<BatchTrackDraft[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -323,7 +326,7 @@ export default function MacInstallerUpload({
               <input
                 type="text"
                 value={globalProd}
-                placeholder="ej. dorkke, Gonza2k..."
+                placeholder={prodExample}
                 onChange={(e) => {
                   const val = e.target.value;
                   setGlobalProd(val);
@@ -391,7 +394,7 @@ export default function MacInstallerUpload({
                         <span>PRODUCTOR (OPCIONAL)</span>
                         <input
                           value={item.prod}
-                          placeholder="ej. dorkke"
+                          placeholder={prodExampleOne}
                           onChange={(e) => updateDraft(item.id, { prod: e.target.value })}
                           onClick={(e) => e.stopPropagation()}
                         />

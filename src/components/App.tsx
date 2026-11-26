@@ -30,6 +30,7 @@ import { useRemotePlayer, type RemoteCommand, type TvMedia } from "@/lib/remoteP
 import FriendsActivity, { readShareActivity, SHARE_KEY } from "@/components/FriendsActivity";
 import DirectMessages, { DmPolicyField } from "@/components/DirectMessages";
 import { InstallAppCard } from "@/components/InstallApp";
+import { useProducerExample } from "@/lib/examples";
 import UserNotices from "@/components/UserNotices";
 import AudioQualityField from "@/components/AudioQualityField";
 import { installErrorLogging, setErrorUser, logClientError } from "@/lib/errorLog";
@@ -8204,6 +8205,7 @@ function EditTrackModal({
   onSave: (t: Track) => void;
   onDelete: () => void;
 }) {
+  const prodExample = useProducerExample(2);
   const [title, setTitle] = useState(track.title);
   const [artist, setArtist] = useState(track.artist);
   const [feat, setFeat] = useState(track.feat || "");
@@ -8255,7 +8257,7 @@ function EditTrackModal({
           </label>
           <label className="modal-field">
             <span>PROD.</span>
-            <input value={prod} onChange={(e) => setProd(e.target.value)} placeholder="ej. dorkke, Gonza2k..." />
+            <input value={prod} onChange={(e) => setProd(e.target.value)} placeholder={prodExample} />
           </label>
           <label className="modal-field">
             <span>BPM</span>
