@@ -1,5 +1,5 @@
 -- ==================== REPRODUCCIONES: NO CUENTA EL AUTOR (24/11/2026) ====================
--- ESTADO: PENDIENTE DE APLICAR (el token de Supabase no funcionaba al 25/11). Cuando se aplique, sumarla a APLICAR_TODO.sql.
+-- ESTADO: aplicada el 26/11/2026 (se borraron 65 reproducciones del autor/coautores).
 -- El contador muestra solo lo que escuchó el resto. No suman el dueño del proyecto ni sus coautores.
 
 create or replace function public.track_is_mine(p_track uuid)
