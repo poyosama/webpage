@@ -1,12 +1,12 @@
 "use client";
 
-import { Canvas, useFrame } from "@react-three/fiber";
-import { canvasDpr, isLowPowerDevice } from "@/lib/perf";
+import { Canvas } from "@react-three/fiber";
+import { canvasDpr } from "@/lib/perf";
 import { useEffect, useMemo, useRef, useState } from "react";
-import * as THREE from "three";
 import { type Project, type ProjectVideoClip, type Track } from "@/lib/mock";
 import { sfx } from "@/lib/sfx";
 import TrackComments, { useCommentCount } from "./TrackComments";
+import PlayerParticles from "./PlayerParticles";
 import TrackStudioEditModal from "./TrackStudioEditModal";
 
 export type RepeatMode = "off" | "all" | "one";
@@ -16,223 +16,6 @@ function formatTime(sec: number): string {
   const m = Math.floor(sec / 60);
   const s = Math.floor(sec % 60);
   return `${m}:${String(s).padStart(2, "0")}`;
-}
-
-// 1. 36.000 PARTÍCULAS ALGORÍTMICAS DE BAJA LATENCIA CON LATIDO ELÁSTICO 808
-function HighResFlowParticles({
-  accent,
-  c2,
-  impulseSignal,
-  isDarkStage,
-  seed,
-}: {
-  accent: string;
-  c2: string;
-  impulseSignal: number;
-  isDarkStage: boolean;
-  seed: number;
-}) {
-  const pointsRef = useRef<THREE.Points>(null!);
-  const matRef = useRef<THREE.PointsMaterial>(null!);
-  const count = useMemo(() => {
-    // celus / equipos flojos: bastante menos partículas (el canvas ya aporta lo visual)
-    if (typeof window !== "undefined" && window.innerWidth <= 720) return 2800;
-    if (isLowPowerDevice()) return 6000;
-    return 16000;
-  }, []);
-  const lastImpulseRef = useRef(0);
-  const dispRef = useRef(0);
-  const velRef = useRef(0);
-  const lastDispRef = useRef(-1);
-
-  const circleSprite = useMemo(() => {
-    const c = document.createElement("canvas");
-    c.width = 32;
-    c.height = 32;
-    const g = c.getContext("2d")!;
-    const grad = g.createRadialGradient(16, 16, 2, 16, 16, 15);
-    grad.addColorStop(0, "rgba(255,255,255,1)");
-    grad.addColorStop(0.65, "rgba(255,255,255,0.85)");
-    grad.addColorStop(1, "rgba(255,255,255,0)");
-    g.fillStyle = grad;
-    g.fillRect(0, 0, 32, 32);
-    const tex = new THREE.CanvasTexture(c);
-    tex.generateMipmaps = false;
-    tex.minFilter = THREE.LinearFilter;
-    tex.magFilter = THREE.LinearFilter;
-    return tex;
-  }, []);
-
-  const { renderPositions, homePositions, scatterDirs, colors, phases } = useMemo(() => {
-    const renderPos = new Float32Array(count * 3);
-    const homePos = new Float32Array(count * 3);
-    const scatter = new Float32Array(count * 3);
-    const col = new Float32Array(count * 3);
-    const ph = new Float32Array(count);
-
-    const getContrastColor = (hex: string, fallbackDark: string) => {
-      try {
-        const c = new THREE.Color(hex);
-        const lum = 0.299 * c.r + 0.587 * c.g + 0.114 * c.b;
-        if (!isDarkStage) {
-          if (lum > 0.55) return new THREE.Color(fallbackDark);
-        } else {
-          if (lum < 0.18) return new THREE.Color("#e4e4e7");
-        }
-        return c;
-      } catch {
-        return new THREE.Color(isDarkStage ? "#ffffff" : fallbackDark);
-      }
-    };
-
-    const cA = getContrastColor(accent, "#09090b");
-    const cB = getContrastColor(c2, "#27272a");
-    const cInk = new THREE.Color(isDarkStage ? "#ffffff" : "#09090b");
-
-    for (let i = 0; i < count; i++) {
-      const ix = i * 3;
-      const u = (i / count) * Math.PI * 28;
-      const stream = i % 6;
-      const r = 0.55 + (i / count) * 2.45;
-      const shape = ((seed % 4) + 4) % 4;
-      const f = i / count;
-      const jit = () => (Math.random() - 0.5) * 0.24;
-      let hx: number, hy: number, hz: number;
-      if (shape === 1) {
-        const tt = f * Math.PI * 2 * 6 + stream * 0.05;
-        hx = (Math.sin(tt) + 2 * Math.sin(2 * tt)) * 0.62 + jit();
-        hy = (Math.cos(tt) - 2 * Math.cos(2 * tt)) * 0.62 + jit();
-        hz = -Math.sin(3 * tt) * 1.1 + jit();
-      } else if (shape === 2) {
-        const a = f * Math.PI * 2 * 7 + (i % 2) * Math.PI;
-        hx = Math.cos(a) * 1.35 + jit();
-        hz = Math.sin(a) * 1.35 + jit();
-        hy = (f * 2 - 1) * 2.5 + jit();
-      } else if (shape === 3) {
-        const phi = Math.acos(1 - 2 * f);
-        const th = Math.PI * (1 + Math.sqrt(5)) * i;
-        const rr = 2 + Math.sin(phi * 6 + stream) * 0.18;
-        hx = Math.sin(phi) * Math.cos(th) * rr + jit();
-        hy = Math.cos(phi) * rr + jit();
-        hz = Math.sin(phi) * Math.sin(th) * rr + jit();
-      } else {
-        hx = Math.cos(u + stream) * r + jit();
-        hy = Math.sin(u * 1.5 - stream) * r * 0.65 + jit();
-        hz = Math.sin(u * 0.7 + stream) * 1.65 + jit();
-      }
-
-      homePos[ix] = hx;
-      homePos[ix + 1] = hy;
-      homePos[ix + 2] = hz;
-
-      renderPos[ix] = hx;
-      renderPos[ix + 1] = hy;
-      renderPos[ix + 2] = hz;
-
-      const len = Math.hypot(hx, hy, hz) || 1;
-      const rx = hx / len + (Math.random() - 0.5) * 1.35;
-      const ry = hy / len + (Math.random() - 0.5) * 1.35;
-      const rz = hz / len + (Math.random() - 0.5) * 1.35;
-      const rLen = Math.hypot(rx, ry, rz) || 1;
-      const burstStrength = 0.22 + Math.pow(Math.random(), 0.7) * 0.45;
-      scatter[ix] = (rx / rLen) * burstStrength;
-      scatter[ix + 1] = (ry / rLen) * burstStrength;
-      scatter[ix + 2] = (rz / rLen) * burstStrength;
-
-      ph[i] = Math.random() * Math.PI * 2;
-
-      const tMix = (i % 100) / 100;
-      const chosen = i % 3 === 0 ? cA.clone().lerp(cB, tMix) : i % 3 === 1 ? cB : cInk;
-      col[ix] = chosen.r;
-      col[ix + 1] = chosen.g;
-      col[ix + 2] = chosen.b;
-    }
-    return {
-      renderPositions: renderPos,
-      homePositions: homePos,
-      scatterDirs: scatter,
-      colors: col,
-      phases: ph,
-    };
-  }, [accent, c2, isDarkStage, seed]);
-
-  useFrame(({ clock, pointer, size }, dt) => {
-    const mobileScale = size.width <= 720 ? 0.38 : 1;
-    const { eightOhEight } = sfx.sampleReactiveLevels();
-    const clampedDt = Math.min(0.033, dt);
-    const t = clock.elapsedTime;
-
-    if (impulseSignal !== lastImpulseRef.current) {
-      lastImpulseRef.current = impulseSignal;
-      dispRef.current += 0.22 * mobileScale;
-    }
-
-    const MAX_DISP = 0.34 * mobileScale;
-    const hitTarget = Math.pow(eightOhEight, 0.9) * MAX_DISP;
-
-    const springStiffness = 28.0;
-    const damping = 8.2;
-    const springAccel = -springStiffness * (dispRef.current - hitTarget) - damping * velRef.current;
-    velRef.current += springAccel * clampedDt;
-    dispRef.current += velRef.current * clampedDt;
-    if (dispRef.current < 0) {
-      dispRef.current = 0;
-      velRef.current = 0;
-    }
-
-    const pulseDisp = dispRef.current;
-    if (matRef.current) {
-      const baseSize = isDarkStage ? 0.032 : 0.038;
-      matRef.current.size = baseSize * (1 + pulseDisp * 0.28 * mobileScale);
-    }
-
-    const lastDisp = lastDispRef.current;
-    if (Math.abs(pulseDisp - lastDisp) > 0.0015 || (pulseDisp === 0 && lastDisp !== 0)) {
-      const geo = pointsRef.current?.geometry;
-      if (geo) {
-        const attr = geo.getAttribute("position") as THREE.BufferAttribute;
-        if (attr) {
-          const arr = attr.array as Float32Array;
-          for (let i = 0; i < count; i++) {
-            const ix = i * 3;
-            arr[ix] = homePositions[ix] + scatterDirs[ix] * pulseDisp;
-            arr[ix + 1] = homePositions[ix + 1] + scatterDirs[ix + 1] * pulseDisp;
-            arr[ix + 2] = homePositions[ix + 2] + scatterDirs[ix + 2] * pulseDisp;
-          }
-          attr.needsUpdate = true;
-          lastDispRef.current = pulseDisp;
-        }
-      }
-    }
-
-    if (pointsRef.current) {
-      pointsRef.current.rotation.y += clampedDt * 0.035;
-      pointsRef.current.rotation.x = Math.sin(t * 0.1) * 0.025 - pointer.y * 0.05;
-      pointsRef.current.rotation.z = pointer.x * 0.04;
-      const breathe = 1 + Math.sin(t * 0.8) * 0.014;
-      pointsRef.current.scale.set(breathe, breathe, breathe);
-    }
-  });
-
-  return (
-    <points ref={pointsRef} frustumCulled={false}>
-      <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[renderPositions, 3]} />
-        <bufferAttribute attach="attributes-color" args={[colors, 3]} />
-      </bufferGeometry>
-      <pointsMaterial
-        ref={matRef}
-        map={circleSprite}
-        size={isDarkStage ? 0.026 : 0.034}
-        vertexColors
-        transparent
-        alphaTest={0.02}
-        opacity={isDarkStage ? 0.92 : 0.96}
-        sizeAttenuation
-        depthWrite={false}
-      />
-    </points>
-  );
 }
 
 export type QueueEntry = {
@@ -510,11 +293,7 @@ export default function PerformativePlayer({
           dpr={canvasDpr([1, 1.25])}
           gl={{ alpha: true, antialias: false, powerPreference: "high-performance" }}
         >
-          <ambientLight intensity={isDarkStage ? 1.15 : 1.7} />
-          <directionalLight position={[4, 6, 5]} intensity={isDarkStage ? 1.85 : 2.4} />
-          <pointLight position={[-4, -3, 3]} color={isDarkStage ? track.c2 : "#27272a"} intensity={isDarkStage ? 6 : 4} />
-
-          <HighResFlowParticles
+          <PlayerParticles
             accent={track.accent}
             c2={track.c2}
             impulseSignal={impulseSignal}
